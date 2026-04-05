@@ -212,28 +212,179 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;font-size:1
 // ═══════════════════════════════════════════════════════
 // DATA LAYER — swap these functions for Supabase later
 // ═══════════════════════════════════════════════════════
-const DB_KEY = 'h_os_v9';
+// ═══════════════════════════════════════════════════════
+// SUPABASE CONFIG
+// ═══════════════════════════════════════════════════════
+const SUPA_URL = 'https://zkxeuphsbufdvskkuahk.supabase.co';
+const SUPA_KEY = 'sb_publishable_41EMxtYZYsYL5KR1KS_RrA_1mV1SRAL';
 
+async function supa(path, opts = {}) {
+  const res = await fetch(SUPA_URL + '/rest/v1/' + path, {
+    headers: {
+      'apikey': SUPA_KEY,
+      'Authorization': 'Bearer ' + SUPA_KEY,
+      'Content-Type': 'application/json',
+      'Prefer': opts.prefer || 'return=representation',
+      ...(opts.headers || {})
+    },
+    method: opts.method || 'GET',
+    body: opts.body ? JSON.stringify(opts.body) : undefined
+  });
+  if (!res.ok) { console.error('Supabase error', await res.text()); return null; }
+  const text = await res.text();
+  return text ? JSON.parse(text) : null;
+}
+
+// ═══════════════════════════════════════════════════════
+// DATA LAYER — Supabase
+// ═══════════════════════════════════════════════════════
 async function loadData() {
-  try { const d = localStorage.getItem(DB_KEY); if (d) return JSON.parse(d); } catch(e) {}
-  return initState();
+  try {
+    const [personen, teams, ziele, kpis, teilziele, bereiche, handlungen, checkins] = await Promise.all([
+      supa('personen?select=*&order=ci'),
+      supa('teams?select=*'),
+      supa('ziele?select=*&order=created_at'),
+      supa('kpis?select=*'),
+      supa('teilziele?select=*&order=created_at'),
+      supa('bereiche?select=*'),
+      supa('handlungen?select=*&order=created_at'),
+      supa('checkins?select=*'),
+    ]);
+
+    // Normalize DB columns → app format
+    const normH = (handlungen || []).map(h => ({
+      ...h,
+      zielId:     h.ziel_id,
+      bereichId:  h.bereich_id,
+      teilzielId: h.teilziel_id,
+      aktSeit:    h.akt_seit ? new Date(h.akt_seit).getTime() : null,
+      dl:         h.dl || '',
+      ua:         Array.isArray(h.ua) ? h.ua : JSON.parse(h.ua || '[]'),
+    }));
+
+    const normZ = (ziele || []).map(z => ({
+      ...z,
+      verantwortlichId: z.verantwortlich_id,
+      kpis: (kpis || []).filter(k => k.ziel_id === z.id).map(k => ({
+        ...k, zielId: k.ziel_id, pid: k.pid
+      })),
+      teilziele: (teilziele || []).filter(t => t.ziel_id === z.id).map(t => ({
+        ...t,
+        zielId: t.ziel_id,
+        verantwortlichId: t.verantwortlich_id,
+        datum: t.datum || '',
+      })),
+    }));
+
+    // Build checkins map: {pid: {date, morgen, abend}}
+    const ciMap = {};
+    (checkins || []).forEach(c => {
+      if (!ciMap[c.pid] || c.datum > ciMap[c.pid].date)
+        ciMap[c.pid] = { date: c.datum, morgen: c.morgen, abend: c.abend };
+    });
+
+    return {
+      personen: personen || [],
+      teams: (teams || []).map(t => ({ ...t, members: t.members || [] })),
+      ziele: normZ,
+      bereiche: bereiche || [],
+      handlungen: normH,
+      kpiVals: {},
+      checkins: ciMap,
+      nextId: Date.now(),
+    };
+  } catch(e) {
+    console.error('loadData failed', e);
+    return initState();
+  }
 }
+
 async function saveData(state) {
-  try { localStorage.setItem(DB_KEY, JSON.stringify(state)); } catch(e) {}
+  // In Supabase mode saveData is a no-op — all writes go via updateRecord/insertRecord/deleteRecord
 }
+
 async function updateRecord(collection, id, patch) {
+  // Update local state immediately (optimistic)
   const arr = S[collection];
   const i = arr.findIndex(x => x.id === id);
   if (i >= 0) arr[i] = { ...arr[i], ...patch };
-  await saveData(S);
+
+  // Map app field names → DB column names
+  const dbPatch = mapToDb(collection, patch);
+  await supa(collection + '?id=eq.' + id, {
+    method: 'PATCH',
+    body: dbPatch,
+    prefer: 'return=minimal'
+  });
 }
+
 async function insertRecord(collection, record) {
   S[collection].push(record);
-  await saveData(S);
+  const dbRec = mapToDb(collection, record);
+  await supa(collection, { method: 'POST', body: dbRec });
 }
+
 async function deleteRecord(collection, id) {
   S[collection] = S[collection].filter(x => x.id !== id);
-  await saveData(S);
+  await supa(collection + '?id=eq.' + id, { method: 'DELETE', prefer: 'return=minimal' });
+}
+
+function mapToDb(collection, obj) {
+  if (collection === 'handlungen') {
+    const d = { ...obj };
+    if ('zielId'     in d) { d.ziel_id     = d.zielId;     delete d.zielId; }
+    if ('bereichId'  in d) { d.bereich_id  = d.bereichId;  delete d.bereichId; }
+    if ('teilzielId' in d) { d.teilziel_id = d.teilzielId; delete d.teilzielId; }
+    if ('aktSeit'    in d) { d.akt_seit    = d.aktSeit ? new Date(d.aktSeit).toISOString() : null; delete d.aktSeit; }
+    d.updated_at = new Date().toISOString();
+    return d;
+  }
+  if (collection === 'ziele') {
+    const d = { ...obj };
+    if ('verantwortlichId' in d) { d.verantwortlich_id = d.verantwortlichId; delete d.verantwortlichId; }
+    delete d.kpis; delete d.teilziele;
+    return d;
+  }
+  if (collection === 'teilziele') {
+    const d = { ...obj };
+    if ('verantwortlichId' in d) { d.verantwortlich_id = d.verantwortlichId; delete d.verantwortlichId; }
+    if ('zielId'           in d) { d.ziel_id            = d.zielId;          delete d.zielId; }
+    return d;
+  }
+  return { ...obj };
+}
+
+// ── CHECKIN SAVE via Supabase upsert ──
+async function saveCheckinDB(pid, patch) {
+  await supa('checkins', {
+    method: 'POST',
+    body: { pid, datum: TODAY, ...patch },
+    prefer: 'resolution=merge-duplicates,return=minimal'
+  });
+}
+
+// ── REALTIME — live updates wenn andere Handlungen ändern ──
+function initRealtime() {
+  const evtSrc = new EventSource(
+    `${SUPA_URL}/realtime/v1/api/broadcast?apikey=${SUPA_KEY}`
+  );
+  // Simpler polling fallback — alle 15 Sekunden reload wenn jemand anderes aktiv ist
+  setInterval(async () => {
+    const fresh = await supa('handlungen?select=id,status,gebucht,akt_seit,pid&status=eq.aktiv');
+    if (!fresh) return;
+    let changed = false;
+    fresh.forEach(fh => {
+      const h = S.handlungen.find(x => x.id === fh.id);
+      if (h && h.pid !== aP) { // only update others, not myself
+        const newAktSeit = fh.akt_seit ? new Date(fh.akt_seit).getTime() : null;
+        if (h.aktSeit !== newAktSeit || h.gebucht !== fh.gebucht) {
+          h.aktSeit = newAktSeit; h.gebucht = fh.gebucht; h.status = fh.status;
+          changed = true;
+        }
+      }
+    });
+    if (changed) rSB();
+  }, 15000);
 }
 
 // ═══════════════════════════════════════════════════════
@@ -484,10 +635,11 @@ async function saveCheckin() {
   const isEvening = ci.date === TODAY && hour >= 17 && !ci.abend;
   if (isEvening) {
     S.checkins[aP] = { ...ci, abend: val };
+    await saveCheckinDB(aP, { morgen: ci.morgen, abend: val });
   } else {
     S.checkins[aP] = { date: TODAY, morgen: val, abend: null };
+    await saveCheckinDB(aP, { morgen: val, abend: null });
   }
-  await saveData(S);
   closeCheckin();
 }
 function skipCheckin() { closeCheckin(); }
@@ -976,6 +1128,9 @@ function rZiele() {
       out += '</div>';
     });
     if (canManageTZ(z.id)) out += `<button class="tz-add-btn" onclick="openAddTZ('${z.id}')">+ Teilziel hinzufügen</button>`;
+
+    // Handlung direkt aus Zielkarte anlegen
+    out += `<div style="margin-top:10px"><button onclick="openNeu({zielId:'${z.id}'})" style="width:100%;padding:9px;border-radius:10px;border:1.5px dashed ${f.bd};background:transparent;color:${f.tc};font-size:12px;font-family:inherit;cursor:pointer;font-weight:500;opacity:.7" onmouseenter="this.style.opacity='1'" onmouseleave="this.style.opacity='0.7'">+ Handlung zu diesem Ziel hinzufügen</button></div>`;
 
     // Handlungen ohne Teilziel
     const hOhneTZ = zH.filter(h => !h.teilzielId);
@@ -1475,6 +1630,7 @@ window.addEventListener('keydown', e => { if (e.key === 'Escape') cm(); });
 (async () => {
   S = await loadData();
   initLogin();
+  initRealtime();
 })();
 </script>
 </body>
