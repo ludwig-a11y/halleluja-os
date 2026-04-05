@@ -1581,6 +1581,14 @@ async function savePerson(pid) {
   p.stufe = document.getElementById('es').value;
   const np = document.getElementById('ep').value.trim();
   if (np.length === 4 && /^\d{4}$/.test(np)) p.pin = np;
+  
+  // Supabase updaten
+  await supa('personen?id=eq.' + pid, {
+    method: 'PATCH',
+    body: { name: p.name, k: p.k, rolle: p.rolle, stufe: p.stufe, pin: p.pin },
+    prefer: 'return=minimal'
+  });
+  
   await saveData(S); openSettings(); render();
 }
 async function deletePerson(pid) {
@@ -1606,8 +1614,22 @@ async function saveNutzer() {
   if (!pin || pin.length !== 4 || !/^\d{4}$/.test(pin)) { alert('4-stellige PIN erforderlich.'); return; }
   const tid = document.getElementById('ut').value, id = 'u'+Date.now(), ci = S.personen.length % CL.length;
   const p = {id, name, k, rolle: document.getElementById('ur').value.trim()||'Teammitglied', stufe: document.getElementById('ust').value, ci, teams:[tid], pin};
+  
+  // Supabase speichern
+  await supa('personen', { method: 'POST', body: p });
+  
+  // Team updaten in Supabase
+  const t = S.teams.find(x => x.id === tid);
+  if (t) {
+    t.members.push(id);
+    await supa('teams?id=eq.' + tid, {
+      method: 'PATCH',
+      body: { members: t.members },
+      prefer: 'return=minimal'
+    });
+  }
+  
   S.personen.push(p);
-  const t = S.teams.find(x => x.id === tid); if (t) t.members.push(id);
   await saveData(S); openSettings(); render();
 }
 
