@@ -512,7 +512,13 @@ function bereichObj(id){ return S.bereiche.find(b => b.id === id); }
 function myTeamMemberIds() {
   const m = me(); if (!m) return [];
   const ids = [];
-  S.teams.forEach(t => {
+  // GF immer zuerst, dann andere Teams
+  const sortedTeams = [...S.teams].sort((a,b) => {
+    if (a.id === 'gf') return -1;
+    if (b.id === 'gf') return 1;
+    return 0;
+  });
+  sortedTeams.forEach(t => {
     if ((m.teams||[]).includes(t.id))
       t.members.forEach(mid => { if (!ids.includes(mid)) ids.push(mid); });
   });
@@ -720,6 +726,7 @@ function tryLogin() {
   if (!p) { document.getElementById('login-err').textContent = 'Person nicht gefunden.'; pinInput=''; updatePinDots(); return; }
   if (pinInput === (p.pin||'0000')) {
     aP = loginSelected;
+    _realMe = loginSelected; // echten User merken
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('app').style.display = 'flex';
     updateMeBadge();
@@ -799,8 +806,26 @@ function rSB() {
 }
 function switchPerson(id) {
   if (isGF() || myTeamMemberIds().includes(id) || id === aP) {
+    const prev = aP;
     aP = id; updateMeBadge(); render();
+    // "Zurück zu mir" Button einblenden wenn GF fremdes Profil anschaut
+    showBackToMe(prev !== id && id !== prev ? prev : null);
   }
+}
+
+let _realMe = null; // der echte eingeloggte User
+
+function showBackToMe(prevId) {
+  const existing = document.getElementById('back-to-me');
+  if (existing) existing.remove();
+  if (!_realMe || aP === _realMe) return;
+  const p = person(_realMe), c = cl(p);
+  const btn = document.createElement('button');
+  btn.id = 'back-to-me';
+  btn.innerHTML = `← Zurück zu ${p.name}`;
+  btn.style.cssText = `position:fixed;bottom:20px;right:20px;z-index:99;padding:10px 16px;border-radius:10px;background:${c.tc};color:#fff;border:none;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.2)`;
+  btn.onclick = () => { aP = _realMe; updateMeBadge(); render(); btn.remove(); };
+  document.body.appendChild(btn);
 }
 
 // ═══════════════════════════════════════════════════════
