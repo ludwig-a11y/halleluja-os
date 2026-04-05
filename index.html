@@ -19,7 +19,7 @@
 body{font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;font-size:13px;color:var(--text);background:var(--bg);height:100vh;overflow:hidden;display:flex;flex-direction:column}
 
 /* ── LOGIN ── */
-#login-screen{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:200;flex-direction:column}
+#login-screen{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:200}
 .login-box{background:var(--sf);border:1px solid var(--bd);border-radius:18px;padding:32px 36px;width:340px;max-width:95vw}
 .login-title{font-size:17px;font-weight:700;margin-bottom:4px}
 .login-sub{font-size:12px;color:var(--t3);margin-bottom:20px}
@@ -36,14 +36,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;font-size:1
 .pin-key:active{background:var(--bd)}
 .login-err{font-size:12px;color:var(--red);text-align:center;min-height:18px;margin-top:8px}
 
-/* ── CHECK-IN OVERLAY ── */
+/* ── CHECK-IN ── */
 #checkin-screen{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;align-items:center;justify-content:center;z-index:150;padding:16px}
 #checkin-screen.open{display:flex}
-.checkin-box{background:var(--sf);border-radius:20px;padding:32px 36px;width:420px;max-width:100%;text-align:center}
+.checkin-box{background:var(--sf);border-radius:20px;padding:32px 36px;width:440px;max-width:100%;text-align:center}
 .checkin-emoji{font-size:36px;margin-bottom:12px}
 .checkin-title{font-size:18px;font-weight:700;margin-bottom:6px}
-.checkin-sub{font-size:13px;color:var(--t2);margin-bottom:24px;line-height:1.5}
-.checkin-input{width:100%;padding:12px 14px;border-radius:10px;border:1.5px solid var(--bd);font-family:inherit;font-size:14px;outline:none;margin-bottom:16px;text-align:left}
+.checkin-sub{font-size:13px;color:var(--t2);margin-bottom:16px;line-height:1.5}
+.checkin-input{width:100%;padding:12px 14px;border-radius:10px;border:1.5px solid var(--bd);font-family:inherit;font-size:14px;outline:none;margin-bottom:12px;text-align:left}
 .checkin-input:focus{border-color:var(--blue)}
 .checkin-btn{width:100%;padding:13px;border-radius:10px;background:var(--text);color:#fff;border:none;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer}
 .checkin-skip{font-size:11px;color:var(--t3);cursor:pointer;margin-top:10px;display:inline-block}
@@ -62,7 +62,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;font-size:1
 .sbn{width:100%;text-align:left;padding:7px 8px;border-radius:9px;border:none;cursor:pointer;background:transparent;font-family:inherit;margin-bottom:2px;display:flex;align-items:center;gap:8px}
 .sbn.on,.sbn:hover{background:var(--bg)}
 
-/* ── CARDS & TAGS ── */
+/* ── COMPONENTS ── */
 .av{border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0}
 .card{background:var(--sf);border:1px solid var(--bd);border-radius:14px;padding:13px 15px;margin-bottom:8px}
 .card.aktiv-c{border:2px solid var(--text)}
@@ -75,11 +75,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;font-size:1
 .btn-red{background:transparent;color:var(--red);border:1px solid var(--red-bd)}
 .btn-purple{background:var(--purple-bg);color:var(--purple);border:1px solid var(--purple-bd)}
 .lock{font-size:9px;padding:1px 5px;border-radius:4px;background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-bd)}
-.dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-top:5px}
+.dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
 
 /* ── TIMER ── */
 .timer{background:var(--gray-bg);border-radius:9px;padding:7px 11px;text-align:center;flex-shrink:0;min-width:80px}
-.tn{font-size:17px;font-weight:700;font-family:monospace;letter-spacing:-.5px;color:var(--text)}
+.tn{font-size:17px;font-weight:700;font-family:monospace;letter-spacing:-.5px}
 .tbar{height:3px;border-radius:99px;background:var(--bd);margin-top:4px;overflow:hidden}
 .tf{height:100%;border-radius:99px;background:var(--blue)}
 
@@ -119,7 +119,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;font-size:1
 .mt{font-size:15px;font-weight:700;margin-bottom:16px}
 .fl{margin-bottom:13px}
 .fl label{display:block;font-size:10px;font-weight:600;color:var(--t2);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px}
-.fl input,.fl select,.fl textarea{width:100%;padding:8px 10px;border-radius:8px;border:1px solid rgba(0,0,0,.12);background:var(--sf);color:var(--text);font-family:inherit;font-size:13px;outline:none;box-sizing:border-box}
+.fl input,.fl select,.fl textarea{width:100%;padding:8px 10px;border-radius:8px;border:1px solid rgba(0,0,0,.12);background:var(--sf);color:var(--text);font-family:inherit;font-size:13px;outline:none}
 .fl input:focus,.fl select:focus,.fl textarea:focus{border-color:var(--blue)}
 .f2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .mf{display:flex;gap:8px;justify-content:flex-end;margin-top:18px}
@@ -141,13 +141,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;font-size:1
 .empty-state{text-align:center;color:var(--t3);padding:60px 20px;font-size:13px;line-height:1.8}
 .settings-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--bd)}
 .settings-row:last-child{border:none}
-
-/* ── CHECK-IN BANNER ── */
 .checkin-banner{background:var(--purple-bg);border:1px solid var(--purple-bd);border-radius:11px;padding:11px 14px;margin-bottom:16px;display:flex;align-items:center;gap:10px;cursor:pointer}
-.checkin-banner:hover{background:var(--purple-bd)}
-
-/* ── AI MODAL ── */
-.ai-thinking{display:flex;align-items:center;gap:8px;padding:10px;color:var(--purple);font-size:12px}
 .ai-result{background:var(--purple-bg);border:1px solid var(--purple-bd);border-radius:10px;padding:12px;margin:10px 0;font-size:12px;line-height:1.6}
 </style>
 </head>
@@ -177,7 +171,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;font-size:1
     <div class="checkin-title" id="ci-title">Guten Morgen!</div>
     <div class="checkin-sub" id="ci-sub">Was ist heute deine wichtigste Priorität?</div>
     <div id="ci-suggestions" style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px;text-align:left"></div>
-    <input class="checkin-input" id="ci-input" placeholder="Heute schaffe ich…" />
+    <input class="checkin-input" id="ci-input" placeholder="Heute schaffe ich…"/>
     <button class="checkin-btn" onclick="saveCheckin()">Loslegen →</button>
     <div class="checkin-skip" onclick="skipCheckin()">Überspringen</div>
   </div>
@@ -211,37 +205,34 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;font-size:1
 
 <script>
 // ═══════════════════════════════════════════════════════
-// DATA LAYER — swap these functions for Supabase later
-// ═══════════════════════════════════════════════════════
-// ═══════════════════════════════════════════════════════
-// SUPABASE CONFIG
+// SUPABASE
 // ═══════════════════════════════════════════════════════
 const SUPA_URL = 'https://zkxeuphsbufdvskkuahk.supabase.co';
 const SUPA_KEY = 'sb_publishable_41EMxtYZYsYL5KR1KS_RrA_1mV1SRAL';
 
-async function supa(path, opts = {}) {
-  const res = await fetch(SUPA_URL + '/rest/v1/' + path, {
-    headers: {
-      'apikey': SUPA_KEY,
-      'Authorization': 'Bearer ' + SUPA_KEY,
-      'Content-Type': 'application/json',
-      'Prefer': opts.prefer || 'return=representation',
-      ...(opts.headers || {})
-    },
-    method: opts.method || 'GET',
-    body: opts.body ? JSON.stringify(opts.body) : undefined
-  });
-  if (!res.ok) { console.error('Supabase error', await res.text()); return null; }
-  const text = await res.text();
-  return text ? JSON.parse(text) : null;
+async function supa(path, opts={}) {
+  try {
+    const res = await fetch(SUPA_URL+'/rest/v1/'+path, {
+      headers:{
+        'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,
+        'Content-Type':'application/json',
+        'Prefer': opts.prefer||'return=representation',
+        ...(opts.headers||{})
+      },
+      method: opts.method||'GET',
+      body: opts.body ? JSON.stringify(opts.body) : undefined
+    });
+    if(!res.ok){console.error('Supabase',path,await res.text());return null;}
+    const t=await res.text(); return t?JSON.parse(t):null;
+  } catch(e){console.error('Supabase fetch error',e);return null;}
 }
 
 // ═══════════════════════════════════════════════════════
-// DATA LAYER — Supabase
+// DATA LAYER
 // ═══════════════════════════════════════════════════════
 async function loadData() {
   try {
-    const [personen, teams, ziele, kpis, teilziele, bereiche, handlungen, checkins] = await Promise.all([
+    const [personen,teams,ziele,kpis,teilziele,bereiche,handlungen,checkins] = await Promise.all([
       supa('personen?select=*&order=ci'),
       supa('teams?select=*'),
       supa('ziele?select=*&order=created_at'),
@@ -251,1460 +242,1093 @@ async function loadData() {
       supa('handlungen?select=*&order=created_at'),
       supa('checkins?select=*'),
     ]);
+    if(!personen||!personen.length) return initState();
 
-    // Normalize DB columns → app format
-    const normH = (handlungen || []).map(h => ({
-      ...h,
-      zielId:     h.ziel_id,
-      bereichId:  h.bereich_id,
-      teilzielId: h.teilziel_id,
-      aktSeit:    h.akt_seit ? new Date(h.akt_seit).getTime() : null,
-      dl:         h.dl || '',
-      ua:         Array.isArray(h.ua) ? h.ua : JSON.parse(h.ua || '[]'),
+    const normH = (handlungen||[]).map(h=>({
+      ...h, zielId:h.ziel_id, bereichId:h.bereich_id, teilzielId:h.teilziel_id,
+      aktSeit:h.akt_seit?new Date(h.akt_seit).getTime():null,
+      dl:h.dl||'', ua:Array.isArray(h.ua)?h.ua:JSON.parse(h.ua||'[]'),
     }));
-
-    const normZ = (ziele || []).map(z => ({
-      ...z,
-      verantwortlichId: z.verantwortlich_id,
-      kpis: (kpis || []).filter(k => k.ziel_id === z.id).map(k => ({
-        ...k, zielId: k.ziel_id, pid: k.pid
-      })),
-      teilziele: (teilziele || []).filter(t => t.ziel_id === z.id).map(t => ({
-        ...t,
-        zielId: t.ziel_id,
-        verantwortlichId: t.verantwortlich_id,
-        datum: t.datum || '',
+    const normZ = (ziele||[]).map(z=>({
+      ...z, verantwortlichId:z.verantwortlich_id,
+      kpis:(kpis||[]).filter(k=>k.ziel_id===z.id).map(k=>({...k,zielId:k.ziel_id})),
+      teilziele:(teilziele||[]).filter(t=>t.ziel_id===z.id).map(t=>({
+        ...t, zielId:t.ziel_id, verantwortlichId:t.verantwortlich_id, datum:t.datum||''
       })),
     }));
-
-    // Build checkins map: {pid: {date, morgen, abend}}
-    const ciMap = {};
-    (checkins || []).forEach(c => {
-      if (!ciMap[c.pid] || c.datum > ciMap[c.pid].date)
-        ciMap[c.pid] = { date: c.datum, morgen: c.morgen, abend: c.abend };
+    const ciMap={};
+    (checkins||[]).forEach(c=>{
+      if(!ciMap[c.pid]||c.datum>ciMap[c.pid].date)
+        ciMap[c.pid]={date:c.datum,morgen:c.morgen,abend:c.abend};
     });
-
     return {
-      personen: personen || [],
-      teams: (teams || []).map(t => ({ ...t, members: t.members || [] })),
-      ziele: normZ,
-      bereiche: bereiche || [],
-      handlungen: normH,
-      kpiVals: {},
-      checkins: ciMap,
-      nextId: Date.now(),
+      personen:personen||[], teams:(teams||[]).map(t=>({...t,members:t.members||[]})),
+      ziele:normZ, bereiche:bereiche||[], handlungen:normH, kpiVals:{}, checkins:ciMap, nextId:Date.now()
     };
-  } catch(e) {
-    console.error('loadData failed', e);
-    return initState();
+  } catch(e){console.error('loadData',e);return initState();}
+}
+
+async function dbPatch(table, id, patch) {
+  const body=mapToDb(table,patch);
+  await supa(table+'?id=eq.'+id,{method:'PATCH',body,prefer:'return=minimal'});
+}
+async function dbInsert(table, record) {
+  await supa(table,{method:'POST',body:mapToDb(table,record)});
+}
+async function dbDelete(table, id) {
+  await supa(table+'?id=eq.'+id,{method:'DELETE',prefer:'return=minimal'});
+}
+
+function mapToDb(table,obj) {
+  const d={...obj};
+  if(table==='handlungen'){
+    if('zielId'     in d){d.ziel_id=d.zielId;         delete d.zielId;}
+    if('bereichId'  in d){d.bereich_id=d.bereichId;   delete d.bereichId;}
+    if('teilzielId' in d){d.teilziel_id=d.teilzielId; delete d.teilzielId;}
+    if('aktSeit'    in d){d.akt_seit=d.aktSeit?new Date(d.aktSeit).toISOString():null;delete d.aktSeit;}
+    d.updated_at=new Date().toISOString();
   }
+  if(table==='ziele'){
+    if('verantwortlichId' in d){d.verantwortlich_id=d.verantwortlichId;delete d.verantwortlichId;}
+    delete d.kpis;delete d.teilziele;
+  }
+  if(table==='teilziele'){
+    if('verantwortlichId' in d){d.verantwortlich_id=d.verantwortlichId;delete d.verantwortlichId;}
+    if('zielId'           in d){d.ziel_id=d.zielId;delete d.zielId;}
+  }
+  return d;
 }
 
-async function saveData(state) {
-  // In Supabase mode saveData is a no-op — all writes go via updateRecord/insertRecord/deleteRecord
+async function updateRecord(collection,id,patch) {
+  const arr=S[collection],i=arr.findIndex(x=>x.id===id);
+  if(i>=0) arr[i]={...arr[i],...patch};
+  await dbPatch(collection,id,patch);
 }
-
-async function updateRecord(collection, id, patch) {
-  // Update local state immediately (optimistic)
-  const arr = S[collection];
-  const i = arr.findIndex(x => x.id === id);
-  if (i >= 0) arr[i] = { ...arr[i], ...patch };
-
-  // Map app field names → DB column names
-  const dbPatch = mapToDb(collection, patch);
-  await supa(collection + '?id=eq.' + id, {
-    method: 'PATCH',
-    body: dbPatch,
-    prefer: 'return=minimal'
-  });
-}
-
-async function insertRecord(collection, record) {
+async function insertRecord(collection,record) {
   S[collection].push(record);
-  const dbRec = mapToDb(collection, record);
-  await supa(collection, { method: 'POST', body: dbRec });
+  await dbInsert(collection,record);
 }
-
-async function deleteRecord(collection, id) {
-  S[collection] = S[collection].filter(x => x.id !== id);
-  await supa(collection + '?id=eq.' + id, { method: 'DELETE', prefer: 'return=minimal' });
-}
-
-function mapToDb(collection, obj) {
-  if (collection === 'handlungen') {
-    const d = { ...obj };
-    if ('zielId'     in d) { d.ziel_id     = d.zielId;     delete d.zielId; }
-    if ('bereichId'  in d) { d.bereich_id  = d.bereichId;  delete d.bereichId; }
-    if ('teilzielId' in d) { d.teilziel_id = d.teilzielId; delete d.teilzielId; }
-    if ('aktSeit'    in d) { d.akt_seit    = d.aktSeit ? new Date(d.aktSeit).toISOString() : null; delete d.aktSeit; }
-    d.updated_at = new Date().toISOString();
-    return d;
-  }
-  if (collection === 'ziele') {
-    const d = { ...obj };
-    if ('verantwortlichId' in d) { d.verantwortlich_id = d.verantwortlichId; delete d.verantwortlichId; }
-    delete d.kpis; delete d.teilziele;
-    return d;
-  }
-  if (collection === 'teilziele') {
-    const d = { ...obj };
-    if ('verantwortlichId' in d) { d.verantwortlich_id = d.verantwortlichId; delete d.verantwortlichId; }
-    if ('zielId'           in d) { d.ziel_id            = d.zielId;          delete d.zielId; }
-    return d;
-  }
-  return { ...obj };
-}
-
-// ── CHECKIN SAVE via Supabase upsert ──
-async function saveCheckinDB(pid, patch) {
-  await supa('checkins', {
-    method: 'POST',
-    body: { pid, datum: TODAY, ...patch },
-    prefer: 'resolution=merge-duplicates,return=minimal'
-  });
-}
-
-// ── REALTIME — live updates wenn andere Handlungen ändern ──
-function initRealtime() {
-  const evtSrc = new EventSource(
-    `${SUPA_URL}/realtime/v1/api/broadcast?apikey=${SUPA_KEY}`
-  );
-  // Simpler polling fallback — alle 15 Sekunden reload wenn jemand anderes aktiv ist
-  setInterval(async () => {
-    const fresh = await supa('handlungen?select=id,status,gebucht,akt_seit,pid&status=eq.aktiv');
-    if (!fresh) return;
-    let changed = false;
-    fresh.forEach(fh => {
-      const h = S.handlungen.find(x => x.id === fh.id);
-      if (h && h.pid !== aP) { // only update others, not myself
-        const newAktSeit = fh.akt_seit ? new Date(fh.akt_seit).getTime() : null;
-        if (h.aktSeit !== newAktSeit || h.gebucht !== fh.gebucht) {
-          h.aktSeit = newAktSeit; h.gebucht = fh.gebucht; h.status = fh.status;
-          changed = true;
-        }
-      }
-    });
-    if (changed) rSB();
-  }, 15000);
+async function deleteRecord(collection,id) {
+  S[collection]=S[collection].filter(x=>x.id!==id);
+  await dbDelete(collection,id);
 }
 
 // ═══════════════════════════════════════════════════════
 // CONSTANTS
 // ═══════════════════════════════════════════════════════
-const FARBEN = [
-  {bg:'#f0fdf4',tc:'#15803d',bd:'#86efac'},
-  {bg:'#eff6ff',tc:'#1d4ed8',bd:'#93c5fd'},
-  {bg:'#fff7ed',tc:'#c2410c',bd:'#fed7aa'},
-  {bg:'#faf5ff',tc:'#7c3aed',bd:'#ddd6fe'},
-  {bg:'#f1f0ef',tc:'#44403c',bd:'#d4d0cb'},
-  {bg:'#fdf2f8',tc:'#9d174d',bd:'#fbcfe8'}
+const FARBEN=[
+  {bg:'#f0fdf4',tc:'#15803d',bd:'#86efac'},{bg:'#eff6ff',tc:'#1d4ed8',bd:'#93c5fd'},
+  {bg:'#fff7ed',tc:'#c2410c',bd:'#fed7aa'},{bg:'#faf5ff',tc:'#7c3aed',bd:'#ddd6fe'},
+  {bg:'#f1f0ef',tc:'#44403c',bd:'#d4d0cb'},{bg:'#fdf2f8',tc:'#9d174d',bd:'#fbcfe8'}
 ];
-const CL = [
-  {bg:'#f0fdf4',tc:'#15803d'},
-  {bg:'#eff6ff',tc:'#1d4ed8'},
-  {bg:'#faf5ff',tc:'#7c3aed'},
-  {bg:'#fff7ed',tc:'#c2410c'},
-  {bg:'#f1f0ef',tc:'#44403c'},
-  {bg:'#fdf2f8',tc:'#9d174d'}
+const CL=[
+  {bg:'#f0fdf4',tc:'#15803d'},{bg:'#eff6ff',tc:'#1d4ed8'},{bg:'#faf5ff',tc:'#7c3aed'},
+  {bg:'#fff7ed',tc:'#c2410c'},{bg:'#f1f0ef',tc:'#44403c'},{bg:'#fdf2f8',tc:'#9d174d'}
 ];
-const TODAY = '2026-04-05';
-const FREQ = ['täglich','wöchentlich','monatlich'];
-const SH = {'0':'–','0.25':'15min','0.5':'30min','0.75':'45min','1':'1h','1.5':'1h30','2':'2h','3':'3h','4':'4h','5':'5h','8':'8h'};
-const CHAR_INFO = {
-  strategisch: {label:'Ziel-Handlung', tagBg:'var(--blue-bg)', tagTc:'var(--blue)'},
-  betrieb:     {label:'Betrieb',        tagBg:'var(--gray-bg)', tagTc:'var(--t2)'},
-  random:      {label:'Random',         tagBg:'var(--amber-bg)',tagTc:'var(--amber)'}
+const TODAY='2026-04-05';
+const FREQ=['täglich','wöchentlich','monatlich'];
+const SH={'0.25':'15min','0.5':'30min','0.75':'45min','1':'1h','1.5':'1h30','2':'2h','3':'3h','4':'4h','5':'5h','8':'8h'};
+const CHAR_INFO={
+  strategisch:{label:'Ziel-Handlung',tagBg:'var(--blue-bg)',tagTc:'var(--blue)'},
+  betrieb:    {label:'Betrieb',       tagBg:'var(--gray-bg)',tagTc:'var(--t2)'},
+  random:     {label:'Random',        tagBg:'var(--amber-bg)',tagTc:'var(--amber)'}
 };
-const STATUS_LABELS = {neu:'Neu',backlog:'Backlog',aktiv:'Aktiv',erledigt:'Erledigt'};
-
-let _kid = 100;
-function nid(p) { return p + (++_kid); }
 
 // ═══════════════════════════════════════════════════════
-// INITIAL STATE
+// INITIAL STATE (Fallback wenn Supabase leer)
 // ═══════════════════════════════════════════════════════
-function initState() {
-  return {
-    personen: [
-      {id:'lu',name:'Ludwig',  k:'LU',rolle:'Geschäftsführung', stufe:'gf',  ci:0,teams:['gf'],        pin:'1111'},
-      {id:'si',name:'Simon',   k:'SI',rolle:'GF · Finanzen',    stufe:'gf',  ci:1,teams:['gf'],        pin:'2222'},
-      {id:'kr',name:'Kristina',k:'KR',rolle:'Assistenz · Ops',  stufe:'lead',ci:2,teams:['ops'],       pin:'3333'},
-      {id:'do',name:'Dominic', k:'DO',rolle:'After Sales',      stufe:'team',ci:3,teams:['ops'],       pin:'4444'},
-      {id:'fa',name:'Fabian',  k:'FA',rolle:'Werkstatt',        stufe:'lead',ci:4,teams:['werkstatt'], pin:'5555'},
+function initState(){
+  return{
+    personen:[
+      {id:'lu',name:'Ludwig',  k:'LU',rolle:'Geschäftsführung',stufe:'gf',  ci:0,teams:['gf'],       pin:'1111'},
+      {id:'si',name:'Simon',   k:'SI',rolle:'GF · Finanzen',   stufe:'gf',  ci:1,teams:['gf'],       pin:'2222'},
+      {id:'kr',name:'Kristina',k:'KR',rolle:'Assistenz · Ops', stufe:'lead',ci:2,teams:['ops'],      pin:'3333'},
+      {id:'do',name:'Dominic', k:'DO',rolle:'After Sales',     stufe:'team',ci:3,teams:['ops'],      pin:'4444'},
+      {id:'fa',name:'Fabian',  k:'FA',rolle:'Werkstatt',       stufe:'lead',ci:4,teams:['werkstatt'],pin:'5555'},
     ],
-    teams: [
-      {id:'gf',        name:'Geschäftsführung',members:['lu','si']},
-      {id:'ops',       name:'Operations',       members:['kr','do']},
-      {id:'werkstatt', name:'Werkstatt',        members:['fa']},
+    teams:[
+      {id:'gf',name:'Geschäftsführung',members:['lu','si']},
+      {id:'ops',name:'Operations',members:['kr','do']},
+      {id:'werkstatt',name:'Werkstatt',members:['fa']},
     ],
-    ziele: [
-      {id:'z1',name:'Umsatz Q2 +20%',farbe:0,pct:62,verantwortlichId:'lu',
-        kpis:[
-          {id:'k1',label:'Termine/Tag',   ist:8,  ziel:12,unit:'',  freq:'täglich',   pid:'lu'},
-          {id:'k2',label:'Closing Rate',  ist:18, ziel:25,unit:'%', freq:'wöchentlich',pid:'lu'},
-        ],
-        teilziele:[
-          {id:'tz1',name:'Messe München vorbereitet',verantwortlichId:'kr',datum:'2026-04-10',erledigt:false},
-          {id:'tz2',name:'Pipeline aufgebaut KW16',  verantwortlichId:'lu',datum:'2026-04-18',erledigt:false},
-        ]
-      },
-      {id:'z2',name:'After Sales Kundenbindung',farbe:1,pct:78,verantwortlichId:'kr',
-        kpis:[
-          {id:'k3',label:'Touren/Tag',      ist:2,ziel:3, unit:'', freq:'täglich',    pid:'do'},
-          {id:'k4',label:'Follow-ups/Woche',ist:9,ziel:10,unit:'', freq:'wöchentlich',pid:'do'},
-        ],
-        teilziele:[
-          {id:'tz3',name:'Tourenoptimierung KW15 abgeschlossen',verantwortlichId:'do',datum:'2026-04-12',erledigt:false},
-        ]
-      },
-      {id:'z3',name:'Qualität sichern',farbe:2,pct:45,verantwortlichId:'fa',
-        kpis:[
-          {id:'k5',label:'Fehlerquote',ist:2.1,ziel:1,  unit:'%',freq:'täglich',   pid:'fa',inv:true},
-          {id:'k6',label:'OTD Rate',   ist:88, ziel:95, unit:'%',freq:'wöchentlich',pid:'fa'},
-        ],
-        teilziele:[
-          {id:'tz4',name:'Wartung standardisiert bis Mai',verantwortlichId:'fa',datum:'2026-05-01',erledigt:false},
-        ]
-      },
-    ],
-    // Bereiche: nur in Mein Tag + Team sichtbar, nie in Ziele
-    bereiche: [
-      {id:'b1',name:'Betrieb & Alltag',char:'betrieb',farbe:4},
-      {id:'b2',name:'Fuhrpark',         char:'betrieb',farbe:4},
-      {id:'b3',name:'Random',           char:'random', farbe:2},
-    ],
-    handlungen: [
-      {id:'h1', pid:'fa',titel:'Reifen wechseln Fahrzeug 3',       zielId:null,bereichId:'b2',teilzielId:null,status:'neu',    prio:'P1',geplant:.5,gebucht:0,dl:'2026-04-05',ua:[],notiz:'',vertraulich:false,aktSeit:null},
-      {id:'h2', pid:'fa',titel:'Wartungsplan Maschine A',           zielId:'z3',bereichId:null,teilzielId:'tz4',status:'aktiv', prio:'P1',geplant:2, gebucht:.5,dl:'2026-04-07',ua:[{t:'Ist-Zustand prüfen',d:true},{t:'Plan aktualisieren',d:false}],notiz:'',vertraulich:false,aktSeit:Date.now()-1800000},
-      {id:'h3', pid:'fa',titel:'Werkzeug-Inventur Q2',              zielId:'z3',bereichId:null,teilzielId:'tz4',status:'backlog',prio:'P3',geplant:3, gebucht:0,dl:'2026-04-30',ua:[],notiz:'',vertraulich:false,aktSeit:null},
-      {id:'h4', pid:'do',titel:'Rückläufer Lieferant B klären',     zielId:null,bereichId:'b1',teilzielId:null,status:'neu',    prio:'P1',geplant:.25,gebucht:0,dl:'2026-04-05',ua:[],notiz:'Deadline heute!',vertraulich:false,aktSeit:null},
-      {id:'h5', pid:'do',titel:'Tourenplanung KW16',                zielId:'z2',bereichId:null,teilzielId:'tz3',status:'aktiv', prio:'P1',geplant:1, gebucht:.25,dl:'2026-04-06',ua:[{t:'Routen optimieren',d:true},{t:'Fahrer informieren',d:false}],notiz:'',vertraulich:false,aktSeit:Date.now()-900000},
-      {id:'h6', pid:'do',titel:'Kunde Müller zurückrufen',          zielId:null,bereichId:'b3',teilzielId:null,status:'neu',    prio:null, geplant:.25,gebucht:0,dl:'',ua:[],notiz:'',vertraulich:false,aktSeit:null},
-      {id:'h7', pid:'kr',titel:'Reisebuchung Messe München',        zielId:'z1',bereichId:null,teilzielId:'tz1',status:'aktiv', prio:'P1',geplant:1, gebucht:.5,dl:'2026-04-07',ua:[{t:'Hotel buchen',d:true},{t:'Bahn buchen',d:false}],notiz:'',vertraulich:false,aktSeit:Date.now()-600000},
-      {id:'h8', pid:'kr',titel:'Lieferantenvertrag prüfen',         zielId:'z3',bereichId:null,teilzielId:null,status:'backlog',prio:'P2',geplant:.75,gebucht:0,dl:'2026-04-15',ua:[],notiz:'',vertraulich:false,aktSeit:null},
-      {id:'h9', pid:'lu',titel:'Q2 Strategie-Meeting vorbereiten',  zielId:'z1',bereichId:null,teilzielId:'tz2',status:'aktiv', prio:'P1',geplant:3, gebucht:1, dl:'2026-04-08',ua:[{t:'Zahlen aufbereiten',d:true},{t:'Agenda erstellen',d:false}],notiz:'',vertraulich:false,aktSeit:Date.now()-3600000},
-      {id:'h10',pid:'lu',titel:'Investitionsentscheidung Maschine', zielId:'z3',bereichId:null,teilzielId:null,status:'backlog',prio:'P1',geplant:2, gebucht:0,dl:'',ua:[],notiz:'',vertraulich:true,aktSeit:null},
-      {id:'h11',pid:'si',titel:'Gesellschafterversammlung vorber.', zielId:'z1',bereichId:null,teilzielId:'tz2',status:'aktiv', prio:'P1',geplant:3, gebucht:1, dl:'2026-04-10',ua:[{t:'Tagesordnung',d:true},{t:'Unterlagen',d:false}],notiz:'',vertraulich:true,aktSeit:Date.now()-2700000},
-      {id:'h12',pid:'si',titel:'Jahresabschluss 2025 freigeben',    zielId:'z1',bereichId:null,teilzielId:null,status:'backlog',prio:'P1',geplant:2, gebucht:0,dl:'',ua:[],notiz:'',vertraulich:true,aktSeit:null},
-    ],
-    kpiVals: {},
-    checkins: {},   // {pid: {date, morgen:'...', abend:'...'}}
-    nextId: 40,
+    ziele:[],bereiche:[],handlungen:[],kpiVals:{},checkins:{},nextId:Date.now()
   };
 }
 
 // ═══════════════════════════════════════════════════════
 // RUNTIME STATE
 // ═══════════════════════════════════════════════════════
-let S, aP = null, aV = 'tag', timIv = null, _selPrio = null;
+let S, aP=null, realMe=null, aV='tag', timIv=null, _selPrio=null;
+let _kid=100;
+function nid(p){return p+(++_kid);}
 
 // ═══════════════════════════════════════════════════════
 // HELPERS
 // ═══════════════════════════════════════════════════════
-function person(id)    { return S.personen.find(p => p.id === id); }
-function me()          { return person(aP); }
-function cl(p)         { return p ? CL[p.ci % CL.length] : CL[0]; }
-function isGF()        { const m = me(); return m && m.stufe === 'gf'; }
-function isLead()      { const m = me(); return m && (m.stufe === 'lead' || m.stufe === 'gf'); }
-function zielObj(id)   { return S.ziele.find(z => z.id === id); }
-function bereichObj(id){ return S.bereiche.find(b => b.id === id); }
+const person     = id => S.personen.find(p=>p.id===id);
+const me         = ()  => person(aP);
+const cl         = p   => p?CL[p.ci%CL.length]:CL[0];
+const isGF       = ()  => {const m=me();return m&&m.stufe==='gf';};
+const isLead     = ()  => {const m=me();return m&&(m.stufe==='lead'||m.stufe==='gf');};
+const zielObj    = id  => S.ziele.find(z=>z.id===id);
+const bereichObj = id  => S.bereiche.find(b=>b.id===id);
 
-function myTeamMemberIds() {
-  const m = me(); if (!m) return [];
-  const ids = [];
-  // GF immer zuerst, dann andere Teams
-  const sortedTeams = [...S.teams].sort((a,b) => {
-    if (a.id === 'gf') return -1;
-    if (b.id === 'gf') return 1;
-    return 0;
-  });
-  sortedTeams.forEach(t => {
-    if ((m.teams||[]).includes(t.id))
-      t.members.forEach(mid => { if (!ids.includes(mid)) ids.push(mid); });
-  });
+function myTeamMemberIds(){
+  const m=me();if(!m)return[];
+  const ids=[];
+  S.teams.forEach(t=>{if((m.teams||[]).includes(t.id))t.members.forEach(mid=>{if(!ids.includes(mid))ids.push(mid);});});
   return ids;
 }
+const canSeeTeam     = ()  => isLead();
+const canSeeHandlung = h   => !(h.vertraulich&&!isGF());
+const canManageTZ    = zid => {const z=zielObj(zid);return z&&(isGF()||z.verantwortlichId===aP);};
 
-function canSeeTeam()       { return isLead(); }
-function canSeeHandlung(h)  { return !(h.vertraulich && !isGF()); }
-function canManageTZ(zid)   { const z = zielObj(zid); return z && (isGF() || z.verantwortlichId === aP); }
+function teilzielObj(zid,tzid){const z=zielObj(zid);if(!z)return null;return(z.teilziele||[]).find(t=>t.id===tzid);}
+function getTZName(h){if(h.teilzielId&&h.zielId){const tz=teilzielObj(h.zielId,h.teilzielId);return tz?tz.name:null;}return null;}
+function getContextName(h){
+  if(h.zielId){const z=zielObj(h.zielId);return z?z.name:'–';}
+  if(h.bereichId){const b=bereichObj(h.bereichId);return b?b.name:'–';}
+  return'–';
+}
+function getChar(h){
+  if(h.zielId)return'strategisch';
+  if(h.bereichId){const b=bereichObj(h.bereichId);return b?b.char:'betrieb';}
+  return'betrieb';
+}
+const charInfo   = h => CHAR_INFO[getChar(h)]||CHAR_INFO.betrieb;
+const kpiOk      = k => k.inv?k.ist<=k.ziel:k.ist>=k.ziel*0.85;
 
-function teilzielObj(zid, tzid) {
-  const z = zielObj(zid); if (!z) return null;
-  return (z.teilziele||[]).find(t => t.id === tzid);
-}
-function getTZName(h) {
-  if (h.teilzielId && h.zielId) {
-    const tz = teilzielObj(h.zielId, h.teilzielId);
-    return tz ? tz.name : null;
-  }
-  return null;
-}
-function getContextName(h) {
-  if (h.zielId)    { const z = zielObj(h.zielId);    return z ? z.name : '–'; }
-  if (h.bereichId) { const b = bereichObj(h.bereichId); return b ? b.name : '–'; }
-  return '–';
-}
-function getChar(h) {
-  if (h.zielId)    return 'strategisch';
-  if (h.bereichId) { const b = bereichObj(h.bereichId); return b ? b.char : 'betrieb'; }
-  return 'betrieb';
-}
-function charInfo(h) { return CHAR_INFO[getChar(h)] || CHAR_INFO.betrieb; }
-
-function elapsedSec(h) {
-  let s = (h.gebucht||0) * 3600;
-  if (h.status === 'aktiv' && h.aktSeit) s += (Date.now() - h.aktSeit) / 1000;
+function elapsedSec(h){
+  let s=(h.gebucht||0)*3600;
+  if(h.status==='aktiv'&&h.aktSeit)s+=(Date.now()-h.aktSeit)/1000;
   return s;
 }
-function fmt(s) {
-  s = Math.round(s);
-  const h = Math.floor(s/3600), m = Math.floor((s%3600)/60), sc = s%60;
-  if (h > 0) return h + ':' + ('0'+m).slice(-2) + ':' + ('0'+sc).slice(-2);
-  return ('0'+m).slice(-2) + ':' + ('0'+sc).slice(-2);
+function fmt(s){
+  s=Math.round(s);const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sc=s%60;
+  if(h>0)return h+':'+('0'+m).slice(-2)+':'+('0'+sc).slice(-2);
+  return('0'+m).slice(-2)+':'+('0'+sc).slice(-2);
 }
-function fmtH(h) {
-  if (!h || h === 0) return '–';
-  if (h < 1) return Math.round(h*60) + 'min';
-  const fh = Math.floor(h), m = Math.round((h-fh)*60);
-  return fh + 'h' + (m ? ' ' + m + 'min' : '');
+function fmtH(h){
+  if(!h||h===0)return'–';if(h<1)return Math.round(h*60)+'min';
+  const fh=Math.floor(h),m=Math.round((h-fh)*60);return fh+'h'+(m?' '+m+'min':'');
 }
-function dli(d) {
-  if (!d) return null;
-  const df = Math.round((new Date(d) - new Date(TODAY)) / 86400000);
-  if (df < 0)  return {l: Math.abs(df)+'d überfällig', bg:'var(--red-bg)',   c:'var(--red)'};
-  if (df === 0) return {l:'Heute fällig',               bg:'var(--red-bg)',   c:'var(--red)'};
-  if (df === 1) return {l:'Morgen',                     bg:'#fff7ed',         c:'#c2410c'};
-  if (df <= 4)  return {l:'in '+df+' Tagen',            bg:'var(--amber-bg)', c:'var(--amber)'};
-  return {l: d.slice(8)+'.'+d.slice(5,7)+'.', bg:'var(--gray-bg)', c:'var(--t3)'};
+function dli(d){
+  if(!d)return null;
+  const df=Math.round((new Date(d)-new Date(TODAY))/86400000);
+  if(df<0) return{l:Math.abs(df)+'d überfällig',bg:'var(--red-bg)',c:'var(--red)'};
+  if(df===0)return{l:'Heute fällig',bg:'var(--red-bg)',c:'var(--red)'};
+  if(df===1)return{l:'Morgen',bg:'#fff7ed',c:'#c2410c'};
+  if(df<=4) return{l:'in '+df+' Tagen',bg:'var(--amber-bg)',c:'var(--amber)'};
+  return{l:d.slice(8)+'.'+d.slice(5,7)+'.',bg:'var(--gray-bg)',c:'var(--t3)'};
 }
-function kpiOk(k) { return k.inv ? k.ist <= k.ziel : k.ist >= k.ziel * 0.85; }
-function fokusQ(pids) {
-  const hs = S.handlungen.filter(h => pids.includes(h.pid) && h.status !== 'erledigt' && canSeeHandlung(h));
-  if (!hs.length) return 0;
-  return Math.round(hs.filter(h => h.zielId).length / hs.length * 100);
+function fokusQ(pids){
+  const hs=S.handlungen.filter(h=>pids.includes(h.pid)&&h.status!=='erledigt'&&canSeeHandlung(h));
+  if(!hs.length)return 0;
+  return Math.round(hs.filter(h=>h.zielId).length/hs.length*100);
 }
 
-// ── HTML FRAGMENTS ──
-function typTag(h) {
-  const t = charInfo(h);
-  return `<span class="tag" style="background:${t.tagBg};color:${t.tagTc}">${t.label}</span>`;
-}
-function prioTag(p) {
-  if (!p) return '';
-  const bg = p==='P1'?'var(--red-bg)':p==='P2'?'#fff7ed':'var(--gray-bg)';
-  const tc = p==='P1'?'var(--red)':p==='P2'?'#c2410c':'var(--t2)';
-  return `<span class="tag" style="background:${bg};color:${tc}">${p}</span>`;
-}
-function dlTag(dl) {
-  const d = dli(dl); if (!d) return '';
-  return `<span class="tag" style="background:${d.bg};color:${d.c}">${d.l}</span>`;
-}
-function avHtml(p, size=24, fontSize=9) {
-  const c = cl(p);
-  return `<div class="av" style="width:${size}px;height:${size}px;font-size:${fontSize}px;background:${c.tc};color:#fff">${p.k}</div>`;
-}
-function sectionHead(label, color='var(--t2)', badge='') {
-  return `<div style="font-size:10px;font-weight:700;color:${color};text-transform:uppercase;letter-spacing:.6px;margin:16px 0 8px;display:flex;align-items:center;gap:8px">${label}${badge}</div>`;
-}
+// HTML fragments
+function avHtml(p,size=24,fs=9){const c=cl(p);return`<div class="av" style="width:${size}px;height:${size}px;font-size:${fs}px;background:${c.tc};color:#fff">${p.k}</div>`;}
+function typTag(h){const t=charInfo(h);return`<span class="tag" style="background:${t.tagBg};color:${t.tagTc}">${t.label}</span>`;}
+function prioTag(p){if(!p)return'';const bg=p==='P1'?'var(--red-bg)':p==='P2'?'#fff7ed':'var(--gray-bg)';const tc=p==='P1'?'var(--red)':p==='P2'?'#c2410c':'var(--t2)';return`<span class="tag" style="background:${bg};color:${tc}">${p}</span>`;}
+function dlTag(dl){const d=dli(dl);if(!d)return'';return`<span class="tag" style="background:${d.bg};color:${d.c}">${d.l}</span>`;}
+function secHead(label,color='var(--t2)',badge=''){return`<div style="font-size:10px;font-weight:700;color:${color};text-transform:uppercase;letter-spacing:.6px;margin:16px 0 8px;display:flex;align-items:center;gap:8px">${label}${badge}</div>`;}
 
 // ═══════════════════════════════════════════════════════
-// CHECK-IN / CHECK-OUT
+// CHECK-IN
 // ═══════════════════════════════════════════════════════
-function shouldShowCheckin() {
-  if (!aP) return false;
-  const ci = (S.checkins||{})[aP];
-  const hour = new Date().getHours();
-  if (!ci || ci.date !== TODAY) return true; // no check-in today
-  if (hour >= 17 && !ci.abend) return true;  // evening check-out
+function shouldShowCheckin(){
+  if(!aP)return false;
+  const ci=(S.checkins||{})[aP],hour=new Date().getHours();
+  if(!ci||ci.date!==TODAY)return true;
+  if(hour>=17&&!ci.abend)return true;
   return false;
 }
-function showCheckin() {
-  const ci = (S.checkins||{})[aP];
-  const hour = new Date().getHours();
-  const isEvening = ci && ci.date === TODAY && hour >= 17 && !ci.abend;
-  document.getElementById('ci-emoji').textContent = isEvening ? '🌙' : '☀️';
-  document.getElementById('ci-title').textContent = isEvening ? 'Guten Abend!' : 'Guten Morgen!';
-  document.getElementById('ci-sub').textContent = isEvening
-    ? 'Was nimmst du dir für morgen vor?'
-    : 'Was ist heute deine wichtigste Priorität?';
-  document.getElementById('ci-input').placeholder = isEvening ? 'Morgen fokussiere ich mich auf…' : 'Heute schaffe ich…';
-  document.getElementById('ci-input').value = '';
+function showCheckin(){
+  const ci=(S.checkins||{})[aP]||{},hour=new Date().getHours();
+  const isEvening=ci.date===TODAY&&hour>=17&&!ci.abend;
+  document.getElementById('ci-emoji').textContent=isEvening?'🌙':'☀️';
+  document.getElementById('ci-title').textContent=isEvening?'Guten Abend!':'Guten Morgen!';
+  document.getElementById('ci-sub').textContent=isEvening?'Was nimmst du dir für morgen vor?':'Was ist heute deine wichtigste Priorität?';
+  document.getElementById('ci-input').placeholder=isEvening?'Morgen fokussiere ich mich auf…':'Heute schaffe ich…';
+  document.getElementById('ci-input').value='';
   document.getElementById('checkin-screen').classList.add('open');
-  document.getElementById('ci-input').focus();
 
-  // Top-Prioritäten aus Backlog vorschlagen
-  const suggestions = S.handlungen
-    .filter(h => h.pid === aP && (h.status === 'backlog' || h.status === 'neu') && canSeeHandlung(h))
-    .sort((a,b) => (a.prio||'P9').localeCompare(b.prio||'P9'))
-    .slice(0, 3);
-  
-  const box = document.getElementById('ci-suggestions');
-  if (suggestions.length) {
-    box.innerHTML = `<div style="font-size:11px;color:var(--t3);margin-bottom:4px">Deine Top-Prioritäten — tippen zum Übernehmen:</div>`
-      + suggestions.map(h => {
-          const bg = h.prio==='P1'?'var(--red-bg)':h.prio==='P2'?'#fff7ed':'var(--gray-bg)';
-          const tc = h.prio==='P1'?'var(--red)':h.prio==='P2'?'#c2410c':'var(--t2)';
-          return `<div onclick="document.getElementById('ci-input').value='${h.titel.replace(/'/g,"\\'")}'" 
-            style="padding:9px 12px;border-radius:10px;border:1px solid ${bg==='var(--gray-bg)'?'var(--bd)':tc};background:${bg};color:${tc};cursor:pointer;font-size:12px;font-weight:500;display:flex;align-items:center;gap:8px">
-            ${h.prio?`<span style="font-size:10px;font-weight:700">${h.prio}</span>`:''}
-            ${h.titel}
-          </div>`;
-        }).join('');
-  }
+  // Top-Prioritäten vorschlagen
+  const suggestions=S.handlungen
+    .filter(h=>h.pid===aP&&(h.status==='backlog'||h.status==='neu')&&canSeeHandlung(h))
+    .sort((a,b)=>(a.prio||'P9').localeCompare(b.prio||'P9')).slice(0,3);
+  const box=document.getElementById('ci-suggestions');
+  if(suggestions.length){
+    box.innerHTML=`<div style="font-size:11px;color:var(--t3);margin-bottom:4px">Deine Top-Prioritäten — tippen zum Übernehmen:</div>`
+      +suggestions.map(h=>{
+        const bg=h.prio==='P1'?'var(--red-bg)':h.prio==='P2'?'#fff7ed':'var(--gray-bg)';
+        const tc=h.prio==='P1'?'var(--red)':h.prio==='P2'?'#c2410c':'var(--t2)';
+        return`<div onclick="document.getElementById('ci-input').value='${h.titel.replace(/'/g,"\\'")}'" style="padding:9px 12px;border-radius:10px;border:1px solid ${tc};background:${bg};color:${tc};cursor:pointer;font-size:12px;font-weight:500;display:flex;align-items:center;gap:8px">${h.prio?`<span style="font-size:10px;font-weight:700">${h.prio}</span>`:''} ${h.titel}</div>`;
+      }).join('');
+  } else {box.innerHTML='';}
+  setTimeout(()=>document.getElementById('ci-input').focus(),100);
 }
-async function saveCheckin() {
-  const val = document.getElementById('ci-input').value.trim();
-  if (!val) { skipCheckin(); return; }
-  if (!S.checkins) S.checkins = {};
-  const ci = S.checkins[aP] || {};
-  const hour = new Date().getHours();
-  const isEvening = ci.date === TODAY && hour >= 17 && !ci.abend;
-  if (isEvening) {
-    S.checkins[aP] = { ...ci, abend: val };
-    await saveCheckinDB(aP, { morgen: ci.morgen, abend: val });
-  } else {
-    S.checkins[aP] = { date: TODAY, morgen: val, abend: null };
-    await saveCheckinDB(aP, { morgen: val, abend: null });
-  }
+async function saveCheckin(){
+  const val=document.getElementById('ci-input').value.trim();
+  if(!val){skipCheckin();return;}
+  if(!S.checkins)S.checkins={};
+  const ci=S.checkins[aP]||{},hour=new Date().getHours();
+  const isEvening=ci.date===TODAY&&hour>=17&&!ci.abend;
+  const patch=isEvening?{morgen:ci.morgen,abend:val}:{morgen:val,abend:null};
+  S.checkins[aP]={date:TODAY,...patch};
+  await supa('checkins',{method:'POST',body:{pid:aP,datum:TODAY,...patch},prefer:'resolution=merge-duplicates,return=minimal'});
   closeCheckin();
 }
-function skipCheckin() { closeCheckin(); }
-function closeCheckin() {
-  document.getElementById('checkin-screen').classList.remove('open');
-}
+function skipCheckin(){closeCheckin();}
+function closeCheckin(){document.getElementById('checkin-screen').classList.remove('open');}
 
 // ═══════════════════════════════════════════════════════
 // LOGIN
 // ═══════════════════════════════════════════════════════
-let loginSelected = null, pinInput = '';
+let loginSelected=null,pinInput='';
 
-function initLogin() {
-  const grid = document.getElementById('person-grid');
-  grid.innerHTML = '';
-  S.personen.forEach(p => {
-    const c = cl(p), btn = document.createElement('button');
-    btn.className = 'person-btn'; btn.id = 'pb-' + p.id;
-    btn.innerHTML = avHtml(p, 30, 11) + `<span style="font-size:12px;font-weight:500">${p.name}</span>`;
-    btn.onclick = () => selectPerson(p.id);
-    grid.appendChild(btn);
+function initLogin(){
+  const grid=document.getElementById('person-grid');grid.innerHTML='';
+  S.personen.forEach(p=>{
+    const btn=document.createElement('button');
+    btn.className='person-btn';btn.id='pb-'+p.id;
+    btn.innerHTML=avHtml(p,30,11)+`<span style="font-size:12px;font-weight:500">${p.name}</span>`;
+    btn.onclick=()=>selectPerson(p.id);grid.appendChild(btn);
   });
   buildPinPad();
 }
-function selectPerson(id) {
-  loginSelected = id; pinInput = ''; updatePinDots();
-  document.querySelectorAll('.person-btn').forEach(b => b.classList.remove('selected'));
-  const btn = document.getElementById('pb-' + id);
-  if (btn) btn.classList.add('selected');
-  document.getElementById('pin-section').style.display = 'block';
-  document.getElementById('login-err').textContent = '';
+function selectPerson(id){
+  loginSelected=id;pinInput='';updatePinDots();
+  document.querySelectorAll('.person-btn').forEach(b=>b.classList.remove('selected'));
+  const btn=document.getElementById('pb-'+id);if(btn)btn.classList.add('selected');
+  document.getElementById('pin-section').style.display='block';
+  document.getElementById('login-err').textContent='';
 }
-function buildPinPad() {
-  const pad = document.getElementById('pin-pad'); pad.innerHTML = '';
-  [1,2,3,4,5,6,7,8,9,'',0,'⌫'].forEach(k => {
-    const btn = document.createElement('button');
-    btn.className = 'pin-key'; btn.textContent = k === '' ? '' : k;
-    if (k === '') btn.style.visibility = 'hidden';
-    btn.onclick = () => pinPress(k);
-    pad.appendChild(btn);
+function buildPinPad(){
+  const pad=document.getElementById('pin-pad');pad.innerHTML='';
+  [1,2,3,4,5,6,7,8,9,'',0,'⌫'].forEach(k=>{
+    const btn=document.createElement('button');
+    btn.className='pin-key';btn.textContent=k===''?'':k;
+    if(k==='')btn.style.visibility='hidden';
+    btn.onclick=()=>pinPress(k);pad.appendChild(btn);
   });
 }
-function pinPress(k) {
-  if (k === '⌫') pinInput = pinInput.slice(0,-1);
-  else if (pinInput.length < 4) pinInput += k;
-  updatePinDots();
-  if (pinInput.length === 4) tryLogin();
+function pinPress(k){
+  if(k==='⌫')pinInput=pinInput.slice(0,-1);
+  else if(pinInput.length<4)pinInput+=k;
+  updatePinDots();if(pinInput.length===4)tryLogin();
 }
-function updatePinDots() {
-  for (let i = 0; i < 4; i++) {
-    const d = document.getElementById('pd'+i);
-    if (d) d.className = 'pin-dot' + (i < pinInput.length ? ' filled' : '');
-  }
-}
-function tryLogin() {
-  const p = person(loginSelected);
-  if (!p) { document.getElementById('login-err').textContent = 'Person nicht gefunden.'; pinInput=''; updatePinDots(); return; }
-  if (pinInput === (p.pin||'0000')) {
-    aP = loginSelected;
-    _realMe = loginSelected; // echten User merken
-    document.getElementById('login-screen').style.display = 'none';
-    document.getElementById('app').style.display = 'flex';
-    updateMeBadge();
-    render();
-    if (shouldShowCheckin()) showCheckin();
+function updatePinDots(){for(let i=0;i<4;i++){const d=document.getElementById('pd'+i);if(d)d.className='pin-dot'+(i<pinInput.length?' filled':'');}}
+function tryLogin(){
+  const p=person(loginSelected);
+  if(!p){document.getElementById('login-err').textContent='Person nicht gefunden.';pinInput='';updatePinDots();return;}
+  if(pinInput===(p.pin||'0000')){
+    aP=loginSelected;realMe=loginSelected;
+    document.getElementById('login-screen').style.display='none';
+    document.getElementById('app').style.display='flex';
+    updateMeBadge();render();
+    if(shouldShowCheckin())showCheckin();
   } else {
-    document.getElementById('login-err').textContent = 'Falsche PIN.';
-    pinInput = ''; updatePinDots();
+    document.getElementById('login-err').textContent='Falsche PIN.';pinInput='';updatePinDots();
   }
 }
-function updateMeBadge() {
-  const p = me(); if (!p) return;
-  const c = cl(p);
-  document.getElementById('me-badge').innerHTML =
-    avHtml(p, 26, 9) +
-    `<span style="font-size:11px;color:var(--t2)">${p.name}</span>` +
-    `<span style="font-size:10px;color:var(--t3)">Abmelden</span>`;
-  const sb = document.getElementById('btn-settings');
-  if (sb) sb.style.display = isGF() ? 'block' : 'none';
+function updateMeBadge(){
+  const p=me();if(!p)return;
+  document.getElementById('me-badge').innerHTML=avHtml(p,26,9)
+    +`<span style="font-size:11px;color:var(--t2)">${p.name}</span>`
+    +`<span style="font-size:10px;color:var(--t3)">Abmelden</span>`;
+  const sb=document.getElementById('btn-settings');
+  if(sb)sb.style.display=isGF()?'block':'none';
 }
-function logout() {
-  aP = null; pinInput = ''; loginSelected = null;
-  document.getElementById('app').style.display = 'none';
-  document.getElementById('login-screen').style.display = 'flex';
-  document.querySelectorAll('.person-btn').forEach(b => b.classList.remove('selected'));
-  document.getElementById('pin-section').style.display = 'none';
+function logout(){
+  aP=null;realMe=null;pinInput='';loginSelected=null;
+  removeBackBtn();
+  document.getElementById('app').style.display='none';
+  document.getElementById('login-screen').style.display='flex';
+  document.querySelectorAll('.person-btn').forEach(b=>b.classList.remove('selected'));
+  document.getElementById('pin-section').style.display='none';
 }
 
 // ═══════════════════════════════════════════════════════
-// NAVIGATION
+// BACK-TO-ME BUTTON (für GF die fremde Profile anschauen)
 // ═══════════════════════════════════════════════════════
-function nav(v, btn) {
-  aV = v;
-  document.querySelectorAll('.nt:not(.ai-btn):not(.new-btn)').forEach(b => b.classList.remove('on'));
-  if (btn) btn.classList.add('on');
-  document.getElementById('nav-team').style.display = canSeeTeam() ? '' : 'none';
+function showBackBtn(){
+  removeBackBtn();
+  if(!realMe||aP===realMe)return;
+  const p=person(realMe),c=cl(p);
+  const btn=document.createElement('button');
+  btn.id='back-to-me';
+  btn.textContent=`← Zurück zu ${p.name}`;
+  btn.style.cssText=`position:fixed;bottom:20px;right:20px;z-index:99;padding:10px 16px;border-radius:10px;background:${c.tc};color:#fff;border:none;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.2)`;
+  btn.onclick=()=>{aP=realMe;updateMeBadge();render();removeBackBtn();};
+  document.body.appendChild(btn);
+}
+function removeBackBtn(){const b=document.getElementById('back-to-me');if(b)b.remove();}
+
+// ═══════════════════════════════════════════════════════
+// NAV
+// ═══════════════════════════════════════════════════════
+function nav(v,btn){
+  aV=v;
+  document.querySelectorAll('.nt:not(.ai-btn):not(.new-btn)').forEach(b=>b.classList.remove('on'));
+  if(btn)btn.classList.add('on');
   render();
 }
-function render() {
-  document.getElementById('nav-team').style.display = canSeeTeam() ? '' : 'none';
+function render(){
+  document.getElementById('nav-team').style.display=canSeeTeam()?'':'none';
   rSB();
-  if (aV === 'tag')   rTag();
-  else if (aV === 'ziele') rZiele();
-  else if (aV === 'team')  rTeam();
+  if(aV==='tag')rTag();
+  else if(aV==='ziele')rZiele();
+  else if(aV==='team')rTeam();
 }
 
 // ═══════════════════════════════════════════════════════
-// SIDEBAR
+// SIDEBAR — GF immer oben
 // ═══════════════════════════════════════════════════════
-function rSB() {
-  let h = '';
-  S.teams.forEach(t => {
-    const vis = t.members.filter(id => {
-      const p = person(id); if (!p) return false;
-      if (isGF()) return true;
-      if (isLead()) return myTeamMemberIds().includes(id);
-      return id === aP;
+function rSB(){
+  const sortedTeams=[...S.teams].sort((a,b)=>a.id==='gf'?-1:b.id==='gf'?1:0);
+  let h='';
+  sortedTeams.forEach(t=>{
+    const vis=t.members.filter(id=>{
+      const p=person(id);if(!p)return false;
+      if(isGF())return true;
+      if(isLead())return myTeamMemberIds().includes(id);
+      return id===aP;
     });
-    if (!vis.length) return;
-    h += `<div class="gl">${t.name}</div>`;
-    vis.forEach(id => {
-      const p = person(id); if (!p) return;
-      const c = cl(p), isMe = id === aP;
-      const pH = S.handlungen.filter(x => x.pid === id && canSeeHandlung(x));
-      const nC = pH.filter(x => x.status === 'neu').length;
-      const aC = pH.filter(x => x.status === 'aktiv').length;
-      h += `<button class="sbn${isMe?' on':''}" onclick="switchPerson('${id}')">`
-        + `<div class="av" style="width:22px;height:22px;font-size:8px;background:${isMe?c.tc:'#eee'};color:${isMe?'#fff':c.tc}">${p.k}</div>`
-        + `<span style="flex:1;font-size:11px;font-weight:${isMe?600:400};color:${isMe?c.tc:'var(--text)'}">${p.name}</span>`
-        + `<div style="display:flex;gap:3px">`
-        + (nC ? `<span style="font-size:8px;background:var(--red-bg);color:var(--red);border-radius:99px;padding:1px 4px;font-weight:700">${nC}</span>` : '')
-        + (aC ? `<span style="font-size:8px;background:${c.bg};color:${c.tc};border-radius:99px;padding:1px 4px;font-weight:700">${aC}</span>` : '')
-        + `</div></button>`;
+    if(!vis.length)return;
+    h+=`<div class="gl">${t.name}</div>`;
+    vis.forEach(id=>{
+      const p=person(id);if(!p)return;
+      const c=cl(p),isMe=id===aP;
+      const pH=S.handlungen.filter(x=>x.pid===id&&canSeeHandlung(x));
+      const nC=pH.filter(x=>x.status==='neu').length,aC=pH.filter(x=>x.status==='aktiv').length;
+      h+=`<button class="sbn${isMe?' on':''}" onclick="switchPerson('${id}')">`
+        +`<div class="av" style="width:22px;height:22px;font-size:8px;background:${isMe?c.tc:'#eee'};color:${isMe?'#fff':c.tc}">${p.k}</div>`
+        +`<span style="flex:1;font-size:11px;font-weight:${isMe?600:400};color:${isMe?c.tc:'var(--text)'}">${p.name}</span>`
+        +`<div style="display:flex;gap:3px">`
+        +(nC?`<span style="font-size:8px;background:var(--red-bg);color:var(--red);border-radius:99px;padding:1px 4px;font-weight:700">${nC}</span>`:'')
+        +(aC?`<span style="font-size:8px;background:${c.bg};color:${c.tc};border-radius:99px;padding:1px 4px;font-weight:700">${aC}</span>`:'')
+        +`</div></button>`;
     });
   });
-  document.getElementById('sb').innerHTML = h;
+  document.getElementById('sb').innerHTML=h;
 }
-function switchPerson(id) {
-  if (isGF() || myTeamMemberIds().includes(id) || id === aP) {
-    const prev = aP;
-    aP = id; updateMeBadge(); render();
-    // "Zurück zu mir" Button einblenden wenn GF fremdes Profil anschaut
-    showBackToMe(prev !== id && id !== prev ? prev : null);
+function switchPerson(id){
+  if(isGF()||myTeamMemberIds().includes(id)||id===aP){
+    aP=id;updateMeBadge();render();
+    showBackBtn();
   }
-}
-
-let _realMe = null; // der echte eingeloggte User
-
-function showBackToMe(prevId) {
-  const existing = document.getElementById('back-to-me');
-  if (existing) existing.remove();
-  if (!_realMe || aP === _realMe) return;
-  const p = person(_realMe), c = cl(p);
-  const btn = document.createElement('button');
-  btn.id = 'back-to-me';
-  btn.innerHTML = `← Zurück zu ${p.name}`;
-  btn.style.cssText = `position:fixed;bottom:20px;right:20px;z-index:99;padding:10px 16px;border-radius:10px;background:${c.tc};color:#fff;border:none;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.2)`;
-  btn.onclick = () => { aP = _realMe; updateMeBadge(); render(); btn.remove(); };
-  document.body.appendChild(btn);
 }
 
 // ═══════════════════════════════════════════════════════
 // STEPS
 // ═══════════════════════════════════════════════════════
-function stepsHtml(h, editable) {
-  let out = '';
-  if (h.ua && h.ua.length) {
-    out += '<div class="sw">';
-    h.ua.forEach((u, i) => {
-      out += `<div class="sr" onclick="toggleStep('${h.id}',${i})">`
-        + `<div class="sc${u.d?' dn':''}">${u.d?'<span style="color:#fff;font-size:8px">✓</span>':''}</div>`
-        + `<span class="sl${u.d?' dn':''}">${u.t}</span>`
-        + (editable ? `<button onclick="event.stopPropagation();delStep('${h.id}',${i})" style="margin-left:auto;font-size:10px;background:none;border:none;color:var(--t3);cursor:pointer">✕</button>` : '')
-        + '</div>';
+function stepsHtml(h,ed){
+  let out='';
+  if(h.ua&&h.ua.length){
+    out+='<div class="sw">';
+    h.ua.forEach((u,i)=>{
+      out+=`<div class="sr" onclick="toggleStep('${h.id}',${i})">`
+        +`<div class="sc${u.d?' dn':''}">${u.d?'<span style="color:#fff;font-size:8px">✓</span>':''}</div>`
+        +`<span class="sl${u.d?' dn':''}">${u.t}</span>`
+        +(ed?`<button onclick="event.stopPropagation();delStep('${h.id}',${i})" style="margin-left:auto;font-size:10px;background:none;border:none;color:var(--t3);cursor:pointer">✕</button>`:'')
+        +'</div>';
     });
-    out += '</div>';
+    out+='</div>';
   }
-  if (editable) {
-    out += `<div style="display:flex;gap:6px;margin-top:6px">`
-      + `<input class="asi" id="si-${h.id}" placeholder="+ Schritt…" onkeydown="if(event.key==='Enter')addStep('${h.id}')">`
-      + `<button onclick="addStep('${h.id}')" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);cursor:pointer">+</button>`
-      + '</div>';
-  }
+  if(ed)out+=`<div style="display:flex;gap:6px;margin-top:6px"><input class="asi" id="si-${h.id}" placeholder="+ Schritt…" onkeydown="if(event.key==='Enter')addStep('${h.id}')"><button onclick="addStep('${h.id}')" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);cursor:pointer">+</button></div>`;
   return out;
 }
 
 // ═══════════════════════════════════════════════════════
 // MEIN TAG
 // ═══════════════════════════════════════════════════════
-function rTag() {
-  const p = me(), c = cl(p);
-  const myH = S.handlungen.filter(h => h.pid === aP && canSeeHandlung(h));
-  const neu     = myH.filter(h => h.status === 'neu');
-  const aktiv   = myH.filter(h => h.status === 'aktiv');
-  const backlog = myH.filter(h => h.status === 'backlog').sort((a,b) => (a.prio||'P9').localeCompare(b.prio||'P9'));
-  const erl     = myH.filter(h => h.status === 'erledigt');
-  const fq      = fokusQ([aP]);
-  const ci      = (S.checkins||{})[aP];
+function rTag(){
+  const p=me(),c=cl(p);
+  const myH=S.handlungen.filter(h=>h.pid===aP&&canSeeHandlung(h));
+  const neu    =myH.filter(h=>h.status==='neu');
+  const aktiv  =myH.filter(h=>h.status==='aktiv');
+  const backlog=myH.filter(h=>h.status==='backlog').sort((a,b)=>(a.prio||'P9').localeCompare(b.prio||'P9'));
+  const erl    =myH.filter(h=>h.status==='erledigt');
+  const fq=fokusQ([aP]);
+  const ci=(S.checkins||{})[aP];
+  let out='';
 
-  let out = '';
+  // Header
+  out+=`<div class="ph">${avHtml(p,44,16)}`
+    +`<div><div style="font-size:15px;font-weight:700">${p.name}</div><div style="font-size:11px;color:var(--t3)">${p.rolle}</div></div>`
+    +`<div class="phs">`
+    +[{l:'neu',v:neu.length,c:'var(--red)'},{l:'aktiv',v:aktiv.length,c:'var(--blue)'},{l:'backlog',v:backlog.length,c:'var(--t3)'},{l:'erledigt',v:erl.length,c:'var(--green)'}]
+      .map(x=>`<div style="text-align:center"><div class="phv" style="color:${x.v>0&&x.l!=='backlog'?x.c:'var(--t3)'}">${x.v}</div><div class="phl">${x.l}</div></div>`).join('')
+    +`</div></div>`;
 
-  // Profile header
-  out += `<div class="ph">${avHtml(p,44,16)}`
-    + `<div><div style="font-size:15px;font-weight:700">${p.name}</div><div style="font-size:11px;color:var(--t3)">${p.rolle}</div></div>`
-    + `<div class="phs">`
-    + [{l:'neu',v:neu.length,c:'var(--red)'},{l:'aktiv',v:aktiv.length,c:'var(--blue)'},{l:'backlog',v:backlog.length,c:'var(--t3)'},{l:'erledigt',v:erl.length,c:'var(--green)'}]
-        .map(x => `<div style="text-align:center"><div class="phv" style="color:${x.v>0&&x.l!=='backlog'?x.c:'var(--t3)'}">${x.v}</div><div class="phl">${x.l}</div></div>`).join('')
-    + '</div></div>';
-
-  // Check-in banner
-  if (ci && ci.date === TODAY && ci.morgen) {
-    out += `<div class="checkin-banner" onclick="${new Date().getHours()>=17&&!ci.abend?'showCheckin()':''}">`;
-    out += `<span style="font-size:16px">${new Date().getHours()>=17&&!ci.abend?'🌙':'☀️'}</span>`;
-    out += `<div style="flex:1"><div style="font-size:11px;font-weight:600;color:var(--purple)">Deine Priorität heute</div>`;
-    out += `<div style="font-size:12px;color:var(--text);margin-top:2px">${ci.morgen}</div>`;
-    if (ci.abend) out += `<div style="font-size:11px;color:var(--purple);margin-top:4px">Morgen: ${ci.abend}</div>`;
-    out += '</div>';
-    if (new Date().getHours() >= 17 && !ci.abend)
-      out += `<span style="font-size:11px;color:var(--purple);font-weight:500">Abend-Check →</span>`;
-    out += '</div>';
+  // Check-in Banner
+  if(ci&&ci.date===TODAY&&ci.morgen){
+    const isEve=new Date().getHours()>=17&&!ci.abend;
+    out+=`<div class="checkin-banner" onclick="${isEve?'showCheckin()':''}">
+      <span style="font-size:16px">${isEve?'🌙':'☀️'}</span>
+      <div style="flex:1">
+        <div style="font-size:11px;font-weight:600;color:var(--purple)">Deine Priorität heute</div>
+        <div style="font-size:12px;color:var(--text);margin-top:2px">${ci.morgen}</div>
+        ${ci.abend?`<div style="font-size:11px;color:var(--purple);margin-top:4px">Morgen: ${ci.abend}</div>`:''}
+      </div>
+      ${isEve?`<span style="font-size:11px;color:var(--purple);font-weight:500">Abend-Check →</span>`:''}
+    </div>`;
   }
 
-  // KPIs (optional, collapsed by default)
-  out += kpiBlockHtml(aP);
+  // KPIs (optional eingeklappt)
+  out+=kpiBlockHtml(aP);
 
   // NEU
-  if (neu.length) {
-    out += sectionHead('Neu — Priorität setzen', 'var(--red)',
-      `<span style="background:var(--red-bg);color:var(--red);border-radius:99px;padding:1px 7px;font-size:10px;font-weight:600">${neu.length}</span>`);
-    neu.forEach(h => {
-      const tzName = getTZName(h);
-      out += `<div class="card neu-c">`
-        + `<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px">`
-        + `<div style="flex:1"><div style="font-size:13px;font-weight:600;margin-bottom:5px">${h.titel}${h.vertraulich?'<span class="lock" style="margin-left:6px">vertraulich</span>':''}</div>`
-        + `<div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center">`
-        + typTag(h)
-        + `<span class="tag" style="background:var(--gray-bg);color:var(--t2)">${getContextName(h)}</span>`
-        + (tzName ? `<span class="tag" style="background:var(--purple-bg);color:var(--purple)">${tzName}</span>` : '')
-        + dlTag(h.dl)
-        + (h.notiz ? `<span style="font-size:10px;color:var(--t3);font-style:italic">${h.notiz}</span>` : '')
-        + `</div></div><button class="btn btn-gr" onclick="openDetail('${h.id}')">···</button></div>`
-        + `<div style="display:flex;gap:5px;align-items:center"><span style="font-size:10px;color:var(--t3);margin-right:2px">Priorität:</span>`
-        + ['P1','P2','P3'].map(pr => {
-            const bg = pr==='P1'?'var(--red-bg)':pr==='P2'?'#fff7ed':'var(--gray-bg)';
-            const tc = pr==='P1'?'var(--red)':pr==='P2'?'#c2410c':'var(--t2)';
-            return `<button style="font-size:11px;padding:3px 9px;border-radius:8px;border:1px solid ${tc};background:${bg};color:${tc};cursor:pointer;font-family:inherit" onclick="setPrio('${h.id}','${pr}')">${pr}</button>`;
-          }).join('')
-        + `</div></div>`;
+  if(neu.length){
+    out+=secHead('Neu — Priorität setzen','var(--red)',`<span style="background:var(--red-bg);color:var(--red);border-radius:99px;padding:1px 7px;font-size:10px;font-weight:600">${neu.length}</span>`);
+    neu.forEach(h=>{
+      const tzName=getTZName(h);
+      out+=`<div class="card neu-c">`
+        +`<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px">`
+        +`<div style="flex:1"><div style="font-size:13px;font-weight:600;margin-bottom:5px">${h.titel}${h.vertraulich?'<span class="lock" style="margin-left:6px">vertraulich</span>':''}</div>`
+        +`<div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center">${typTag(h)}<span class="tag" style="background:var(--gray-bg);color:var(--t2)">${getContextName(h)}</span>${tzName?`<span class="tag" style="background:var(--purple-bg);color:var(--purple)">${tzName}</span>`:''} ${dlTag(h.dl)}${h.notiz?`<span style="font-size:10px;color:var(--t3);font-style:italic">${h.notiz}</span>`:''}</div></div>`
+        +`<button class="btn btn-gr" onclick="openDetail('${h.id}')">···</button></div>`
+        +`<div style="display:flex;gap:5px;align-items:center"><span style="font-size:10px;color:var(--t3);margin-right:2px">Priorität:</span>`
+        +['P1','P2','P3'].map(pr=>{const bg=pr==='P1'?'var(--red-bg)':pr==='P2'?'#fff7ed':'var(--gray-bg)';const tc=pr==='P1'?'var(--red)':pr==='P2'?'#c2410c':'var(--t2)';return`<button style="font-size:11px;padding:3px 9px;border-radius:8px;border:1px solid ${tc};background:${bg};color:${tc};cursor:pointer;font-family:inherit" onclick="setPrio('${h.id}','${pr}')">${pr}</button>`;}).join('')
+        +`</div></div>`;
     });
   }
 
   // AKTIV
-  if (aktiv.length) {
-    out += sectionHead('Läuft gerade', 'var(--blue)');
-    aktiv.forEach(h => {
-      const s = elapsedSec(h), pct = Math.min(100, Math.round(s/((h.geplant||1)*3600)*100));
-      const uD = h.ua.filter(u => u.d).length, tzName = getTZName(h);
-      out += `<div class="card aktiv-c">`
-        + `<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:${h.ua.length?'8px':'0'}">`
-        + `<div class="dot" style="background:var(--blue);margin-top:6px"></div>`
-        + `<div style="flex:1"><div style="font-size:13px;font-weight:600;margin-bottom:5px">${h.titel}${h.vertraulich?'<span class="lock" style="margin-left:6px">vertraulich</span>':''}</div>`
-        + `<div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center">${typTag(h)}${prioTag(h.prio)}<span class="tag" style="background:var(--gray-bg);color:var(--t2)">${getContextName(h)}</span>`
-        + (tzName ? `<span class="tag" style="background:var(--purple-bg);color:var(--purple)">${tzName}</span>` : '')
-        + dlTag(h.dl)
-        + (h.ua.length ? `<span style="font-size:10px;color:var(--t3)">${uD}/${h.ua.length} Schritte</span>` : '')
-        + `</div></div>`
-        + `<div data-tid="${h.id}" class="timer"><div class="tn">${fmt(s)}</div><div style="font-size:9px;color:var(--t3)">/ ${fmtH(h.geplant)}</div><div class="tbar"><div class="tf" style="width:${pct}%"></div></div></div>`
-        + `</div>${stepsHtml(h, true)}`
-        + `<div style="display:flex;gap:5px;margin-top:8px">`
-        + `<button class="btn btn-ok" onclick="fertig('${h.id}')">✓ Erledigt</button>`
-        + `<button class="btn btn-gr" onclick="pauseH('${h.id}')">⏸ Pause</button>`
-        + `<button class="btn btn-gr" onclick="openDetail('${h.id}')">···</button>`
-        + `</div></div>`;
+  if(aktiv.length){
+    out+=secHead('Läuft gerade','var(--blue)');
+    aktiv.forEach(h=>{
+      const s=elapsedSec(h),pct=Math.min(100,Math.round(s/((h.geplant||1)*3600)*100));
+      const uD=h.ua.filter(u=>u.d).length,tzName=getTZName(h);
+      out+=`<div class="card aktiv-c">`
+        +`<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:${h.ua.length?'8px':'0'}">`
+        +`<div class="dot" style="background:var(--blue);margin-top:6px"></div>`
+        +`<div style="flex:1"><div style="font-size:13px;font-weight:600;margin-bottom:5px">${h.titel}${h.vertraulich?'<span class="lock" style="margin-left:6px">vertraulich</span>':''}</div>`
+        +`<div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center">${typTag(h)}${prioTag(h.prio)}<span class="tag" style="background:var(--gray-bg);color:var(--t2)">${getContextName(h)}</span>${tzName?`<span class="tag" style="background:var(--purple-bg);color:var(--purple)">${tzName}</span>`:''} ${dlTag(h.dl)}${h.ua.length?`<span style="font-size:10px;color:var(--t3)">${uD}/${h.ua.length} Schritte</span>`:''}</div></div>`
+        +`<div data-tid="${h.id}" class="timer"><div class="tn">${fmt(s)}</div><div style="font-size:9px;color:var(--t3)">/ ${fmtH(h.geplant)}</div><div class="tbar"><div class="tf" style="width:${pct}%"></div></div></div></div>`
+        +stepsHtml(h,true)
+        +`<div style="display:flex;gap:5px;margin-top:8px"><button class="btn btn-ok" onclick="fertig('${h.id}')">✓ Erledigt</button><button class="btn btn-gr" onclick="pauseH('${h.id}')">⏸ Pause</button><button class="btn btn-gr" onclick="openDetail('${h.id}')">···</button></div></div>`;
     });
   }
 
   // BACKLOG
-  if (backlog.length) {
-    out += sectionHead('Backlog', 'var(--t2)');
-    backlog.forEach(h => {
-      const tzName = getTZName(h);
-      out += `<div class="card" style="display:flex;align-items:center;gap:10px;padding:10px 13px">`
-        + `<div class="dot" style="background:var(--bd)"></div>`
-        + `<div style="flex:1"><div style="font-size:12px;font-weight:500;margin-bottom:4px">${h.titel}${h.vertraulich?'<span class="lock" style="margin-left:5px">vertraulich</span>':''}</div>`
-        + `<div style="display:flex;gap:5px;flex-wrap:wrap">${typTag(h)}${prioTag(h.prio)}<span class="tag" style="background:var(--gray-bg);color:var(--t2)">${getContextName(h)}</span>`
-        + (tzName ? `<span class="tag" style="background:var(--purple-bg);color:var(--purple)">${tzName}</span>` : '')
-        + dlTag(h.dl) + `</div></div>`
-        + `<button class="btn btn-dk" onclick="startenH('${h.id}')">▶ Starten</button>`
-        + `</div>`;
+  if(backlog.length){
+    out+=secHead('Backlog','var(--t2)');
+    backlog.forEach(h=>{
+      const tzName=getTZName(h);
+      out+=`<div class="card" style="display:flex;align-items:center;gap:10px;padding:10px 13px">`
+        +`<div class="dot" style="background:var(--bd)"></div>`
+        +`<div style="flex:1"><div style="font-size:12px;font-weight:500;margin-bottom:4px">${h.titel}${h.vertraulich?'<span class="lock" style="margin-left:5px">vertraulich</span>':''}</div>`
+        +`<div style="display:flex;gap:5px;flex-wrap:wrap">${typTag(h)}${prioTag(h.prio)}<span class="tag" style="background:var(--gray-bg);color:var(--t2)">${getContextName(h)}</span>${tzName?`<span class="tag" style="background:var(--purple-bg);color:var(--purple)">${tzName}</span>`:''} ${dlTag(h.dl)}</div></div>`
+        +`<button class="btn btn-dk" onclick="startenH('${h.id}')">▶ Starten</button></div>`;
     });
   }
 
   // ERLEDIGT
-  if (erl.length) {
-    out += sectionHead('Heute erledigt', 'var(--green)');
-    erl.forEach(h => {
-      out += `<div style="background:var(--green-bg);border:1px solid var(--green-bd);border-radius:10px;padding:8px 12px;margin-bottom:5px;display:flex;align-items:center;gap:8px">`
-        + `<span style="flex:1;font-size:11px;text-decoration:line-through;color:var(--t2)">${h.titel}</span>`
-        + (h.gebucht ? `<span style="font-size:11px;color:var(--green);font-weight:600">${fmt(h.gebucht*3600)}</span>` : '')
-        + '</div>';
+  if(erl.length){
+    out+=secHead('Heute erledigt','var(--green)');
+    erl.forEach(h=>{
+      out+=`<div style="background:var(--green-bg);border:1px solid var(--green-bd);border-radius:10px;padding:8px 12px;margin-bottom:5px;display:flex;align-items:center;gap:8px">`
+        +`<span style="flex:1;font-size:11px;text-decoration:line-through;color:var(--t2)">${h.titel}</span>`
+        +(h.gebucht?`<span style="font-size:11px;color:var(--green);font-weight:600">${fmt(h.gebucht*3600)}</span>`:'')
+        +'</div>';
     });
   }
 
-  if (!neu.length && !aktiv.length && !backlog.length && !erl.length)
-    out += `<div class="empty-state">Keine Handlungen für heute.<br><button class="btn btn-dk" onclick="openNeu()" style="margin-top:14px">+ Handlung hinzufügen</button></div>`;
+  if(!myH.length)
+    out+=`<div class="empty-state">Keine Handlungen.<br><button class="btn btn-dk" onclick="openNeu()" style="margin-top:14px">+ Handlung hinzufügen</button></div>`;
 
-  if (myH.length)
-    out += `<div class="focus-bar"><span style="font-size:11px;color:var(--t2)">Fokus heute</span><div class="focus-track"><div class="focus-fill" style="width:${fq}%"></div></div><span style="font-size:11px;font-weight:600">${fq}% Ziel-fokussiert</span></div>`;
+  if(myH.length)
+    out+=`<div class="focus-bar"><span style="font-size:11px;color:var(--t2)">Fokus heute</span><div class="focus-track"><div class="focus-fill" style="width:${fq}%"></div></div><span style="font-size:11px;font-weight:600">${fq}% Ziel-fokussiert</span></div>`;
 
-  document.getElementById('main').innerHTML = out;
+  document.getElementById('main').innerHTML=out;
   startTimers();
 }
 
 // ═══════════════════════════════════════════════════════
-// KPI BLOCK (optional, in Mein Tag)
+// KPI BLOCK
 // ═══════════════════════════════════════════════════════
-function kpiBlockHtml(pid) {
-  const items = [];
-  S.ziele.forEach(z => (z.kpis||[]).forEach(k => { if (k.pid === pid) items.push({k, z}); }));
-  if (!items.length) return '';
-
-  let h = `<details style="margin-bottom:16px"><summary style="cursor:pointer;font-size:10px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.6px;list-style:none;display:flex;align-items:center;gap:6px">`
-    + `<span>▸</span> KPI Check <span style="font-weight:400;text-transform:none;color:var(--t3)">— 2 Minuten</span></summary>`;
-  h += '<div style="margin-top:10px">';
-  items.forEach(({k}) => {
-    const key = pid+'-'+k.id, val = S.kpiVals[key] !== undefined ? S.kpiVals[key] : k.ist;
-    const ok = k.inv ? val <= k.ziel : val >= k.ziel * 0.85;
-    const pct = k.inv
-      ? Math.max(0, 100 - Math.round(Math.max(0, val-k.ziel) / Math.max(k.ziel,.1) * 100))
-      : Math.round(Math.min(100, (val/(k.ziel||1)) * 100));
-    const col = ok ? 'var(--green)' : '#c2410c';
-    h += `<div class="kpi-row" onclick="editKpiVal('${key}',${val},'${k.ziel}','${k.unit}')">`
-      + `<span style="font-size:12px;flex:1">${k.label}</span>`
-      + `<div class="kpi-track"><div class="kpi-fill" style="width:${Math.max(0,Math.min(100,pct))}%;background:${col}"></div></div>`
-      + `<span style="font-size:12px;font-weight:600;color:${col};min-width:64px;text-align:right">${val}${k.unit} / ${k.ziel}${k.unit}</span>`
-      + '</div>';
+function kpiBlockHtml(pid){
+  const items=[];
+  S.ziele.forEach(z=>(z.kpis||[]).forEach(k=>{if(k.pid===pid)items.push({k,z});}));
+  if(!items.length)return'';
+  let h=`<details style="margin-bottom:16px"><summary style="cursor:pointer;font-size:10px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.6px;list-style:none;display:flex;align-items:center;gap:6px"><span>▸</span> KPI Check <span style="font-weight:400;text-transform:none;color:var(--t3)">— 2 Minuten</span></summary><div style="margin-top:10px">`;
+  items.forEach(({k})=>{
+    const key=pid+'-'+k.id,val=S.kpiVals[key]!==undefined?S.kpiVals[key]:k.ist;
+    const ok=k.inv?val<=k.ziel:val>=k.ziel*0.85;
+    const pct=k.inv?Math.max(0,100-Math.round(Math.max(0,val-k.ziel)/Math.max(k.ziel,.1)*100)):Math.round(Math.min(100,(val/(k.ziel||1))*100));
+    const col=ok?'var(--green)':'#c2410c';
+    h+=`<div class="kpi-row" onclick="editKpiVal('${key}',${val},'${k.ziel}','${k.unit}')">`
+      +`<span style="font-size:12px;flex:1">${k.label}</span>`
+      +`<div class="kpi-track"><div class="kpi-fill" style="width:${Math.max(0,Math.min(100,pct))}%;background:${col}"></div></div>`
+      +`<span style="font-size:12px;font-weight:600;color:${col};min-width:64px;text-align:right">${val}${k.unit} / ${k.ziel}${k.unit}</span></div>`;
   });
-  h += '</div></details>';
-  return h;
+  h+='</div></details>';return h;
 }
-function editKpiVal(key, def, z, unit) {
-  document.getElementById('mb').innerHTML = `<div class="mt">KPI eintragen</div>`
-    + `<div class="fl"><label>Aktueller Wert (Ziel: ${z}${unit})</label><input id="kv" type="number" value="${def}" autofocus style="font-size:22px;font-weight:700"></div>`
-    + `<div class="mf"><button class="btn btn-gr" onclick="cm()">Abbrechen</button><button class="btn btn-dk" onclick="saveKV('${key}')">Speichern</button></div>`;
+function editKpiVal(key,def,z,unit){
+  document.getElementById('mb').innerHTML=`<div class="mt">KPI eintragen</div>`
+    +`<div class="fl"><label>Aktueller Wert (Ziel: ${z}${unit})</label><input id="kv" type="number" value="${def}" autofocus style="font-size:22px;font-weight:700"></div>`
+    +`<div class="mf"><button class="btn btn-gr" onclick="cm()">Abbrechen</button><button class="btn btn-dk" onclick="saveKV('${key}')">Speichern</button></div>`;
   document.getElementById('ovl').classList.add('open');
 }
-async function saveKV(key) {
-  S.kpiVals[key] = parseFloat(document.getElementById('kv').value) || 0;
-  await saveData(S); cm(); render();
-}
+async function saveKV(key){S.kpiVals[key]=parseFloat(document.getElementById('kv').value)||0;cm();render();}
 
 // ═══════════════════════════════════════════════════════
 // HANDLUNG ACTIONS
 // ═══════════════════════════════════════════════════════
-async function setPrio(id, pr) {
-  await updateRecord('handlungen', id, {prio: pr, status: 'backlog'});
-  render();
+async function setPrio(id,pr){await updateRecord('handlungen',id,{prio:pr,status:'backlog'});render();}
+async function startenH(id){await updateRecord('handlungen',id,{status:'aktiv',aktSeit:Date.now()});render();}
+async function pauseH(id){
+  const h=S.handlungen.find(x=>x.id===id);if(!h||h.status!=='aktiv')return;
+  const gebucht=Math.round(((h.gebucht||0)+(Date.now()-(h.aktSeit||Date.now()))/3600000)*100)/100;
+  await updateRecord('handlungen',id,{gebucht,aktSeit:null,status:'backlog'});render();
 }
-async function startenH(id) {
-  await updateRecord('handlungen', id, {status:'aktiv', aktSeit: Date.now()});
-  render();
+async function fertig(id){
+  const h=S.handlungen.find(x=>x.id===id);if(!h)return;
+  const gebucht=h.status==='aktiv'?Math.round(((h.gebucht||0)+(Date.now()-(h.aktSeit||Date.now()))/3600000)*100)/100:h.gebucht;
+  await updateRecord('handlungen',id,{gebucht,aktSeit:null,status:'erledigt'});render();
 }
-async function pauseH(id) {
-  const h = S.handlungen.find(x => x.id === id);
-  if (!h || h.status !== 'aktiv') return;
-  const gebucht = Math.round(((h.gebucht||0) + (Date.now()-(h.aktSeit||Date.now()))/3600000)*100)/100;
-  await updateRecord('handlungen', id, {gebucht, aktSeit: null, status:'backlog'});
-  render();
+async function toggleStep(id,i){
+  const h=S.handlungen.find(x=>x.id===id);if(!h)return;
+  h.ua[i].d=!h.ua[i].d;
+  if(h.ua.length&&h.ua.every(u=>u.d)){h.status='erledigt';h.aktSeit=null;}
+  await dbPatch('handlungen',id,{ua:h.ua,status:h.status,akt_seit:null});render();
 }
-async function fertig(id) {
-  const h = S.handlungen.find(x => x.id === id);
-  if (!h) return;
-  const gebucht = h.status === 'aktiv'
-    ? Math.round(((h.gebucht||0) + (Date.now()-(h.aktSeit||Date.now()))/3600000)*100)/100
-    : h.gebucht;
-  await updateRecord('handlungen', id, {gebucht, aktSeit: null, status:'erledigt'});
-  render();
+async function addStep(id){
+  const inp=document.getElementById('si-'+id);if(!inp)return;
+  const t=inp.value.trim();if(!t)return;
+  const h=S.handlungen.find(x=>x.id===id);if(!h)return;
+  h.ua.push({t,d:false});inp.value='';
+  await dbPatch('handlungen',id,{ua:h.ua});render();
 }
-async function toggleStep(id, i) {
-  const h = S.handlungen.find(x => x.id === id); if (!h) return;
-  h.ua[i].d = !h.ua[i].d;
-  if (h.ua.length && h.ua.every(u => u.d)) { h.status = 'erledigt'; h.aktSeit = null; }
-  await saveData(S); render();
-}
-async function addStep(id) {
-  const inp = document.getElementById('si-'+id); if (!inp) return;
-  const t = inp.value.trim(); if (!t) return;
-  const h = S.handlungen.find(x => x.id === id); if (!h) return;
-  h.ua.push({t, d:false}); inp.value = '';
-  await saveData(S); render();
-}
-async function delStep(id, i) {
-  const h = S.handlungen.find(x => x.id === id); if (!h) return;
-  h.ua.splice(i, 1);
-  await saveData(S); render();
+async function delStep(id,i){
+  const h=S.handlungen.find(x=>x.id===id);if(!h)return;
+  h.ua.splice(i,1);
+  await dbPatch('handlungen',id,{ua:h.ua});render();
 }
 
 // ═══════════════════════════════════════════════════════
 // DETAIL MODAL
 // ═══════════════════════════════════════════════════════
-function openDetail(id) {
-  const h = S.handlungen.find(x => x.id === id); if (!h) return;
-  const d = dli(h.dl), tzName = getTZName(h);
-  document.getElementById('mb').innerHTML = `<div class="mt">${h.titel}</div>`
-    + `<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:14px">${typTag(h)}${prioTag(h.prio)}<span class="tag" style="background:var(--gray-bg);color:var(--t2)">${getContextName(h)}</span>${tzName?`<span class="tag" style="background:var(--purple-bg);color:var(--purple)">${tzName}</span>`:''}${d?`<span class="tag" style="background:${d.bg};color:${d.c}">${d.l}</span>`:''}${h.vertraulich?'<span class="lock">vertraulich</span>':''}</div>`
-    + (h.notiz ? `<div style="font-size:12px;color:var(--t2);background:var(--gray-bg);border-radius:8px;padding:8px 10px;margin-bottom:12px;font-style:italic">${h.notiz}</div>` : '')
-    + `<div class="fl"><label>Status</label><div style="display:flex;gap:5px;flex-wrap:wrap">`
-    + [['neu','Neu','var(--red-bg)','var(--red)'],['backlog','Backlog','var(--gray-bg)','var(--t2)'],['aktiv','Aktiv','var(--blue-bg)','var(--blue)'],['erledigt','Erledigt','var(--green-bg)','var(--green)']].map(x =>
-        `<button onclick="setStatusModal('${id}','${x[0]}')" style="font-size:11px;padding:4px 10px;border-radius:8px;border:${h.status===x[0]?'2px':'1px'} solid ${h.status===x[0]?'var(--text)':'var(--bd)'};background:${h.status===x[0]?x[2]:'var(--sf)'};color:${h.status===x[0]?x[3]:'var(--t2)'};cursor:pointer;font-family:inherit;font-weight:${h.status===x[0]?600:400}">${x[1]}</button>`
-      ).join('') + '</div></div>'
-    + `<div class="fl"><label>Schritte</label>${stepsHtml(h, true)}</div>`
-    + `<div style="font-size:11px;color:var(--t2);padding:10px 0;border-top:1px solid var(--bd)">Zeit: <strong>${fmt(elapsedSec(h))}</strong> von ${fmtH(h.geplant)} geplant</div>`
-    + `<div class="mf"><button class="btn btn-gr" onclick="cm()">Schließen</button></div>`;
+function openDetail(id){
+  const h=S.handlungen.find(x=>x.id===id);if(!h)return;
+  const d=dli(h.dl),tzName=getTZName(h);
+  document.getElementById('mb').innerHTML=`<div class="mt">${h.titel}</div>`
+    +`<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:14px">${typTag(h)}${prioTag(h.prio)}<span class="tag" style="background:var(--gray-bg);color:var(--t2)">${getContextName(h)}</span>${tzName?`<span class="tag" style="background:var(--purple-bg);color:var(--purple)">${tzName}</span>`:''}${d?`<span class="tag" style="background:${d.bg};color:${d.c}">${d.l}</span>`:''}${h.vertraulich?'<span class="lock">vertraulich</span>':''}</div>`
+    +(h.notiz?`<div style="font-size:12px;color:var(--t2);background:var(--gray-bg);border-radius:8px;padding:8px 10px;margin-bottom:12px;font-style:italic">${h.notiz}</div>`:'')
+    +`<div class="fl"><label>Status</label><div style="display:flex;gap:5px;flex-wrap:wrap">`
+    +[['neu','Neu','var(--red-bg)','var(--red)'],['backlog','Backlog','var(--gray-bg)','var(--t2)'],['aktiv','Aktiv','var(--blue-bg)','var(--blue)'],['erledigt','Erledigt','var(--green-bg)','var(--green)']].map(x=>
+      `<button onclick="setStatusModal('${id}','${x[0]}')" style="font-size:11px;padding:4px 10px;border-radius:8px;border:${h.status===x[0]?'2px':'1px'} solid ${h.status===x[0]?'var(--text)':'var(--bd)'};background:${h.status===x[0]?x[2]:'var(--sf)'};color:${h.status===x[0]?x[3]:'var(--t2)'};cursor:pointer;font-family:inherit;font-weight:${h.status===x[0]?600:400}">${x[1]}</button>`
+    ).join('')+`</div></div>`
+    +`<div class="fl"><label>Schritte</label>${stepsHtml(h,true)}</div>`
+    +`<div style="font-size:11px;color:var(--t2);padding:10px 0;border-top:1px solid var(--bd)">Zeit: <strong>${fmt(elapsedSec(h))}</strong> von ${fmtH(h.geplant)} geplant</div>`
+    +`<div class="mf"><button class="btn btn-gr" onclick="cm()">Schließen</button></div>`;
   document.getElementById('ovl').classList.add('open');
 }
-async function setStatusModal(id, st) {
-  const h = S.handlungen.find(x => x.id === id); if (!h) return;
-  let patch = {status: st};
-  if (st === 'aktiv') patch.aktSeit = Date.now();
-  else if (h.status === 'aktiv') {
-    patch.gebucht = Math.round(((h.gebucht||0) + (Date.now()-(h.aktSeit||Date.now()))/3600000)*100)/100;
-    patch.aktSeit = null;
-  }
-  await updateRecord('handlungen', id, patch);
-  openDetail(id); render();
+async function setStatusModal(id,st){
+  const h=S.handlungen.find(x=>x.id===id);if(!h)return;
+  let patch={status:st};
+  if(st==='aktiv')patch.aktSeit=Date.now();
+  else if(h.status==='aktiv'){patch.gebucht=Math.round(((h.gebucht||0)+(Date.now()-(h.aktSeit||Date.now()))/3600000)*100)/100;patch.aktSeit=null;}
+  await updateRecord('handlungen',id,patch);openDetail(id);render();
 }
 
 // ═══════════════════════════════════════════════════════
-// ZIELE — nur strategische Ziele, keine Bereiche
+// ZIELE
 // ═══════════════════════════════════════════════════════
-function rZiele() {
-  let out = `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">`
-    + `<div><div style="font-size:16px;font-weight:700">Ziele</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Strategische Ziele & Teilziele</div></div>`
-    + (isGF() ? `<button class="btn btn-dk" onclick="addZiel()">+ Neues Ziel</button>` : '')
-    + '</div>';
+function rZiele(){
+  let out=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">`
+    +`<div><div style="font-size:16px;font-weight:700">Ziele</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Strategische Ziele & Teilziele</div></div>`
+    +(isGF()?`<button class="btn btn-dk" onclick="addZiel()">+ Neues Ziel</button>`:'')
+    +'</div>';
 
-  S.ziele.forEach(z => {
-    const f = FARBEN[z.farbe] || FARBEN[0];
-    const verantw = person(z.verantwortlichId);
-    const okK = (z.kpis||[]).filter(kpiOk).length;
-    const badK = (z.kpis||[]).filter(k => !kpiOk(k));
-    // only handlungen linked to this goal
-    const zH = S.handlungen.filter(h => h.zielId === z.id && h.status !== 'erledigt' && canSeeHandlung(h));
+  S.ziele.forEach(z=>{
+    const f=FARBEN[z.farbe]||FARBEN[0],verantw=person(z.verantwortlichId);
+    const okK=(z.kpis||[]).filter(kpiOk).length,badK=(z.kpis||[]).filter(k=>!kpiOk(k));
+    const zH=S.handlungen.filter(h=>h.zielId===z.id&&h.status!=='erledigt'&&canSeeHandlung(h));
 
-    out += `<div class="zcard" style="background:${f.bg};border-color:${f.bd}">`;
+    out+=`<div class="zcard" style="background:${f.bg};border-color:${f.bd}">`;
 
     // Header
-    out += `<div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:14px">`
-      + `<div style="flex:1">`
-      + `<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px;flex-wrap:wrap">`
-      + `<div style="font-size:15px;font-weight:700;color:${f.tc}">${z.name}</div>`
-      + (verantw ? `<span style="font-size:11px;color:${f.tc};opacity:.7">Verantw.: ${verantw.name}</span>` : '')
-      + (isGF() ? `<button onclick="editZiel('${z.id}')" style="font-size:10px;padding:2px 8px;border-radius:6px;border:0.5px solid ${f.bd};background:rgba(255,255,255,.5);color:${f.tc};cursor:pointer;font-family:inherit;opacity:.7">bearbeiten</button>` : '')
-      + `</div>`
-      + `<div style="display:flex;align-items:center;gap:10px"><div class="pbar"><div class="pbar-fill" style="width:${z.pct}%;background:${z.pct>=70?f.tc:'#f59e0b'}"></div></div><span style="font-size:13px;font-weight:700;color:${z.pct>=70?f.tc:'#c2410c'};min-width:36px">${z.pct}%</span></div>`
-      + `<div style="font-size:11px;color:${f.tc};opacity:.65;margin-top:3px">${z.pct>=70?'✓ Auf Kurs':'⚠ Unter Plan'}${z.kpis.length?' · '+okK+'/'+z.kpis.length+' KPIs auf Kurs':''}</div>`
-      + `</div>`
-      + (badK.length ? `<div style="background:var(--red-bg);border:1px solid var(--red-bd);border-radius:9px;padding:8px 10px;min-width:140px;flex-shrink:0"><div style="font-size:10px;font-weight:600;color:var(--red);margin-bottom:4px">Handlungsbedarf</div>${badK.map(k=>`<div style="font-size:10px;color:var(--red)">· ${k.label}: ${k.ist}${k.unit} → ${k.ziel}${k.unit}</div>`).join('')}</div>` : '')
-      + '</div>';
+    out+=`<div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:14px">`
+      +`<div style="flex:1">`
+      +`<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px;flex-wrap:wrap">`
+      +`<div style="font-size:15px;font-weight:700;color:${f.tc}">${z.name}</div>`
+      +(verantw?`<span style="font-size:11px;color:${f.tc};opacity:.7">Verantw.: ${verantw.name}</span>`:'')
+      +(isGF()?`<button onclick="editZiel('${z.id}')" style="font-size:10px;padding:2px 8px;border-radius:6px;border:0.5px solid ${f.bd};background:rgba(255,255,255,.5);color:${f.tc};cursor:pointer;font-family:inherit;opacity:.7">bearbeiten</button>`:'')
+      +`</div>`
+      +`<div style="display:flex;align-items:center;gap:10px"><div class="pbar"><div class="pbar-fill" style="width:${z.pct}%;background:${z.pct>=70?f.tc:'#f59e0b'}"></div></div><span style="font-size:13px;font-weight:700;color:${z.pct>=70?f.tc:'#c2410c'};min-width:36px">${z.pct}%</span></div>`
+      +`<div style="font-size:11px;color:${f.tc};opacity:.65;margin-top:3px">${z.pct>=70?'✓ Auf Kurs':'⚠ Unter Plan'}${z.kpis.length?' · '+okK+'/'+z.kpis.length+' KPIs auf Kurs':''}</div>`
+      +`</div>`
+      +(badK.length?`<div style="background:var(--red-bg);border:1px solid var(--red-bd);border-radius:9px;padding:8px 10px;min-width:140px;flex-shrink:0"><div style="font-size:10px;font-weight:600;color:var(--red);margin-bottom:4px">Handlungsbedarf</div>${badK.map(k=>`<div style="font-size:10px;color:var(--red)">· ${k.label}: ${k.ist}${k.unit} → ${k.ziel}${k.unit}</div>`).join('')}</div>`:'')
+      +`</div>`;
 
-    // KPIs (optional section)
-    if (z.kpis.length || isGF()) {
-      out += `<details style="margin-bottom:14px"><summary style="cursor:pointer;font-size:10px;font-weight:700;color:${f.tc};opacity:.65;text-transform:uppercase;letter-spacing:.5px;list-style:none">▸ KPIs (${z.kpis.length})</summary>`;
-      out += `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:8px;margin-top:10px">`;
-      (z.kpis||[]).forEach(k => {
-        const ok = kpiOk(k), p2 = person(k.pid);
-        const pct2 = k.inv ? Math.max(0,100-Math.round(Math.max(0,k.ist-k.ziel)/Math.max(k.ziel,.1)*100)) : Math.round(Math.min(100,k.ist/(k.ziel||1)*100));
-        const isMyKpi = k.pid === aP;
-        out += `<div ${isGF()?`onclick="editKpiDef('${z.id}','${k.id}')" style="cursor:pointer;"`:''} style="background:rgba(255,255,255,.75);border:${isMyKpi?`2px solid ${f.tc}`:`0.5px solid ${f.bd}`};border-radius:10px;padding:11px 12px;position:relative">`
-          + (isMyKpi ? `<div style="position:absolute;top:6px;right:8px;font-size:9px;background:${f.tc};color:#fff;padding:1px 5px;border-radius:99px;font-weight:600">Ich</div>` : '')
-          + `<div style="font-size:9px;color:var(--t3);margin-bottom:3px;text-transform:uppercase">${p2?p2.name:'–'} · ${k.freq}</div>`
-          + `<div style="font-size:20px;font-weight:700;color:${ok?f.tc:'var(--red)'};line-height:1;margin-bottom:2px">${k.ist}${k.unit}</div>`
-          + `<div style="font-size:11px;font-weight:600;margin-bottom:1px">${k.label}</div>`
-          + `<div style="font-size:9px;color:var(--t3);margin-bottom:6px">Ziel: ${k.ziel}${k.unit}</div>`
-          + `<div style="height:3px;border-radius:99px;background:rgba(0,0,0,.07);overflow:hidden"><div style="height:100%;border-radius:99px;background:${ok?f.tc:'var(--red)'};width:${Math.max(0,Math.min(100,pct2))}%"></div></div>`
-          + '</div>';
+    // KPIs
+    if(z.kpis.length||isGF()){
+      out+=`<details style="margin-bottom:14px"><summary style="cursor:pointer;font-size:10px;font-weight:700;color:${f.tc};opacity:.65;text-transform:uppercase;letter-spacing:.5px;list-style:none">▸ KPIs (${z.kpis.length})</summary>`;
+      out+=`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:8px;margin-top:10px">`;
+      (z.kpis||[]).forEach(k=>{
+        const ok=kpiOk(k),p2=person(k.pid);
+        const pct2=k.inv?Math.max(0,100-Math.round(Math.max(0,k.ist-k.ziel)/Math.max(k.ziel,.1)*100)):Math.round(Math.min(100,k.ist/(k.ziel||1)*100));
+        const isMyKpi=k.pid===aP;
+        out+=`<div ${isGF()?`onclick="editKpiDef('${z.id}','${k.id}')" style="cursor:pointer;"`:''} style="background:rgba(255,255,255,.75);border:${isMyKpi?`2px solid ${f.tc}`:`0.5px solid ${f.bd}`};border-radius:10px;padding:11px 12px;position:relative">`
+          +(isMyKpi?`<div style="position:absolute;top:6px;right:8px;font-size:9px;background:${f.tc};color:#fff;padding:1px 5px;border-radius:99px;font-weight:600">Ich</div>`:'')
+          +`<div style="font-size:9px;color:var(--t3);margin-bottom:3px;text-transform:uppercase">${p2?p2.name:'–'} · ${k.freq}</div>`
+          +`<div style="font-size:20px;font-weight:700;color:${ok?f.tc:'var(--red)'};line-height:1;margin-bottom:2px">${k.ist}${k.unit}</div>`
+          +`<div style="font-size:11px;font-weight:600;margin-bottom:1px">${k.label}</div>`
+          +`<div style="font-size:9px;color:var(--t3);margin-bottom:6px">Ziel: ${k.ziel}${k.unit}</div>`
+          +`<div style="height:3px;border-radius:99px;background:rgba(0,0,0,.07);overflow:hidden"><div style="height:100%;border-radius:99px;background:${ok?f.tc:'var(--red)'};width:${Math.max(0,Math.min(100,pct2))}%"></div></div></div>`;
       });
-      if (isGF()) out += `<div onclick="addKpi('${z.id}')" style="border:1.5px dashed ${f.bd};border-radius:10px;padding:11px 12px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;color:${f.tc};gap:4px;opacity:.5;min-height:90px" onmouseenter="this.style.opacity='0.9'" onmouseleave="this.style.opacity='0.5'"><span style="font-size:20px">+</span><span style="font-size:11px">KPI</span></div>`;
-      out += '</div></details>';
+      if(isGF())out+=`<div onclick="addKpi('${z.id}')" style="border:1.5px dashed ${f.bd};border-radius:10px;padding:11px 12px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;color:${f.tc};gap:4px;opacity:.5;min-height:90px" onmouseenter="this.style.opacity='0.9'" onmouseleave="this.style.opacity='0.5'"><span style="font-size:20px">+</span><span style="font-size:11px">KPI</span></div>`;
+      out+='</div></details>';
     }
 
     // Teilziele
-    out += `<div style="font-size:10px;font-weight:700;color:${f.tc};opacity:.65;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Teilziele</div>`;
-    (z.teilziele||[]).forEach(tz => {
-      const tzV = person(tz.verantwortlichId);
-      const tzH = zH.filter(h => h.teilzielId === tz.id);
-      out += `<div class="tz-block" style="${tz.erledigt?'opacity:.55':''}">`
-        + `<div class="tz-head">`
-        + (canManageTZ(z.id) ? `<input type="checkbox" ${tz.erledigt?'checked':''} onclick="toggleTZ('${z.id}','${tz.id}')" style="flex-shrink:0">` : '')
-        + `<div style="flex:1"><span class="tz-title${tz.erledigt?' tz-done':''}">${tz.name}</span>`
-        + `<div style="display:flex;gap:8px;margin-top:2px">`
-        + (tzV ? `<span style="font-size:10px;color:var(--purple);opacity:.7">${tzV.name}</span>` : '')
-        + (tz.datum ? `<span style="font-size:10px;color:var(--purple);opacity:.7">bis ${tz.datum.slice(8)}.${tz.datum.slice(5,7)}.</span>` : '')
-        + `</div></div>`
-        + (canManageTZ(z.id) ? `<button onclick="editTZ('${z.id}','${tz.id}')" style="font-size:10px;padding:2px 8px;border-radius:6px;border:1px solid var(--purple-bd);background:rgba(255,255,255,.5);color:var(--purple);cursor:pointer;font-family:inherit">···</button>` : '')
-        + `<button onclick="openNeu({zielId:'${z.id}',teilzielId:'${tz.id}'})" style="font-size:10px;padding:2px 8px;border-radius:6px;border:1px solid var(--purple-bd);background:rgba(255,255,255,.5);color:var(--purple);cursor:pointer;font-family:inherit">+ Handlung</button>`
-        + '</div>';
-      if (tzH.length) {
-        out += '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:6px">';
-        tzH.forEach(h => {
-          const p2 = person(h.pid);
-          out += `<div style="background:rgba(255,255,255,.6);border:0.5px solid var(--purple-bd);border-radius:7px;padding:3px 9px;font-size:11px;display:flex;align-items:center;gap:4px"><span style="font-size:8px;color:${h.status==='aktiv'?'var(--blue)':'var(--t3)'}">●</span>${h.titel}${p2?`<span style="color:var(--t3);font-size:10px">· ${p2.name}</span>`:''}` + '</div>';
-        });
-        out += '</div>';
+    out+=`<div style="font-size:10px;font-weight:700;color:${f.tc};opacity:.65;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Teilziele</div>`;
+    (z.teilziele||[]).forEach(tz=>{
+      const tzV=person(tz.verantwortlichId),tzH=zH.filter(h=>h.teilzielId===tz.id);
+      out+=`<div class="tz-block" style="${tz.erledigt?'opacity:.55':''}">`
+        +`<div class="tz-head">`
+        +(canManageTZ(z.id)?`<input type="checkbox" ${tz.erledigt?'checked':''} onclick="toggleTZ('${z.id}','${tz.id}')" style="flex-shrink:0">`:'')
+        +`<div style="flex:1"><span class="tz-title${tz.erledigt?' tz-done':''}">${tz.name}</span>`
+        +`<div style="display:flex;gap:8px;margin-top:2px">`
+        +(tzV?`<span style="font-size:10px;color:var(--purple);opacity:.7">${tzV.name}</span>`:'')
+        +(tz.datum?`<span style="font-size:10px;color:var(--purple);opacity:.7">bis ${tz.datum.slice(8)}.${tz.datum.slice(5,7)}.</span>`:'')
+        +`</div></div>`
+        +`<div style="display:flex;gap:5px">`
+        +(canManageTZ(z.id)?`<button onclick="editTZ('${z.id}','${tz.id}')" style="font-size:10px;padding:2px 8px;border-radius:6px;border:1px solid var(--purple-bd);background:rgba(255,255,255,.5);color:var(--purple);cursor:pointer;font-family:inherit">···</button>`:'')
+        +`<button onclick="openNeu({zielId:'${z.id}',teilzielId:'${tz.id}'})" style="font-size:10px;padding:2px 8px;border-radius:6px;border:1px solid var(--purple-bd);background:rgba(255,255,255,.5);color:var(--purple);cursor:pointer;font-family:inherit">+ Handlung</button>`
+        +`</div></div>`;
+      if(tzH.length){
+        out+='<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:6px">';
+        tzH.forEach(h=>{const p2=person(h.pid);out+=`<div style="background:rgba(255,255,255,.6);border:0.5px solid var(--purple-bd);border-radius:7px;padding:3px 9px;font-size:11px;display:flex;align-items:center;gap:4px"><span style="font-size:8px;color:${h.status==='aktiv'?'var(--blue)':'var(--t3)'}">●</span>${h.titel}${p2?`<span style="color:var(--t3);font-size:10px">· ${p2.name}</span>`:''}</div>`;});
+        out+='</div>';
       }
-      out += '</div>';
+      out+='</div>';
     });
-    if (canManageTZ(z.id)) out += `<button class="tz-add-btn" onclick="openAddTZ('${z.id}')">+ Teilziel hinzufügen</button>`;
+    if(canManageTZ(z.id))out+=`<button class="tz-add-btn" onclick="openAddTZ('${z.id}')">+ Teilziel hinzufügen</button>`;
 
-    // Handlung direkt aus Zielkarte anlegen
-    out += `<div style="margin-top:10px"><button onclick="openNeu({zielId:'${z.id}'})" style="width:100%;padding:9px;border-radius:10px;border:1.5px dashed ${f.bd};background:transparent;color:${f.tc};font-size:12px;font-family:inherit;cursor:pointer;font-weight:500;opacity:.7" onmouseenter="this.style.opacity='1'" onmouseleave="this.style.opacity='0.7'">+ Handlung zu diesem Ziel hinzufügen</button></div>`;
+    // Handlung direkt zum Ziel
+    out+=`<div style="margin-top:10px"><button onclick="openNeu({zielId:'${z.id}'})" style="width:100%;padding:9px;border-radius:10px;border:1.5px dashed ${f.bd};background:transparent;color:${f.tc};font-size:12px;font-family:inherit;cursor:pointer;font-weight:500;opacity:.7" onmouseenter="this.style.opacity='1'" onmouseleave="this.style.opacity='0.7'">+ Handlung zu diesem Ziel hinzufügen</button></div>`;
 
-    // Handlungen ohne Teilziel
-    const hOhneTZ = zH.filter(h => !h.teilzielId);
-    if (hOhneTZ.length) {
-      out += `<div style="font-size:10px;font-weight:700;color:${f.tc};opacity:.65;text-transform:uppercase;letter-spacing:.5px;margin:12px 0 6px">Weitere Handlungen</div>`;
-      out += '<div style="display:flex;gap:6px;flex-wrap:wrap">';
-      hOhneTZ.forEach(h => {
-        const p2 = person(h.pid);
-        out += `<div style="background:rgba(255,255,255,.75);border:0.5px solid ${f.bd};border-radius:8px;padding:5px 10px;font-size:11px;display:flex;align-items:center;gap:5px"><span style="font-size:8px;color:${h.status==='aktiv'?f.tc:'var(--t3)'}">●</span>${h.titel}${p2?`<span style="color:var(--t3);font-size:10px">· ${p2.name}</span>`:''}</div>`;
-      });
-      out += '</div>';
+    // Weitere Handlungen ohne Teilziel
+    const hOhneTZ=zH.filter(h=>!h.teilzielId);
+    if(hOhneTZ.length){
+      out+=`<div style="font-size:10px;font-weight:700;color:${f.tc};opacity:.65;text-transform:uppercase;letter-spacing:.5px;margin:12px 0 6px">Weitere Handlungen</div>`;
+      out+='<div style="display:flex;gap:6px;flex-wrap:wrap">';
+      hOhneTZ.forEach(h=>{const p2=person(h.pid);out+=`<div style="background:rgba(255,255,255,.75);border:0.5px solid ${f.bd};border-radius:8px;padding:5px 10px;font-size:11px;display:flex;align-items:center;gap:5px"><span style="font-size:8px;color:${h.status==='aktiv'?f.tc:'var(--t3)'}">●</span>${h.titel}${p2?`<span style="color:var(--t3);font-size:10px">· ${p2.name}</span>`:''}</div>`;});
+      out+='</div>';
     }
-    out += '</div>';
+    out+='</div>';
   });
-
-  document.getElementById('main').innerHTML = out;
+  document.getElementById('main').innerHTML=out;
 }
 
 // ═══════════════════════════════════════════════════════
-// TEILZIELE
+// TEILZIELE CRUD
 // ═══════════════════════════════════════════════════════
-async function toggleTZ(zid, tzid) {
-  const z = zielObj(zid); if (!z) return;
-  const tz = (z.teilziele||[]).find(t => t.id === tzid);
-  if (tz) tz.erledigt = !tz.erledigt;
-  await saveData(S); rZiele();
+async function toggleTZ(zid,tzid){
+  const z=zielObj(zid);if(!z)return;
+  const tz=(z.teilziele||[]).find(t=>t.id===tzid);if(tz)tz.erledigt=!tz.erledigt;
+  await dbPatch('teilziele',tzid,{erledigt:tz.erledigt});rZiele();
 }
-function openAddTZ(zid) {
-  document.getElementById('mb').innerHTML = `<div class="mt">Teilziel hinzufügen</div>`
-    + `<div class="fl"><label>Name</label><input id="tzn" placeholder="z.B. Messe München vorbereitet" autofocus></div>`
-    + `<div class="f2"><div class="fl"><label>Verantwortlich</label><select id="tzv">${S.personen.map(p=>`<option value="${p.id}">${p.name}</option>`).join('')}</select></div>`
-    + `<div class="fl"><label>Bis wann</label><input type="date" id="tzd"></div></div>`
-    + `<div class="mf"><button class="btn btn-gr" onclick="cm()">Abbrechen</button><button class="btn btn-dk" onclick="saveTZ('${zid}',null)">Speichern</button></div>`;
+function openAddTZ(zid){
+  document.getElementById('mb').innerHTML=`<div class="mt">Teilziel hinzufügen</div>`
+    +`<div class="fl"><label>Name</label><input id="tzn" placeholder="z.B. Messe München vorbereitet" autofocus></div>`
+    +`<div class="f2"><div class="fl"><label>Verantwortlich</label><select id="tzv">${S.personen.map(p=>`<option value="${p.id}">${p.name}</option>`).join('')}</select></div>`
+    +`<div class="fl"><label>Bis wann</label><input type="date" id="tzd"></div></div>`
+    +`<div class="mf"><button class="btn btn-gr" onclick="cm()">Abbrechen</button><button class="btn btn-dk" onclick="saveTZ('${zid}',null)">Speichern</button></div>`;
   document.getElementById('ovl').classList.add('open');
 }
-function editTZ(zid, tzid) {
-  const z = zielObj(zid); if (!z) return;
-  const tz = (z.teilziele||[]).find(t => t.id === tzid); if (!tz) return;
-  document.getElementById('mb').innerHTML = `<div class="mt">Teilziel bearbeiten</div>`
-    + `<div class="fl"><label>Name</label><input id="tzn" value="${tz.name}" autofocus></div>`
-    + `<div class="f2"><div class="fl"><label>Verantwortlich</label><select id="tzv">${S.personen.map(p=>`<option value="${p.id}"${tz.verantwortlichId===p.id?' selected':''} >${p.name}</option>`).join('')}</select></div>`
-    + `<div class="fl"><label>Bis wann</label><input type="date" id="tzd" value="${tz.datum||''}"></div></div>`
-    + `<div class="mf"><button class="btn btn-red" onclick="delTZ('${zid}','${tzid}')">Löschen</button><button class="btn btn-gr" onclick="cm()">Abbrechen</button><button class="btn btn-dk" onclick="saveTZ('${zid}','${tzid}')">Speichern</button></div>`;
+function editTZ(zid,tzid){
+  const z=zielObj(zid);if(!z)return;
+  const tz=(z.teilziele||[]).find(t=>t.id===tzid);if(!tz)return;
+  document.getElementById('mb').innerHTML=`<div class="mt">Teilziel bearbeiten</div>`
+    +`<div class="fl"><label>Name</label><input id="tzn" value="${tz.name}" autofocus></div>`
+    +`<div class="f2"><div class="fl"><label>Verantwortlich</label><select id="tzv">${S.personen.map(p=>`<option value="${p.id}"${tz.verantwortlichId===p.id?' selected':''}>${p.name}</option>`).join('')}</select></div>`
+    +`<div class="fl"><label>Bis wann</label><input type="date" id="tzd" value="${tz.datum||''}"></div></div>`
+    +`<div class="mf"><button class="btn btn-red" onclick="delTZ('${zid}','${tzid}')">Löschen</button><button class="btn btn-gr" onclick="cm()">Abbrechen</button><button class="btn btn-dk" onclick="saveTZ('${zid}','${tzid}')">Speichern</button></div>`;
   document.getElementById('ovl').classList.add('open');
 }
-async function saveTZ(zid, tzid) {
-  const z = zielObj(zid); if (!z) return;
-  const name = document.getElementById('tzn').value.trim(); if (!name) return;
-  const vid = document.getElementById('tzv').value, datum = document.getElementById('tzd').value;
-  if (tzid) {
-    const tz = (z.teilziele||[]).find(t => t.id === tzid);
-    if (tz) { tz.name = name; tz.verantwortlichId = vid; tz.datum = datum; }
+async function saveTZ(zid,tzid){
+  const z=zielObj(zid);if(!z)return;
+  const name=document.getElementById('tzn').value.trim();if(!name)return;
+  const vid=document.getElementById('tzv').value,datum=document.getElementById('tzd').value;
+  if(tzid){
+    const tz=(z.teilziele||[]).find(t=>t.id===tzid);
+    if(tz){tz.name=name;tz.verantwortlichId=vid;tz.datum=datum;}
+    await dbPatch('teilziele',tzid,{name,verantwortlich_id:vid,datum:datum||null});
   } else {
-    z.teilziele = z.teilziele||[];
-    z.teilziele.push({id:nid('tz'), name, verantwortlichId:vid, datum, erledigt:false});
+    const id=nid('tz'),rec={id,zielId:zid,name,verantwortlichId:vid,datum,erledigt:false};
+    z.teilziele=z.teilziele||[];z.teilziele.push(rec);
+    await dbInsert('teilziele',rec);
   }
-  await saveData(S); cm(); rZiele();
+  cm();rZiele();
 }
-async function delTZ(zid, tzid) {
-  if (!confirm('Teilziel löschen?')) return;
-  const z = zielObj(zid); if (!z) return;
-  z.teilziele = (z.teilziele||[]).filter(t => t.id !== tzid);
-  S.handlungen.forEach(h => { if (h.teilzielId === tzid) h.teilzielId = null; });
-  await saveData(S); cm(); rZiele();
+async function delTZ(zid,tzid){
+  if(!confirm('Teilziel löschen?'))return;
+  const z=zielObj(zid);if(!z)return;
+  z.teilziele=(z.teilziele||[]).filter(t=>t.id!==tzid);
+  S.handlungen.forEach(h=>{if(h.teilzielId===tzid)h.teilzielId=null;});
+  await dbDelete('teilziele',tzid);cm();rZiele();
 }
 
 // ═══════════════════════════════════════════════════════
 // ZIEL CRUD
 // ═══════════════════════════════════════════════════════
-async function addZiel() {
-  const id = nid('z');
-  await insertRecord('ziele', {id, name:'Neues Ziel', farbe:Math.floor(Math.random()*FARBEN.length), pct:0, verantwortlichId:'', kpis:[], teilziele:[]});
-  rZiele(); editZiel(id);
+async function addZiel(){
+  const id=nid('z'),rec={id,name:'Neues Ziel',farbe:Math.floor(Math.random()*FARBEN.length),pct:0,verantwortlichId:'',kpis:[],teilziele:[]};
+  S.ziele.push(rec);await dbInsert('ziele',rec);rZiele();editZiel(id);
 }
-function editZiel(zid) {
-  const z = S.ziele.find(x => x.id === zid); if (!z) return;
-  document.getElementById('mb').innerHTML = `<div class="mt">Ziel bearbeiten</div>`
-    + `<div class="fl"><label>Name</label><input id="zn" value="${z.name}" autofocus></div>`
-    + `<div class="fl"><label>Verantwortlich</label><select id="zver"><option value="">— niemand —</option>${S.personen.map(p=>`<option value="${p.id}"${z.verantwortlichId===p.id?' selected':''}>${p.name}</option>`).join('')}</select></div>`
-    + `<div class="fl"><label>Fortschritt %</label><input id="zpct" type="number" min="0" max="100" value="${z.pct}"></div>`
-    + `<div class="fl"><label>Farbe</label><div style="display:flex;gap:8px;margin-top:4px">${FARBEN.map((f,i)=>`<div onclick="selZF(${i})" id="zfc${i}" style="width:24px;height:24px;border-radius:50%;background:${f.tc};cursor:pointer;border:${z.farbe===i?'3px':'2px'} solid ${z.farbe===i?'var(--text)':'transparent'}"></div>`).join('')}</div></div>`
-    + `<input type="hidden" id="zfarbe" value="${z.farbe}">`
-    + `<div class="mf"><button class="btn btn-red" onclick="delZiel('${zid}')">Löschen</button><button class="btn btn-gr" onclick="cm()">Abbrechen</button><button class="btn btn-dk" onclick="saveZiel('${zid}')">Speichern</button></div>`;
+function editZiel(zid){
+  const z=S.ziele.find(x=>x.id===zid);if(!z)return;
+  document.getElementById('mb').innerHTML=`<div class="mt">Ziel bearbeiten</div>`
+    +`<div class="fl"><label>Name</label><input id="zn" value="${z.name}" autofocus></div>`
+    +`<div class="fl"><label>Verantwortlich</label><select id="zver"><option value="">— niemand —</option>${S.personen.map(p=>`<option value="${p.id}"${z.verantwortlichId===p.id?' selected':''}>${p.name}</option>`).join('')}</select></div>`
+    +`<div class="fl"><label>Fortschritt %</label><input id="zpct" type="number" min="0" max="100" value="${z.pct}"></div>`
+    +`<div class="fl"><label>Farbe</label><div style="display:flex;gap:8px;margin-top:4px">${FARBEN.map((f,i)=>`<div onclick="selZF(${i})" id="zfc${i}" style="width:24px;height:24px;border-radius:50%;background:${f.tc};cursor:pointer;border:${z.farbe===i?'3px':'2px'} solid ${z.farbe===i?'var(--text)':'transparent'}"></div>`).join('')}</div></div>`
+    +`<input type="hidden" id="zfarbe" value="${z.farbe}">`
+    +`<div class="mf"><button class="btn btn-red" onclick="delZiel('${zid}')">Löschen</button><button class="btn btn-gr" onclick="cm()">Abbrechen</button><button class="btn btn-dk" onclick="saveZiel('${zid}')">Speichern</button></div>`;
   document.getElementById('ovl').classList.add('open');
 }
-function selZF(i) {
-  document.getElementById('zfarbe').value = i;
-  FARBEN.forEach((_,j) => { const el = document.getElementById('zfc'+j); if(el) el.style.border = (j===i?'3px solid var(--text)':'2px solid transparent'); });
+function selZF(i){document.getElementById('zfarbe').value=i;FARBEN.forEach((_,j)=>{const el=document.getElementById('zfc'+j);if(el)el.style.border=(j===i?'3px solid var(--text)':'2px solid transparent');});}
+async function saveZiel(zid){
+  const z=S.ziele.find(x=>x.id===zid);if(!z)return;
+  z.name=document.getElementById('zn').value.trim()||z.name;
+  z.verantwortlichId=document.getElementById('zver').value;
+  z.pct=Math.min(100,Math.max(0,parseInt(document.getElementById('zpct').value)||0));
+  z.farbe=parseInt(document.getElementById('zfarbe').value)||0;
+  await dbPatch('ziele',zid,{name:z.name,verantwortlich_id:z.verantwortlichId,pct:z.pct,farbe:z.farbe});
+  cm();rZiele();
 }
-async function saveZiel(zid) {
-  const z = S.ziele.find(x => x.id === zid); if (!z) return;
-  z.name = document.getElementById('zn').value.trim() || z.name;
-  z.verantwortlichId = document.getElementById('zver').value;
-  z.pct = Math.min(100, Math.max(0, parseInt(document.getElementById('zpct').value)||0));
-  z.farbe = parseInt(document.getElementById('zfarbe').value)||0;
-  await saveData(S); cm(); rZiele();
-}
-async function delZiel(zid) {
-  if (!confirm('Ziel wirklich löschen?')) return;
-  await deleteRecord('ziele', zid); cm(); rZiele();
+async function delZiel(zid){
+  if(!confirm('Ziel wirklich löschen?'))return;
+  S.ziele=S.ziele.filter(x=>x.id!==zid);
+  await dbDelete('ziele',zid);cm();rZiele();
 }
 
 // KPI CRUD
-async function addKpi(zid) {
-  const z = zielObj(zid); if (!z) return;
-  const kid = nid('k');
-  z.kpis.push({id:kid, label:'Neuer KPI', ist:0, ziel:10, unit:'', freq:'täglich', pid:(S.personen[0]?.id)||'', inv:false});
-  await saveData(S); rZiele(); editKpiDef(zid, kid);
+async function addKpi(zid){
+  const z=zielObj(zid);if(!z)return;
+  const kid=nid('k'),rec={id:kid,zielId:zid,label:'Neuer KPI',ist:0,ziel:10,unit:'',freq:'täglich',pid:S.personen[0]?.id||'',inv:false};
+  z.kpis.push(rec);await dbInsert('kpis',rec);rZiele();editKpiDef(zid,kid);
 }
-function editKpiDef(zid, kid) {
-  if (!isGF()) return;
-  const z = zielObj(zid); if (!z) return;
-  const k = z.kpis.find(x => x.id === kid); if (!k) return;
-  document.getElementById('mb').innerHTML = `<div class="mt">KPI bearbeiten</div>`
-    + `<div class="fl"><label>Name</label><input id="kl" value="${k.label}" autofocus></div>`
-    + `<div class="f2"><div class="fl"><label>Ist-Wert</label><input id="ki" type="number" value="${k.ist}"></div><div class="fl"><label>Ziel-Wert</label><input id="kz" type="number" value="${k.ziel}"></div></div>`
-    + `<div class="f2"><div class="fl"><label>Einheit</label><input id="ku" value="${k.unit}" placeholder="%, Stk…"></div><div class="fl"><label>Rhythmus</label><select id="kf">${FREQ.map(f=>`<option${k.freq===f?' selected':''}>${f}</option>`).join('')}</select></div></div>`
-    + `<div class="fl"><label>Verantwortlich</label><select id="kp">${S.personen.map(p=>`<option value="${p.id}"${k.pid===p.id?' selected':''}>${p.name}</option>`).join('')}</select></div>`
-    + `<div class="fl"><label style="text-transform:none;font-size:13px;font-weight:400;display:flex;align-items:center;gap:8px"><input type="checkbox" id="kinv"${k.inv?' checked':''} style="width:auto"> Niedriger ist besser</label></div>`
-    + `<div class="mf"><button class="btn btn-red" onclick="delKpi('${zid}','${kid}')">Löschen</button><button class="btn btn-gr" onclick="cm()">Abbrechen</button><button class="btn btn-dk" onclick="saveKpi('${zid}','${kid}')">Speichern</button></div>`;
+function editKpiDef(zid,kid){
+  if(!isGF())return;
+  const z=zielObj(zid);if(!z)return;const k=z.kpis.find(x=>x.id===kid);if(!k)return;
+  document.getElementById('mb').innerHTML=`<div class="mt">KPI bearbeiten</div>`
+    +`<div class="fl"><label>Name</label><input id="kl" value="${k.label}" autofocus></div>`
+    +`<div class="f2"><div class="fl"><label>Ist-Wert</label><input id="ki" type="number" value="${k.ist}"></div><div class="fl"><label>Ziel-Wert</label><input id="kz" type="number" value="${k.ziel}"></div></div>`
+    +`<div class="f2"><div class="fl"><label>Einheit</label><input id="ku" value="${k.unit}" placeholder="%, Stk…"></div><div class="fl"><label>Rhythmus</label><select id="kf">${FREQ.map(f=>`<option${k.freq===f?' selected':''}>${f}</option>`).join('')}</select></div></div>`
+    +`<div class="fl"><label>Verantwortlich</label><select id="kp">${S.personen.map(p=>`<option value="${p.id}"${k.pid===p.id?' selected':''}>${p.name}</option>`).join('')}</select></div>`
+    +`<div class="fl"><label style="text-transform:none;font-size:13px;font-weight:400;display:flex;align-items:center;gap:8px"><input type="checkbox" id="kinv"${k.inv?' checked':''} style="width:auto"> Niedriger ist besser</label></div>`
+    +`<div class="mf"><button class="btn btn-red" onclick="delKpi('${zid}','${kid}')">Löschen</button><button class="btn btn-gr" onclick="cm()">Abbrechen</button><button class="btn btn-dk" onclick="saveKpi('${zid}','${kid}')">Speichern</button></div>`;
   document.getElementById('ovl').classList.add('open');
 }
-async function saveKpi(zid, kid) {
-  const z = zielObj(zid); if (!z) return;
-  const k = z.kpis.find(x => x.id === kid); if (!k) return;
-  k.label = document.getElementById('kl').value.trim() || k.label;
-  k.ist   = parseFloat(document.getElementById('ki').value)||0;
-  k.ziel  = parseFloat(document.getElementById('kz').value)||0;
-  k.unit  = document.getElementById('ku').value;
-  k.freq  = document.getElementById('kf').value;
-  k.pid   = document.getElementById('kp').value;
-  k.inv   = document.getElementById('kinv').checked;
-  await saveData(S); cm(); rZiele();
+async function saveKpi(zid,kid){
+  const z=zielObj(zid);if(!z)return;const k=z.kpis.find(x=>x.id===kid);if(!k)return;
+  k.label=document.getElementById('kl').value.trim()||k.label;
+  k.ist=parseFloat(document.getElementById('ki').value)||0;
+  k.ziel=parseFloat(document.getElementById('kz').value)||0;
+  k.unit=document.getElementById('ku').value;
+  k.freq=document.getElementById('kf').value;
+  k.pid=document.getElementById('kp').value;
+  k.inv=document.getElementById('kinv').checked;
+  await dbPatch('kpis',kid,{label:k.label,ist:k.ist,ziel:k.ziel,unit:k.unit,freq:k.freq,pid:k.pid,inv:k.inv});
+  cm();rZiele();
 }
-async function delKpi(zid, kid) {
-  const z = zielObj(zid); if (!z) return;
-  z.kpis = z.kpis.filter(x => x.id !== kid);
-  await saveData(S); cm(); rZiele();
+async function delKpi(zid,kid){
+  const z=zielObj(zid);if(!z)return;
+  z.kpis=z.kpis.filter(x=>x.id!==kid);
+  await dbDelete('kpis',kid);cm();rZiele();
 }
 
 // ═══════════════════════════════════════════════════════
 // NEUE HANDLUNG
 // ═══════════════════════════════════════════════════════
-function openNeu(pf) {
-  pf = pf || {}; _selPrio = pf.prio || null;
-  // Ziele + Bereiche in einem Dropdown — Bereiche klar getrennt
-  const zOpts = S.ziele.map(z => `<option value="z:${z.id}">[Ziel] ${z.name}</option>`).join('');
-  const bOpts = S.bereiche.map(b => `<option value="b:${b.id}">[${b.name}]</option>`).join('');
-  const defVal = pf.zielId ? `z:${pf.zielId}` : (pf.bereichId ? `b:${pf.bereichId}` : `z:${S.ziele[0]?.id}`);
+function openNeu(pf={}){
+  _selPrio=pf.prio||null;
+  const zOpts=S.ziele.map(z=>`<option value="z:${z.id}">[Ziel] ${z.name}</option>`).join('');
+  const bOpts=S.bereiche.map(b=>`<option value="b:${b.id}">[${b.name}]</option>`).join('');
+  const defVal=pf.zielId?`z:${pf.zielId}`:(pf.bereichId?`b:${pf.bereichId}`:`z:${S.ziele[0]?.id}`);
 
-  document.getElementById('mb').innerHTML = `<div class="mt">Neue Handlung</div>`
-    + `<div class="fl"><label>Was soll gemacht werden?</label><input id="nt" value="${pf.titel||''}" placeholder="Konkret und aktiv formulieren…" autofocus></div>`
-    + `<div class="f2"><div class="fl"><label>Wer?</label><select id="np">${S.personen.map(p=>`<option value="${p.id}"${(pf.pid||aP)===p.id?' selected':''}>${p.name}</option>`).join('')}</select></div>`
-    + `<div class="fl"><label>Ziel / Bereich</label><select id="nzb" onchange="updateNeuTZ()">`
-    + `<optgroup label="Strategische Ziele">${zOpts}</optgroup>`
-    + `<optgroup label="Bereiche (Betrieb / Random)">${bOpts}</optgroup>`
-    + `</select></div></div>`
-    + `<div class="fl" id="tz-wrap"><label>Teilziel (optional)</label><select id="ntz"><option value="">— kein Teilziel —</option></select></div>`
-    + `<div class="fl"><label>Priorität</label><div style="display:flex;gap:6px;margin-top:2px">`
-    + [null,'P1','P2','P3'].map(pr => {
-        const bg = pr==='P1'?'var(--red-bg)':pr==='P2'?'#fff7ed':'var(--gray-bg)';
-        const tc = pr==='P1'?'var(--red)':pr==='P2'?'#c2410c':'var(--t2)';
-        return `<button id="pbp-${pr||'k'}" onclick="selPrioBtn(this,'${pr}')" style="font-size:12px;padding:4px 11px;border-radius:8px;border:1px solid ${pr?tc:'var(--bd)'};background:${bg};color:${tc};cursor:pointer;font-family:inherit">${pr||'kein'}</button>`;
-      }).join('')
-    + `</div></div>`
-    + `<div class="f2"><div class="fl"><label>Dauer</label><select id="nh">${Object.keys(SH).map(h=>`<option value="${h}"${(pf.geplant||1)==h?' selected':''}>${SH[h]}</option>`).join('')}</select></div><div class="fl"><label>Deadline</label><input type="date" id="ndl" value="${pf.dl||''}"></div></div>`
-    + (isGF() ? `<div class="fl"><label style="display:flex;align-items:center;gap:8px;text-transform:none;font-size:13px;font-weight:400"><input type="checkbox" id="nvert"${pf.vertraulich?' checked':''} style="width:auto"> Vertraulich — nur GF sichtbar</label></div>` : '')
-    + `<div class="fl"><label>Notiz</label><input id="nno" value="${pf.notiz||''}" placeholder="Optional…"></div>`
-    + `<div class="mf"><button class="btn btn-gr" onclick="cm()">Abbrechen</button><button class="btn btn-dk" onclick="saveNeu()">Speichern</button></div>`;
+  document.getElementById('mb').innerHTML=`<div class="mt">Neue Handlung</div>`
+    +`<div class="fl"><label>Was soll gemacht werden?</label><input id="nt" value="${pf.titel||''}" placeholder="Konkret und aktiv formulieren…" autofocus></div>`
+    +`<div class="f2"><div class="fl"><label>Wer?</label><select id="np">${S.personen.map(p=>`<option value="${p.id}"${(pf.pid||aP)===p.id?' selected':''}>${p.name}</option>`).join('')}</select></div>`
+    +`<div class="fl"><label>Ziel / Bereich</label><select id="nzb" onchange="updateNeuTZ()"><optgroup label="Strategische Ziele">${zOpts}</optgroup><optgroup label="Bereiche">${bOpts}</optgroup></select></div></div>`
+    +`<div class="fl" id="tz-wrap"><label>Teilziel (optional)</label><select id="ntz"><option value="">— kein Teilziel —</option></select></div>`
+    +`<div class="fl"><label>Priorität</label><div style="display:flex;gap:6px;margin-top:2px">`
+    +[null,'P1','P2','P3'].map(pr=>{const bg=pr==='P1'?'var(--red-bg)':pr==='P2'?'#fff7ed':'var(--gray-bg)';const tc=pr==='P1'?'var(--red)':pr==='P2'?'#c2410c':'var(--t2)';return`<button id="pbp-${pr||'k'}" onclick="selPrioBtn(this,'${pr}')" style="font-size:12px;padding:4px 11px;border-radius:8px;border:1px solid ${pr?tc:'var(--bd)'};background:${bg};color:${tc};cursor:pointer;font-family:inherit">${pr||'kein'}</button>`;}).join('')
+    +`</div></div>`
+    +`<div class="f2"><div class="fl"><label>Dauer</label><select id="nh">${Object.keys(SH).map(h=>`<option value="${h}"${(pf.geplant||1)==h?' selected':''}>${SH[h]}</option>`).join('')}</select></div><div class="fl"><label>Deadline</label><input type="date" id="ndl" value="${pf.dl||''}"></div></div>`
+    +(isGF()?`<div class="fl"><label style="display:flex;align-items:center;gap:8px;text-transform:none;font-size:13px;font-weight:400"><input type="checkbox" id="nvert"${pf.vertraulich?' checked':''} style="width:auto"> Vertraulich — nur GF sichtbar</label></div>`:'')
+    +`<div class="fl"><label>Notiz</label><input id="nno" value="${pf.notiz||''}" placeholder="Optional…"></div>`
+    +`<div class="mf"><button class="btn btn-gr" onclick="cm()">Abbrechen</button><button class="btn btn-dk" onclick="saveNeu()">Speichern</button></div>`;
   document.getElementById('ovl').classList.add('open');
-  updateNeuTZ();
-  // Vorausgewähltes Teilziel setzen
-  if (pf.teilzielId) {
-    const tzSel = document.getElementById('ntz');
-    if (tzSel) tzSel.value = pf.teilzielId;
-  }
+
+  // Ziel vorauswählen
+  const zbSel=document.getElementById('nzb');
+  if(zbSel&&defVal){zbSel.value=defVal;updateNeuTZ();}
+
+  // Teilziel vorauswählen
+  if(pf.teilzielId){setTimeout(()=>{const s=document.getElementById('ntz');if(s)s.value=pf.teilzielId;},50);}
 }
-function updateNeuTZ() {
-  const sel = document.getElementById('nzb'); if (!sel) return;
-  const val = sel.value, wrap = document.getElementById('tz-wrap'), tzSel = document.getElementById('ntz');
-  if (val && val.startsWith('z:')) {
-    const z = zielObj(val.slice(2)); wrap.style.display = '';
-    tzSel.innerHTML = '<option value="">— kein Teilziel —</option>';
-    if (z && z.teilziele) (z.teilziele||[]).filter(t => !t.erledigt).forEach(t => { tzSel.innerHTML += `<option value="${t.id}">${t.name}</option>`; });
-  } else { wrap.style.display = 'none'; }
+function updateNeuTZ(){
+  const sel=document.getElementById('nzb');if(!sel)return;
+  const val=sel.value,wrap=document.getElementById('tz-wrap'),tzSel=document.getElementById('ntz');
+  if(val&&val.startsWith('z:')){
+    const z=zielObj(val.slice(2));wrap.style.display='';
+    tzSel.innerHTML='<option value="">— kein Teilziel —</option>';
+    if(z&&z.teilziele)(z.teilziele||[]).filter(t=>!t.erledigt).forEach(t=>{tzSel.innerHTML+=`<option value="${t.id}">${t.name}</option>`;});
+  } else {wrap.style.display='none';}
 }
-function selPrioBtn(btn, pr) {
-  _selPrio = (!pr || pr === 'null') ? null : pr;
-  document.querySelectorAll('[id^="pbp-"]').forEach(b => b.style.outline = 'none');
-  btn.style.outline = '2px solid var(--text)';
+function selPrioBtn(btn,pr){
+  _selPrio=(!pr||pr==='null')?null:pr;
+  document.querySelectorAll('[id^="pbp-"]').forEach(b=>b.style.outline='none');
+  btn.style.outline='2px solid var(--text)';
 }
-async function saveNeu() {
-  const t = document.getElementById('nt').value.trim(); if (!t) return;
-  const zbVal = document.getElementById('nzb').value;
-  const zielId   = zbVal && zbVal.startsWith('z:') ? zbVal.slice(2) : null;
-  const bereichId = zbVal && zbVal.startsWith('b:') ? zbVal.slice(2) : null;
-  const tzSel = document.getElementById('ntz');
-  const teilzielId = (tzSel && zielId) ? tzSel.value || null : null;
-  const vert = document.getElementById('nvert') ? document.getElementById('nvert').checked : false;
-  const rec = {
-    id: 'h' + (S.nextId++),
-    pid: document.getElementById('np').value,
-    titel: t,
-    status: _selPrio ? 'backlog' : 'neu',
-    prio: _selPrio || null,
-    zielId, bereichId, teilzielId,
-    geplant: parseFloat(document.getElementById('nh').value) || 1,
-    gebucht: 0,
-    dl: document.getElementById('ndl').value,
-    ua: [], notiz: document.getElementById('nno').value.trim(),
-    aktSeit: null, vertraulich: vert
+async function saveNeu(){
+  const t=document.getElementById('nt').value.trim();if(!t)return;
+  const zbVal=document.getElementById('nzb').value;
+  const zielId=zbVal&&zbVal.startsWith('z:')?zbVal.slice(2):null;
+  const bereichId=zbVal&&zbVal.startsWith('b:')?zbVal.slice(2):null;
+  const tzSel=document.getElementById('ntz');
+  const teilzielId=(tzSel&&zielId)?tzSel.value||null:null;
+  const vert=document.getElementById('nvert')?document.getElementById('nvert').checked:false;
+  const rec={
+    id:'h'+(S.nextId++),pid:document.getElementById('np').value,titel:t,
+    status:_selPrio?'backlog':'neu',prio:_selPrio||null,
+    zielId,bereichId,teilzielId,
+    geplant:parseFloat(document.getElementById('nh').value)||1,
+    gebucht:0,dl:document.getElementById('ndl').value,
+    ua:[],notiz:document.getElementById('nno').value.trim(),
+    aktSeit:null,vertraulich:vert
   };
-  await insertRecord('handlungen', rec);
-  cm(); render();
+  await insertRecord('handlungen',rec);cm();render();
 }
 
 // ═══════════════════════════════════════════════════════
 // KI-ASSISTENT
 // ═══════════════════════════════════════════════════════
-function openAI() {
-  document.getElementById('mb').innerHTML = `<div class="mt">✦ Handlung mit KI erstellen</div>`
-    + `<div style="font-size:12px;color:var(--t2);margin-bottom:12px;line-height:1.6">Beschreib die Aufgabe frei — die KI erstellt und weist sie zu.</div>`
-    + `<div style="background:var(--gray-bg);border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:11px;color:var(--t3)">`
-    + `Beispiele:<br>„Erstelle für Fabian eine Aufgabe Wartungsplan bis Freitag unter Ziel Qualität P1"<br>„Kristina: Messe München buchen bis 10. April, P1"<br>„Backlog für Do: Lieferant B klären"</div>`
-    + `<div class="fl"><textarea id="ai-inp" rows="3" placeholder="Beschreibe die Aufgabe…" style="resize:none;font-size:13px"></textarea></div>`
-    + `<div id="ai-out"></div>`
-    + `<div class="mf"><button class="btn btn-gr" onclick="cm()">Abbrechen</button><button class="btn btn-purple" onclick="runAI()">✦ Erstellen</button></div>`;
+function openAI(){
+  document.getElementById('mb').innerHTML=`<div class="mt">✦ Handlung mit KI erstellen</div>`
+    +`<div style="font-size:12px;color:var(--t2);margin-bottom:12px;line-height:1.6">Beschreib die Aufgabe frei — die KI erstellt und weist sie zu.</div>`
+    +`<div style="background:var(--gray-bg);border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:11px;color:var(--t3)">Beispiele:<br>„Erstelle für Fabian eine Aufgabe Wartungsplan bis Freitag unter Ziel Qualität P1"<br>„Kristina: Messe München buchen bis 10. April, P1"</div>`
+    +`<div class="fl"><textarea id="ai-inp" rows="3" placeholder="Beschreibe die Aufgabe…" style="resize:none;font-size:13px"></textarea></div>`
+    +`<div id="ai-out"></div>`
+    +`<div class="mf"><button class="btn btn-gr" onclick="cm()">Abbrechen</button><button class="btn btn-purple" onclick="runAI()">✦ Erstellen</button></div>`;
   document.getElementById('ovl').classList.add('open');
   document.getElementById('ai-inp').focus();
 }
-
-async function runAI() {
-  const inp = document.getElementById('ai-inp').value.trim();
-  if (!inp) return;
-  const out = document.getElementById('ai-out');
-  out.innerHTML = `<div class="ai-thinking">⟳ KI denkt nach…</div>`;
-
-  const systemPrompt = `Du bist ein Assistent für das Halleluja OS Aufgabenmanagement. 
-Extrahiere aus dem deutschen Text eine Handlung und antworte NUR mit validem JSON ohne Markdown:
-{
-  "titel": "...",
-  "pid": "lu|si|kr|do|fa",
-  "zielId": "z1|z2|z3|null",
-  "bereichId": "b1|b2|b3|null",
-  "teilzielId": "tz1|tz2|tz3|tz4|null",
-  "prio": "P1|P2|P3|null",
-  "dl": "YYYY-MM-DD oder null",
-  "notiz": "..."
-}
-
+async function runAI(){
+  const inp=document.getElementById('ai-inp').value.trim();if(!inp)return;
+  const out=document.getElementById('ai-out');
+  out.innerHTML=`<div style="display:flex;align-items:center;gap:8px;padding:10px;color:var(--purple);font-size:12px">⟳ KI denkt nach…</div>`;
+  const systemPrompt=`Du bist ein Assistent für Halleluja OS. Extrahiere aus dem deutschen Text eine Handlung und antworte NUR mit validem JSON ohne Markdown:
+{"titel":"...","pid":"lu|si|kr|do|fa","zielId":"z1|z2|z3|null","bereichId":"b1|b2|b3|null","teilzielId":"tz1|tz2|tz3|tz4|null","prio":"P1|P2|P3|null","dl":"YYYY-MM-DD oder null","notiz":"..."}
 Personen: lu=Ludwig, si=Simon, kr=Kristina, do=Dominic, fa=Fabian
 Ziele: z1=Umsatz Q2, z2=After Sales, z3=Qualität
 Teilziele: tz1=Messe München, tz2=Pipeline KW16, tz3=Tourenoptimierung, tz4=Wartung standardisiert
 Bereiche: b1=Betrieb & Alltag, b2=Fuhrpark, b3=Random
-Heutiges Datum: ${TODAY}
-Wenn "Freitag" gemeint ist und heute Sonntag 2026-04-05 ist, dann ist Freitag = 2026-04-10.
-Woche=7 Tage, nächste Woche=+7 Tage.`;
-
+Heutiges Datum: ${TODAY}. Freitag=2026-04-10.`;
   try {
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1000,
-        system: systemPrompt,
-        messages: [{role:'user', content: inp}]
-      })
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,system:systemPrompt,messages:[{role:'user',content:inp}]})
     });
-    const data = await resp.json();
-    const text = data.content?.map(c => c.text||'').join('') || '';
+    const data=await resp.json();
+    const text=data.content?.map(c=>c.text||'').join('')||'';
     let parsed;
-    try {
-      parsed = JSON.parse(text.replace(/```json|```/g,'').trim());
-    } catch(e) {
-      out.innerHTML = `<div class="ai-result" style="background:var(--red-bg);border-color:var(--red-bd)">Konnte Antwort nicht verarbeiten. Versuche es anders zu formulieren.</div>`;
-      return;
-    }
-
-    const p2 = person(parsed.pid);
-    const z2 = parsed.zielId ? zielObj(parsed.zielId) : null;
-    const b2 = parsed.bereichId ? bereichObj(parsed.bereichId) : null;
-    const tzN = parsed.teilzielId && parsed.zielId ? (zielObj(parsed.zielId)?.teilziele||[]).find(t=>t.id===parsed.teilzielId)?.name : null;
-
-    out.innerHTML = `<div class="ai-result">`
-      + `<div style="font-size:13px;font-weight:600;margin-bottom:8px">${parsed.titel}</div>`
-      + `<div style="display:flex;gap:5px;flex-wrap:wrap">`
-      + (p2 ? `<span class="tag" style="background:var(--blue-bg);color:var(--blue)">${p2.name}</span>` : '')
-      + (parsed.prio ? prioTag(parsed.prio) : '')
-      + (z2 ? `<span class="tag" style="background:var(--green-bg);color:var(--green)">${z2.name}</span>` : '')
-      + (b2 ? `<span class="tag" style="background:var(--gray-bg);color:var(--t2)">${b2.name}</span>` : '')
-      + (tzN ? `<span class="tag" style="background:var(--purple-bg);color:var(--purple)">${tzN}</span>` : '')
-      + (parsed.dl ? dlTag(parsed.dl) : '')
-      + `</div>`
-      + (parsed.notiz ? `<div style="font-size:11px;color:var(--t2);margin-top:6px;font-style:italic">${parsed.notiz}</div>` : '')
-      + `</div>`
-      + `<div class="mf" style="margin-top:10px">`
-      + `<button class="btn btn-gr" onclick="openAI()">Nochmal</button>`
-      + `<button class="btn btn-purple" onclick="confirmAI(${JSON.stringify(JSON.stringify(parsed)).slice(1,-1)})">✓ Handlung anlegen</button>`
-      + `</div>`;
-  } catch(e) {
-    out.innerHTML = `<div class="ai-result" style="background:var(--red-bg);border-color:var(--red-bd)">Fehler: ${e.message}</div>`;
-  }
+    try{parsed=JSON.parse(text.replace(/```json|```/g,'').trim());}
+    catch(e){out.innerHTML=`<div class="ai-result" style="background:var(--red-bg);border-color:var(--red-bd)">Konnte Antwort nicht verarbeiten.</div>`;return;}
+    const p2=person(parsed.pid),z2=parsed.zielId?zielObj(parsed.zielId):null,b2=parsed.bereichId?bereichObj(parsed.bereichId):null;
+    const tzN=parsed.teilzielId&&parsed.zielId?(zielObj(parsed.zielId)?.teilziele||[]).find(t=>t.id===parsed.teilzielId)?.name:null;
+    const safeJson=JSON.stringify(parsed).replace(/'/g,"\\'");
+    out.innerHTML=`<div class="ai-result">`
+      +`<div style="font-size:13px;font-weight:600;margin-bottom:8px">${parsed.titel}</div>`
+      +`<div style="display:flex;gap:5px;flex-wrap:wrap">`
+      +(p2?`<span class="tag" style="background:var(--blue-bg);color:var(--blue)">${p2.name}</span>`:'')
+      +(parsed.prio?prioTag(parsed.prio):'')
+      +(z2?`<span class="tag" style="background:var(--green-bg);color:var(--green)">${z2.name}</span>`:'')
+      +(b2?`<span class="tag" style="background:var(--gray-bg);color:var(--t2)">${b2.name}</span>`:'')
+      +(tzN?`<span class="tag" style="background:var(--purple-bg);color:var(--purple)">${tzN}</span>`:'')
+      +(parsed.dl?dlTag(parsed.dl):'')
+      +`</div>${parsed.notiz?`<div style="font-size:11px;color:var(--t2);margin-top:6px;font-style:italic">${parsed.notiz}</div>`:''}</div>`
+      +`<div class="mf" style="margin-top:10px"><button class="btn btn-gr" onclick="openAI()">Nochmal</button><button class="btn btn-purple" onclick='confirmAI(${safeJson})'>✓ Handlung anlegen</button></div>`;
+  } catch(e){out.innerHTML=`<div class="ai-result" style="background:var(--red-bg);border-color:var(--red-bd)">Fehler: ${e.message}</div>`;}
 }
-
-async function confirmAI(jsonStr) {
-  let parsed;
-  try { parsed = JSON.parse(jsonStr); } catch(e) { return; }
-  const rec = {
-    id: 'h' + (S.nextId++),
-    pid: parsed.pid || aP,
-    titel: parsed.titel,
-    status: parsed.prio ? 'backlog' : 'neu',
-    prio: parsed.prio || null,
-    zielId: parsed.zielId || null,
-    bereichId: parsed.bereichId || null,
-    teilzielId: parsed.teilzielId || null,
-    geplant: 1, gebucht: 0,
-    dl: parsed.dl || '',
-    ua: [], notiz: parsed.notiz || '',
-    aktSeit: null, vertraulich: false
+async function confirmAI(parsed){
+  if(typeof parsed==='string'){try{parsed=JSON.parse(parsed);}catch(e){return;}}
+  const rec={
+    id:'h'+(S.nextId++),pid:parsed.pid||aP,titel:parsed.titel,
+    status:parsed.prio?'backlog':'neu',prio:parsed.prio||null,
+    zielId:parsed.zielId||null,bereichId:parsed.bereichId||null,teilzielId:parsed.teilzielId||null,
+    geplant:1,gebucht:0,dl:parsed.dl||'',ua:[],notiz:parsed.notiz||'',aktSeit:null,vertraulich:false
   };
-  await insertRecord('handlungen', rec);
-  cm(); render();
+  await insertRecord('handlungen',rec);cm();render();
 }
 
 // ═══════════════════════════════════════════════════════
-// TEAM — inkl. Bereiche, getrennt von Ziele-Ansicht
+// TEAM
 // ═══════════════════════════════════════════════════════
-function rTeam() {
-  const teamsToShow = isGF() ? S.teams : S.teams.filter(t => (me().teams||[]).includes(t.id));
-  let out = `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">`
-    + `<div><div style="font-size:16px;font-weight:700">Team</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Wer macht was — alle Bereiche</div></div></div>`;
+function rTeam(){
+  const teamsToShow=isGF()?[...S.teams].sort((a,b)=>a.id==='gf'?-1:b.id==='gf'?1:0):S.teams.filter(t=>(me().teams||[]).includes(t.id));
+  let out=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px"><div><div style="font-size:16px;font-weight:700">Team</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Wer macht was — alle Bereiche</div></div></div>`;
 
-  teamsToShow.forEach(t => {
-    const mids = t.members, fq = fokusQ(mids);
-    const aktiv = S.handlungen.filter(h => mids.includes(h.pid) && h.status === 'aktiv' && canSeeHandlung(h));
-    const pipeline = S.handlungen
-      .filter(h => mids.includes(h.pid) && (h.status === 'backlog' || h.status === 'neu') && canSeeHandlung(h))
-      .sort((a,b) => (a.prio||'P9').localeCompare(b.prio||'P9'))
-      .slice(0, 10);
+  teamsToShow.forEach(t=>{
+    const mids=t.members,fq=fokusQ(mids);
+    const aktiv=S.handlungen.filter(h=>mids.includes(h.pid)&&h.status==='aktiv'&&canSeeHandlung(h));
+    const pipeline=S.handlungen.filter(h=>mids.includes(h.pid)&&(h.status==='backlog'||h.status==='neu')&&canSeeHandlung(h)).sort((a,b)=>(a.prio||'P9').localeCompare(b.prio||'P9')).slice(0,10);
 
-    out += `<div class="team-block"><div class="team-block-head">`
-      + `<div style="flex:1"><div style="font-size:14px;font-weight:700;margin-bottom:6px">${t.name}</div>`
-      + `<div style="display:flex;align-items:center;gap:8px"><div class="focus-track" style="flex:1;margin:0"><div class="focus-fill" style="width:${fq}%"></div></div><span style="font-size:11px;font-weight:600;white-space:nowrap">${fq}% Ziel-fokussiert</span></div></div>`
-      + `<div style="display:flex;gap:6px;flex-shrink:0">${mids.map(id => { const p=person(id); if(!p) return ''; return avHtml(p,28,10); }).join('')}</div>`
-      + '</div>';
+    out+=`<div class="team-block"><div class="team-block-head">`
+      +`<div style="flex:1"><div style="font-size:14px;font-weight:700;margin-bottom:6px">${t.name}</div>`
+      +`<div style="display:flex;align-items:center;gap:8px"><div class="focus-track" style="flex:1;margin:0"><div class="focus-fill" style="width:${fq}%"></div></div><span style="font-size:11px;font-weight:600;white-space:nowrap">${fq}% Ziel-fokussiert</span></div></div>`
+      +`<div style="display:flex;gap:6px;flex-shrink:0">${mids.map(id=>{const p=person(id);if(!p)return'';return avHtml(p,28,10);}).join('')}</div></div>`;
 
-    if (aktiv.length) {
-      out += `<div style="padding:10px 16px 2px;font-size:10px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.5px">Läuft gerade</div>`;
-      aktiv.forEach(h => {
-        const p2 = person(h.pid), tzName = getTZName(h), ci = charInfo(h);
-        out += `<div class="team-h-row"><div class="dot" style="background:var(--blue);flex-shrink:0"></div>`
-          + `<div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${h.titel}${h.vertraulich?'<span class="lock" style="margin-left:5px">🔒</span>':''}</div>`
-          + `<div style="display:flex;gap:5px;margin-top:2px">`
-          + (p2 ? `<span style="font-size:10px;color:var(--t3)">${p2.name}</span>` : '')
-          + `<span style="font-size:10px;color:${ci.tagTc}">· ${ci.label}</span>`
-          + `<span style="font-size:10px;color:var(--t2)">· ${getContextName(h)}</span>`
-          + (tzName ? `<span style="font-size:10px;color:var(--purple)">· ${tzName}</span>` : '')
-          + `</div></div>${prioTag(h.prio)}</div>`;
+    if(aktiv.length){
+      out+=`<div style="padding:10px 16px 2px;font-size:10px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.5px">Läuft gerade</div>`;
+      aktiv.forEach(h=>{
+        const p2=person(h.pid),tzName=getTZName(h),ci=charInfo(h);
+        out+=`<div class="team-h-row"><div class="dot" style="background:var(--blue);flex-shrink:0"></div>`
+          +`<div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${h.titel}${h.vertraulich?'<span class="lock" style="margin-left:5px">🔒</span>':''}</div>`
+          +`<div style="display:flex;gap:5px;margin-top:2px">${p2?`<span style="font-size:10px;color:var(--t3)">${p2.name}</span>`:''}<span style="font-size:10px;color:${ci.tagTc}">· ${ci.label}</span><span style="font-size:10px;color:var(--t2)">· ${getContextName(h)}</span>${tzName?`<span style="font-size:10px;color:var(--purple)">· ${tzName}</span>`:''}</div></div>${prioTag(h.prio)}</div>`;
       });
     }
-    if (pipeline.length) {
-      out += `<div style="padding:10px 16px 2px;font-size:10px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px">Nächste Prioritäten</div>`;
-      pipeline.forEach(h => {
-        const p2 = person(h.pid), tzName = getTZName(h), ci = charInfo(h);
-        out += `<div class="team-h-row"><div class="dot" style="background:var(--bd);flex-shrink:0"></div>`
-          + `<div style="flex:1;min-width:0"><div style="font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${h.titel}${h.vertraulich?'<span class="lock" style="margin-left:5px">🔒</span>':''}</div>`
-          + `<div style="display:flex;gap:5px;margin-top:2px">`
-          + (p2 ? `<span style="font-size:10px;color:var(--t3)">${p2.name}</span>` : '')
-          + `<span style="font-size:10px;color:${ci.tagTc}">· ${ci.label}</span>`
-          + `<span style="font-size:10px;color:var(--t2)">· ${getContextName(h)}</span>`
-          + (tzName ? `<span style="font-size:10px;color:var(--purple)">· ${tzName}</span>` : '')
-          + `</div></div>${prioTag(h.prio)}</div>`;
+    if(pipeline.length){
+      out+=`<div style="padding:10px 16px 2px;font-size:10px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px">Nächste Prioritäten</div>`;
+      pipeline.forEach(h=>{
+        const p2=person(h.pid),tzName=getTZName(h),ci=charInfo(h);
+        out+=`<div class="team-h-row"><div class="dot" style="background:var(--bd);flex-shrink:0"></div>`
+          +`<div style="flex:1;min-width:0"><div style="font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${h.titel}${h.vertraulich?'<span class="lock" style="margin-left:5px">🔒</span>':''}</div>`
+          +`<div style="display:flex;gap:5px;margin-top:2px">${p2?`<span style="font-size:10px;color:var(--t3)">${p2.name}</span>`:''}<span style="font-size:10px;color:${ci.tagTc}">· ${ci.label}</span><span style="font-size:10px;color:var(--t2)">· ${getContextName(h)}</span>${tzName?`<span style="font-size:10px;color:var(--purple)">· ${tzName}</span>`:''}</div></div>${prioTag(h.prio)}</div>`;
       });
     }
-    if (!aktiv.length && !pipeline.length)
-      out += `<div style="padding:14px 16px;font-size:12px;color:var(--t3);font-style:italic">Keine aktiven Handlungen</div>`;
-    out += '<div style="height:4px"></div></div>';
+    if(!aktiv.length&&!pipeline.length)out+=`<div style="padding:14px 16px;font-size:12px;color:var(--t3);font-style:italic">Keine aktiven Handlungen</div>`;
+    out+='<div style="height:4px"></div></div>';
   });
-  document.getElementById('main').innerHTML = out;
+  document.getElementById('main').innerHTML=out;
 }
 
 // ═══════════════════════════════════════════════════════
 // SETTINGS
 // ═══════════════════════════════════════════════════════
-function openSettings() {
-  let h = `<div class="mt">Einstellungen</div>`;
-  h += `<div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Personen</div>`;
-  S.personen.forEach(p => {
-    const c = cl(p);
-    h += `<div class="settings-row">${avHtml(p,30,11)}<div style="flex:1"><div style="font-size:12px;font-weight:500">${p.name}</div><div style="font-size:10px;color:var(--t3)">${p.rolle}</div></div><button onclick="editPerson('${p.id}')" class="btn btn-gr" style="font-size:10px;padding:3px 9px">bearbeiten</button></div>`;
-  });
-  h += `<button onclick="openNutzer()" class="btn btn-gr" style="margin-top:8px;width:100%">+ Person hinzufügen</button>`;
-  h += `<div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin:20px 0 10px">Bereiche</div>`;
-  S.bereiche.forEach(b => {
-    h += `<div class="settings-row"><div style="flex:1"><div style="font-size:12px;font-weight:500">${b.name}</div><div style="font-size:10px;color:var(--t3)">${b.char}</div></div><button onclick="editBereich('${b.id}')" class="btn btn-gr" style="font-size:10px;padding:3px 9px">bearbeiten</button></div>`;
-  });
-  h += `<button onclick="addBereich()" class="btn btn-gr" style="margin-top:8px;width:100%">+ Neuer Bereich</button>`;
-  h += `<div class="mf"><button class="btn btn-gr" onclick="cm()">Schließen</button></div>`;
-  document.getElementById('mb').innerHTML = h;
+function openSettings(){
+  let h=`<div class="mt">Einstellungen</div>`;
+  h+=`<div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Personen</div>`;
+  S.personen.forEach(p=>{h+=`<div class="settings-row">${avHtml(p,30,11)}<div style="flex:1"><div style="font-size:12px;font-weight:500">${p.name}</div><div style="font-size:10px;color:var(--t3)">${p.rolle}</div></div><button onclick="editPerson('${p.id}')" class="btn btn-gr" style="font-size:10px;padding:3px 9px">bearbeiten</button></div>`;});
+  h+=`<button onclick="openNutzer()" class="btn btn-gr" style="margin-top:8px;width:100%">+ Person hinzufügen</button>`;
+  h+=`<div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin:20px 0 10px">Bereiche</div>`;
+  S.bereiche.forEach(b=>{h+=`<div class="settings-row"><div style="flex:1"><div style="font-size:12px;font-weight:500">${b.name}</div><div style="font-size:10px;color:var(--t3)">${b.char}</div></div><button onclick="editBereich('${b.id}')" class="btn btn-gr" style="font-size:10px;padding:3px 9px">bearbeiten</button></div>`;});
+  h+=`<button onclick="addBereich()" class="btn btn-gr" style="margin-top:8px;width:100%">+ Neuer Bereich</button>`;
+  h+=`<div class="mf"><button class="btn btn-gr" onclick="cm()">Schließen</button></div>`;
+  document.getElementById('mb').innerHTML=h;document.getElementById('ovl').classList.add('open');
+}
+function addBereich(){
+  document.getElementById('mb').innerHTML=`<div class="mt">Neuer Bereich</div>`
+    +`<div class="fl"><label>Name</label><input id="bn" placeholder="z.B. Fuhrpark" autofocus></div>`
+    +`<div class="fl"><label>Typ</label><select id="bc"><option value="betrieb">Betrieb</option><option value="random">Random</option></select></div>`
+    +`<div class="mf"><button class="btn btn-gr" onclick="openSettings()">Zurück</button><button class="btn btn-dk" onclick="saveBereich(null)">Speichern</button></div>`;
   document.getElementById('ovl').classList.add('open');
 }
-function addBereich() {
-  document.getElementById('mb').innerHTML = `<div class="mt">Neuer Bereich</div>`
-    + `<div class="fl"><label>Name</label><input id="bn" placeholder="z.B. Fuhrpark" autofocus></div>`
-    + `<div class="fl"><label>Typ</label><select id="bc"><option value="betrieb">Betrieb</option><option value="random">Random</option></select></div>`
-    + `<div class="mf"><button class="btn btn-gr" onclick="openSettings()">Zurück</button><button class="btn btn-dk" onclick="saveBereich(null)">Speichern</button></div>`;
+function editBereich(bid){
+  const b=bereichObj(bid);if(!b)return;
+  document.getElementById('mb').innerHTML=`<div class="mt">Bereich bearbeiten</div>`
+    +`<div class="fl"><label>Name</label><input id="bn" value="${b.name}" autofocus></div>`
+    +`<div class="fl"><label>Typ</label><select id="bc"><option value="betrieb"${b.char==='betrieb'?' selected':''}>Betrieb</option><option value="random"${b.char==='random'?' selected':''}>Random</option></select></div>`
+    +`<div class="mf"><button class="btn btn-red" onclick="delBereich('${bid}')">Löschen</button><button class="btn btn-gr" onclick="openSettings()">Zurück</button><button class="btn btn-dk" onclick="saveBereich('${bid}')">Speichern</button></div>`;
   document.getElementById('ovl').classList.add('open');
 }
-function editBereich(bid) {
-  const b = bereichObj(bid); if (!b) return;
-  document.getElementById('mb').innerHTML = `<div class="mt">Bereich bearbeiten</div>`
-    + `<div class="fl"><label>Name</label><input id="bn" value="${b.name}" autofocus></div>`
-    + `<div class="fl"><label>Typ</label><select id="bc"><option value="betrieb"${b.char==='betrieb'?' selected':''}>Betrieb</option><option value="random"${b.char==='random'?' selected':''}>Random</option></select></div>`
-    + `<div class="mf"><button class="btn btn-red" onclick="delBereich('${bid}')">Löschen</button><button class="btn btn-gr" onclick="openSettings()">Zurück</button><button class="btn btn-dk" onclick="saveBereich('${bid}')">Speichern</button></div>`;
+async function saveBereich(bid){
+  const name=document.getElementById('bn').value.trim();if(!name)return;
+  const char=document.getElementById('bc').value;
+  if(bid){const b=bereichObj(bid);if(b){b.name=name;b.char=char;await dbPatch('bereiche',bid,{name,char});}}
+  else{const id=nid('b'),rec={id,name,char,farbe:4};S.bereiche.push(rec);await dbInsert('bereiche',rec);}
+  openSettings();
+}
+async function delBereich(bid){
+  if(!confirm('Bereich löschen?'))return;
+  S.bereiche=S.bereiche.filter(x=>x.id!==bid);
+  S.handlungen.forEach(h=>{if(h.bereichId===bid)h.bereichId=null;});
+  await dbDelete('bereiche',bid);openSettings();
+}
+function editPerson(pid){
+  const p=person(pid);if(!p)return;
+  document.getElementById('mb').innerHTML=`<div class="mt">Person bearbeiten</div>`
+    +`<div class="f2"><div class="fl"><label>Name</label><input id="en" value="${p.name}" autofocus></div><div class="fl"><label>Kürzel</label><input id="ek" value="${p.k}" maxlength="3"></div></div>`
+    +`<div class="fl"><label>Rolle</label><input id="er" value="${p.rolle}"></div>`
+    +`<div class="fl"><label>Stufe</label><select id="es">${[['team','Teammitglied'],['lead','Team-Lead'],['gf','Geschäftsführung']].map(x=>`<option value="${x[0]}"${p.stufe===x[0]?' selected':''}>${x[1]}</option>`).join('')}</select></div>`
+    +`<div class="fl"><label>PIN</label><input id="ep" type="password" value="${p.pin}" maxlength="4"></div>`
+    +`<div class="mf">${pid!==realMe?`<button class="btn btn-red" onclick="deletePerson('${pid}')">Löschen</button>`:''}<button class="btn btn-gr" onclick="openSettings()">Zurück</button><button class="btn btn-dk" onclick="savePerson('${pid}')">Speichern</button></div>`;
   document.getElementById('ovl').classList.add('open');
 }
-async function saveBereich(bid) {
-  const name = document.getElementById('bn').value.trim(); if (!name) return;
-  const char = document.getElementById('bc').value;
-  if (bid) { const b = bereichObj(bid); if (b) { b.name = name; b.char = char; } }
-  else { S.bereiche.push({id:nid('b'), name, char, farbe:4}); }
-  await saveData(S); openSettings();
+async function savePerson(pid){
+  const p=person(pid);if(!p)return;
+  p.name=document.getElementById('en').value.trim()||p.name;
+  p.k=document.getElementById('ek').value.trim().toUpperCase().slice(0,3)||p.k;
+  p.rolle=document.getElementById('er').value.trim()||p.rolle;
+  p.stufe=document.getElementById('es').value;
+  const np=document.getElementById('ep').value.trim();
+  if(np.length===4&&/^\d{4}$/.test(np))p.pin=np;
+  await dbPatch('personen',pid,{name:p.name,k:p.k,rolle:p.rolle,stufe:p.stufe,pin:p.pin});
+  openSettings();render();
 }
-async function delBereich(bid) {
-  if (!confirm('Bereich löschen?')) return;
-  S.bereiche = S.bereiche.filter(x => x.id !== bid);
-  S.handlungen.forEach(h => { if (h.bereichId === bid) h.bereichId = null; });
-  await saveData(S); openSettings();
+async function deletePerson(pid){
+  if(!confirm('Person löschen?'))return;
+  S.personen=S.personen.filter(p=>p.id!==pid);
+  S.teams.forEach(t=>{t.members=t.members.filter(id=>id!==pid);});
+  await dbDelete('personen',pid);openSettings();render();
 }
-function editPerson(pid) {
-  const p = person(pid); if (!p) return;
-  document.getElementById('mb').innerHTML = `<div class="mt">Person bearbeiten</div>`
-    + `<div class="f2"><div class="fl"><label>Name</label><input id="en" value="${p.name}" autofocus></div><div class="fl"><label>Kürzel</label><input id="ek" value="${p.k}" maxlength="3"></div></div>`
-    + `<div class="fl"><label>Rolle</label><input id="er" value="${p.rolle}"></div>`
-    + `<div class="fl"><label>Stufe</label><select id="es">${[['team','Teammitglied'],['lead','Team-Lead'],['gf','Geschäftsführung']].map(x=>`<option value="${x[0]}"${p.stufe===x[0]?' selected':''}>${x[1]}</option>`).join('')}</select></div>`
-    + `<div class="fl"><label>PIN</label><input id="ep" type="password" value="${p.pin}" maxlength="4"></div>`
-    + `<div class="mf">${pid!==aP?`<button class="btn btn-red" onclick="deletePerson('${pid}')">Löschen</button>`:''}<button class="btn btn-gr" onclick="openSettings()">Zurück</button><button class="btn btn-dk" onclick="savePerson('${pid}')">Speichern</button></div>`;
+function openNutzer(){
+  document.getElementById('mb').innerHTML=`<div class="mt">Person hinzufügen</div>`
+    +`<div class="f2"><div class="fl"><label>Name</label><input id="un" autofocus></div><div class="fl"><label>Kürzel</label><input id="uk" maxlength="3"></div></div>`
+    +`<div class="fl"><label>Rolle</label><input id="ur"></div>`
+    +`<div class="fl"><label>Team</label><select id="ut">${S.teams.map(t=>`<option value="${t.id}">${t.name}</option>`).join('')}</select></div>`
+    +`<div class="fl"><label>Stufe</label><select id="ust"><option value="team">Teammitglied</option><option value="lead">Team-Lead</option><option value="gf">Geschäftsführung</option></select></div>`
+    +`<div class="fl"><label>PIN (4-stellig)</label><input id="upin" type="password" maxlength="4" placeholder="z.B. 6789"></div>`
+    +`<div class="mf"><button class="btn btn-gr" onclick="openSettings()">Zurück</button><button class="btn btn-dk" onclick="saveNutzer()">Hinzufügen</button></div>`;
   document.getElementById('ovl').classList.add('open');
 }
-async function savePerson(pid) {
-  const p = person(pid); if (!p) return;
-  p.name  = document.getElementById('en').value.trim() || p.name;
-  p.k     = document.getElementById('ek').value.trim().toUpperCase().slice(0,3) || p.k;
-  p.rolle = document.getElementById('er').value.trim() || p.rolle;
-  p.stufe = document.getElementById('es').value;
-  const np = document.getElementById('ep').value.trim();
-  if (np.length === 4 && /^\d{4}$/.test(np)) p.pin = np;
-  
-  // Supabase updaten
-  await supa('personen?id=eq.' + pid, {
-    method: 'PATCH',
-    body: { name: p.name, k: p.k, rolle: p.rolle, stufe: p.stufe, pin: p.pin },
-    prefer: 'return=minimal'
-  });
-  
-  await saveData(S); openSettings(); render();
-}
-async function deletePerson(pid) {
-  if (!confirm('Person löschen?')) return;
-  S.personen = S.personen.filter(p => p.id !== pid);
-  S.teams.forEach(t => { t.members = t.members.filter(id => id !== pid); });
-  await saveData(S); openSettings(); render();
-}
-function openNutzer() {
-  document.getElementById('mb').innerHTML = `<div class="mt">Person hinzufügen</div>`
-    + `<div class="f2"><div class="fl"><label>Name</label><input id="un" autofocus></div><div class="fl"><label>Kürzel</label><input id="uk" maxlength="3"></div></div>`
-    + `<div class="fl"><label>Rolle</label><input id="ur"></div>`
-    + `<div class="fl"><label>Team</label><select id="ut">${S.teams.map(t=>`<option value="${t.id}">${t.name}</option>`).join('')}</select></div>`
-    + `<div class="fl"><label>Stufe</label><select id="ust"><option value="team">Teammitglied</option><option value="lead">Team-Lead</option><option value="gf">Geschäftsführung</option></select></div>`
-    + `<div class="fl"><label>PIN (4-stellig)</label><input id="upin" type="password" maxlength="4" placeholder="z.B. 6789"></div>`
-    + `<div class="mf"><button class="btn btn-gr" onclick="openSettings()">Zurück</button><button class="btn btn-dk" onclick="saveNutzer()">Hinzufügen</button></div>`;
-  document.getElementById('ovl').classList.add('open');
-}
-async function saveNutzer() {
-  const name = document.getElementById('un').value.trim(), k = document.getElementById('uk').value.trim().toUpperCase().slice(0,3);
-  if (!name || !k) return;
-  const pin = document.getElementById('upin').value.trim();
-  if (!pin || pin.length !== 4 || !/^\d{4}$/.test(pin)) { alert('4-stellige PIN erforderlich.'); return; }
-  const tid = document.getElementById('ut').value, id = 'u'+Date.now(), ci = S.personen.length % CL.length;
-  const p = {id, name, k, rolle: document.getElementById('ur').value.trim()||'Teammitglied', stufe: document.getElementById('ust').value, ci, teams:[tid], pin};
-  
-  // Supabase speichern
-  await supa('personen', { method: 'POST', body: p });
-  
-  // Team updaten in Supabase
-  const t = S.teams.find(x => x.id === tid);
-  if (t) {
-    t.members.push(id);
-    await supa('teams?id=eq.' + tid, {
-      method: 'PATCH',
-      body: { members: t.members },
-      prefer: 'return=minimal'
-    });
-  }
-  
+async function saveNutzer(){
+  const name=document.getElementById('un').value.trim(),k=document.getElementById('uk').value.trim().toUpperCase().slice(0,3);
+  if(!name||!k)return;
+  const pin=document.getElementById('upin').value.trim();
+  if(!pin||pin.length!==4||!/^\d{4}$/.test(pin)){alert('4-stellige PIN erforderlich.');return;}
+  const tid=document.getElementById('ut').value,id='u'+Date.now(),ci=S.personen.length%CL.length;
+  const p={id,name,k,rolle:document.getElementById('ur').value.trim()||'Teammitglied',stufe:document.getElementById('ust').value,ci,teams:[tid],pin};
   S.personen.push(p);
-  await saveData(S); openSettings(); render();
+  await dbInsert('personen',p);
+  const t=S.teams.find(x=>x.id===tid);
+  if(t){t.members.push(id);await dbPatch('teams',tid,{members:t.members});}
+  openSettings();render();
 }
 
 // ═══════════════════════════════════════════════════════
 // TIMERS
 // ═══════════════════════════════════════════════════════
-function startTimers() {
-  if (timIv) clearInterval(timIv);
-  timIv = setInterval(() => {
-    document.querySelectorAll('[data-tid]').forEach(el => {
-      const h = S.handlungen.find(x => x.id === el.dataset.tid); if (!h) return;
-      const s = elapsedSec(h), pct = Math.min(100, Math.round(s/((h.geplant||1)*3600)*100));
-      const n = el.querySelector('.tn'), f = el.querySelector('.tf');
-      if (n) n.textContent = fmt(s);
-      if (f) f.style.width = pct + '%';
+function startTimers(){
+  if(timIv)clearInterval(timIv);
+  timIv=setInterval(()=>{
+    document.querySelectorAll('[data-tid]').forEach(el=>{
+      const h=S.handlungen.find(x=>x.id===el.dataset.tid);if(!h)return;
+      const s=elapsedSec(h),pct=Math.min(100,Math.round(s/((h.geplant||1)*3600)*100));
+      const n=el.querySelector('.tn'),f=el.querySelector('.tf');
+      if(n)n.textContent=fmt(s);if(f)f.style.width=pct+'%';
     });
-  }, 1000);
+  },1000);
 }
 
-function cm() { document.getElementById('ovl').classList.remove('open'); }
-window.addEventListener('keydown', e => { if (e.key === 'Escape') cm(); });
+function cm(){document.getElementById('ovl').classList.remove('open');}
+window.addEventListener('keydown',e=>{if(e.key==='Escape')cm();});
 
 // ═══════════════════════════════════════════════════════
 // BOOT
 // ═══════════════════════════════════════════════════════
-(async () => {
-  S = await loadData();
+(async()=>{
+  S=await loadData();
   initLogin();
-  initRealtime();
 })();
 </script>
 </body>
