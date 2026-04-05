@@ -176,6 +176,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;font-size:1
     <div class="checkin-emoji" id="ci-emoji">☀️</div>
     <div class="checkin-title" id="ci-title">Guten Morgen!</div>
     <div class="checkin-sub" id="ci-sub">Was ist heute deine wichtigste Priorität?</div>
+    <div id="ci-suggestions" style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px;text-align:left"></div>
     <input class="checkin-input" id="ci-input" placeholder="Heute schaffe ich…" />
     <button class="checkin-btn" onclick="saveCheckin()">Loslegen →</button>
     <div class="checkin-skip" onclick="skipCheckin()">Überspringen</div>
@@ -625,6 +626,26 @@ function showCheckin() {
   document.getElementById('ci-input').value = '';
   document.getElementById('checkin-screen').classList.add('open');
   document.getElementById('ci-input').focus();
+
+  // Top-Prioritäten aus Backlog vorschlagen
+  const suggestions = S.handlungen
+    .filter(h => h.pid === aP && (h.status === 'backlog' || h.status === 'neu') && canSeeHandlung(h))
+    .sort((a,b) => (a.prio||'P9').localeCompare(b.prio||'P9'))
+    .slice(0, 3);
+  
+  const box = document.getElementById('ci-suggestions');
+  if (suggestions.length) {
+    box.innerHTML = `<div style="font-size:11px;color:var(--t3);margin-bottom:4px">Deine Top-Prioritäten — tippen zum Übernehmen:</div>`
+      + suggestions.map(h => {
+          const bg = h.prio==='P1'?'var(--red-bg)':h.prio==='P2'?'#fff7ed':'var(--gray-bg)';
+          const tc = h.prio==='P1'?'var(--red)':h.prio==='P2'?'#c2410c':'var(--t2)';
+          return `<div onclick="document.getElementById('ci-input').value='${h.titel.replace(/'/g,"\\'")}'" 
+            style="padding:9px 12px;border-radius:10px;border:1px solid ${bg==='var(--gray-bg)'?'var(--bd)':tc};background:${bg};color:${tc};cursor:pointer;font-size:12px;font-weight:500;display:flex;align-items:center;gap:8px">
+            ${h.prio?`<span style="font-size:10px;font-weight:700">${h.prio}</span>`:''}
+            ${h.titel}
+          </div>`;
+        }).join('');
+  }
 }
 async function saveCheckin() {
   const val = document.getElementById('ci-input').value.trim();
