@@ -1116,6 +1116,7 @@ function rZiele() {
         + (tz.datum ? `<span style="font-size:10px;color:var(--purple);opacity:.7">bis ${tz.datum.slice(8)}.${tz.datum.slice(5,7)}.</span>` : '')
         + `</div></div>`
         + (canManageTZ(z.id) ? `<button onclick="editTZ('${z.id}','${tz.id}')" style="font-size:10px;padding:2px 8px;border-radius:6px;border:1px solid var(--purple-bd);background:rgba(255,255,255,.5);color:var(--purple);cursor:pointer;font-family:inherit">···</button>` : '')
+        + `<button onclick="openNeu({zielId:'${z.id}',teilzielId:'${tz.id}'})" style="font-size:10px;padding:2px 8px;border-radius:6px;border:1px solid var(--purple-bd);background:rgba(255,255,255,.5);color:var(--purple);cursor:pointer;font-family:inherit">+ Handlung</button>`
         + '</div>';
       if (tzH.length) {
         out += '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:6px">';
@@ -1302,6 +1303,11 @@ function openNeu(pf) {
     + `<div class="mf"><button class="btn btn-gr" onclick="cm()">Abbrechen</button><button class="btn btn-dk" onclick="saveNeu()">Speichern</button></div>`;
   document.getElementById('ovl').classList.add('open');
   updateNeuTZ();
+  // Vorausgewähltes Teilziel setzen
+  if (pf.teilzielId) {
+    const tzSel = document.getElementById('ntz');
+    if (tzSel) tzSel.value = pf.teilzielId;
+  }
 }
 function updateNeuTZ() {
   const sel = document.getElementById('nzb'); if (!sel) return;
