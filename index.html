@@ -17,38 +17,28 @@
   --gray-bg:#f8f8f7;
 }
 body{font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;font-size:13px;color:var(--text);background:var(--bg);height:100vh;overflow:hidden;display:flex;flex-direction:column}
-
-/* ── LOGIN ── */
 #login-screen{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:200}
 .login-box{background:var(--sf);border:1px solid var(--bd);border-radius:18px;padding:32px 36px;width:340px;max-width:95vw}
 .login-title{font-size:17px;font-weight:700;margin-bottom:4px}
 .login-sub{font-size:12px;color:var(--t3);margin-bottom:20px}
 .person-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:20px}
-.person-btn{padding:10px 8px;border-radius:10px;border:1px solid var(--bd);background:var(--sf);cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:8px;transition:border-color .15s}
+.person-btn{padding:10px 8px;border-radius:10px;border:1px solid var(--bd);background:var(--sf);cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:8px}
 .person-btn:hover{border-color:var(--text)}
 .person-btn.selected{border:2px solid var(--text);background:var(--gray-bg)}
 .pin-row{display:flex;gap:8px;justify-content:center;margin-bottom:16px}
 .pin-dot{width:14px;height:14px;border-radius:50%;background:var(--bd);transition:background .15s}
 .pin-dot.filled{background:var(--text)}
 .pin-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.pin-key{padding:14px;border-radius:10px;border:1px solid var(--bd);background:var(--sf);font-size:16px;font-weight:600;cursor:pointer;font-family:inherit;transition:background .1s}
+.pin-key{padding:14px;border-radius:10px;border:1px solid var(--bd);background:var(--sf);font-size:16px;font-weight:600;cursor:pointer;font-family:inherit}
 .pin-key:hover{background:var(--gray-bg)}
-.pin-key:active{background:var(--bd)}
 .login-err{font-size:12px;color:var(--red);text-align:center;min-height:18px;margin-top:8px}
-
-/* ── CHECK-IN ── */
 #checkin-screen{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;align-items:center;justify-content:center;z-index:150;padding:16px}
 #checkin-screen.open{display:flex}
 .checkin-box{background:var(--sf);border-radius:20px;padding:32px 36px;width:440px;max-width:100%;text-align:center}
-.checkin-emoji{font-size:36px;margin-bottom:12px}
-.checkin-title{font-size:18px;font-weight:700;margin-bottom:6px}
-.checkin-sub{font-size:13px;color:var(--t2);margin-bottom:16px;line-height:1.5}
 .checkin-input{width:100%;padding:12px 14px;border-radius:10px;border:1.5px solid var(--bd);font-family:inherit;font-size:14px;outline:none;margin-bottom:12px;text-align:left}
 .checkin-input:focus{border-color:var(--blue)}
 .checkin-btn{width:100%;padding:13px;border-radius:10px;background:var(--text);color:#fff;border:none;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer}
 .checkin-skip{font-size:11px;color:var(--t3);cursor:pointer;margin-top:10px;display:inline-block}
-
-/* ── APP SHELL ── */
 .bar{background:var(--sf);border-bottom:1px solid var(--bd);display:flex;align-items:center;padding:0 14px;height:46px;flex-shrink:0;gap:2px}
 .logo{font-size:13px;font-weight:700;padding-right:12px;border-right:1px solid var(--bd);margin-right:6px;white-space:nowrap}
 .nt{font-size:12px;padding:0 10px;height:46px;border:none;border-bottom:2px solid transparent;cursor:pointer;background:transparent;color:var(--t2);font-family:inherit;font-weight:400;white-space:nowrap}
@@ -61,8 +51,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;font-size:1
 .gl{font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.6px;padding:0 8px;margin:12px 0 5px}
 .sbn{width:100%;text-align:left;padding:7px 8px;border-radius:9px;border:none;cursor:pointer;background:transparent;font-family:inherit;margin-bottom:2px;display:flex;align-items:center;gap:8px}
 .sbn.on,.sbn:hover{background:var(--bg)}
-
-/* ── COMPONENTS ── */
 .av{border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0}
 .card{background:var(--sf);border:1px solid var(--bd);border-radius:14px;padding:13px 15px;margin-bottom:8px}
 .card.aktiv-c{border:2px solid var(--text)}
@@ -76,43 +64,29 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;font-size:1
 .btn-purple{background:var(--purple-bg);color:var(--purple);border:1px solid var(--purple-bd)}
 .lock{font-size:9px;padding:1px 5px;border-radius:4px;background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-bd)}
 .dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
-
-/* ── TIMER ── */
 .timer{background:var(--gray-bg);border-radius:9px;padding:7px 11px;text-align:center;flex-shrink:0;min-width:80px}
 .tn{font-size:17px;font-weight:700;font-family:monospace;letter-spacing:-.5px}
 .tbar{height:3px;border-radius:99px;background:var(--bd);margin-top:4px;overflow:hidden}
 .tf{height:100%;border-radius:99px;background:var(--blue)}
-
-/* ── KPI ── */
 .kpi-row{display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--gray-bg);border-radius:9px;margin-bottom:6px;cursor:pointer}
 .kpi-track{width:80px;height:4px;background:var(--bd);border-radius:99px;overflow:hidden;flex-shrink:0}
 .kpi-fill{height:100%;border-radius:99px}
-
-/* ── FOCUS BAR ── */
 .focus-bar{background:var(--gray-bg);border-radius:9px;padding:9px 12px;margin-top:12px;display:flex;align-items:center;gap:10px}
 .focus-track{flex:1;height:4px;background:var(--bd);border-radius:99px;overflow:hidden}
 .focus-fill{height:100%;border-radius:99px;background:var(--blue)}
-
-/* ── STEPS ── */
 .sw{padding-left:8px;border-left:2px solid var(--blue-bd);margin:8px 0}
 .sr{display:flex;align-items:center;gap:8px;padding:3px 0;cursor:pointer;user-select:none}
 .sc{width:13px;height:13px;border-radius:3px;border:1px solid var(--bd);background:var(--sf);display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .sc.dn{background:var(--text);border-color:var(--text)}
 .sl{font-size:11px}.sl.dn{text-decoration:line-through;color:var(--t3)}
 .asi{flex:1;font-size:11px;padding:4px 8px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--text);font-family:inherit;outline:none}
-
-/* ── PROFILE HEADER ── */
 .ph{display:flex;align-items:center;gap:12px;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--bd)}
 .phs{margin-left:auto;display:flex;gap:16px}
 .phv{font-size:18px;font-weight:700;line-height:1}
 .phl{font-size:10px;color:var(--t3);margin-top:1px}
-
-/* ── ZIEL CARD ── */
 .zcard{border-radius:14px;padding:18px;margin-bottom:14px;border:1px solid}
 .pbar{height:5px;border-radius:99px;background:rgba(0,0,0,.08);overflow:hidden;flex:1}
 .pbar-fill{height:100%;border-radius:99px;transition:width .3s}
-
-/* ── MODAL ── */
 .ovl{display:none;position:fixed;inset:0;background:rgba(0,0,0,.18);z-index:100;align-items:center;justify-content:center;padding:16px}
 .ovl.open{display:flex}
 .modal{background:var(--sf);border-radius:16px;padding:24px;width:520px;max-width:100%;max-height:92vh;overflow-y:auto}
@@ -123,16 +97,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;font-size:1
 .fl input:focus,.fl select:focus,.fl textarea:focus{border-color:var(--blue)}
 .f2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .mf{display:flex;gap:8px;justify-content:flex-end;margin-top:18px}
-
-/* ── TEILZIEL ── */
 .tz-block{background:var(--purple-bg);border:1px solid var(--purple-bd);border-radius:11px;padding:12px 14px;margin-bottom:8px}
 .tz-head{display:flex;align-items:center;gap:8px;margin-bottom:6px}
 .tz-title{font-size:13px;font-weight:600;color:var(--purple);flex:1}
 .tz-done{text-decoration:line-through;opacity:.5}
 .tz-add-btn{display:flex;align-items:center;gap:6px;padding:8px 12px;border-radius:9px;border:1.5px dashed var(--purple-bd);background:transparent;color:var(--purple);font-size:11px;font-family:inherit;cursor:pointer;width:100%;margin-top:6px;opacity:.7}
 .tz-add-btn:hover{opacity:1;background:rgba(124,58,237,.06)}
-
-/* ── TEAM ── */
 .team-block{background:var(--sf);border:1px solid var(--bd);border-radius:14px;margin-bottom:14px;overflow:hidden}
 .team-block-head{padding:14px 16px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:12px;background:var(--gray-bg)}
 .team-h-row{display:flex;align-items:center;gap:10px;padding:9px 16px;border-bottom:1px solid var(--bd)}
@@ -141,13 +111,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;font-size:1
 .empty-state{text-align:center;color:var(--t3);padding:60px 20px;font-size:13px;line-height:1.8}
 .settings-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--bd)}
 .settings-row:last-child{border:none}
-.checkin-banner{background:var(--purple-bg);border:1px solid var(--purple-bd);border-radius:11px;padding:11px 14px;margin-bottom:16px;display:flex;align-items:center;gap:10px;cursor:pointer}
+.ci-banner{background:var(--purple-bg);border:1px solid var(--purple-bd);border-radius:11px;padding:11px 14px;margin-bottom:16px;display:flex;align-items:center;gap:10px;cursor:pointer}
 .ai-result{background:var(--purple-bg);border:1px solid var(--purple-bd);border-radius:10px;padding:12px;margin:10px 0;font-size:12px;line-height:1.6}
 </style>
 </head>
 <body>
 
-<!-- LOGIN -->
 <div id="login-screen">
   <div class="login-box">
     <div class="login-title">Halleluja OS</div>
@@ -164,12 +133,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;font-size:1
   </div>
 </div>
 
-<!-- CHECK-IN -->
 <div id="checkin-screen">
   <div class="checkin-box">
-    <div class="checkin-emoji" id="ci-emoji">☀️</div>
-    <div class="checkin-title" id="ci-title">Guten Morgen!</div>
-    <div class="checkin-sub" id="ci-sub">Was ist heute deine wichtigste Priorität?</div>
+    <div style="font-size:36px;margin-bottom:12px" id="ci-emoji">☀️</div>
+    <div style="font-size:18px;font-weight:700;margin-bottom:6px" id="ci-title">Guten Morgen!</div>
+    <div style="font-size:13px;color:var(--t2);margin-bottom:16px;line-height:1.5" id="ci-sub">Was ist heute deine wichtigste Priorität?</div>
     <div id="ci-suggestions" style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px;text-align:left"></div>
     <input class="checkin-input" id="ci-input" placeholder="Heute schaffe ich…"/>
     <button class="checkin-btn" onclick="saveCheckin()">Loslegen →</button>
@@ -177,7 +145,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;font-size:1
   </div>
 </div>
 
-<!-- APP -->
 <div id="app" style="display:none;flex-direction:column;flex:1;overflow:hidden">
   <div class="bar">
     <div class="logo">Halleluja OS</div>
@@ -186,7 +153,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;font-size:1
     <button class="nt" id="nav-team" onclick="nav('team',this)">Team</button>
     <div style="flex:1"></div>
     <button class="nt ai-btn" onclick="openAI()">✦ mit KI</button>
-    <button class="nt new-btn" onclick="openNeu()">+ Handlung</button>
+    <button class="nt new-btn" onclick="openNeu()">+ Aufgabe</button>
     <div style="margin-left:8px;display:flex;align-items:center;gap:6px">
       <div id="me-badge" style="display:flex;align-items:center;gap:6px;padding:0 6px;cursor:pointer;border-radius:8px" onclick="logout()"></div>
       <button id="btn-settings" style="display:none;font-size:11px;padding:4px 10px;border-radius:8px;border:1px solid var(--bd);background:transparent;color:var(--t2);cursor:pointer;font-family:inherit" onclick="openSettings()">⚙</button>
@@ -198,124 +165,37 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;font-size:1
   </div>
 </div>
 
-<!-- MODAL -->
 <div class="ovl" id="ovl" onclick="if(event.target===this)cm()">
   <div class="modal" id="mb"></div>
 </div>
 
 <script>
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════
 // SUPABASE
-// ═══════════════════════════════════════════════════════
-const SUPA_URL = 'https://zkxeuphsbufdvskkuahk.supabase.co';
-const SUPA_KEY = 'sb_publishable_41EMxtYZYsYL5KR1KS_RrA_1mV1SRAL';
+// ═══════════════════════════════════════════════
+const SUPA_URL='https://zkxeuphsbufdvskkuahk.supabase.co';
+const SUPA_KEY='sb_publishable_41EMxtYZYsYL5KR1KS_RrA_1mV1SRAL';
 
-async function supa(path, opts={}) {
-  try {
-    const res = await fetch(SUPA_URL+'/rest/v1/'+path, {
-      headers:{
-        'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,
-        'Content-Type':'application/json',
-        'Prefer': opts.prefer||'return=representation',
-        ...(opts.headers||{})
-      },
-      method: opts.method||'GET',
-      body: opts.body ? JSON.stringify(opts.body) : undefined
+async function supa(path,opts={}){
+  try{
+    const r=await fetch(SUPA_URL+'/rest/v1/'+path,{
+      headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json','Prefer':opts.prefer||'return=representation',...(opts.headers||{})},
+      method:opts.method||'GET',
+      body:opts.body?JSON.stringify(opts.body):undefined
     });
-    if(!res.ok){console.error('Supabase',path,await res.text());return null;}
-    const t=await res.text(); return t?JSON.parse(t):null;
-  } catch(e){console.error('Supabase fetch error',e);return null;}
+    if(!r.ok){console.error('Supabase',path,await r.text());return null;}
+    const t=await r.text();return t?JSON.parse(t):null;
+  }catch(e){console.error('supa error',e);return null;}
 }
+async function dbGet(table,query=''){return await supa(table+(query?'?'+query:'?select=*'));}
+async function dbPatch(table,id,body){return await supa(table+'?id=eq.'+id,{method:'PATCH',body,prefer:'return=minimal'});}
+async function dbInsert(table,body){return await supa(table,{method:'POST',body});}
+async function dbDelete(table,id){return await supa(table+'?id=eq.'+id,{method:'DELETE',prefer:'return=minimal'});}
+async function dbUpsert(table,body,onConflict){return await supa(table,{method:'POST',body,prefer:'resolution=merge-duplicates,return=minimal',headers:{'Prefer':'resolution=merge-duplicates,return=minimal'}});}
 
-// ═══════════════════════════════════════════════════════
-// DATA LAYER
-// ═══════════════════════════════════════════════════════
-async function loadData() {
-  try {
-    const [personen,teams,ziele,kpis,teilziele,bereiche,handlungen,checkins] = await Promise.all([
-      supa('personen?select=*&order=ci'),
-      supa('teams?select=*'),
-      supa('ziele?select=*&order=created_at'),
-      supa('kpis?select=*'),
-      supa('teilziele?select=*&order=created_at'),
-      supa('bereiche?select=*'),
-      supa('handlungen?select=*&order=created_at'),
-      supa('checkins?select=*'),
-    ]);
-    if(!personen||!personen.length) return initState();
-
-    const normH = (handlungen||[]).map(h=>({
-      ...h, zielId:h.ziel_id, bereichId:h.bereich_id, teilzielId:h.teilziel_id,
-      aktSeit:h.akt_seit?new Date(h.akt_seit).getTime():null,
-      dl:h.dl||'', ua:Array.isArray(h.ua)?h.ua:JSON.parse(h.ua||'[]'),
-    }));
-    const normZ = (ziele||[]).map(z=>({
-      ...z, verantwortlichId:z.verantwortlich_id,
-      kpis:(kpis||[]).filter(k=>k.ziel_id===z.id).map(k=>({...k,zielId:k.ziel_id})),
-      teilziele:(teilziele||[]).filter(t=>t.ziel_id===z.id).map(t=>({
-        ...t, zielId:t.ziel_id, verantwortlichId:t.verantwortlich_id, datum:t.datum||''
-      })),
-    }));
-    const ciMap={};
-    (checkins||[]).forEach(c=>{
-      if(!ciMap[c.pid]||c.datum>ciMap[c.pid].date)
-        ciMap[c.pid]={date:c.datum,morgen:c.morgen,abend:c.abend};
-    });
-    return {
-      personen:personen||[], teams:(teams||[]).map(t=>({...t,members:t.members||[]})),
-      ziele:normZ, bereiche:bereiche||[], handlungen:normH, kpiVals:{}, checkins:ciMap, nextId:Date.now()
-    };
-  } catch(e){console.error('loadData',e);return initState();}
-}
-
-async function dbPatch(table, id, patch) {
-  const body=mapToDb(table,patch);
-  await supa(table+'?id=eq.'+id,{method:'PATCH',body,prefer:'return=minimal'});
-}
-async function dbInsert(table, record) {
-  await supa(table,{method:'POST',body:mapToDb(table,record)});
-}
-async function dbDelete(table, id) {
-  await supa(table+'?id=eq.'+id,{method:'DELETE',prefer:'return=minimal'});
-}
-
-function mapToDb(table,obj) {
-  const d={...obj};
-  if(table==='handlungen'){
-    if('zielId'     in d){d.ziel_id=d.zielId;         delete d.zielId;}
-    if('bereichId'  in d){d.bereich_id=d.bereichId;   delete d.bereichId;}
-    if('teilzielId' in d){d.teilziel_id=d.teilzielId; delete d.teilzielId;}
-    if('aktSeit'    in d){d.akt_seit=d.aktSeit?new Date(d.aktSeit).toISOString():null;delete d.aktSeit;}
-    d.updated_at=new Date().toISOString();
-  }
-  if(table==='ziele'){
-    if('verantwortlichId' in d){d.verantwortlich_id=d.verantwortlichId;delete d.verantwortlichId;}
-    delete d.kpis;delete d.teilziele;
-  }
-  if(table==='teilziele'){
-    if('verantwortlichId' in d){d.verantwortlich_id=d.verantwortlichId;delete d.verantwortlichId;}
-    if('zielId'           in d){d.ziel_id=d.zielId;delete d.zielId;}
-  }
-  return d;
-}
-
-async function updateRecord(collection,id,patch) {
-  const arr=S[collection],i=arr.findIndex(x=>x.id===id);
-  if(i>=0) arr[i]={...arr[i],...patch};
-  await dbPatch(collection,id,patch);
-}
-async function insertRecord(collection,record) {
-  S[collection].push(record);
-  await dbInsert(collection,record);
-}
-async function deleteRecord(collection,id) {
-  S[collection]=S[collection].filter(x=>x.id!==id);
-  await dbDelete(collection,id);
-}
-
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════
 // CONSTANTS
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════
 const FARBEN=[
   {bg:'#f0fdf4',tc:'#15803d',bd:'#86efac'},{bg:'#eff6ff',tc:'#1d4ed8',bd:'#93c5fd'},
   {bg:'#fff7ed',tc:'#c2410c',bd:'#fed7aa'},{bg:'#faf5ff',tc:'#7c3aed',bd:'#ddd6fe'},
@@ -328,79 +208,119 @@ const CL=[
 const TODAY='2026-04-05';
 const FREQ=['täglich','wöchentlich','monatlich'];
 const SH={'0.25':'15min','0.5':'30min','0.75':'45min','1':'1h','1.5':'1h30','2':'2h','3':'3h','4':'4h','5':'5h','8':'8h'};
-const CHAR_INFO={
-  strategisch:{label:'Ziel-Handlung',tagBg:'var(--blue-bg)',tagTc:'var(--blue)'},
-  betrieb:    {label:'Betrieb',       tagBg:'var(--gray-bg)',tagTc:'var(--t2)'},
-  random:     {label:'Random',        tagBg:'var(--amber-bg)',tagTc:'var(--amber)'}
+const TYP_INFO={
+  strategisch:{label:'Strategisch',bg:'var(--blue-bg)',tc:'var(--blue)'},
+  operativ:   {label:'Operativ',   bg:'var(--gray-bg)',tc:'var(--t2)'},
+  random:     {label:'Random',     bg:'var(--amber-bg)',tc:'var(--amber)'}
 };
 
-// ═══════════════════════════════════════════════════════
-// INITIAL STATE (Fallback wenn Supabase leer)
-// ═══════════════════════════════════════════════════════
-function initState(){
-  return{
-    personen:[
-      {id:'lu',name:'Ludwig',  k:'LU',rolle:'Geschäftsführung',stufe:'gf',  ci:0,teams:['gf'],       pin:'1111'},
-      {id:'si',name:'Simon',   k:'SI',rolle:'GF · Finanzen',   stufe:'gf',  ci:1,teams:['gf'],       pin:'2222'},
-      {id:'kr',name:'Kristina',k:'KR',rolle:'Assistenz · Ops', stufe:'lead',ci:2,teams:['ops'],      pin:'3333'},
-      {id:'do',name:'Dominic', k:'DO',rolle:'After Sales',     stufe:'team',ci:3,teams:['ops'],      pin:'4444'},
-      {id:'fa',name:'Fabian',  k:'FA',rolle:'Werkstatt',       stufe:'lead',ci:4,teams:['werkstatt'],pin:'5555'},
-    ],
-    teams:[
-      {id:'gf',name:'Geschäftsführung',members:['lu','si']},
-      {id:'ops',name:'Operations',members:['kr','do']},
-      {id:'werkstatt',name:'Werkstatt',members:['fa']},
-    ],
-    ziele:[],bereiche:[],handlungen:[],kpiVals:{},checkins:{},nextId:Date.now()
-  };
+// ═══════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════
+let S={personen:[],teams:[],ziele:[],aufgaben:[],kpiVals:{},checkins:{}};
+let aP=null,realMe=null,aV='tag',timIv=null,_selPrio=null;
+let _kid=Date.now();
+const nid=p=>p+(++_kid);
+
+// ═══════════════════════════════════════════════
+// LOAD
+// ═══════════════════════════════════════════════
+async function loadData(){
+  const [personen,teams,ziele,kpis,teilziele,aufgaben,kpiVals,checkins]=await Promise.all([
+    dbGet('personen','select=*&order=ci'),
+    dbGet('teams','select=*'),
+    dbGet('ziele','select=*&order=created_at'),
+    dbGet('kpis','select=*'),
+    dbGet('teilziele','select=*&order=created_at'),
+    dbGet('aufgaben','select=*&order=created_at'),
+    dbGet('kpi_vals','select=*'),
+    dbGet('checkins','select=*'),
+  ]);
+
+  S.personen=personen||[];
+  S.teams=(teams||[]).map(t=>({...t,members:t.members||[]}));
+
+  // Ziele mit KPIs und Teilzielen zusammenführen
+  S.ziele=(ziele||[]).map(z=>({
+    ...z,
+    verantwortlichId:z.verantwortlich_id,
+    kpis:(kpis||[]).filter(k=>k.ziel_id===z.id).map(k=>({...k,zielId:k.ziel_id})),
+    teilziele:(teilziele||[]).filter(t=>t.ziel_id===z.id).map(t=>({
+      ...t,zielId:t.ziel_id,verantwortlichId:t.verantwortlich_id,datum:t.datum||''
+    }))
+  }));
+
+  // Aufgaben normalisieren
+  S.aufgaben=(aufgaben||[]).map(a=>({
+    ...a,
+    zielId:a.ziel_id||null,
+    teilzielId:a.teilziel_id||null,
+    aktSeit:a.akt_seit?new Date(a.akt_seit).getTime():null,
+    dl:a.dl||'',
+    ua:Array.isArray(a.ua)?a.ua:(typeof a.ua==='string'?JSON.parse(a.ua||'[]'):[])
+  }));
+
+  // KPI Vals — letzter Wert pro Person+KPI
+  S.kpiVals={};
+  (kpiVals||[]).forEach(v=>{
+    const key=v.pid+'-'+v.kpi_id;
+    if(!S.kpiVals[key]||v.datum>S.kpiVals[key].datum)
+      S.kpiVals[key]={val:v.val,datum:v.datum};
+  });
+
+  // Checkins — letzter pro Person
+  S.checkins={};
+  (checkins||[]).forEach(c=>{
+    if(!S.checkins[c.pid]||c.datum>S.checkins[c.pid].date)
+      S.checkins[c.pid]={date:c.datum,morgen:c.morgen,abend:c.abend};
+  });
 }
 
-// ═══════════════════════════════════════════════════════
-// RUNTIME STATE
-// ═══════════════════════════════════════════════════════
-let S, aP=null, realMe=null, aV='tag', timIv=null, _selPrio=null;
-let _kid=100;
-function nid(p){return p+(++_kid);}
-
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════
 // HELPERS
-// ═══════════════════════════════════════════════════════
-const person     = id => S.personen.find(p=>p.id===id);
-const me         = ()  => person(aP);
-const cl         = p   => p?CL[p.ci%CL.length]:CL[0];
-const isGF       = ()  => {const m=me();return m&&m.stufe==='gf';};
-const isLead     = ()  => {const m=me();return m&&(m.stufe==='lead'||m.stufe==='gf');};
-const zielObj    = id  => S.ziele.find(z=>z.id===id);
-const bereichObj = id  => S.bereiche.find(b=>b.id===id);
+// ═══════════════════════════════════════════════
+const person=id=>S.personen.find(p=>p.id===id);
+const me=()=>person(aP);
+const cl=p=>p?CL[p.ci%CL.length]:CL[0];
+const isGF=()=>{const m=me();return m&&m.stufe==='gf';};
+const isLead=()=>{const m=me();return m&&(m.stufe==='lead'||m.stufe==='gf');};
+const zielObj=id=>S.ziele.find(z=>z.id===id);
+const kpiOk=k=>{const v=kpiVal(k);return k.inv?v<=k.ziel:v>=k.ziel*0.85;};
+const kpiVal=k=>{const e=S.kpiVals[aP+'-'+k.id];return e!==undefined?e.val:k.ist;};
 
-function myTeamMemberIds(){
+function myTeamIds(){
   const m=me();if(!m)return[];
   const ids=[];
-  S.teams.forEach(t=>{if((m.teams||[]).includes(t.id))t.members.forEach(mid=>{if(!ids.includes(mid))ids.push(mid);});});
+  S.teams.forEach(t=>{if((m.teams||[]).includes(t.id))t.members.forEach(id=>{if(!ids.includes(id))ids.push(id);});});
   return ids;
 }
-const canSeeTeam     = ()  => isLead();
-const canSeeHandlung = h   => !(h.vertraulich&&!isGF());
-const canManageTZ    = zid => {const z=zielObj(zid);return z&&(isGF()||z.verantwortlichId===aP);};
+const canSeeTeam=()=>isLead();
+const canSee=a=>!(a.vertraulich&&!isGF());
+const canManageTZ=zid=>{const z=zielObj(zid);return z&&(isGF()||z.verantwortlichId===aP);};
 
-function teilzielObj(zid,tzid){const z=zielObj(zid);if(!z)return null;return(z.teilziele||[]).find(t=>t.id===tzid);}
-function getTZName(h){if(h.teilzielId&&h.zielId){const tz=teilzielObj(h.zielId,h.teilzielId);return tz?tz.name:null;}return null;}
-function getContextName(h){
-  if(h.zielId){const z=zielObj(h.zielId);return z?z.name:'–';}
-  if(h.bereichId){const b=bereichObj(h.bereichId);return b?b.name:'–';}
-  return'–';
-}
-function getChar(h){
-  if(h.zielId)return'strategisch';
-  if(h.bereichId){const b=bereichObj(h.bereichId);return b?b.char:'betrieb';}
-  return'betrieb';
-}
-const charInfo   = h => CHAR_INFO[getChar(h)]||CHAR_INFO.betrieb;
-const kpiOk      = k => k.inv?k.ist<=k.ziel:k.ist>=k.ziel*0.85;
+function tzObj(zid,tzid){const z=zielObj(zid);return z?(z.teilziele||[]).find(t=>t.id===tzid):null;}
+function getTZName(a){if(a.teilzielId&&a.zielId){const tz=tzObj(a.zielId,a.teilzielId);return tz?tz.name:null;}return null;}
+function getZielName(a){if(a.zielId){const z=zielObj(a.zielId);return z?z.name:null;}return null;}
 
-function elapsedSec(h){
-  let s=(h.gebucht||0)*3600;
-  if(h.status==='aktiv'&&h.aktSeit)s+=(Date.now()-h.aktSeit)/1000;
+function typInfo(a){return TYP_INFO[a.typ]||TYP_INFO.operativ;}
+
+// Fokus = % strategische Aufgaben von allen offenen
+function fokusQ(pids){
+  const as=S.aufgaben.filter(a=>pids.includes(a.pid)&&a.status!=='erledigt'&&canSee(a));
+  if(!as.length)return 0;
+  return Math.round(as.filter(a=>a.typ==='strategisch').length/as.length*100);
+}
+
+// Fortschritt eines Ziels aus Teilzielen berechnen
+function zielPct(z){
+  const tzs=z.teilziele||[];
+  if(!tzs.length)return z.pct||0;
+  return Math.round(tzs.filter(t=>t.erledigt).length/tzs.length*100);
+}
+
+function elapsedSec(a){
+  let s=(a.gebucht||0)*3600;
+  if(a.status==='aktiv'&&a.aktSeit)s+=(Date.now()-a.aktSeit)/1000;
   return s;
 }
 function fmt(s){
@@ -421,128 +341,123 @@ function dli(d){
   if(df<=4) return{l:'in '+df+' Tagen',bg:'var(--amber-bg)',c:'var(--amber)'};
   return{l:d.slice(8)+'.'+d.slice(5,7)+'.',bg:'var(--gray-bg)',c:'var(--t3)'};
 }
-function fokusQ(pids){
-  const hs=S.handlungen.filter(h=>pids.includes(h.pid)&&h.status!=='erledigt'&&canSeeHandlung(h));
-  if(!hs.length)return 0;
-  return Math.round(hs.filter(h=>h.zielId).length/hs.length*100);
-}
 
-// HTML fragments
-function avHtml(p,size=24,fs=9){const c=cl(p);return`<div class="av" style="width:${size}px;height:${size}px;font-size:${fs}px;background:${c.tc};color:#fff">${p.k}</div>`;}
-function typTag(h){const t=charInfo(h);return`<span class="tag" style="background:${t.tagBg};color:${t.tagTc}">${t.label}</span>`;}
+// HTML helpers
+function av(p,size=24,fs=9){const c=cl(p);return`<div class="av" style="width:${size}px;height:${size}px;font-size:${fs}px;background:${c.tc};color:#fff">${p.k}</div>`;}
+function typTag(a){const t=typInfo(a);return`<span class="tag" style="background:${t.bg};color:${t.tc}">${t.label}</span>`;}
 function prioTag(p){if(!p)return'';const bg=p==='P1'?'var(--red-bg)':p==='P2'?'#fff7ed':'var(--gray-bg)';const tc=p==='P1'?'var(--red)':p==='P2'?'#c2410c':'var(--t2)';return`<span class="tag" style="background:${bg};color:${tc}">${p}</span>`;}
 function dlTag(dl){const d=dli(dl);if(!d)return'';return`<span class="tag" style="background:${d.bg};color:${d.c}">${d.l}</span>`;}
-function secHead(label,color='var(--t2)',badge=''){return`<div style="font-size:10px;font-weight:700;color:${color};text-transform:uppercase;letter-spacing:.6px;margin:16px 0 8px;display:flex;align-items:center;gap:8px">${label}${badge}</div>`;}
+function secHead(label,color='var(--t2)',extra=''){return`<div style="font-size:10px;font-weight:700;color:${color};text-transform:uppercase;letter-spacing:.6px;margin:16px 0 8px;display:flex;align-items:center;gap:8px">${label}${extra}</div>`;}
 
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════
 // CHECK-IN
-// ═══════════════════════════════════════════════════════
-function shouldShowCheckin(){
-  if(!aP)return false;
-  const ci=(S.checkins||{})[aP],hour=new Date().getHours();
-  if(!ci||ci.date!==TODAY)return true;
-  if(hour>=17&&!ci.abend)return true;
-  return false;
+// ═══════════════════════════════════════════════
+function shouldCheckin(){
+  const ci=S.checkins[aP],h=new Date().getHours();
+  if(!ci||ci.date!==TODAY)return'morgen';
+  if(h>=17&&!ci.abend)return'abend';
+  return null;
 }
 function showCheckin(){
-  const ci=(S.checkins||{})[aP]||{},hour=new Date().getHours();
-  const isEvening=ci.date===TODAY&&hour>=17&&!ci.abend;
-  document.getElementById('ci-emoji').textContent=isEvening?'🌙':'☀️';
-  document.getElementById('ci-title').textContent=isEvening?'Guten Abend!':'Guten Morgen!';
-  document.getElementById('ci-sub').textContent=isEvening?'Was nimmst du dir für morgen vor?':'Was ist heute deine wichtigste Priorität?';
-  document.getElementById('ci-input').placeholder=isEvening?'Morgen fokussiere ich mich auf…':'Heute schaffe ich…';
+  const typ=shouldCheckin();if(!typ)return;
+  const isEve=typ==='abend';
+  document.getElementById('ci-emoji').textContent=isEve?'🌙':'☀️';
+  document.getElementById('ci-title').textContent=isEve?'Guten Abend!':'Guten Morgen!';
+  document.getElementById('ci-sub').textContent=isEve?'Was nimmst du dir für morgen vor?':'Was ist heute deine wichtigste Priorität?';
+  document.getElementById('ci-input').placeholder=isEve?'Morgen fokussiere ich mich auf…':'Heute schaffe ich…';
   document.getElementById('ci-input').value='';
-  document.getElementById('checkin-screen').classList.add('open');
 
-  // Top-Prioritäten vorschlagen
-  const suggestions=S.handlungen
-    .filter(h=>h.pid===aP&&(h.status==='backlog'||h.status==='neu')&&canSeeHandlung(h))
-    .sort((a,b)=>(a.prio||'P9').localeCompare(b.prio||'P9')).slice(0,3);
+  // Gestern abend's Vorsatz anzeigen
+  const ci=S.checkins[aP];
+  const vorSatz=isEve?null:(ci&&ci.abend&&ci.date!==TODAY?ci.abend:null);
+
+  // Top-Aufgaben vorschlagen
+  const sugg=S.aufgaben.filter(a=>a.pid===aP&&(a.status==='backlog'||a.status==='neu')&&canSee(a)).sort((a,b)=>(a.prio||'P9').localeCompare(b.prio||'P9')).slice(0,3);
   const box=document.getElementById('ci-suggestions');
-  if(suggestions.length){
-    box.innerHTML=`<div style="font-size:11px;color:var(--t3);margin-bottom:4px">Deine Top-Prioritäten — tippen zum Übernehmen:</div>`
-      +suggestions.map(h=>{
-        const bg=h.prio==='P1'?'var(--red-bg)':h.prio==='P2'?'#fff7ed':'var(--gray-bg)';
-        const tc=h.prio==='P1'?'var(--red)':h.prio==='P2'?'#c2410c':'var(--t2)';
-        return`<div onclick="document.getElementById('ci-input').value='${h.titel.replace(/'/g,"\\'")}'" style="padding:9px 12px;border-radius:10px;border:1px solid ${tc};background:${bg};color:${tc};cursor:pointer;font-size:12px;font-weight:500;display:flex;align-items:center;gap:8px">${h.prio?`<span style="font-size:10px;font-weight:700">${h.prio}</span>`:''} ${h.titel}</div>`;
-      }).join('');
-  } else {box.innerHTML='';}
+  let html='';
+  if(vorSatz)html+=`<div style="background:var(--purple-bg);border:1px solid var(--purple-bd);border-radius:9px;padding:8px 12px;font-size:12px;color:var(--purple);margin-bottom:8px">💡 Gestern geplant: <strong>${vorSatz}</strong></div>`;
+  if(sugg.length){
+    html+=`<div style="font-size:11px;color:var(--t3);margin-bottom:4px">Top-Aufgaben — antippen zum Übernehmen:</div>`;
+    html+=sugg.map(a=>{
+      const bg=a.prio==='P1'?'var(--red-bg)':a.prio==='P2'?'#fff7ed':'var(--gray-bg)';
+      const tc=a.prio==='P1'?'var(--red)':a.prio==='P2'?'#c2410c':'var(--t2)';
+      return`<div onclick="document.getElementById('ci-input').value='${a.titel.replace(/'/g,"\\'")}'" style="padding:9px 12px;border-radius:10px;border:1px solid ${tc};background:${bg};color:${tc};cursor:pointer;font-size:12px;font-weight:500;display:flex;align-items:center;gap:8px">${a.prio?`<span style="font-size:10px;font-weight:700">${a.prio}</span>`:''} ${a.titel}</div>`;
+    }).join('');
+  }
+  box.innerHTML=html;
+  document.getElementById('checkin-screen').classList.add('open');
   setTimeout(()=>document.getElementById('ci-input').focus(),100);
 }
 async function saveCheckin(){
   const val=document.getElementById('ci-input').value.trim();
   if(!val){skipCheckin();return;}
-  if(!S.checkins)S.checkins={};
-  const ci=S.checkins[aP]||{},hour=new Date().getHours();
-  const isEvening=ci.date===TODAY&&hour>=17&&!ci.abend;
-  const patch=isEvening?{morgen:ci.morgen,abend:val}:{morgen:val,abend:null};
+  const ci=S.checkins[aP]||{},isEve=shouldCheckin()==='abend';
+  const patch=isEve?{morgen:ci.morgen||'',abend:val}:{morgen:val,abend:null};
   S.checkins[aP]={date:TODAY,...patch};
   await supa('checkins',{method:'POST',body:{pid:aP,datum:TODAY,...patch},prefer:'resolution=merge-duplicates,return=minimal'});
-  closeCheckin();
+  document.getElementById('checkin-screen').classList.remove('open');
 }
-function skipCheckin(){closeCheckin();}
-function closeCheckin(){document.getElementById('checkin-screen').classList.remove('open');}
+function skipCheckin(){document.getElementById('checkin-screen').classList.remove('open');}
 
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════
 // LOGIN
-// ═══════════════════════════════════════════════════════
-let loginSelected=null,pinInput='';
+// ═══════════════════════════════════════════════
+let loginSel=null,pinIn='';
 
 function initLogin(){
-  const grid=document.getElementById('person-grid');grid.innerHTML='';
+  const grid=document.getElementById('person-grid');
+  grid.innerHTML='';
   S.personen.forEach(p=>{
     const btn=document.createElement('button');
     btn.className='person-btn';btn.id='pb-'+p.id;
-    btn.innerHTML=avHtml(p,30,11)+`<span style="font-size:12px;font-weight:500">${p.name}</span>`;
-    btn.onclick=()=>selectPerson(p.id);grid.appendChild(btn);
+    btn.innerHTML=av(p,30,11)+`<span style="font-size:12px;font-weight:500">${p.name}</span>`;
+    btn.onclick=()=>selPerson(p.id);
+    grid.appendChild(btn);
   });
-  buildPinPad();
+  buildPad();
 }
-function selectPerson(id){
-  loginSelected=id;pinInput='';updatePinDots();
+function selPerson(id){
+  loginSel=id;pinIn='';updDots();
   document.querySelectorAll('.person-btn').forEach(b=>b.classList.remove('selected'));
-  const btn=document.getElementById('pb-'+id);if(btn)btn.classList.add('selected');
+  document.getElementById('pb-'+id)?.classList.add('selected');
   document.getElementById('pin-section').style.display='block';
   document.getElementById('login-err').textContent='';
 }
-function buildPinPad(){
+function buildPad(){
   const pad=document.getElementById('pin-pad');pad.innerHTML='';
   [1,2,3,4,5,6,7,8,9,'',0,'⌫'].forEach(k=>{
-    const btn=document.createElement('button');
-    btn.className='pin-key';btn.textContent=k===''?'':k;
+    const btn=document.createElement('button');btn.className='pin-key';btn.textContent=k===''?'':k;
     if(k==='')btn.style.visibility='hidden';
     btn.onclick=()=>pinPress(k);pad.appendChild(btn);
   });
 }
 function pinPress(k){
-  if(k==='⌫')pinInput=pinInput.slice(0,-1);
-  else if(pinInput.length<4)pinInput+=k;
-  updatePinDots();if(pinInput.length===4)tryLogin();
+  if(k==='⌫')pinIn=pinIn.slice(0,-1);else if(pinIn.length<4)pinIn+=k;
+  updDots();if(pinIn.length===4)tryLogin();
 }
-function updatePinDots(){for(let i=0;i<4;i++){const d=document.getElementById('pd'+i);if(d)d.className='pin-dot'+(i<pinInput.length?' filled':'');}}
+function updDots(){for(let i=0;i<4;i++){const d=document.getElementById('pd'+i);if(d)d.className='pin-dot'+(i<pinIn.length?' filled':'');}}
 function tryLogin(){
-  const p=person(loginSelected);
-  if(!p){document.getElementById('login-err').textContent='Person nicht gefunden.';pinInput='';updatePinDots();return;}
-  if(pinInput===(p.pin||'0000')){
-    aP=loginSelected;realMe=loginSelected;
+  const p=person(loginSel);
+  if(!p){document.getElementById('login-err').textContent='Nicht gefunden.';pinIn='';updDots();return;}
+  if(pinIn===(p.pin||'0000')){
+    aP=loginSel;realMe=loginSel;
     document.getElementById('login-screen').style.display='none';
     document.getElementById('app').style.display='flex';
-    updateMeBadge();render();
-    if(shouldShowCheckin())showCheckin();
+    updateBadge();render();
+    if(shouldCheckin())showCheckin();
   } else {
-    document.getElementById('login-err').textContent='Falsche PIN.';pinInput='';updatePinDots();
+    document.getElementById('login-err').textContent='Falsche PIN.';pinIn='';updDots();
   }
 }
-function updateMeBadge(){
+function updateBadge(){
   const p=me();if(!p)return;
-  document.getElementById('me-badge').innerHTML=avHtml(p,26,9)
+  document.getElementById('me-badge').innerHTML=av(p,26,9)
     +`<span style="font-size:11px;color:var(--t2)">${p.name}</span>`
     +`<span style="font-size:10px;color:var(--t3)">Abmelden</span>`;
-  const sb=document.getElementById('btn-settings');
-  if(sb)sb.style.display=isGF()?'block':'none';
+  document.getElementById('btn-settings').style.display=isGF()?'block':'none';
 }
 function logout(){
-  aP=null;realMe=null;pinInput='';loginSelected=null;
+  aP=null;realMe=null;pinIn='';loginSel=null;
   removeBackBtn();
   document.getElementById('app').style.display='none';
   document.getElementById('login-screen').style.display='flex';
@@ -550,9 +465,9 @@ function logout(){
   document.getElementById('pin-section').style.display='none';
 }
 
-// ═══════════════════════════════════════════════════════
-// BACK-TO-ME BUTTON (für GF die fremde Profile anschauen)
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════
+// BACK BUTTON
+// ═══════════════════════════════════════════════
 function showBackBtn(){
   removeBackBtn();
   if(!realMe||aP===realMe)return;
@@ -561,18 +476,18 @@ function showBackBtn(){
   btn.id='back-to-me';
   btn.textContent=`← Zurück zu ${p.name}`;
   btn.style.cssText=`position:fixed;bottom:20px;right:20px;z-index:99;padding:10px 16px;border-radius:10px;background:${c.tc};color:#fff;border:none;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.2)`;
-  btn.onclick=()=>{aP=realMe;updateMeBadge();render();removeBackBtn();};
+  btn.onclick=()=>{aP=realMe;updateBadge();render();removeBackBtn();};
   document.body.appendChild(btn);
 }
-function removeBackBtn(){const b=document.getElementById('back-to-me');if(b)b.remove();}
+function removeBackBtn(){document.getElementById('back-to-me')?.remove();}
 
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════
 // NAV
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════
 function nav(v,btn){
   aV=v;
   document.querySelectorAll('.nt:not(.ai-btn):not(.new-btn)').forEach(b=>b.classList.remove('on'));
-  if(btn)btn.classList.add('on');
+  btn?.classList.add('on');
   render();
 }
 function render(){
@@ -583,17 +498,17 @@ function render(){
   else if(aV==='team')rTeam();
 }
 
-// ═══════════════════════════════════════════════════════
-// SIDEBAR — GF immer oben
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════
+// SIDEBAR
+// ═══════════════════════════════════════════════
 function rSB(){
-  const sortedTeams=[...S.teams].sort((a,b)=>a.id==='gf'?-1:b.id==='gf'?1:0);
+  const sorted=[...S.teams].sort((a,b)=>a.id==='gf'?-1:b.id==='gf'?1:0);
   let h='';
-  sortedTeams.forEach(t=>{
+  sorted.forEach(t=>{
     const vis=t.members.filter(id=>{
       const p=person(id);if(!p)return false;
       if(isGF())return true;
-      if(isLead())return myTeamMemberIds().includes(id);
+      if(isLead())return myTeamIds().includes(id);
       return id===aP;
     });
     if(!vis.length)return;
@@ -601,8 +516,8 @@ function rSB(){
     vis.forEach(id=>{
       const p=person(id);if(!p)return;
       const c=cl(p),isMe=id===aP;
-      const pH=S.handlungen.filter(x=>x.pid===id&&canSeeHandlung(x));
-      const nC=pH.filter(x=>x.status==='neu').length,aC=pH.filter(x=>x.status==='aktiv').length;
+      const pA=S.aufgaben.filter(x=>x.pid===id&&canSee(x));
+      const nC=pA.filter(x=>x.status==='neu').length,aC=pA.filter(x=>x.status==='aktiv').length;
       h+=`<button class="sbn${isMe?' on':''}" onclick="switchPerson('${id}')">`
         +`<div class="av" style="width:22px;height:22px;font-size:8px;background:${isMe?c.tc:'#eee'};color:${isMe?'#fff':c.tc}">${p.k}</div>`
         +`<span style="flex:1;font-size:11px;font-weight:${isMe?600:400};color:${isMe?c.tc:'var(--text)'}">${p.name}</span>`
@@ -615,61 +530,60 @@ function rSB(){
   document.getElementById('sb').innerHTML=h;
 }
 function switchPerson(id){
-  if(isGF()||myTeamMemberIds().includes(id)||id===aP){
-    aP=id;updateMeBadge();render();
-    showBackBtn();
+  if(isGF()||myTeamIds().includes(id)||id===aP){
+    aP=id;updateBadge();render();showBackBtn();
   }
 }
 
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════
 // STEPS
-// ═══════════════════════════════════════════════════════
-function stepsHtml(h,ed){
+// ═══════════════════════════════════════════════
+function stepsHtml(a,ed){
   let out='';
-  if(h.ua&&h.ua.length){
+  if(a.ua?.length){
     out+='<div class="sw">';
-    h.ua.forEach((u,i)=>{
-      out+=`<div class="sr" onclick="toggleStep('${h.id}',${i})">`
+    a.ua.forEach((u,i)=>{
+      out+=`<div class="sr" onclick="toggleStep('${a.id}',${i})">`
         +`<div class="sc${u.d?' dn':''}">${u.d?'<span style="color:#fff;font-size:8px">✓</span>':''}</div>`
         +`<span class="sl${u.d?' dn':''}">${u.t}</span>`
-        +(ed?`<button onclick="event.stopPropagation();delStep('${h.id}',${i})" style="margin-left:auto;font-size:10px;background:none;border:none;color:var(--t3);cursor:pointer">✕</button>`:'')
+        +(ed?`<button onclick="event.stopPropagation();delStep('${a.id}',${i})" style="margin-left:auto;font-size:10px;background:none;border:none;color:var(--t3);cursor:pointer">✕</button>`:'')
         +'</div>';
     });
     out+='</div>';
   }
-  if(ed)out+=`<div style="display:flex;gap:6px;margin-top:6px"><input class="asi" id="si-${h.id}" placeholder="+ Schritt…" onkeydown="if(event.key==='Enter')addStep('${h.id}')"><button onclick="addStep('${h.id}')" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);cursor:pointer">+</button></div>`;
+  if(ed)out+=`<div style="display:flex;gap:6px;margin-top:6px"><input class="asi" id="si-${a.id}" placeholder="+ Schritt…" onkeydown="if(event.key==='Enter')addStep('${a.id}')"><button onclick="addStep('${a.id}')" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);cursor:pointer">+</button></div>`;
   return out;
 }
 
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════
 // MEIN TAG
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════
 function rTag(){
   const p=me(),c=cl(p);
-  const myH=S.handlungen.filter(h=>h.pid===aP&&canSeeHandlung(h));
-  const neu    =myH.filter(h=>h.status==='neu');
-  const aktiv  =myH.filter(h=>h.status==='aktiv');
-  const backlog=myH.filter(h=>h.status==='backlog').sort((a,b)=>(a.prio||'P9').localeCompare(b.prio||'P9'));
-  const erl    =myH.filter(h=>h.status==='erledigt');
+  const myA=S.aufgaben.filter(a=>a.pid===aP&&canSee(a));
+  const neu=myA.filter(a=>a.status==='neu');
+  const aktiv=myA.filter(a=>a.status==='aktiv');
+  const bl=myA.filter(a=>a.status==='backlog').sort((a,b)=>(a.prio||'P9').localeCompare(b.prio||'P9'));
+  const erl=myA.filter(a=>a.status==='erledigt');
   const fq=fokusQ([aP]);
-  const ci=(S.checkins||{})[aP];
+  const ci=S.checkins[aP];
   let out='';
 
   // Header
-  out+=`<div class="ph">${avHtml(p,44,16)}`
+  out+=`<div class="ph">${av(p,44,16)}`
     +`<div><div style="font-size:15px;font-weight:700">${p.name}</div><div style="font-size:11px;color:var(--t3)">${p.rolle}</div></div>`
     +`<div class="phs">`
-    +[{l:'neu',v:neu.length,c:'var(--red)'},{l:'aktiv',v:aktiv.length,c:'var(--blue)'},{l:'backlog',v:backlog.length,c:'var(--t3)'},{l:'erledigt',v:erl.length,c:'var(--green)'}]
+    +[{l:'neu',v:neu.length,c:'var(--red)'},{l:'aktiv',v:aktiv.length,c:'var(--blue)'},{l:'backlog',v:bl.length,c:'var(--t3)'},{l:'erledigt',v:erl.length,c:'var(--green)'}]
       .map(x=>`<div style="text-align:center"><div class="phv" style="color:${x.v>0&&x.l!=='backlog'?x.c:'var(--t3)'}">${x.v}</div><div class="phl">${x.l}</div></div>`).join('')
     +`</div></div>`;
 
   // Check-in Banner
-  if(ci&&ci.date===TODAY&&ci.morgen){
+  if(ci?.date===TODAY&&ci.morgen){
     const isEve=new Date().getHours()>=17&&!ci.abend;
-    out+=`<div class="checkin-banner" onclick="${isEve?'showCheckin()':''}">
+    out+=`<div class="ci-banner" onclick="${isEve?'showCheckin()':''}">
       <span style="font-size:16px">${isEve?'🌙':'☀️'}</span>
       <div style="flex:1">
-        <div style="font-size:11px;font-weight:600;color:var(--purple)">Deine Priorität heute</div>
+        <div style="font-size:11px;font-weight:600;color:var(--purple)">Priorität heute</div>
         <div style="font-size:12px;color:var(--text);margin-top:2px">${ci.morgen}</div>
         ${ci.abend?`<div style="font-size:11px;color:var(--purple);margin-top:4px">Morgen: ${ci.abend}</div>`:''}
       </div>
@@ -677,21 +591,21 @@ function rTag(){
     </div>`;
   }
 
-  // KPIs (optional eingeklappt)
-  out+=kpiBlockHtml(aP);
+  // KPIs optional
+  out+=kpiBlock(aP);
 
   // NEU
   if(neu.length){
     out+=secHead('Neu — Priorität setzen','var(--red)',`<span style="background:var(--red-bg);color:var(--red);border-radius:99px;padding:1px 7px;font-size:10px;font-weight:600">${neu.length}</span>`);
-    neu.forEach(h=>{
-      const tzName=getTZName(h);
+    neu.forEach(a=>{
+      const tzN=getTZName(a),zN=getZielName(a);
       out+=`<div class="card neu-c">`
         +`<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px">`
-        +`<div style="flex:1"><div style="font-size:13px;font-weight:600;margin-bottom:5px">${h.titel}${h.vertraulich?'<span class="lock" style="margin-left:6px">vertraulich</span>':''}</div>`
-        +`<div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center">${typTag(h)}<span class="tag" style="background:var(--gray-bg);color:var(--t2)">${getContextName(h)}</span>${tzName?`<span class="tag" style="background:var(--purple-bg);color:var(--purple)">${tzName}</span>`:''} ${dlTag(h.dl)}${h.notiz?`<span style="font-size:10px;color:var(--t3);font-style:italic">${h.notiz}</span>`:''}</div></div>`
-        +`<button class="btn btn-gr" onclick="openDetail('${h.id}')">···</button></div>`
+        +`<div style="flex:1"><div style="font-size:13px;font-weight:600;margin-bottom:5px">${a.titel}${a.vertraulich?'<span class="lock" style="margin-left:6px">vertraulich</span>':''}</div>`
+        +`<div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center">${typTag(a)}${zN?`<span class="tag" style="background:var(--gray-bg);color:var(--t2)">${zN}</span>`:''}${tzN?`<span class="tag" style="background:var(--purple-bg);color:var(--purple)">${tzN}</span>`:''} ${dlTag(a.dl)}${a.notiz?`<span style="font-size:10px;color:var(--t3);font-style:italic">${a.notiz}</span>`:''}</div></div>`
+        +`<button class="btn btn-gr" onclick="openDetail('${a.id}')">···</button></div>`
         +`<div style="display:flex;gap:5px;align-items:center"><span style="font-size:10px;color:var(--t3);margin-right:2px">Priorität:</span>`
-        +['P1','P2','P3'].map(pr=>{const bg=pr==='P1'?'var(--red-bg)':pr==='P2'?'#fff7ed':'var(--gray-bg)';const tc=pr==='P1'?'var(--red)':pr==='P2'?'#c2410c':'var(--t2)';return`<button style="font-size:11px;padding:3px 9px;border-radius:8px;border:1px solid ${tc};background:${bg};color:${tc};cursor:pointer;font-family:inherit" onclick="setPrio('${h.id}','${pr}')">${pr}</button>`;}).join('')
+        +['P1','P2','P3'].map(pr=>{const bg=pr==='P1'?'var(--red-bg)':pr==='P2'?'#fff7ed':'var(--gray-bg)';const tc=pr==='P1'?'var(--red)':pr==='P2'?'#c2410c':'var(--t2)';return`<button style="font-size:11px;padding:3px 9px;border-radius:8px;border:1px solid ${tc};background:${bg};color:${tc};cursor:pointer;font-family:inherit" onclick="setPrio('${a.id}','${pr}')">${pr}</button>`;}).join('')
         +`</div></div>`;
     });
   }
@@ -699,145 +613,174 @@ function rTag(){
   // AKTIV
   if(aktiv.length){
     out+=secHead('Läuft gerade','var(--blue)');
-    aktiv.forEach(h=>{
-      const s=elapsedSec(h),pct=Math.min(100,Math.round(s/((h.geplant||1)*3600)*100));
-      const uD=h.ua.filter(u=>u.d).length,tzName=getTZName(h);
+    aktiv.forEach(a=>{
+      const s=elapsedSec(a),pct=Math.min(100,Math.round(s/((a.geplant||1)*3600)*100));
+      const uD=a.ua.filter(u=>u.d).length,tzN=getTZName(a),zN=getZielName(a);
       out+=`<div class="card aktiv-c">`
-        +`<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:${h.ua.length?'8px':'0'}">`
+        +`<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:${a.ua.length?'8px':'0'}">`
         +`<div class="dot" style="background:var(--blue);margin-top:6px"></div>`
-        +`<div style="flex:1"><div style="font-size:13px;font-weight:600;margin-bottom:5px">${h.titel}${h.vertraulich?'<span class="lock" style="margin-left:6px">vertraulich</span>':''}</div>`
-        +`<div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center">${typTag(h)}${prioTag(h.prio)}<span class="tag" style="background:var(--gray-bg);color:var(--t2)">${getContextName(h)}</span>${tzName?`<span class="tag" style="background:var(--purple-bg);color:var(--purple)">${tzName}</span>`:''} ${dlTag(h.dl)}${h.ua.length?`<span style="font-size:10px;color:var(--t3)">${uD}/${h.ua.length} Schritte</span>`:''}</div></div>`
-        +`<div data-tid="${h.id}" class="timer"><div class="tn">${fmt(s)}</div><div style="font-size:9px;color:var(--t3)">/ ${fmtH(h.geplant)}</div><div class="tbar"><div class="tf" style="width:${pct}%"></div></div></div></div>`
-        +stepsHtml(h,true)
-        +`<div style="display:flex;gap:5px;margin-top:8px"><button class="btn btn-ok" onclick="fertig('${h.id}')">✓ Erledigt</button><button class="btn btn-gr" onclick="pauseH('${h.id}')">⏸ Pause</button><button class="btn btn-gr" onclick="openDetail('${h.id}')">···</button></div></div>`;
+        +`<div style="flex:1"><div style="font-size:13px;font-weight:600;margin-bottom:5px">${a.titel}${a.vertraulich?'<span class="lock" style="margin-left:6px">vertraulich</span>':''}</div>`
+        +`<div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center">${typTag(a)}${prioTag(a.prio)}${zN?`<span class="tag" style="background:var(--gray-bg);color:var(--t2)">${zN}</span>`:''}${tzN?`<span class="tag" style="background:var(--purple-bg);color:var(--purple)">${tzN}</span>`:''} ${dlTag(a.dl)}${a.ua.length?`<span style="font-size:10px;color:var(--t3)">${uD}/${a.ua.length} Schritte</span>`:''}</div></div>`
+        +`<div data-tid="${a.id}" class="timer"><div class="tn">${fmt(s)}</div><div style="font-size:9px;color:var(--t3)">/ ${fmtH(a.geplant)}</div><div class="tbar"><div class="tf" style="width:${pct}%"></div></div></div></div>`
+        +stepsHtml(a,true)
+        +`<div style="display:flex;gap:5px;margin-top:8px"><button class="btn btn-ok" onclick="fertig('${a.id}')">✓ Erledigt</button><button class="btn btn-gr" onclick="pauseA('${a.id}')">⏸ Pause</button><button class="btn btn-gr" onclick="openDetail('${a.id}')">···</button></div></div>`;
     });
   }
 
   // BACKLOG
-  if(backlog.length){
+  if(bl.length){
     out+=secHead('Backlog','var(--t2)');
-    backlog.forEach(h=>{
-      const tzName=getTZName(h);
+    bl.forEach(a=>{
+      const tzN=getTZName(a),zN=getZielName(a);
       out+=`<div class="card" style="display:flex;align-items:center;gap:10px;padding:10px 13px">`
         +`<div class="dot" style="background:var(--bd)"></div>`
-        +`<div style="flex:1"><div style="font-size:12px;font-weight:500;margin-bottom:4px">${h.titel}${h.vertraulich?'<span class="lock" style="margin-left:5px">vertraulich</span>':''}</div>`
-        +`<div style="display:flex;gap:5px;flex-wrap:wrap">${typTag(h)}${prioTag(h.prio)}<span class="tag" style="background:var(--gray-bg);color:var(--t2)">${getContextName(h)}</span>${tzName?`<span class="tag" style="background:var(--purple-bg);color:var(--purple)">${tzName}</span>`:''} ${dlTag(h.dl)}</div></div>`
-        +`<button class="btn btn-dk" onclick="startenH('${h.id}')">▶ Starten</button></div>`;
+        +`<div style="flex:1"><div style="font-size:12px;font-weight:500;margin-bottom:4px">${a.titel}${a.vertraulich?'<span class="lock" style="margin-left:5px">vertraulich</span>':''}</div>`
+        +`<div style="display:flex;gap:5px;flex-wrap:wrap">${typTag(a)}${prioTag(a.prio)}${zN?`<span class="tag" style="background:var(--gray-bg);color:var(--t2)">${zN}</span>`:''}${tzN?`<span class="tag" style="background:var(--purple-bg);color:var(--purple)">${tzN}</span>`:''} ${dlTag(a.dl)}</div></div>`
+        +`<button class="btn btn-dk" onclick="startenA('${a.id}')">▶ Starten</button></div>`;
     });
   }
 
   // ERLEDIGT
   if(erl.length){
     out+=secHead('Heute erledigt','var(--green)');
-    erl.forEach(h=>{
+    erl.forEach(a=>{
       out+=`<div style="background:var(--green-bg);border:1px solid var(--green-bd);border-radius:10px;padding:8px 12px;margin-bottom:5px;display:flex;align-items:center;gap:8px">`
-        +`<span style="flex:1;font-size:11px;text-decoration:line-through;color:var(--t2)">${h.titel}</span>`
-        +(h.gebucht?`<span style="font-size:11px;color:var(--green);font-weight:600">${fmt(h.gebucht*3600)}</span>`:'')
+        +`<span style="flex:1;font-size:11px;text-decoration:line-through;color:var(--t2)">${a.titel}</span>`
+        +(a.gebucht?`<span style="font-size:11px;color:var(--green);font-weight:600">${fmt(a.gebucht*3600)}</span>`:'')
         +'</div>';
     });
   }
 
-  if(!myH.length)
-    out+=`<div class="empty-state">Keine Handlungen.<br><button class="btn btn-dk" onclick="openNeu()" style="margin-top:14px">+ Handlung hinzufügen</button></div>`;
-
-  if(myH.length)
-    out+=`<div class="focus-bar"><span style="font-size:11px;color:var(--t2)">Fokus heute</span><div class="focus-track"><div class="focus-fill" style="width:${fq}%"></div></div><span style="font-size:11px;font-weight:600">${fq}% Ziel-fokussiert</span></div>`;
+  if(!myA.length)out+=`<div class="empty-state">Keine Aufgaben.<br><button class="btn btn-dk" onclick="openNeu()" style="margin-top:14px">+ Aufgabe hinzufügen</button></div>`;
+  if(myA.length)out+=`<div class="focus-bar"><span style="font-size:11px;color:var(--t2)">Fokus heute</span><div class="focus-track"><div class="focus-fill" style="width:${fq}%"></div></div><span style="font-size:11px;font-weight:600">${fq}% strategisch</span></div>`;
 
   document.getElementById('main').innerHTML=out;
   startTimers();
 }
 
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════
 // KPI BLOCK
-// ═══════════════════════════════════════════════════════
-function kpiBlockHtml(pid){
+// ═══════════════════════════════════════════════
+function kpiBlock(pid){
   const items=[];
   S.ziele.forEach(z=>(z.kpis||[]).forEach(k=>{if(k.pid===pid)items.push({k,z});}));
   if(!items.length)return'';
   let h=`<details style="margin-bottom:16px"><summary style="cursor:pointer;font-size:10px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.6px;list-style:none;display:flex;align-items:center;gap:6px"><span>▸</span> KPI Check <span style="font-weight:400;text-transform:none;color:var(--t3)">— 2 Minuten</span></summary><div style="margin-top:10px">`;
   items.forEach(({k})=>{
-    const key=pid+'-'+k.id,val=S.kpiVals[key]!==undefined?S.kpiVals[key]:k.ist;
+    const val=kpiVal(k);
     const ok=k.inv?val<=k.ziel:val>=k.ziel*0.85;
     const pct=k.inv?Math.max(0,100-Math.round(Math.max(0,val-k.ziel)/Math.max(k.ziel,.1)*100)):Math.round(Math.min(100,(val/(k.ziel||1))*100));
     const col=ok?'var(--green)':'#c2410c';
-    h+=`<div class="kpi-row" onclick="editKpiVal('${key}',${val},'${k.ziel}','${k.unit}')">`
+    h+=`<div class="kpi-row" onclick="editKpiVal('${k.id}',${val},'${k.ziel}','${k.unit||''}')">`
       +`<span style="font-size:12px;flex:1">${k.label}</span>`
       +`<div class="kpi-track"><div class="kpi-fill" style="width:${Math.max(0,Math.min(100,pct))}%;background:${col}"></div></div>`
-      +`<span style="font-size:12px;font-weight:600;color:${col};min-width:64px;text-align:right">${val}${k.unit} / ${k.ziel}${k.unit}</span></div>`;
+      +`<span style="font-size:12px;font-weight:600;color:${col};min-width:64px;text-align:right">${val}${k.unit||''} / ${k.ziel}${k.unit||''}</span></div>`;
   });
   h+='</div></details>';return h;
 }
-function editKpiVal(key,def,z,unit){
+function editKpiVal(kid,def,z,unit){
   document.getElementById('mb').innerHTML=`<div class="mt">KPI eintragen</div>`
     +`<div class="fl"><label>Aktueller Wert (Ziel: ${z}${unit})</label><input id="kv" type="number" value="${def}" autofocus style="font-size:22px;font-weight:700"></div>`
-    +`<div class="mf"><button class="btn btn-gr" onclick="cm()">Abbrechen</button><button class="btn btn-dk" onclick="saveKV('${key}')">Speichern</button></div>`;
+    +`<div class="mf"><button class="btn btn-gr" onclick="cm()">Abbrechen</button><button class="btn btn-dk" onclick="saveKpiVal('${kid}')">Speichern</button></div>`;
   document.getElementById('ovl').classList.add('open');
 }
-async function saveKV(key){S.kpiVals[key]=parseFloat(document.getElementById('kv').value)||0;cm();render();}
+async function saveKpiVal(kid){
+  const val=parseFloat(document.getElementById('kv').value)||0;
+  const key=aP+'-'+kid;
+  S.kpiVals[key]={val,datum:TODAY};
+  // In Supabase upserten
+  await supa('kpi_vals',{method:'POST',body:{pid:aP,kpi_id:kid,val,datum:TODAY},prefer:'resolution=merge-duplicates,return=minimal'});
+  cm();render();
+}
 
-// ═══════════════════════════════════════════════════════
-// HANDLUNG ACTIONS
-// ═══════════════════════════════════════════════════════
-async function setPrio(id,pr){await updateRecord('handlungen',id,{prio:pr,status:'backlog'});render();}
-async function startenH(id){await updateRecord('handlungen',id,{status:'aktiv',aktSeit:Date.now()});render();}
-async function pauseH(id){
-  const h=S.handlungen.find(x=>x.id===id);if(!h||h.status!=='aktiv')return;
-  const gebucht=Math.round(((h.gebucht||0)+(Date.now()-(h.aktSeit||Date.now()))/3600000)*100)/100;
-  await updateRecord('handlungen',id,{gebucht,aktSeit:null,status:'backlog'});render();
+// ═══════════════════════════════════════════════
+// AUFGABEN ACTIONS
+// ═══════════════════════════════════════════════
+async function setPrio(id,pr){
+  const a=S.aufgaben.find(x=>x.id===id);if(!a)return;
+  a.prio=pr;a.status='backlog';
+  await dbPatch('aufgaben',id,{prio:pr,status:'backlog'});render();
+}
+async function startenA(id){
+  const a=S.aufgaben.find(x=>x.id===id);if(!a)return;
+  a.status='aktiv';a.aktSeit=Date.now();
+  await dbPatch('aufgaben',id,{status:'aktiv',akt_seit:new Date().toISOString()});render();
+}
+async function pauseA(id){
+  const a=S.aufgaben.find(x=>x.id===id);if(!a||a.status!=='aktiv')return;
+  const gebucht=Math.round(((a.gebucht||0)+(Date.now()-(a.aktSeit||Date.now()))/3600000)*100)/100;
+  a.gebucht=gebucht;a.aktSeit=null;a.status='backlog';
+  await dbPatch('aufgaben',id,{gebucht,akt_seit:null,status:'backlog'});render();
 }
 async function fertig(id){
-  const h=S.handlungen.find(x=>x.id===id);if(!h)return;
-  const gebucht=h.status==='aktiv'?Math.round(((h.gebucht||0)+(Date.now()-(h.aktSeit||Date.now()))/3600000)*100)/100:h.gebucht;
-  await updateRecord('handlungen',id,{gebucht,aktSeit:null,status:'erledigt'});render();
+  const a=S.aufgaben.find(x=>x.id===id);if(!a)return;
+  const gebucht=a.status==='aktiv'?Math.round(((a.gebucht||0)+(Date.now()-(a.aktSeit||Date.now()))/3600000)*100)/100:a.gebucht;
+  a.gebucht=gebucht;a.aktSeit=null;a.status='erledigt';
+  await dbPatch('aufgaben',id,{gebucht,akt_seit:null,status:'erledigt'});render();
 }
 async function toggleStep(id,i){
-  const h=S.handlungen.find(x=>x.id===id);if(!h)return;
-  h.ua[i].d=!h.ua[i].d;
-  if(h.ua.length&&h.ua.every(u=>u.d)){h.status='erledigt';h.aktSeit=null;}
-  await dbPatch('handlungen',id,{ua:h.ua,status:h.status,akt_seit:null});render();
+  const a=S.aufgaben.find(x=>x.id===id);if(!a)return;
+  a.ua[i].d=!a.ua[i].d;
+  if(a.ua.every(u=>u.d)&&a.ua.length){a.status='erledigt';a.aktSeit=null;}
+  await dbPatch('aufgaben',id,{ua:a.ua,status:a.status,akt_seit:null});render();
 }
 async function addStep(id){
   const inp=document.getElementById('si-'+id);if(!inp)return;
   const t=inp.value.trim();if(!t)return;
-  const h=S.handlungen.find(x=>x.id===id);if(!h)return;
-  h.ua.push({t,d:false});inp.value='';
-  await dbPatch('handlungen',id,{ua:h.ua});render();
+  const a=S.aufgaben.find(x=>x.id===id);if(!a)return;
+  a.ua.push({t,d:false});inp.value='';
+  await dbPatch('aufgaben',id,{ua:a.ua});render();
 }
 async function delStep(id,i){
-  const h=S.handlungen.find(x=>x.id===id);if(!h)return;
-  h.ua.splice(i,1);
-  await dbPatch('handlungen',id,{ua:h.ua});render();
+  const a=S.aufgaben.find(x=>x.id===id);if(!a)return;
+  a.ua.splice(i,1);
+  await dbPatch('aufgaben',id,{ua:a.ua});render();
 }
 
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════
 // DETAIL MODAL
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════
 function openDetail(id){
-  const h=S.handlungen.find(x=>x.id===id);if(!h)return;
-  const d=dli(h.dl),tzName=getTZName(h);
-  document.getElementById('mb').innerHTML=`<div class="mt">${h.titel}</div>`
-    +`<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:14px">${typTag(h)}${prioTag(h.prio)}<span class="tag" style="background:var(--gray-bg);color:var(--t2)">${getContextName(h)}</span>${tzName?`<span class="tag" style="background:var(--purple-bg);color:var(--purple)">${tzName}</span>`:''}${d?`<span class="tag" style="background:${d.bg};color:${d.c}">${d.l}</span>`:''}${h.vertraulich?'<span class="lock">vertraulich</span>':''}</div>`
-    +(h.notiz?`<div style="font-size:12px;color:var(--t2);background:var(--gray-bg);border-radius:8px;padding:8px 10px;margin-bottom:12px;font-style:italic">${h.notiz}</div>`:'')
+  const a=S.aufgaben.find(x=>x.id===id);if(!a)return;
+  const d=dli(a.dl),tzN=getTZName(a),zN=getZielName(a);
+  document.getElementById('mb').innerHTML=`<div class="mt">${a.titel}</div>`
+    +`<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:14px">${typTag(a)}${prioTag(a.prio)}${zN?`<span class="tag" style="background:var(--gray-bg);color:var(--t2)">${zN}</span>`:''}${tzN?`<span class="tag" style="background:var(--purple-bg);color:var(--purple)">${tzN}</span>`:''}${d?`<span class="tag" style="background:${d.bg};color:${d.c}">${d.l}</span>`:''}${a.vertraulich?'<span class="lock">vertraulich</span>':''}</div>`
+    +(a.notiz?`<div style="font-size:12px;color:var(--t2);background:var(--gray-bg);border-radius:8px;padding:8px 10px;margin-bottom:12px;font-style:italic">${a.notiz}</div>`:'')
     +`<div class="fl"><label>Status</label><div style="display:flex;gap:5px;flex-wrap:wrap">`
     +[['neu','Neu','var(--red-bg)','var(--red)'],['backlog','Backlog','var(--gray-bg)','var(--t2)'],['aktiv','Aktiv','var(--blue-bg)','var(--blue)'],['erledigt','Erledigt','var(--green-bg)','var(--green)']].map(x=>
-      `<button onclick="setStatusModal('${id}','${x[0]}')" style="font-size:11px;padding:4px 10px;border-radius:8px;border:${h.status===x[0]?'2px':'1px'} solid ${h.status===x[0]?'var(--text)':'var(--bd)'};background:${h.status===x[0]?x[2]:'var(--sf)'};color:${h.status===x[0]?x[3]:'var(--t2)'};cursor:pointer;font-family:inherit;font-weight:${h.status===x[0]?600:400}">${x[1]}</button>`
+      `<button onclick="setStatusModal('${id}','${x[0]}')" style="font-size:11px;padding:4px 10px;border-radius:8px;border:${a.status===x[0]?'2px':'1px'} solid ${a.status===x[0]?'var(--text)':'var(--bd)'};background:${a.status===x[0]?x[2]:'var(--sf)'};color:${a.status===x[0]?x[3]:'var(--t2)'};cursor:pointer;font-family:inherit;font-weight:${a.status===x[0]?600:400}">${x[1]}</button>`
     ).join('')+`</div></div>`
-    +`<div class="fl"><label>Schritte</label>${stepsHtml(h,true)}</div>`
-    +`<div style="font-size:11px;color:var(--t2);padding:10px 0;border-top:1px solid var(--bd)">Zeit: <strong>${fmt(elapsedSec(h))}</strong> von ${fmtH(h.geplant)} geplant</div>`
-    +`<div class="mf"><button class="btn btn-gr" onclick="cm()">Schließen</button></div>`;
+    +`<div class="fl"><label>Teilziel zuordnen</label><select id="det-tz" onchange="setTeilziel('${id}',this.value)">`
+    +`<option value="">— kein Teilziel —</option>`
+    +(a.zielId?(zielObj(a.zielId)?.teilziele||[]).map(tz=>`<option value="${tz.id}"${a.teilzielId===tz.id?' selected':''}>${tz.name}</option>`).join(''):'')
+    +`</select></div>`
+    +`<div class="fl"><label>Schritte</label>${stepsHtml(a,true)}</div>`
+    +`<div style="font-size:11px;color:var(--t2);padding:10px 0;border-top:1px solid var(--bd)">Zeit: <strong>${fmt(elapsedSec(a))}</strong> von ${fmtH(a.geplant)} geplant</div>`
+    +`<div class="mf"><button class="btn btn-red" onclick="delAufgabe('${id}')">Löschen</button><button class="btn btn-gr" onclick="cm()">Schließen</button></div>`;
   document.getElementById('ovl').classList.add('open');
 }
 async function setStatusModal(id,st){
-  const h=S.handlungen.find(x=>x.id===id);if(!h)return;
+  const a=S.aufgaben.find(x=>x.id===id);if(!a)return;
   let patch={status:st};
-  if(st==='aktiv')patch.aktSeit=Date.now();
-  else if(h.status==='aktiv'){patch.gebucht=Math.round(((h.gebucht||0)+(Date.now()-(h.aktSeit||Date.now()))/3600000)*100)/100;patch.aktSeit=null;}
-  await updateRecord('handlungen',id,patch);openDetail(id);render();
+  if(st==='aktiv')patch.akt_seit=new Date().toISOString();
+  else if(a.status==='aktiv'){patch.gebucht=Math.round(((a.gebucht||0)+(Date.now()-(a.aktSeit||Date.now()))/3600000)*100)/100;patch.akt_seit=null;}
+  Object.assign(a,{status:st,aktSeit:st==='aktiv'?Date.now():null,...(patch.gebucht!==undefined?{gebucht:patch.gebucht}:{})});
+  await dbPatch('aufgaben',id,patch);openDetail(id);render();
+}
+async function setTeilziel(id,tzid){
+  const a=S.aufgaben.find(x=>x.id===id);if(!a)return;
+  a.teilzielId=tzid||null;
+  await dbPatch('aufgaben',id,{teilziel_id:tzid||null});
+}
+async function delAufgabe(id){
+  if(!confirm('Aufgabe löschen?'))return;
+  S.aufgaben=S.aufgaben.filter(x=>x.id!==id);
+  await dbDelete('aufgaben',id);cm();render();
 }
 
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════
 // ZIELE
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════
 function rZiele(){
   let out=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">`
     +`<div><div style="font-size:16px;font-weight:700">Ziele</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Strategische Ziele & Teilziele</div></div>`
@@ -845,9 +788,12 @@ function rZiele(){
     +'</div>';
 
   S.ziele.forEach(z=>{
-    const f=FARBEN[z.farbe]||FARBEN[0],verantw=person(z.verantwortlichId);
-    const okK=(z.kpis||[]).filter(kpiOk).length,badK=(z.kpis||[]).filter(k=>!kpiOk(k));
-    const zH=S.handlungen.filter(h=>h.zielId===z.id&&h.status!=='erledigt'&&canSeeHandlung(h));
+    const f=FARBEN[z.farbe]||FARBEN[0];
+    const verantw=person(z.verantwortlichId);
+    const pct=zielPct(z);
+    const okK=(z.kpis||[]).filter(kpiOk).length;
+    const badK=(z.kpis||[]).filter(k=>!kpiOk(k));
+    const zA=S.aufgaben.filter(a=>a.zielId===z.id&&a.status!=='erledigt'&&canSee(a));
 
     out+=`<div class="zcard" style="background:${f.bg};border-color:${f.bd}">`;
 
@@ -859,26 +805,26 @@ function rZiele(){
       +(verantw?`<span style="font-size:11px;color:${f.tc};opacity:.7">Verantw.: ${verantw.name}</span>`:'')
       +(isGF()?`<button onclick="editZiel('${z.id}')" style="font-size:10px;padding:2px 8px;border-radius:6px;border:0.5px solid ${f.bd};background:rgba(255,255,255,.5);color:${f.tc};cursor:pointer;font-family:inherit;opacity:.7">bearbeiten</button>`:'')
       +`</div>`
-      +`<div style="display:flex;align-items:center;gap:10px"><div class="pbar"><div class="pbar-fill" style="width:${z.pct}%;background:${z.pct>=70?f.tc:'#f59e0b'}"></div></div><span style="font-size:13px;font-weight:700;color:${z.pct>=70?f.tc:'#c2410c'};min-width:36px">${z.pct}%</span></div>`
-      +`<div style="font-size:11px;color:${f.tc};opacity:.65;margin-top:3px">${z.pct>=70?'✓ Auf Kurs':'⚠ Unter Plan'}${z.kpis.length?' · '+okK+'/'+z.kpis.length+' KPIs auf Kurs':''}</div>`
+      +`<div style="display:flex;align-items:center;gap:10px"><div class="pbar"><div class="pbar-fill" style="width:${pct}%;background:${pct>=70?f.tc:'#f59e0b'}"></div></div><span style="font-size:13px;font-weight:700;color:${pct>=70?f.tc:'#c2410c'};min-width:36px">${pct}%</span></div>`
+      +`<div style="font-size:11px;color:${f.tc};opacity:.65;margin-top:3px">${pct>=70?'✓ Auf Kurs':'⚠ Unter Plan'}${z.kpis.length?' · '+okK+'/'+z.kpis.length+' KPIs auf Kurs':''}</div>`
       +`</div>`
-      +(badK.length?`<div style="background:var(--red-bg);border:1px solid var(--red-bd);border-radius:9px;padding:8px 10px;min-width:140px;flex-shrink:0"><div style="font-size:10px;font-weight:600;color:var(--red);margin-bottom:4px">Handlungsbedarf</div>${badK.map(k=>`<div style="font-size:10px;color:var(--red)">· ${k.label}: ${k.ist}${k.unit} → ${k.ziel}${k.unit}</div>`).join('')}</div>`:'')
+      +(badK.length?`<div style="background:var(--red-bg);border:1px solid var(--red-bd);border-radius:9px;padding:8px 10px;min-width:140px;flex-shrink:0"><div style="font-size:10px;font-weight:600;color:var(--red);margin-bottom:4px">Handlungsbedarf</div>${badK.map(k=>`<div style="font-size:10px;color:var(--red)">· ${k.label}: ${k.ist}${k.unit||''} → ${k.ziel}${k.unit||''}</div>`).join('')}</div>`:'')
       +`</div>`;
 
     // KPIs
     if(z.kpis.length||isGF()){
       out+=`<details style="margin-bottom:14px"><summary style="cursor:pointer;font-size:10px;font-weight:700;color:${f.tc};opacity:.65;text-transform:uppercase;letter-spacing:.5px;list-style:none">▸ KPIs (${z.kpis.length})</summary>`;
       out+=`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:8px;margin-top:10px">`;
-      (z.kpis||[]).forEach(k=>{
-        const ok=kpiOk(k),p2=person(k.pid);
-        const pct2=k.inv?Math.max(0,100-Math.round(Math.max(0,k.ist-k.ziel)/Math.max(k.ziel,.1)*100)):Math.round(Math.min(100,k.ist/(k.ziel||1)*100));
-        const isMyKpi=k.pid===aP;
-        out+=`<div ${isGF()?`onclick="editKpiDef('${z.id}','${k.id}')" style="cursor:pointer;"`:''} style="background:rgba(255,255,255,.75);border:${isMyKpi?`2px solid ${f.tc}`:`0.5px solid ${f.bd}`};border-radius:10px;padding:11px 12px;position:relative">`
-          +(isMyKpi?`<div style="position:absolute;top:6px;right:8px;font-size:9px;background:${f.tc};color:#fff;padding:1px 5px;border-radius:99px;font-weight:600">Ich</div>`:'')
+      z.kpis.forEach(k=>{
+        const val=kpiVal(k),ok=kpiOk(k),p2=person(k.pid);
+        const pct2=k.inv?Math.max(0,100-Math.round(Math.max(0,val-k.ziel)/Math.max(k.ziel,.1)*100)):Math.round(Math.min(100,val/(k.ziel||1)*100));
+        const isMe=k.pid===aP;
+        out+=`<div ${isGF()?`onclick="editKpiDef('${z.id}','${k.id}')" style="cursor:pointer;"`:''} style="background:rgba(255,255,255,.75);border:${isMe?`2px solid ${f.tc}`:`0.5px solid ${f.bd}`};border-radius:10px;padding:11px 12px;position:relative">`
+          +(isMe?`<div style="position:absolute;top:6px;right:8px;font-size:9px;background:${f.tc};color:#fff;padding:1px 5px;border-radius:99px;font-weight:600">Ich</div>`:'')
           +`<div style="font-size:9px;color:var(--t3);margin-bottom:3px;text-transform:uppercase">${p2?p2.name:'–'} · ${k.freq}</div>`
-          +`<div style="font-size:20px;font-weight:700;color:${ok?f.tc:'var(--red)'};line-height:1;margin-bottom:2px">${k.ist}${k.unit}</div>`
+          +`<div style="font-size:20px;font-weight:700;color:${ok?f.tc:'var(--red)'};line-height:1;margin-bottom:2px">${val}${k.unit||''}</div>`
           +`<div style="font-size:11px;font-weight:600;margin-bottom:1px">${k.label}</div>`
-          +`<div style="font-size:9px;color:var(--t3);margin-bottom:6px">Ziel: ${k.ziel}${k.unit}</div>`
+          +`<div style="font-size:9px;color:var(--t3);margin-bottom:6px">Ziel: ${k.ziel}${k.unit||''}</div>`
           +`<div style="height:3px;border-radius:99px;background:rgba(0,0,0,.07);overflow:hidden"><div style="height:100%;border-radius:99px;background:${ok?f.tc:'var(--red)'};width:${Math.max(0,Math.min(100,pct2))}%"></div></div></div>`;
       });
       if(isGF())out+=`<div onclick="addKpi('${z.id}')" style="border:1.5px dashed ${f.bd};border-radius:10px;padding:11px 12px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;color:${f.tc};gap:4px;opacity:.5;min-height:90px" onmouseenter="this.style.opacity='0.9'" onmouseleave="this.style.opacity='0.5'"><span style="font-size:20px">+</span><span style="font-size:11px">KPI</span></div>`;
@@ -888,7 +834,7 @@ function rZiele(){
     // Teilziele
     out+=`<div style="font-size:10px;font-weight:700;color:${f.tc};opacity:.65;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Teilziele</div>`;
     (z.teilziele||[]).forEach(tz=>{
-      const tzV=person(tz.verantwortlichId),tzH=zH.filter(h=>h.teilzielId===tz.id);
+      const tzV=person(tz.verantwortlichId),tzA=zA.filter(a=>a.teilzielId===tz.id);
       out+=`<div class="tz-block" style="${tz.erledigt?'opacity:.55':''}">`
         +`<div class="tz-head">`
         +(canManageTZ(z.id)?`<input type="checkbox" ${tz.erledigt?'checked':''} onclick="toggleTZ('${z.id}','${tz.id}')" style="flex-shrink:0">`:'')
@@ -899,26 +845,26 @@ function rZiele(){
         +`</div></div>`
         +`<div style="display:flex;gap:5px">`
         +(canManageTZ(z.id)?`<button onclick="editTZ('${z.id}','${tz.id}')" style="font-size:10px;padding:2px 8px;border-radius:6px;border:1px solid var(--purple-bd);background:rgba(255,255,255,.5);color:var(--purple);cursor:pointer;font-family:inherit">···</button>`:'')
-        +`<button onclick="openNeu({zielId:'${z.id}',teilzielId:'${tz.id}'})" style="font-size:10px;padding:2px 8px;border-radius:6px;border:1px solid var(--purple-bd);background:rgba(255,255,255,.5);color:var(--purple);cursor:pointer;font-family:inherit">+ Handlung</button>`
+        +`<button onclick="openNeu({zielId:'${z.id}',teilzielId:'${tz.id}'})" style="font-size:10px;padding:2px 8px;border-radius:6px;border:1px solid var(--purple-bd);background:rgba(255,255,255,.5);color:var(--purple);cursor:pointer;font-family:inherit">+ Aufgabe</button>`
         +`</div></div>`;
-      if(tzH.length){
+      if(tzA.length){
         out+='<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:6px">';
-        tzH.forEach(h=>{const p2=person(h.pid);out+=`<div style="background:rgba(255,255,255,.6);border:0.5px solid var(--purple-bd);border-radius:7px;padding:3px 9px;font-size:11px;display:flex;align-items:center;gap:4px"><span style="font-size:8px;color:${h.status==='aktiv'?'var(--blue)':'var(--t3)'}">●</span>${h.titel}${p2?`<span style="color:var(--t3);font-size:10px">· ${p2.name}</span>`:''}</div>`;});
+        tzA.forEach(a=>{const p2=person(a.pid);out+=`<div style="background:rgba(255,255,255,.6);border:0.5px solid var(--purple-bd);border-radius:7px;padding:3px 9px;font-size:11px;display:flex;align-items:center;gap:4px"><span style="font-size:8px;color:${a.status==='aktiv'?'var(--blue)':'var(--t3)'}">●</span>${a.titel}${p2?`<span style="color:var(--t3);font-size:10px">· ${p2.name}</span>`:''}</div>`;});
         out+='</div>';
       }
       out+='</div>';
     });
     if(canManageTZ(z.id))out+=`<button class="tz-add-btn" onclick="openAddTZ('${z.id}')">+ Teilziel hinzufügen</button>`;
 
-    // Handlung direkt zum Ziel
-    out+=`<div style="margin-top:10px"><button onclick="openNeu({zielId:'${z.id}'})" style="width:100%;padding:9px;border-radius:10px;border:1.5px dashed ${f.bd};background:transparent;color:${f.tc};font-size:12px;font-family:inherit;cursor:pointer;font-weight:500;opacity:.7" onmouseenter="this.style.opacity='1'" onmouseleave="this.style.opacity='0.7'">+ Handlung zu diesem Ziel hinzufügen</button></div>`;
+    // + Aufgabe Button
+    out+=`<div style="margin-top:10px"><button onclick="openNeu({zielId:'${z.id}'})" style="width:100%;padding:9px;border-radius:10px;border:1.5px dashed ${f.bd};background:transparent;color:${f.tc};font-size:12px;font-family:inherit;cursor:pointer;font-weight:500;opacity:.7" onmouseenter="this.style.opacity='1'" onmouseleave="this.style.opacity='0.7'">+ Aufgabe zu diesem Ziel hinzufügen</button></div>`;
 
-    // Weitere Handlungen ohne Teilziel
-    const hOhneTZ=zH.filter(h=>!h.teilzielId);
-    if(hOhneTZ.length){
-      out+=`<div style="font-size:10px;font-weight:700;color:${f.tc};opacity:.65;text-transform:uppercase;letter-spacing:.5px;margin:12px 0 6px">Weitere Handlungen</div>`;
+    // Weitere Aufgaben ohne Teilziel
+    const aOhneTZ=zA.filter(a=>!a.teilzielId);
+    if(aOhneTZ.length){
+      out+=`<div style="font-size:10px;font-weight:700;color:${f.tc};opacity:.65;text-transform:uppercase;letter-spacing:.5px;margin:12px 0 6px">Weitere Aufgaben</div>`;
       out+='<div style="display:flex;gap:6px;flex-wrap:wrap">';
-      hOhneTZ.forEach(h=>{const p2=person(h.pid);out+=`<div style="background:rgba(255,255,255,.75);border:0.5px solid ${f.bd};border-radius:8px;padding:5px 10px;font-size:11px;display:flex;align-items:center;gap:5px"><span style="font-size:8px;color:${h.status==='aktiv'?f.tc:'var(--t3)'}">●</span>${h.titel}${p2?`<span style="color:var(--t3);font-size:10px">· ${p2.name}</span>`:''}</div>`;});
+      aOhneTZ.forEach(a=>{const p2=person(a.pid);out+=`<div style="background:rgba(255,255,255,.75);border:0.5px solid ${f.bd};border-radius:8px;padding:5px 10px;font-size:11px;display:flex;align-items:center;gap:5px"><span style="font-size:8px;color:${a.status==='aktiv'?f.tc:'var(--t3)'}">●</span>${a.titel}${p2?`<span style="color:var(--t3);font-size:10px">· ${p2.name}</span>`:''}</div>`;});
       out+='</div>';
     }
     out+='</div>';
@@ -926,12 +872,13 @@ function rZiele(){
   document.getElementById('main').innerHTML=out;
 }
 
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════
 // TEILZIELE CRUD
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════
 async function toggleTZ(zid,tzid){
   const z=zielObj(zid);if(!z)return;
-  const tz=(z.teilziele||[]).find(t=>t.id===tzid);if(tz)tz.erledigt=!tz.erledigt;
+  const tz=(z.teilziele||[]).find(t=>t.id===tzid);if(!tz)return;
+  tz.erledigt=!tz.erledigt;
   await dbPatch('teilziele',tzid,{erledigt:tz.erledigt});rZiele();
 }
 function openAddTZ(zid){
@@ -961,8 +908,9 @@ async function saveTZ(zid,tzid){
     if(tz){tz.name=name;tz.verantwortlichId=vid;tz.datum=datum;}
     await dbPatch('teilziele',tzid,{name,verantwortlich_id:vid,datum:datum||null});
   } else {
-    const id=nid('tz'),rec={id,zielId:zid,name,verantwortlichId:vid,datum,erledigt:false};
-    z.teilziele=z.teilziele||[];z.teilziele.push(rec);
+    const id=nid('tz'),rec={id,ziel_id:zid,name,verantwortlich_id:vid,datum:datum||null,erledigt:false};
+    z.teilziele=z.teilziele||[];
+    z.teilziele.push({...rec,zielId:zid,verantwortlichId:vid,datum:datum||''});
     await dbInsert('teilziele',rec);
   }
   cm();rZiele();
@@ -971,36 +919,40 @@ async function delTZ(zid,tzid){
   if(!confirm('Teilziel löschen?'))return;
   const z=zielObj(zid);if(!z)return;
   z.teilziele=(z.teilziele||[]).filter(t=>t.id!==tzid);
-  S.handlungen.forEach(h=>{if(h.teilzielId===tzid)h.teilzielId=null;});
+  S.aufgaben.forEach(a=>{if(a.teilzielId===tzid)a.teilzielId=null;});
   await dbDelete('teilziele',tzid);cm();rZiele();
 }
 
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════
 // ZIEL CRUD
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════
 async function addZiel(){
-  const id=nid('z'),rec={id,name:'Neues Ziel',farbe:Math.floor(Math.random()*FARBEN.length),pct:0,verantwortlichId:'',kpis:[],teilziele:[]};
-  S.ziele.push(rec);await dbInsert('ziele',rec);rZiele();editZiel(id);
+  const id=nid('z'),rec={id,name:'Neues Ziel',farbe:Math.floor(Math.random()*FARBEN.length),pct:0,verantwortlich_id:null};
+  S.ziele.push({...rec,verantwortlichId:null,kpis:[],teilziele:[]});
+  await dbInsert('ziele',rec);
+  rZiele();editZiel(id);
 }
 function editZiel(zid){
   const z=S.ziele.find(x=>x.id===zid);if(!z)return;
   document.getElementById('mb').innerHTML=`<div class="mt">Ziel bearbeiten</div>`
     +`<div class="fl"><label>Name</label><input id="zn" value="${z.name}" autofocus></div>`
     +`<div class="fl"><label>Verantwortlich</label><select id="zver"><option value="">— niemand —</option>${S.personen.map(p=>`<option value="${p.id}"${z.verantwortlichId===p.id?' selected':''}>${p.name}</option>`).join('')}</select></div>`
-    +`<div class="fl"><label>Fortschritt %</label><input id="zpct" type="number" min="0" max="100" value="${z.pct}"></div>`
-    +`<div class="fl"><label>Farbe</label><div style="display:flex;gap:8px;margin-top:4px">${FARBEN.map((f,i)=>`<div onclick="selZF(${i})" id="zfc${i}" style="width:24px;height:24px;border-radius:50%;background:${f.tc};cursor:pointer;border:${z.farbe===i?'3px':'2px'} solid ${z.farbe===i?'var(--text)':'transparent'}"></div>`).join('')}</div></div>`
-    +`<input type="hidden" id="zfarbe" value="${z.farbe}">`
+    +`<div class="fl"><label>Farbe</label><div style="display:flex;gap:8px;margin-top:4px">${FARBEN.map((f,i)=>`<div onclick="selZF(${i})" id="zfc${i}" style="width:24px;height:24px;border-radius:50%;background:${f.tc};cursor:pointer;border:${(z.farbe||0)===i?'3px':'2px'} solid ${(z.farbe||0)===i?'var(--text)':'transparent'}"></div>`).join('')}</div></div>`
+    +`<input type="hidden" id="zfarbe" value="${z.farbe||0}">`
     +`<div class="mf"><button class="btn btn-red" onclick="delZiel('${zid}')">Löschen</button><button class="btn btn-gr" onclick="cm()">Abbrechen</button><button class="btn btn-dk" onclick="saveZiel('${zid}')">Speichern</button></div>`;
   document.getElementById('ovl').classList.add('open');
 }
-function selZF(i){document.getElementById('zfarbe').value=i;FARBEN.forEach((_,j)=>{const el=document.getElementById('zfc'+j);if(el)el.style.border=(j===i?'3px solid var(--text)':'2px solid transparent');});}
+function selZF(i){
+  document.getElementById('zfarbe').value=i;
+  FARBEN.forEach((_,j)=>{const el=document.getElementById('zfc'+j);if(el)el.style.border=(j===i?'3px solid var(--text)':'2px solid transparent');});
+}
 async function saveZiel(zid){
   const z=S.ziele.find(x=>x.id===zid);if(!z)return;
-  z.name=document.getElementById('zn').value.trim()||z.name;
-  z.verantwortlichId=document.getElementById('zver').value;
-  z.pct=Math.min(100,Math.max(0,parseInt(document.getElementById('zpct').value)||0));
-  z.farbe=parseInt(document.getElementById('zfarbe').value)||0;
-  await dbPatch('ziele',zid,{name:z.name,verantwortlich_id:z.verantwortlichId,pct:z.pct,farbe:z.farbe});
+  const name=document.getElementById('zn').value.trim()||z.name;
+  const verantwortlichId=document.getElementById('zver').value||null;
+  const farbe=parseInt(document.getElementById('zfarbe').value)||0;
+  z.name=name;z.verantwortlichId=verantwortlichId;z.farbe=farbe;
+  await dbPatch('ziele',zid,{name,verantwortlich_id:verantwortlichId,farbe});
   cm();rZiele();
 }
 async function delZiel(zid){
@@ -1012,8 +964,9 @@ async function delZiel(zid){
 // KPI CRUD
 async function addKpi(zid){
   const z=zielObj(zid);if(!z)return;
-  const kid=nid('k'),rec={id:kid,zielId:zid,label:'Neuer KPI',ist:0,ziel:10,unit:'',freq:'täglich',pid:S.personen[0]?.id||'',inv:false};
-  z.kpis.push(rec);await dbInsert('kpis',rec);rZiele();editKpiDef(zid,kid);
+  const id=nid('k'),rec={id,ziel_id:zid,label:'Neuer KPI',ist:0,ziel:10,unit:'',freq:'täglich',pid:S.personen[0]?.id||'',inv:false};
+  z.kpis.push({...rec,zielId:zid});
+  await dbInsert('kpis',rec);rZiele();editKpiDef(zid,id);
 }
 function editKpiDef(zid,kid){
   if(!isGF())return;
@@ -1021,7 +974,7 @@ function editKpiDef(zid,kid){
   document.getElementById('mb').innerHTML=`<div class="mt">KPI bearbeiten</div>`
     +`<div class="fl"><label>Name</label><input id="kl" value="${k.label}" autofocus></div>`
     +`<div class="f2"><div class="fl"><label>Ist-Wert</label><input id="ki" type="number" value="${k.ist}"></div><div class="fl"><label>Ziel-Wert</label><input id="kz" type="number" value="${k.ziel}"></div></div>`
-    +`<div class="f2"><div class="fl"><label>Einheit</label><input id="ku" value="${k.unit}" placeholder="%, Stk…"></div><div class="fl"><label>Rhythmus</label><select id="kf">${FREQ.map(f=>`<option${k.freq===f?' selected':''}>${f}</option>`).join('')}</select></div></div>`
+    +`<div class="f2"><div class="fl"><label>Einheit</label><input id="ku" value="${k.unit||''}" placeholder="%, Stk…"></div><div class="fl"><label>Rhythmus</label><select id="kf">${FREQ.map(f=>`<option${k.freq===f?' selected':''}>${f}</option>`).join('')}</select></div></div>`
     +`<div class="fl"><label>Verantwortlich</label><select id="kp">${S.personen.map(p=>`<option value="${p.id}"${k.pid===p.id?' selected':''}>${p.name}</option>`).join('')}</select></div>`
     +`<div class="fl"><label style="text-transform:none;font-size:13px;font-weight:400;display:flex;align-items:center;gap:8px"><input type="checkbox" id="kinv"${k.inv?' checked':''} style="width:auto"> Niedriger ist besser</label></div>`
     +`<div class="mf"><button class="btn btn-red" onclick="delKpi('${zid}','${kid}')">Löschen</button><button class="btn btn-gr" onclick="cm()">Abbrechen</button><button class="btn btn-dk" onclick="saveKpi('${zid}','${kid}')">Speichern</button></div>`;
@@ -1045,44 +998,51 @@ async function delKpi(zid,kid){
   await dbDelete('kpis',kid);cm();rZiele();
 }
 
-// ═══════════════════════════════════════════════════════
-// NEUE HANDLUNG
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════
+// NEUE AUFGABE
+// ═══════════════════════════════════════════════
 function openNeu(pf={}){
   _selPrio=pf.prio||null;
-  const zOpts=S.ziele.map(z=>`<option value="z:${z.id}">[Ziel] ${z.name}</option>`).join('');
-  const bOpts=S.bereiche.map(b=>`<option value="b:${b.id}">[${b.name}]</option>`).join('');
-  const defVal=pf.zielId?`z:${pf.zielId}`:(pf.bereichId?`b:${pf.bereichId}`:`z:${S.ziele[0]?.id}`);
+  // Wer bekommt die Aufgabe — immer realMe als Default, nie aP wenn fremdes Profil
+  const defaultPid=pf.pid||realMe||aP;
 
-  document.getElementById('mb').innerHTML=`<div class="mt">Neue Handlung</div>`
+  document.getElementById('mb').innerHTML=`<div class="mt">Neue Aufgabe</div>`
     +`<div class="fl"><label>Was soll gemacht werden?</label><input id="nt" value="${pf.titel||''}" placeholder="Konkret und aktiv formulieren…" autofocus></div>`
-    +`<div class="f2"><div class="fl"><label>Wer?</label><select id="np">${S.personen.map(p=>`<option value="${p.id}"${(pf.pid||aP)===p.id?' selected':''}>${p.name}</option>`).join('')}</select></div>`
-    +`<div class="fl"><label>Ziel / Bereich</label><select id="nzb" onchange="updateNeuTZ()"><optgroup label="Strategische Ziele">${zOpts}</optgroup><optgroup label="Bereiche">${bOpts}</optgroup></select></div></div>`
-    +`<div class="fl" id="tz-wrap"><label>Teilziel (optional)</label><select id="ntz"><option value="">— kein Teilziel —</option></select></div>`
+    +`<div class="f2"><div class="fl"><label>Wer?</label><select id="np">${S.personen.map(p=>`<option value="${p.id}"${defaultPid===p.id?' selected':''}>${p.name}</option>`).join('')}</select></div>`
+    +`<div class="fl"><label>Typ</label><select id="ntyp" onchange="updateNeuForm()">`
+    +`<option value="strategisch"${pf.zielId?'':''}>Strategisch (hat Ziel)</option>`
+    +`<option value="operativ"${!pf.zielId&&!pf.random?' selected':''}>Operativ</option>`
+    +`<option value="random"${pf.random?' selected':''}>Random</option>`
+    +`</select></div></div>`
+    +`<div id="neu-ziel-wrap" class="fl"><label>Ziel</label><select id="nziel" onchange="updateNeuTZ()">${S.ziele.map(z=>`<option value="${z.id}"${pf.zielId===z.id?' selected':''}>${z.name}</option>`).join('')}</select></div>`
+    +`<div id="neu-tz-wrap" class="fl"><label>Teilziel (optional)</label><select id="ntz"><option value="">— kein Teilziel —</option></select></div>`
     +`<div class="fl"><label>Priorität</label><div style="display:flex;gap:6px;margin-top:2px">`
     +[null,'P1','P2','P3'].map(pr=>{const bg=pr==='P1'?'var(--red-bg)':pr==='P2'?'#fff7ed':'var(--gray-bg)';const tc=pr==='P1'?'var(--red)':pr==='P2'?'#c2410c':'var(--t2)';return`<button id="pbp-${pr||'k'}" onclick="selPrioBtn(this,'${pr}')" style="font-size:12px;padding:4px 11px;border-radius:8px;border:1px solid ${pr?tc:'var(--bd)'};background:${bg};color:${tc};cursor:pointer;font-family:inherit">${pr||'kein'}</button>`;}).join('')
     +`</div></div>`
     +`<div class="f2"><div class="fl"><label>Dauer</label><select id="nh">${Object.keys(SH).map(h=>`<option value="${h}"${(pf.geplant||1)==h?' selected':''}>${SH[h]}</option>`).join('')}</select></div><div class="fl"><label>Deadline</label><input type="date" id="ndl" value="${pf.dl||''}"></div></div>`
-    +(isGF()?`<div class="fl"><label style="display:flex;align-items:center;gap:8px;text-transform:none;font-size:13px;font-weight:400"><input type="checkbox" id="nvert"${pf.vertraulich?' checked':''} style="width:auto"> Vertraulich — nur GF sichtbar</label></div>`:'')
+    +(isGF()?`<div class="fl"><label style="display:flex;align-items:center;gap:8px;text-transform:none;font-size:13px;font-weight:400"><input type="checkbox" id="nvert" style="width:auto"> Vertraulich — nur GF sichtbar</label></div>`:'')
     +`<div class="fl"><label>Notiz</label><input id="nno" value="${pf.notiz||''}" placeholder="Optional…"></div>`
     +`<div class="mf"><button class="btn btn-gr" onclick="cm()">Abbrechen</button><button class="btn btn-dk" onclick="saveNeu()">Speichern</button></div>`;
   document.getElementById('ovl').classList.add('open');
 
-  // Ziel vorauswählen
-  const zbSel=document.getElementById('nzb');
-  if(zbSel&&defVal){zbSel.value=defVal;updateNeuTZ();}
+  // Typ vorauswählen
+  if(pf.zielId){document.getElementById('ntyp').value='strategisch';}
+  updateNeuForm();
 
   // Teilziel vorauswählen
   if(pf.teilzielId){setTimeout(()=>{const s=document.getElementById('ntz');if(s)s.value=pf.teilzielId;},50);}
 }
+function updateNeuForm(){
+  const typ=document.getElementById('ntyp')?.value;
+  const zw=document.getElementById('neu-ziel-wrap'),tw=document.getElementById('neu-tz-wrap');
+  if(typ==='strategisch'){zw.style.display='';tw.style.display='';updateNeuTZ();}
+  else{zw.style.display='none';tw.style.display='none';}
+}
 function updateNeuTZ(){
-  const sel=document.getElementById('nzb');if(!sel)return;
-  const val=sel.value,wrap=document.getElementById('tz-wrap'),tzSel=document.getElementById('ntz');
-  if(val&&val.startsWith('z:')){
-    const z=zielObj(val.slice(2));wrap.style.display='';
-    tzSel.innerHTML='<option value="">— kein Teilziel —</option>';
-    if(z&&z.teilziele)(z.teilziele||[]).filter(t=>!t.erledigt).forEach(t=>{tzSel.innerHTML+=`<option value="${t.id}">${t.name}</option>`;});
-  } else {wrap.style.display='none';}
+  const zSel=document.getElementById('nziel');if(!zSel)return;
+  const z=zielObj(zSel.value),tzSel=document.getElementById('ntz');
+  tzSel.innerHTML='<option value="">— kein Teilziel —</option>';
+  if(z)(z.teilziele||[]).filter(t=>!t.erledigt).forEach(t=>{tzSel.innerHTML+=`<option value="${t.id}">${t.name}</option>`;});
 }
 function selPrioBtn(btn,pr){
   _selPrio=(!pr||pr==='null')?null:pr;
@@ -1091,31 +1051,35 @@ function selPrioBtn(btn,pr){
 }
 async function saveNeu(){
   const t=document.getElementById('nt').value.trim();if(!t)return;
-  const zbVal=document.getElementById('nzb').value;
-  const zielId=zbVal&&zbVal.startsWith('z:')?zbVal.slice(2):null;
-  const bereichId=zbVal&&zbVal.startsWith('b:')?zbVal.slice(2):null;
+  const typ=document.getElementById('ntyp').value;
+  const zielId=typ==='strategisch'?(document.getElementById('nziel')?.value||null):null;
   const tzSel=document.getElementById('ntz');
-  const teilzielId=(tzSel&&zielId)?tzSel.value||null:null;
+  const teilzielId=typ==='strategisch'&&tzSel?tzSel.value||null:null;
   const vert=document.getElementById('nvert')?document.getElementById('nvert').checked:false;
+  const pid=document.getElementById('np').value;
+  const id=nid('a');
   const rec={
-    id:'h'+(S.nextId++),pid:document.getElementById('np').value,titel:t,
+    id,pid,titel:t,typ,
     status:_selPrio?'backlog':'neu',prio:_selPrio||null,
-    zielId,bereichId,teilzielId,
+    ziel_id:zielId,teilziel_id:teilzielId,
     geplant:parseFloat(document.getElementById('nh').value)||1,
-    gebucht:0,dl:document.getElementById('ndl').value,
+    gebucht:0,dl:document.getElementById('ndl').value||null,
     ua:[],notiz:document.getElementById('nno').value.trim(),
-    aktSeit:null,vertraulich:vert
+    akt_seit:null,vertraulich:vert
   };
-  await insertRecord('handlungen',rec);cm();render();
+  // Lokaler State
+  S.aufgaben.push({...rec,zielId,teilzielId,aktSeit:null,dl:rec.dl||''});
+  await dbInsert('aufgaben',rec);
+  cm();render();
 }
 
-// ═══════════════════════════════════════════════════════
-// KI-ASSISTENT
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════
+// KI
+// ═══════════════════════════════════════════════
 function openAI(){
-  document.getElementById('mb').innerHTML=`<div class="mt">✦ Handlung mit KI erstellen</div>`
+  document.getElementById('mb').innerHTML=`<div class="mt">✦ Aufgabe mit KI erstellen</div>`
     +`<div style="font-size:12px;color:var(--t2);margin-bottom:12px;line-height:1.6">Beschreib die Aufgabe frei — die KI erstellt und weist sie zu.</div>`
-    +`<div style="background:var(--gray-bg);border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:11px;color:var(--t3)">Beispiele:<br>„Erstelle für Fabian eine Aufgabe Wartungsplan bis Freitag unter Ziel Qualität P1"<br>„Kristina: Messe München buchen bis 10. April, P1"</div>`
+    +`<div style="background:var(--gray-bg);border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:11px;color:var(--t3)">Beispiele:<br>„Erstelle für Fabian eine Aufgabe Wartungsplan bis Freitag unter Ziel Qualität P1"<br>„Kristina: Messe München buchen bis 10. April, P1"<br>„Random für Do: Kunde Müller zurückrufen"</div>`
     +`<div class="fl"><textarea id="ai-inp" rows="3" placeholder="Beschreibe die Aufgabe…" style="resize:none;font-size:13px"></textarea></div>`
     +`<div id="ai-out"></div>`
     +`<div class="mf"><button class="btn btn-gr" onclick="cm()">Abbrechen</button><button class="btn btn-purple" onclick="runAI()">✦ Erstellen</button></div>`;
@@ -1125,134 +1089,99 @@ function openAI(){
 async function runAI(){
   const inp=document.getElementById('ai-inp').value.trim();if(!inp)return;
   const out=document.getElementById('ai-out');
-  out.innerHTML=`<div style="display:flex;align-items:center;gap:8px;padding:10px;color:var(--purple);font-size:12px">⟳ KI denkt nach…</div>`;
-  const systemPrompt=`Du bist ein Assistent für Halleluja OS. Extrahiere aus dem deutschen Text eine Handlung und antworte NUR mit validem JSON ohne Markdown:
-{"titel":"...","pid":"lu|si|kr|do|fa","zielId":"z1|z2|z3|null","bereichId":"b1|b2|b3|null","teilzielId":"tz1|tz2|tz3|tz4|null","prio":"P1|P2|P3|null","dl":"YYYY-MM-DD oder null","notiz":"..."}
-Personen: lu=Ludwig, si=Simon, kr=Kristina, do=Dominic, fa=Fabian
-Ziele: z1=Umsatz Q2, z2=After Sales, z3=Qualität
-Teilziele: tz1=Messe München, tz2=Pipeline KW16, tz3=Tourenoptimierung, tz4=Wartung standardisiert
-Bereiche: b1=Betrieb & Alltag, b2=Fuhrpark, b3=Random
-Heutiges Datum: ${TODAY}. Freitag=2026-04-10.`;
-  try {
-    const resp=await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,system:systemPrompt,messages:[{role:'user',content:inp}]})
-    });
+  out.innerHTML=`<div style="padding:10px;color:var(--purple);font-size:12px">⟳ KI denkt nach…</div>`;
+  const sys=`Du bist Assistent für Halleluja OS. Extrahiere eine Aufgabe und antworte NUR mit JSON:
+{"titel":"...","pid":"lu|si|kr|do|fa","typ":"strategisch|operativ|random","zielId":"z1|z2|z3|null","teilzielId":"tz1|tz2|tz3|tz4|null","prio":"P1|P2|P3|null","dl":"YYYY-MM-DD|null","notiz":"..."}
+Personen: lu=Ludwig,si=Simon,kr=Kristina,do=Dominic,fa=Fabian
+Ziele: z1=Umsatz Q2,z2=After Sales,z3=Qualität — nur wenn typ=strategisch
+Teilziele: tz1=Messe München,tz2=Pipeline KW16,tz3=Tourenoptimierung,tz4=Wartung
+Heute: ${TODAY}. Freitag=2026-04-10.`;
+  try{
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:500,system:sys,messages:[{role:'user',content:inp}]})});
     const data=await resp.json();
     const text=data.content?.map(c=>c.text||'').join('')||'';
     let parsed;
     try{parsed=JSON.parse(text.replace(/```json|```/g,'').trim());}
-    catch(e){out.innerHTML=`<div class="ai-result" style="background:var(--red-bg);border-color:var(--red-bd)">Konnte Antwort nicht verarbeiten.</div>`;return;}
-    const p2=person(parsed.pid),z2=parsed.zielId?zielObj(parsed.zielId):null,b2=parsed.bereichId?bereichObj(parsed.bereichId):null;
+    catch(e){out.innerHTML=`<div class="ai-result" style="background:var(--red-bg);border-color:var(--red-bd)">Konnte nicht verarbeiten.</div>`;return;}
+    const p2=person(parsed.pid),z2=parsed.zielId?zielObj(parsed.zielId):null;
     const tzN=parsed.teilzielId&&parsed.zielId?(zielObj(parsed.zielId)?.teilziele||[]).find(t=>t.id===parsed.teilzielId)?.name:null;
-    const safeJson=JSON.stringify(parsed).replace(/'/g,"\\'");
+    const ti=TYP_INFO[parsed.typ]||TYP_INFO.operativ;
+    const safeJ=JSON.stringify(parsed).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
     out.innerHTML=`<div class="ai-result">`
       +`<div style="font-size:13px;font-weight:600;margin-bottom:8px">${parsed.titel}</div>`
       +`<div style="display:flex;gap:5px;flex-wrap:wrap">`
       +(p2?`<span class="tag" style="background:var(--blue-bg);color:var(--blue)">${p2.name}</span>`:'')
+      +`<span class="tag" style="background:${ti.bg};color:${ti.tc}">${ti.label}</span>`
       +(parsed.prio?prioTag(parsed.prio):'')
       +(z2?`<span class="tag" style="background:var(--green-bg);color:var(--green)">${z2.name}</span>`:'')
-      +(b2?`<span class="tag" style="background:var(--gray-bg);color:var(--t2)">${b2.name}</span>`:'')
       +(tzN?`<span class="tag" style="background:var(--purple-bg);color:var(--purple)">${tzN}</span>`:'')
       +(parsed.dl?dlTag(parsed.dl):'')
       +`</div>${parsed.notiz?`<div style="font-size:11px;color:var(--t2);margin-top:6px;font-style:italic">${parsed.notiz}</div>`:''}</div>`
-      +`<div class="mf" style="margin-top:10px"><button class="btn btn-gr" onclick="openAI()">Nochmal</button><button class="btn btn-purple" onclick='confirmAI(${safeJson})'>✓ Handlung anlegen</button></div>`;
-  } catch(e){out.innerHTML=`<div class="ai-result" style="background:var(--red-bg);border-color:var(--red-bd)">Fehler: ${e.message}</div>`;}
+      +`<div class="mf" style="margin-top:10px"><button class="btn btn-gr" onclick="openAI()">Nochmal</button><button class="btn btn-purple" onclick="confirmAI('${safeJ}')">✓ Aufgabe anlegen</button></div>`;
+  }catch(e){out.innerHTML=`<div class="ai-result" style="background:var(--red-bg);border-color:var(--red-bd)">Fehler: ${e.message}</div>`;}
 }
-async function confirmAI(parsed){
-  if(typeof parsed==='string'){try{parsed=JSON.parse(parsed);}catch(e){return;}}
-  const rec={
-    id:'h'+(S.nextId++),pid:parsed.pid||aP,titel:parsed.titel,
-    status:parsed.prio?'backlog':'neu',prio:parsed.prio||null,
-    zielId:parsed.zielId||null,bereichId:parsed.bereichId||null,teilzielId:parsed.teilzielId||null,
-    geplant:1,gebucht:0,dl:parsed.dl||'',ua:[],notiz:parsed.notiz||'',aktSeit:null,vertraulich:false
+async function confirmAI(jsonStr){
+  let p;try{p=JSON.parse(jsonStr);}catch(e){return;}
+  const id=nid('a'),rec={
+    id,pid:p.pid||realMe,titel:p.titel,typ:p.typ||'operativ',
+    status:p.prio?'backlog':'neu',prio:p.prio||null,
+    ziel_id:p.zielId||null,teilziel_id:p.teilzielId||null,
+    geplant:1,gebucht:0,dl:p.dl||null,ua:[],notiz:p.notiz||'',akt_seit:null,vertraulich:false
   };
-  await insertRecord('handlungen',rec);cm();render();
+  S.aufgaben.push({...rec,zielId:rec.ziel_id,teilzielId:rec.teilziel_id,aktSeit:null,dl:rec.dl||''});
+  await dbInsert('aufgaben',rec);cm();render();
 }
 
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════
 // TEAM
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════
 function rTeam(){
-  const teamsToShow=isGF()?[...S.teams].sort((a,b)=>a.id==='gf'?-1:b.id==='gf'?1:0):S.teams.filter(t=>(me().teams||[]).includes(t.id));
-  let out=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px"><div><div style="font-size:16px;font-weight:700">Team</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Wer macht was — alle Bereiche</div></div></div>`;
-
-  teamsToShow.forEach(t=>{
+  const teams=isGF()?[...S.teams].sort((a,b)=>a.id==='gf'?-1:b.id==='gf'?1:0):S.teams.filter(t=>(me().teams||[]).includes(t.id));
+  let out=`<div style="margin-bottom:20px"><div style="font-size:16px;font-weight:700">Team</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Wer macht was</div></div>`;
+  teams.forEach(t=>{
     const mids=t.members,fq=fokusQ(mids);
-    const aktiv=S.handlungen.filter(h=>mids.includes(h.pid)&&h.status==='aktiv'&&canSeeHandlung(h));
-    const pipeline=S.handlungen.filter(h=>mids.includes(h.pid)&&(h.status==='backlog'||h.status==='neu')&&canSeeHandlung(h)).sort((a,b)=>(a.prio||'P9').localeCompare(b.prio||'P9')).slice(0,10);
+    const aktiv=S.aufgaben.filter(a=>mids.includes(a.pid)&&a.status==='aktiv'&&canSee(a));
+    const pipeline=S.aufgaben.filter(a=>mids.includes(a.pid)&&(a.status==='backlog'||a.status==='neu')&&canSee(a)).sort((a,b)=>(a.prio||'P9').localeCompare(b.prio||'P9')).slice(0,8);
 
     out+=`<div class="team-block"><div class="team-block-head">`
       +`<div style="flex:1"><div style="font-size:14px;font-weight:700;margin-bottom:6px">${t.name}</div>`
-      +`<div style="display:flex;align-items:center;gap:8px"><div class="focus-track" style="flex:1;margin:0"><div class="focus-fill" style="width:${fq}%"></div></div><span style="font-size:11px;font-weight:600;white-space:nowrap">${fq}% Ziel-fokussiert</span></div></div>`
-      +`<div style="display:flex;gap:6px;flex-shrink:0">${mids.map(id=>{const p=person(id);if(!p)return'';return avHtml(p,28,10);}).join('')}</div></div>`;
+      +`<div style="display:flex;align-items:center;gap:8px"><div class="focus-track" style="flex:1;margin:0"><div class="focus-fill" style="width:${fq}%"></div></div><span style="font-size:11px;font-weight:600;white-space:nowrap">${fq}% strategisch</span></div></div>`
+      +`<div style="display:flex;gap:6px;flex-shrink:0">${mids.map(id=>{const p=person(id);return p?av(p,28,10):'';}).join('')}</div></div>`;
 
     if(aktiv.length){
       out+=`<div style="padding:10px 16px 2px;font-size:10px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.5px">Läuft gerade</div>`;
-      aktiv.forEach(h=>{
-        const p2=person(h.pid),tzName=getTZName(h),ci=charInfo(h);
+      aktiv.forEach(a=>{
+        const p2=person(a.pid),tzN=getTZName(a),ti=typInfo(a);
         out+=`<div class="team-h-row"><div class="dot" style="background:var(--blue);flex-shrink:0"></div>`
-          +`<div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${h.titel}${h.vertraulich?'<span class="lock" style="margin-left:5px">🔒</span>':''}</div>`
-          +`<div style="display:flex;gap:5px;margin-top:2px">${p2?`<span style="font-size:10px;color:var(--t3)">${p2.name}</span>`:''}<span style="font-size:10px;color:${ci.tagTc}">· ${ci.label}</span><span style="font-size:10px;color:var(--t2)">· ${getContextName(h)}</span>${tzName?`<span style="font-size:10px;color:var(--purple)">· ${tzName}</span>`:''}</div></div>${prioTag(h.prio)}</div>`;
+          +`<div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${a.titel}${a.vertraulich?'<span class="lock" style="margin-left:5px">🔒</span>':''}</div>`
+          +`<div style="display:flex;gap:5px;margin-top:2px">${p2?`<span style="font-size:10px;color:var(--t3)">${p2.name}</span>`:''}<span style="font-size:10px;color:${ti.tc}">· ${ti.label}</span>${a.zielId?`<span style="font-size:10px;color:var(--t2)">· ${getZielName(a)}</span>`:''}${tzN?`<span style="font-size:10px;color:var(--purple)">· ${tzN}</span>`:''}</div></div>${prioTag(a.prio)}</div>`;
       });
     }
     if(pipeline.length){
       out+=`<div style="padding:10px 16px 2px;font-size:10px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px">Nächste Prioritäten</div>`;
-      pipeline.forEach(h=>{
-        const p2=person(h.pid),tzName=getTZName(h),ci=charInfo(h);
+      pipeline.forEach(a=>{
+        const p2=person(a.pid),tzN=getTZName(a),ti=typInfo(a);
         out+=`<div class="team-h-row"><div class="dot" style="background:var(--bd);flex-shrink:0"></div>`
-          +`<div style="flex:1;min-width:0"><div style="font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${h.titel}${h.vertraulich?'<span class="lock" style="margin-left:5px">🔒</span>':''}</div>`
-          +`<div style="display:flex;gap:5px;margin-top:2px">${p2?`<span style="font-size:10px;color:var(--t3)">${p2.name}</span>`:''}<span style="font-size:10px;color:${ci.tagTc}">· ${ci.label}</span><span style="font-size:10px;color:var(--t2)">· ${getContextName(h)}</span>${tzName?`<span style="font-size:10px;color:var(--purple)">· ${tzName}</span>`:''}</div></div>${prioTag(h.prio)}</div>`;
+          +`<div style="flex:1;min-width:0"><div style="font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${a.titel}${a.vertraulich?'<span class="lock" style="margin-left:5px">🔒</span>':''}</div>`
+          +`<div style="display:flex;gap:5px;margin-top:2px">${p2?`<span style="font-size:10px;color:var(--t3)">${p2.name}</span>`:''}<span style="font-size:10px;color:${ti.tc}">· ${ti.label}</span>${a.zielId?`<span style="font-size:10px;color:var(--t2)">· ${getZielName(a)}</span>`:''}${tzN?`<span style="font-size:10px;color:var(--purple)">· ${tzN}</span>`:''}</div></div>${prioTag(a.prio)}</div>`;
       });
     }
-    if(!aktiv.length&&!pipeline.length)out+=`<div style="padding:14px 16px;font-size:12px;color:var(--t3);font-style:italic">Keine aktiven Handlungen</div>`;
+    if(!aktiv.length&&!pipeline.length)out+=`<div style="padding:14px 16px;font-size:12px;color:var(--t3);font-style:italic">Keine aktiven Aufgaben</div>`;
     out+='<div style="height:4px"></div></div>';
   });
   document.getElementById('main').innerHTML=out;
 }
 
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════
 // SETTINGS
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════
 function openSettings(){
   let h=`<div class="mt">Einstellungen</div>`;
   h+=`<div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Personen</div>`;
-  S.personen.forEach(p=>{h+=`<div class="settings-row">${avHtml(p,30,11)}<div style="flex:1"><div style="font-size:12px;font-weight:500">${p.name}</div><div style="font-size:10px;color:var(--t3)">${p.rolle}</div></div><button onclick="editPerson('${p.id}')" class="btn btn-gr" style="font-size:10px;padding:3px 9px">bearbeiten</button></div>`;});
+  S.personen.forEach(p=>{h+=`<div class="settings-row">${av(p,30,11)}<div style="flex:1"><div style="font-size:12px;font-weight:500">${p.name}</div><div style="font-size:10px;color:var(--t3)">${p.rolle} · PIN: ${p.pin}</div></div><button onclick="editPerson('${p.id}')" class="btn btn-gr" style="font-size:10px;padding:3px 9px">bearbeiten</button></div>`;});
   h+=`<button onclick="openNutzer()" class="btn btn-gr" style="margin-top:8px;width:100%">+ Person hinzufügen</button>`;
-  h+=`<div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin:20px 0 10px">Bereiche</div>`;
-  S.bereiche.forEach(b=>{h+=`<div class="settings-row"><div style="flex:1"><div style="font-size:12px;font-weight:500">${b.name}</div><div style="font-size:10px;color:var(--t3)">${b.char}</div></div><button onclick="editBereich('${b.id}')" class="btn btn-gr" style="font-size:10px;padding:3px 9px">bearbeiten</button></div>`;});
-  h+=`<button onclick="addBereich()" class="btn btn-gr" style="margin-top:8px;width:100%">+ Neuer Bereich</button>`;
   h+=`<div class="mf"><button class="btn btn-gr" onclick="cm()">Schließen</button></div>`;
   document.getElementById('mb').innerHTML=h;document.getElementById('ovl').classList.add('open');
-}
-function addBereich(){
-  document.getElementById('mb').innerHTML=`<div class="mt">Neuer Bereich</div>`
-    +`<div class="fl"><label>Name</label><input id="bn" placeholder="z.B. Fuhrpark" autofocus></div>`
-    +`<div class="fl"><label>Typ</label><select id="bc"><option value="betrieb">Betrieb</option><option value="random">Random</option></select></div>`
-    +`<div class="mf"><button class="btn btn-gr" onclick="openSettings()">Zurück</button><button class="btn btn-dk" onclick="saveBereich(null)">Speichern</button></div>`;
-  document.getElementById('ovl').classList.add('open');
-}
-function editBereich(bid){
-  const b=bereichObj(bid);if(!b)return;
-  document.getElementById('mb').innerHTML=`<div class="mt">Bereich bearbeiten</div>`
-    +`<div class="fl"><label>Name</label><input id="bn" value="${b.name}" autofocus></div>`
-    +`<div class="fl"><label>Typ</label><select id="bc"><option value="betrieb"${b.char==='betrieb'?' selected':''}>Betrieb</option><option value="random"${b.char==='random'?' selected':''}>Random</option></select></div>`
-    +`<div class="mf"><button class="btn btn-red" onclick="delBereich('${bid}')">Löschen</button><button class="btn btn-gr" onclick="openSettings()">Zurück</button><button class="btn btn-dk" onclick="saveBereich('${bid}')">Speichern</button></div>`;
-  document.getElementById('ovl').classList.add('open');
-}
-async function saveBereich(bid){
-  const name=document.getElementById('bn').value.trim();if(!name)return;
-  const char=document.getElementById('bc').value;
-  if(bid){const b=bereichObj(bid);if(b){b.name=name;b.char=char;await dbPatch('bereiche',bid,{name,char});}}
-  else{const id=nid('b'),rec={id,name,char,farbe:4};S.bereiche.push(rec);await dbInsert('bereiche',rec);}
-  openSettings();
-}
-async function delBereich(bid){
-  if(!confirm('Bereich löschen?'))return;
-  S.bereiche=S.bereiche.filter(x=>x.id!==bid);
-  S.handlungen.forEach(h=>{if(h.bereichId===bid)h.bereichId=null;});
-  await dbDelete('bereiche',bid);openSettings();
 }
 function editPerson(pid){
   const p=person(pid);if(!p)return;
@@ -1277,17 +1206,17 @@ async function savePerson(pid){
 }
 async function deletePerson(pid){
   if(!confirm('Person löschen?'))return;
-  S.personen=S.personen.filter(p=>p.id!==pid);
+  S.personen=S.personen.filter(x=>x.id!==pid);
   S.teams.forEach(t=>{t.members=t.members.filter(id=>id!==pid);});
   await dbDelete('personen',pid);openSettings();render();
 }
 function openNutzer(){
   document.getElementById('mb').innerHTML=`<div class="mt">Person hinzufügen</div>`
-    +`<div class="f2"><div class="fl"><label>Name</label><input id="un" autofocus></div><div class="fl"><label>Kürzel</label><input id="uk" maxlength="3"></div></div>`
-    +`<div class="fl"><label>Rolle</label><input id="ur"></div>`
+    +`<div class="f2"><div class="fl"><label>Name</label><input id="un" autofocus></div><div class="fl"><label>Kürzel (2-3 Buchst.)</label><input id="uk" maxlength="3"></div></div>`
+    +`<div class="fl"><label>Rolle</label><input id="ur" placeholder="z.B. Verkauf"></div>`
     +`<div class="fl"><label>Team</label><select id="ut">${S.teams.map(t=>`<option value="${t.id}">${t.name}</option>`).join('')}</select></div>`
     +`<div class="fl"><label>Stufe</label><select id="ust"><option value="team">Teammitglied</option><option value="lead">Team-Lead</option><option value="gf">Geschäftsführung</option></select></div>`
-    +`<div class="fl"><label>PIN (4-stellig)</label><input id="upin" type="password" maxlength="4" placeholder="z.B. 6789"></div>`
+    +`<div class="fl"><label>PIN (4 Ziffern)</label><input id="upin" type="password" maxlength="4" placeholder="z.B. 6789"></div>`
     +`<div class="mf"><button class="btn btn-gr" onclick="openSettings()">Zurück</button><button class="btn btn-dk" onclick="saveNutzer()">Hinzufügen</button></div>`;
   document.getElementById('ovl').classList.add('open');
 }
@@ -1302,18 +1231,20 @@ async function saveNutzer(){
   await dbInsert('personen',p);
   const t=S.teams.find(x=>x.id===tid);
   if(t){t.members.push(id);await dbPatch('teams',tid,{members:t.members});}
+  // Login sofort aktualisieren
+  initLogin();
   openSettings();render();
 }
 
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════
 // TIMERS
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════
 function startTimers(){
   if(timIv)clearInterval(timIv);
   timIv=setInterval(()=>{
     document.querySelectorAll('[data-tid]').forEach(el=>{
-      const h=S.handlungen.find(x=>x.id===el.dataset.tid);if(!h)return;
-      const s=elapsedSec(h),pct=Math.min(100,Math.round(s/((h.geplant||1)*3600)*100));
+      const a=S.aufgaben.find(x=>x.id===el.dataset.tid);if(!a)return;
+      const s=elapsedSec(a),pct=Math.min(100,Math.round(s/((a.geplant||1)*3600)*100));
       const n=el.querySelector('.tn'),f=el.querySelector('.tf');
       if(n)n.textContent=fmt(s);if(f)f.style.width=pct+'%';
     });
@@ -1323,11 +1254,25 @@ function startTimers(){
 function cm(){document.getElementById('ovl').classList.remove('open');}
 window.addEventListener('keydown',e=>{if(e.key==='Escape')cm();});
 
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════
 // BOOT
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════
 (async()=>{
-  S=await loadData();
+  document.getElementById('login-screen').innerHTML=`<div style="font-size:13px;color:var(--t3)">Lädt…</div>`;
+  await loadData();
+  document.getElementById('login-screen').innerHTML=`<div class="login-box">
+    <div class="login-title">Halleluja OS</div>
+    <div class="login-sub">Wer bist du heute?</div>
+    <div class="person-grid" id="person-grid"></div>
+    <div id="pin-section" style="display:none">
+      <div class="pin-row">
+        <div class="pin-dot" id="pd0"></div><div class="pin-dot" id="pd1"></div>
+        <div class="pin-dot" id="pd2"></div><div class="pin-dot" id="pd3"></div>
+      </div>
+      <div class="pin-pad" id="pin-pad"></div>
+      <div class="login-err" id="login-err"></div>
+    </div>
+  </div>`;
   initLogin();
 })();
 </script>
