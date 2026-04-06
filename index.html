@@ -496,6 +496,7 @@ function tryLogin(){
   if(!p){document.getElementById('login-err').textContent='Nicht gefunden.';pinIn='';updDots();return;}
   if(pinIn===(p.pin||'0000')){
     aP=loginSel;realMe=loginSel;
+    saveSession(loginSel);
     document.getElementById('login-screen').style.display='none';
     document.getElementById('app').style.display='flex';
     updateBadge();render();
@@ -513,6 +514,7 @@ function updateBadge(){
 }
 function logout(){
   aP=null;realMe=null;pinIn='';loginSel=null;
+  clearSession();
   removeBackBtn();
   document.getElementById('app').style.display='none';
   document.getElementById('login-screen').style.display='flex';
@@ -1415,6 +1417,26 @@ window.addEventListener('keydown',e=>{if(e.key==='Escape')cm();});
     </div>
   </div>`;
   initLogin();
+
+  // Session prüfen — automatisch einloggen wenn noch gültig
+  const savedPid=loadSession();
+  if(savedPid&&person(savedPid)){
+    aP=savedPid;realMe=savedPid;
+    document.getElementById('login-screen').style.display='none';
+    document.getElementById('app').style.display='flex';
+    updateBadge();render();
+    if(shouldCheckin())showCheckin();
+  }
+
+  // Auto-Logout nach 8h prüfen — jede Minute
+  setInterval(()=>{
+    if(!aP)return;
+    const s=loadSession();
+    if(!s){
+      logout();
+      alert('Du wurdest nach 8 Stunden automatisch ausgeloggt.');
+    }
+  },60000);
 })();
 </script>
 </body>
