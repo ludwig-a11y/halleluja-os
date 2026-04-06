@@ -1239,11 +1239,90 @@ function rTeam(){
 // ═══════════════════════════════════════════════
 function openSettings(){
   let h=`<div class="mt">Einstellungen</div>`;
+
+  // Personen
   h+=`<div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Personen</div>`;
-  S.personen.forEach(p=>{h+=`<div class="settings-row">${av(p,30,11)}<div style="flex:1"><div style="font-size:12px;font-weight:500">${p.name}</div><div style="font-size:10px;color:var(--t3)">${p.rolle} · PIN: ${p.pin}</div></div><button onclick="editPerson('${p.id}')" class="btn btn-gr" style="font-size:10px;padding:3px 9px">bearbeiten</button></div>`;});
+  S.personen.forEach(p=>{
+    const teamNames=(p.teams||[]).map(tid=>S.teams.find(t=>t.id===tid)?.name||'').filter(Boolean).join(', ');
+    h+=`<div class="settings-row">${av(p,30,11)}<div style="flex:1"><div style="font-size:12px;font-weight:500">${p.name}</div><div style="font-size:10px;color:var(--t3)">${p.rolle}${teamNames?' · '+teamNames:''}</div></div><button onclick="editPerson('${p.id}')" class="btn btn-gr" style="font-size:10px;padding:3px 9px">bearbeiten</button></div>`;
+  });
   h+=`<button onclick="openNutzer()" class="btn btn-gr" style="margin-top:8px;width:100%">+ Person hinzufügen</button>`;
+
+  // Teams
+  h+=`<div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin:20px 0 10px">Teams</div>`;
+  S.teams.forEach(t=>{
+    const members=t.members.map(id=>person(id)?.name||'').filter(Boolean).join(', ');
+    h+=`<div class="settings-row"><div style="flex:1"><div style="font-size:12px;font-weight:500">${t.name}</div><div style="font-size:10px;color:var(--t3)">${members||'Keine Mitglieder'}</div></div><button onclick="editTeam('${t.id}')" class="btn btn-gr" style="font-size:10px;padding:3px 9px">bearbeiten</button></div>`;
+  });
+  h+=`<button onclick="addTeam()" class="btn btn-gr" style="margin-top:8px;width:100%">+ Team hinzufügen</button>`;
+
   h+=`<div class="mf"><button class="btn btn-gr" onclick="cm()">Schließen</button></div>`;
   document.getElementById('mb').innerHTML=h;document.getElementById('ovl').classList.add('open');
+}
+
+function editTeam(tid){
+  const t=S.teams.find(x=>x.id===tid);if(!t)return;
+  const memberChecks=S.personen.map(p=>`
+    <label style="display:flex;align-items:center;gap:8px;padding:6px 0;cursor:pointer">
+      <input type="checkbox" value="${p.id}" ${t.members.includes(p.id)?'checked':''} style="width:auto">
+      ${av(p,22,8)}
+      <span style="font-size:12px">${p.name} <span style="color:var(--t3);font-size:10px">${p.rolle}</span></span>
+    </label>`).join('');
+  document.getElementById('mb').innerHTML=`<div class="mt">Team bearbeiten</div>`
+    +`<div class="fl"><label>Name</label><input id="tn" value="${t.name}" autofocus></div>`
+    +`<div class="fl"><label>Mitglieder</label><div style="background:var(--gray-bg);border-radius:8px;padding:4px 10px" id="tmembers">${memberChecks}</div></div>`
+    +`<div class="mf"><button class="btn btn-red" onclick="delTeam('${tid}')">Löschen</button><button class="btn btn-gr" onclick="openSettings()">Zurück</button><button class="btn btn-dk" onclick="saveTeam('${tid}')">Speichern</button></div>`;
+  document.getElementById('ovl').classList.add('open');
+}
+
+function addTeam(){
+  const memberChecks=S.personen.map(p=>`
+    <label style="display:flex;align-items:center;gap:8px;padding:6px 0;cursor:pointer">
+      <input type="checkbox" value="${p.id}" style="width:auto">
+      ${av(p,22,8)}
+      <span style="font-size:12px">${p.name} <span style="color:var(--t3);font-size:10px">${p.rolle}</span></span>
+    </label>`).join('');
+  document.getElementById('mb').innerHTML=`<div class="mt">Team hinzufügen</div>`
+    +`<div class="fl"><label>Name</label><input id="tn" placeholder="z.B. Marketing" autofocus></div>`
+    +`<div class="fl"><label>Mitglieder</label><div style="background:var(--gray-bg);border-radius:8px;padding:4px 10px">${memberChecks}</div></div>`
+    +`<div class="mf"><button class="btn btn-gr" onclick="openSettings()">Zurück</button><button class="btn btn-dk" onclick="saveTeam(null)">Speichern</button></div>`;
+  document.getElementById('ovl').classList.add('open');
+}
+
+async function saveTeam(tid){
+  const name=document.getElementById('tn').value.trim();if(!name)return;
+  const checked=[...document.querySelectorAll('#mb input[type=checkbox]:checked')].map(c=>c.value);
+
+  if(tid){
+    const t=S.teams.find(x=>x.id===tid);if(!t)return;
+    const oldMembers=[...t.members];
+    t.name=name;t.members=checked;
+    // Personen-Teams aktualisieren
+    S.personen.forEach(p=>{
+      const wasIn=oldMembers.includes(p.id),isIn=checked.includes(p.id);
+      if(wasIn&&!isIn)p.teams=(p.teams||[]).filter(x=>x!==tid);
+      if(!wasIn&&isIn){p.teams=p.teams||[];if(!p.teams.includes(tid))p.teams.push(tid);}
+    });
+    await dbPatch('teams',tid,{name,members:checked});
+  } else {
+    const id=nid('t'),rec={id,name,members:checked};
+    S.teams.push(rec);
+    await dbInsert('teams',rec);
+    // Personen zuordnen
+    checked.forEach(pid=>{const p=person(pid);if(p&&!p.teams.includes(id))p.teams.push(id);});
+  }
+  // Personen in DB updaten
+  await Promise.all(S.personen.map(p=>dbPatch('personen',p.id,{teams:p.teams})));
+  openSettings();render();
+}
+
+async function delTeam(tid){
+  if(!confirm('Team löschen?'))return;
+  S.teams=S.teams.filter(x=>x.id!==tid);
+  S.personen.forEach(p=>{p.teams=(p.teams||[]).filter(x=>x!==tid);});
+  await dbDelete('teams',tid);
+  await Promise.all(S.personen.map(p=>dbPatch('personen',p.id,{teams:p.teams})));
+  openSettings();render();
 }
 function editPerson(pid){
   const p=person(pid);if(!p)return;
