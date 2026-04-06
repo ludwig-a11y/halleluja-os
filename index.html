@@ -17,6 +17,37 @@
   --gray-bg:#f8f8f7;
 }
 body{font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;font-size:13px;color:var(--text);background:var(--bg);height:100vh;overflow:hidden;display:flex;flex-direction:column}
+
+/* ── MOBILE ── */
+@media(max-width:768px){
+  .bar{padding:0 12px;height:50px}
+  .logo{font-size:14px;font-weight:700;border:none;padding:0;margin:0}
+  .nt:not(.mob-show){display:none}
+  .nt.ai-btn,.nt.new-btn{display:none}
+  .sb{display:none}
+  .main{padding:14px 14px 90px}
+  .modal{border-radius:20px 20px 0 0;width:100%;max-width:100%;position:fixed;bottom:0;left:0;right:0;max-height:90vh;padding:20px 18px 32px}
+  .ovl{align-items:flex-end;padding:0}
+  .card{padding:14px}
+  .pin-key{padding:16px}
+  .ph{flex-wrap:wrap;gap:10px}
+  .phs{margin-left:0;width:100%;justify-content:space-between}
+  .f2{grid-template-columns:1fr}
+  /* Bottom Tab Bar */
+  #mob-tabs{display:flex}
+  /* Floating add button */
+  #mob-add{display:flex}
+}
+@media(min-width:769px){
+  #mob-tabs{display:none}
+  #mob-add{display:none}
+}
+#mob-tabs{position:fixed;bottom:0;left:0;right:0;height:60px;background:var(--sf);border-top:1px solid var(--bd);z-index:50;align-items:center;justify-content:space-around;padding:0 8px}
+.mob-tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border:none;background:transparent;cursor:pointer;font-family:inherit;padding:8px 4px;color:var(--t3);font-size:9px;font-weight:500}
+.mob-tab.on{color:var(--text)}
+.mob-tab svg{width:20px;height:20px}
+#mob-add{position:fixed;bottom:72px;right:18px;z-index:51;width:52px;height:52px;border-radius:50%;background:var(--text);color:#fff;border:none;font-size:26px;cursor:pointer;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(0,0,0,.25);font-family:inherit}
+
 #login-screen{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:200}
 .login-box{background:var(--sf);border:1px solid var(--bd);border-radius:18px;padding:32px 36px;width:340px;max-width:95vw}
 .login-title{font-size:17px;font-weight:700;margin-bottom:4px}
@@ -163,6 +194,30 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;font-size:1
     <div class="sb" id="sb"></div>
     <div class="main" id="main"></div>
   </div>
+
+  <!-- Mobile Bottom Tabs -->
+  <div id="mob-tabs">
+    <button class="mob-tab on" id="mobt-tag" onclick="nav('tag',null);updMobTabs('tag')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      Mein Tag
+    </button>
+    <button class="mob-tab" id="mobt-ziele" onclick="nav('ziele',null);updMobTabs('ziele')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1" fill="currentColor"/></svg>
+      Ziele
+    </button>
+    <div style="width:52px"></div>
+    <button class="mob-tab" id="mobt-team" onclick="nav('team',null);updMobTabs('team')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="7" r="3"/><path d="M3 21v-2a4 4 0 014-4h4a4 4 0 014 4v2"/><path d="M16 3.13a4 4 0 010 7.75"/><path d="M21 21v-2a4 4 0 00-3-3.87"/></svg>
+      Team
+    </button>
+    <button class="mob-tab" id="mobt-ich" onclick="openSettings()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+      Ich
+    </button>
+  </div>
+
+  <!-- Mobile Floating Add Button -->
+  <button id="mob-add" onclick="openNeu()">+</button>
 </div>
 
 <div class="ovl" id="ovl" onclick="if(event.target===this)cm()">
@@ -484,10 +539,17 @@ function removeBackBtn(){document.getElementById('back-to-me')?.remove();}
 // ═══════════════════════════════════════════════
 // NAV
 // ═══════════════════════════════════════════════
+function updMobTabs(v){
+  ['tag','ziele','team'].forEach(t=>{
+    const el=document.getElementById('mobt-'+t);
+    if(el)el.className='mob-tab'+(t===v?' on':'');
+  });
+}
 function nav(v,btn){
   aV=v;
   document.querySelectorAll('.nt:not(.ai-btn):not(.new-btn)').forEach(b=>b.classList.remove('on'));
   btn?.classList.add('on');
+  updMobTabs(v);
   render();
 }
 function render(){
