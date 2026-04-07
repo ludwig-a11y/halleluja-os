@@ -1023,8 +1023,18 @@ async function saveZiel(zid){
 }
 async function delZiel(zid){
   if(!confirm('Ziel wirklich löschen?'))return;
+  // Erst Aufgaben des Ziels entzielen
+  S.aufgaben.forEach(a=>{if(a.zielId===zid){a.zielId=null;a.teilzielId=null;a.typ='operativ';}});
+  await supa('aufgaben?ziel_id=eq.'+zid,{method:'PATCH',body:{ziel_id:null,teilziel_id:null,typ:'operativ'},prefer:'return=minimal'});
+  // Dann KPIs löschen
+  const z=zielObj(zid);
+  if(z)(z.kpis||[]).forEach(k=>dbDelete('kpis',k.id));
+  // Dann Teilziele löschen
+  if(z)(z.teilziele||[]).forEach(t=>dbDelete('teilziele',t.id));
+  // Dann Ziel löschen
   S.ziele=S.ziele.filter(x=>x.id!==zid);
-  await dbDelete('ziele',zid);cm();rZiele();
+  await dbDelete('ziele',zid);
+  cm();rZiele();
 }
 
 // KPI CRUD
