@@ -496,13 +496,15 @@ function tryLogin(){
   if(!p){document.getElementById('login-err').textContent='Nicht gefunden.';pinIn='';updDots();return;}
   if(pinIn===(p.pin||'0000')){
     aP=loginSel;realMe=loginSel;
-    saveSession(loginSel);
+    // Session speichern
+    try{localStorage.setItem('h_session',JSON.stringify({pid:loginSel,ts:Date.now()}));}catch(e){}
     document.getElementById('login-screen').style.display='none';
     document.getElementById('app').style.display='flex';
     updateBadge();render();
     if(shouldCheckin())showCheckin();
   } else {
-    document.getElementById('login-err').textContent='Falsche PIN.';pinIn='';updDots();
+    document.getElementById('login-err').textContent='Falsche PIN.';
+    pinIn='';updDots();
   }
 }
 function updateBadge(){
@@ -514,7 +516,7 @@ function updateBadge(){
 }
 function logout(){
   aP=null;realMe=null;pinIn='';loginSel=null;
-  clearSession();
+  try{localStorage.removeItem('h_session');}catch(e){}
   removeBackBtn();
   document.getElementById('app').style.display='none';
   document.getElementById('login-screen').style.display='flex';
@@ -1401,10 +1403,9 @@ window.addEventListener('keydown',e=>{if(e.key==='Escape')cm();});
 // BOOT
 // ═══════════════════════════════════════════════
 (async()=>{
-  document.getElementById('login-screen').innerHTML=`<div style="font-size:13px;color:var(--t3)">Lädt…</div>`;
+  document.getElementById('login-screen').innerHTML=`<div style="font-size:13px;color:var(--t3);text-align:center;padding-top:40vh">Lädt…</div>`;
   await loadData();
 
-  // Login-Screen aufbauen
   document.getElementById('login-screen').innerHTML=`<div class="login-box">
     <div class="login-title">Halleluja OS</div>
     <div class="login-sub">Wer bist du heute?</div>
@@ -1420,29 +1421,35 @@ window.addEventListener('keydown',e=>{if(e.key==='Escape')cm();});
   </div>`;
   initLogin();
 
-  // Session prüfen NACH initLogin
-  const savedPid=loadSession();
-  if(savedPid&&person(savedPid)){
-    aP=savedPid;realMe=savedPid;
-    document.getElementById('login-screen').style.display='none';
-    document.getElementById('app').style.display='flex';
-    updateBadge();render();
-    if(shouldCheckin())showCheckin();
-    // Auto-Logout Timer starten
-    startSessionTimer();
-  } else {
-    // Kein gültiger Session — Login anzeigen
-    startSessionTimer();
-  }
-})();
+  // Session prüfen
+  try{
+    const raw=localStorage.getItem('h_session');
+    if(raw){
+      const s=JSON.parse(raw);
+      const ttl=8*60*60*1000;
+      if(Date.now()-s.ts<ttl&&person(s.pid)){
+        aP=s.pid;realMe=s.pid;
+        document.getElementById('login-screen').style.display='none';
+        document.getElementById('app').style.display='flex';
+        updateBadge();render();
+        if(shouldCheckin())showCheckin();
+      } else {
+        localStorage.removeItem('h_session');
+      }
+    }
+  }catch(e){}
 
-function startSessionTimer(){
+  // Auto-Logout alle 60 Sekunden prüfen
   setInterval(()=>{
     if(!aP)return;
-    const s=loadSession();
-    if(!s){logout();alert('Du wurdest nach 8 Stunden automatisch ausgeloggt.');}
+    try{
+      const raw=localStorage.getItem('h_session');
+      if(!raw){logout();return;}
+      const s=JSON.parse(raw);
+      if(Date.now()-s.ts>8*60*60*1000){logout();alert('Du wurdest nach 8 Stunden automatisch ausgeloggt.');}
+    }catch(e){}
   },60000);
-}
+})();
 </script>
 </body>
 </html>
