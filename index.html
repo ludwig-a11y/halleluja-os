@@ -915,7 +915,16 @@ function rZiele(){
         +`</div></div>`;
       if(tzA.length){
         out+='<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:6px">';
-        tzA.forEach(a=>{const p2=person(a.pid);out+=`<div style="background:rgba(255,255,255,.6);border:0.5px solid var(--purple-bd);border-radius:7px;padding:3px 9px;font-size:11px;display:flex;align-items:center;gap:4px"><span style="font-size:8px;color:${a.status==='aktiv'?'var(--blue)':'var(--t3)'}">●</span>${a.titel}${p2?`<span style="color:var(--t3);font-size:10px">· ${p2.name}</span>`:''}</div>`;});
+        tzA.forEach(a=>{
+          const p2=person(a.pid);
+          out+=`<div onclick="openDetail('${a.id}')" style="background:rgba(255,255,255,.6);border:0.5px solid var(--purple-bd);border-radius:7px;padding:4px 10px;font-size:11px;display:flex;align-items:center;gap:6px;cursor:pointer" onmouseenter="this.style.background='rgba(255,255,255,.95)'" onmouseleave="this.style.background='rgba(255,255,255,.6)'">`
+            +`<span style="font-size:8px;color:${a.status==='aktiv'?'var(--blue)':a.status==='erledigt'?'var(--green)':'var(--t3)'}">●</span>`
+            +`<span>${a.titel}</span>`
+            +(p2?`<span style="color:var(--t3);font-size:10px">· ${p2.name}</span>`:'')
+            +prioTag(a.prio)
+            +(a.status==='erledigt'?'<span style="font-size:9px;color:var(--green)">✓</span>':'')
+            +'</div>';
+        });
         out+='</div>';
       }
       out+='</div>';
