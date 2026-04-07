@@ -1403,6 +1403,8 @@ window.addEventListener('keydown',e=>{if(e.key==='Escape')cm();});
 (async()=>{
   document.getElementById('login-screen').innerHTML=`<div style="font-size:13px;color:var(--t3)">Lädt…</div>`;
   await loadData();
+
+  // Login-Screen aufbauen
   document.getElementById('login-screen').innerHTML=`<div class="login-box">
     <div class="login-title">Halleluja OS</div>
     <div class="login-sub">Wer bist du heute?</div>
@@ -1418,7 +1420,7 @@ window.addEventListener('keydown',e=>{if(e.key==='Escape')cm();});
   </div>`;
   initLogin();
 
-  // Session prüfen — automatisch einloggen wenn noch gültig
+  // Session prüfen NACH initLogin
   const savedPid=loadSession();
   if(savedPid&&person(savedPid)){
     aP=savedPid;realMe=savedPid;
@@ -1426,18 +1428,21 @@ window.addEventListener('keydown',e=>{if(e.key==='Escape')cm();});
     document.getElementById('app').style.display='flex';
     updateBadge();render();
     if(shouldCheckin())showCheckin();
+    // Auto-Logout Timer starten
+    startSessionTimer();
+  } else {
+    // Kein gültiger Session — Login anzeigen
+    startSessionTimer();
   }
+})();
 
-  // Auto-Logout nach 8h prüfen — jede Minute
+function startSessionTimer(){
   setInterval(()=>{
     if(!aP)return;
     const s=loadSession();
-    if(!s){
-      logout();
-      alert('Du wurdest nach 8 Stunden automatisch ausgeloggt.');
-    }
+    if(!s){logout();alert('Du wurdest nach 8 Stunden automatisch ausgeloggt.');}
   },60000);
-})();
+}
 </script>
 </body>
 </html>
