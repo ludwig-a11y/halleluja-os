@@ -502,7 +502,8 @@ function tryLogin(){
     updateBadge();render();
     if(shouldCheckin())showCheckin();
   } else {
-    document.getElementById('login-err').textContent='Falsche PIN.';pinIn='';updDots();
+    document.getElementById('login-err').textContent='Falsche PIN.';
+    pinIn='';updDots();
   }
 }
 function updateBadge(){
