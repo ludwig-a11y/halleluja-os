@@ -871,7 +871,7 @@ function rTag(){
     out+=`<div style="display:flex;gap:8px;align-items:center;margin-bottom:20px;flex-wrap:wrap">`;
     if(naechste.prio)out+=`<span style="font-size:11px;background:${pb};color:${pc};border-radius:99px;padding:3px 10px;font-weight:700">${naechste.prio}</span>`;
     if(zN)out+=`<span style="font-size:12px;color:var(--t2)">${zN}</span>`;
-    if(tzN)out+=`<span style="font-size:12px;color:var(--purple)">· ${tzN}</span>`;
+    if(tzN)out+=`<span style="font-size:12px;color:var(--purple)"> · ${tzN}</span>`;
     if(naechste.dl){const d=dli(naechste.dl);if(d)out+=`<span style="font-size:11px;color:${d.c}">${d.l}</span>`;}
     if(naechste.geplant)out+=`<span style="font-size:11px;color:var(--t3)">${fmtH(naechste.geplant)}</span>`;
     out+=`</div>`;
