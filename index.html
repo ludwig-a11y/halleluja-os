@@ -567,8 +567,62 @@ function render(){
 }
 
 // ═══════════════════════════════════════════════
-// ZEITSTRAHL
+// PADDEL / GAMIFICATION
 // ═══════════════════════════════════════════════
+function getPaddelCount(pid){
+  // Anzahl erledigter Aufgaben diese Woche
+  const now=new Date(TODAY);
+  const dayOfWeek=now.getDay()||7;
+  const monday=new Date(now);
+  monday.setDate(now.getDate()-(dayOfWeek-1));
+  const monStr=monday.toISOString().slice(0,10);
+  return S.aufgaben.filter(a=>a.pid===pid&&a.status==='erledigt'&&(a.updated_at||'')>=monStr).length;
+}
+
+function showKonfetti(){
+  const canvas=document.createElement('canvas');
+  canvas.style.cssText='position:fixed;inset:0;z-index:999;pointer-events:none;width:100%;height:100%';
+  canvas.width=window.innerWidth;canvas.height=window.innerHeight;
+  document.body.appendChild(canvas);
+  const ctx=canvas.getContext('2d');
+  const pieces=Array.from({length:80},()=>({
+    x:Math.random()*canvas.width,y:-20,
+    w:8+Math.random()*8,h:8+Math.random()*8,
+    r:Math.random()*Math.PI*2,
+    vx:(Math.random()-0.5)*6,vy:3+Math.random()*4,
+    vr:(Math.random()-0.5)*0.2,
+    color:['#FFD700','#FF6B6B','#4ECDC4','#45B7D1','#96CEB4','#FFEAA7','#DDA0DD','#98D8C8'][Math.floor(Math.random()*8)]
+  }));
+  let frame=0;
+  function draw(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    pieces.forEach(p=>{
+      ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.r);
+      ctx.fillStyle=p.color;ctx.fillRect(-p.w/2,-p.h/2,p.w,p.h);
+      ctx.restore();
+      p.x+=p.vx;p.y+=p.vy;p.r+=p.vr;p.vy+=0.1;
+    });
+    frame++;
+    if(frame<120)requestAnimationFrame(draw);
+    else canvas.remove();
+  }
+  draw();
+}
+
+function showPaddelCelebration(pid){
+  const p=person(pid);if(!p)return;
+  const count=getPaddelCount(pid)+1;
+  const el=document.createElement('div');
+  el.style.cssText=`position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(0);z-index:998;background:#fff;border-radius:24px;padding:32px 40px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.2);transition:transform .3s cubic-bezier(.34,1.56,.64,1)`;
+  el.innerHTML=`<div style="font-size:56px;margin-bottom:8px">🏅</div>`
+    +`<div style="font-size:22px;font-weight:800;color:var(--text);margin-bottom:4px">+1 Paddelschlag!</div>`
+    +`<div style="font-size:14px;color:var(--t2);margin-bottom:16px">${p.name} · ${count} diese Woche</div>`
+    +(count>=5?`<div style="font-size:13px;background:var(--amber-bg);color:var(--amber);border-radius:99px;padding:4px 14px;font-weight:600">🏆 Auf Kurs für das goldene Paddel!</div>`:'');
+  document.body.appendChild(el);
+  setTimeout(()=>el.style.transform='translate(-50%,-50%) scale(1)',10);
+  setTimeout(()=>{el.style.transform='translate(-50%,-50%) scale(0)';setTimeout(()=>el.remove(),300);},2500);
+  showKonfetti();
+}
 const START_H = 6;  // 06:00
 const END_H   = 20; // 20:00
 const TOTAL_H = END_H - START_H;
@@ -705,10 +759,12 @@ function rSB(){
       const c=cl(p),isMe=id===aP;
       const pA=S.aufgaben.filter(x=>x.pid===id&&canSee(x));
       const nC=pA.filter(x=>x.status==='neu').length,aC=pA.filter(x=>x.status==='aktiv').length;
+      const paddel=getPaddelCount(id);
       h+=`<button class="sbn${isMe?' on':''}" onclick="switchPerson('${id}')">`
         +`<div class="av" style="width:22px;height:22px;font-size:8px;background:${isMe?c.tc:'#eee'};color:${isMe?'#fff':c.tc}">${p.k}</div>`
         +`<span style="flex:1;font-size:11px;font-weight:${isMe?600:400};color:${isMe?c.tc:'var(--text)'}">${p.name}</span>`
-        +`<div style="display:flex;gap:3px">`
+        +`<div style="display:flex;gap:3px;align-items:center">`
+        +(paddel?`<span style="font-size:9px;color:var(--amber)">🏅${paddel}</span>`:'')
         +(nC?`<span style="font-size:8px;background:var(--red-bg);color:var(--red);border-radius:99px;padding:1px 4px;font-weight:700">${nC}</span>`:'')
         +(aC?`<span style="font-size:8px;background:${c.bg};color:${c.tc};border-radius:99px;padding:1px 4px;font-weight:700">${aC}</span>`:'')
         +`</div></button>`;
@@ -975,8 +1031,11 @@ async function pauseA(id){
 async function fertig(id){
   const a=S.aufgaben.find(x=>x.id===id);if(!a)return;
   const gebucht=a.status==='aktiv'?Math.round(((a.gebucht||0)+(Date.now()-(a.aktSeit||Date.now()))/3600000)*100)/100:a.gebucht;
-  a.gebucht=gebucht;a.aktSeit=null;a.status='erledigt';
-  await dbPatch('aufgaben',id,{gebucht,akt_seit:null,status:'erledigt'});render();
+  const pid=a.pid;
+  a.gebucht=gebucht;a.aktSeit=null;a.status='erledigt';a.updated_at=new Date().toISOString();
+  await dbPatch('aufgaben',id,{gebucht,akt_seit:null,status:'erledigt',updated_at:new Date().toISOString()});
+  showPaddelCelebration(pid);
+  render();
 }
 async function toggleStep(id,i){
   const a=S.aufgaben.find(x=>x.id===id);if(!a)return;
