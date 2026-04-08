@@ -183,6 +183,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;font-size:1
     <button class="nt" id="nav-ziele" onclick="nav('ziele',this)">Ziele</button>
     <button class="nt" id="nav-team" onclick="nav('team',this)">Team</button>
     <div style="flex:1"></div>
+    <div id="fokus-banner" style="display:none;align-items:center;gap:6px;padding:4px 12px;background:var(--red-bg);border:1px solid var(--red-bd);border-radius:8px;font-size:11px;font-weight:600;color:var(--red)">🎯 <span id="fokus-label"></span></div>
+    <div id="live-clock" style="font-size:12px;font-weight:600;color:var(--t2);font-family:monospace;padding:0 8px"></div>
     <button class="nt ai-btn" onclick="openAI()">✦ mit KI</button>
     <button class="nt new-btn" onclick="openNeu()">+ Aufgabe</button>
     <div style="margin-left:8px;display:flex;align-items:center;gap:6px">
@@ -1539,12 +1541,34 @@ async function saveNutzer(){
 function startTimers(){
   if(timIv)clearInterval(timIv);
   timIv=setInterval(()=>{
+    // Aufgaben-Timer
     document.querySelectorAll('[data-tid]').forEach(el=>{
       const a=S.aufgaben.find(x=>x.id===el.dataset.tid);if(!a)return;
       const s=elapsedSec(a),pct=Math.min(100,Math.round(s/((a.geplant||1)*3600)*100));
       const n=el.querySelector('.tn'),f=el.querySelector('.tf');
       if(n)n.textContent=fmt(s);if(f)f.style.width=pct+'%';
     });
+    // Live-Uhr
+    const now=new Date();
+    const hh=('0'+now.getHours()).slice(-2),mm=('0'+now.getMinutes()).slice(-2);
+    const clock=document.getElementById('live-clock');
+    if(clock)clock.textContent=hh+':'+mm;
+    // Fokuszeit-Banner
+    if(aP){
+      const p=me();
+      if(p){
+        const fs=p.fokus_start||'09:00',fe=p.fokus_end||'11:00';
+        const [fsh,fsm]=fs.split(':').map(Number),[feh,fem]=fe.split(':').map(Number);
+        const nowMin=now.getHours()*60+now.getMinutes();
+        const startMin=fsh*60+fsm,endMin=feh*60+fem;
+        const inFokus=nowMin>=startMin&&nowMin<endMin;
+        const banner=document.getElementById('fokus-banner'),label=document.getElementById('fokus-label');
+        if(banner&&label){
+          banner.style.display=inFokus?'flex':'none';
+          if(inFokus)label.textContent=`Fokuszeit bis ${fe} — bitte nicht stören`;
+        }
+      }
+    }
   },1000);
 }
 
