@@ -565,8 +565,132 @@ function render(){
 }
 
 // ═══════════════════════════════════════════════
-// SIDEBAR
+// ZEITSTRAHL
 // ═══════════════════════════════════════════════
+const START_H = 6;  // 06:00
+const END_H   = 20; // 20:00
+const TOTAL_H = END_H - START_H;
+
+function timeToY(timeStr) {
+  if (!timeStr) return null;
+  const [h, m] = timeStr.split(':').map(Number);
+  return ((h + m/60 - START_H) / TOTAL_H) * 100;
+}
+function durationToH(geplant) {
+  return (geplant / TOTAL_H) * 100;
+}
+
+function rZeitstrahl(myA) {
+  const heute = myA.filter(a => a.status !== 'erledigt');
+  const mitUhrzeit = heute.filter(a => a.uhrzeit);
+  const ohneUhrzeit = heute.filter(a => !a.uhrzeit && a.prio === 'P1');
+
+  // Fokuszeit aus Person-Settings
+  const p = me();
+  const fokusStart = p.fokusStart || '09:00';
+  const fokusEnd   = p.fokusEnd   || '11:00';
+  const fokusStartY = timeToY(fokusStart);
+  const fokusEndY   = timeToY(fokusEnd);
+  const fokusH      = fokusEndY - fokusStartY;
+
+  // Jetzt-Linie
+  const now = new Date();
+  const nowY = ((now.getHours() + now.getMinutes()/60 - START_H) / TOTAL_H) * 100;
+  const showNow = nowY >= 0 && nowY <= 100;
+
+  // Stunden-Labels
+  const hours = [];
+  for (let h = START_H; h <= END_H; h++) hours.push(h);
+
+  let out = `<div style="margin-bottom:24px">`;
+  out += `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">`;
+  out += `<div style="font-size:10px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.6px">Tagesplan</div>`;
+  out += `<button onclick="editFokuszeit()" style="font-size:10px;padding:2px 8px;border-radius:6px;border:1px solid var(--bd);background:transparent;color:var(--t2);cursor:pointer;font-family:inherit">⚙ Fokuszeit: ${fokusStart}–${fokusEnd}</button>`;
+  out += `</div>`;
+
+  out += `<div style="display:flex;gap:0;position:relative">`;
+
+  // Stunden-Labels links
+  out += `<div style="width:36px;flex-shrink:0;position:relative;height:${TOTAL_H * 48}px">`;
+  hours.forEach(h => {
+    const y = ((h - START_H) / TOTAL_H) * 100;
+    out += `<div style="position:absolute;top:calc(${y}% - 7px);right:4px;font-size:9px;color:var(--t3);font-weight:500">${h}:00</div>`;
+  });
+  out += `</div>`;
+
+  // Zeitstrahl
+  out += `<div style="flex:1;position:relative;height:${TOTAL_H * 48}px;background:var(--gray-bg);border-radius:10px;overflow:hidden">`;
+
+  // Stunden-Linien
+  hours.forEach(h => {
+    const y = ((h - START_H) / TOTAL_H) * 100;
+    const isMainHour = h % 2 === 0;
+    out += `<div style="position:absolute;top:${y}%;left:0;right:0;height:1px;background:${isMainHour?'var(--bd)':'rgba(0,0,0,.04)'}"></div>`;
+  });
+
+  // Fokuszeit Block
+  out += `<div style="position:absolute;top:${fokusStartY}%;left:0;right:0;height:${fokusH}%;background:rgba(29,78,216,.07);border-left:3px solid var(--blue);z-index:1">`;
+  out += `<div style="font-size:9px;font-weight:700;color:var(--blue);padding:3px 6px;opacity:.8">🎯 Fokuszeit</div>`;
+  out += `</div>`;
+
+  // Arbeitszeit Schatten (07-17 oder 09-17)
+  const wsStart = (me().teams||[]).includes('werkstatt') ? '07:00' : '09:00';
+  const wsY = timeToY(wsStart);
+  const wsH = timeToY('17:00') - wsY;
+  out += `<div style="position:absolute;top:${wsY}%;left:0;right:0;height:${wsH}%;background:rgba(0,0,0,.02);z-index:0"></div>`;
+
+  // Aufgaben mit Uhrzeit
+  mitUhrzeit.forEach(a => {
+    const y = timeToY(a.uhrzeit);
+    if (y === null) return;
+    const h = durationToH(a.geplant||1);
+    const c = a.prio==='P1'?'var(--red)':a.prio==='P2'?'#c2410c':'var(--blue)';
+    const bg = a.prio==='P1'?'var(--red-bg)':a.prio==='P2'?'#fff7ed':'var(--blue-bg)';
+    const isAktiv = a.status === 'aktiv';
+    out += `<div onclick="openDetail('${a.id}')" style="position:absolute;top:${y}%;left:4px;right:4px;height:max(${h}%,4%);background:${bg};border-left:3px solid ${c};border-radius:0 6px 6px 0;padding:3px 7px;cursor:pointer;z-index:2;overflow:hidden;${isAktiv?'box-shadow:0 0 0 1.5px '+c:''}">`;
+    out += `<div style="font-size:10px;font-weight:600;color:${c};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${isAktiv?'● ':''} ${a.titel}</div>`;
+    out += `<div style="font-size:9px;color:var(--t3)">${a.uhrzeit} · ${fmtH(a.geplant)}</div>`;
+    out += `</div>`;
+  });
+
+  // Jetzt-Linie
+  if (showNow) {
+    out += `<div style="position:absolute;top:${nowY}%;left:0;right:0;height:2px;background:var(--red);z-index:10">`;
+    out += `<div style="position:absolute;left:-1px;top:-4px;width:10px;height:10px;border-radius:50%;background:var(--red)"></div>`;
+    out += `<div style="position:absolute;right:4px;top:-8px;font-size:9px;font-weight:700;color:var(--red)">${now.getHours()}:${('0'+now.getMinutes()).slice(-2)}</div>`;
+    out += `</div>`;
+  }
+
+  out += `</div></div>`; // Zeitstrahl Ende
+
+  // P1 ohne Uhrzeit — Hinweis
+  if (ohneUhrzeit.length) {
+    out += `<div style="margin-top:10px;padding:8px 12px;background:var(--amber-bg);border:1px solid var(--amber-bd);border-radius:9px;font-size:11px;color:var(--amber)">`;
+    out += `<span style="font-weight:600">⚠ ${ohneUhrzeit.length} P1-Aufgabe${ohneUhrzeit.length>1?'n':''} ohne Uhrzeit:</span> `;
+    out += ohneUhrzeit.map(a => a.titel).join(', ');
+    out += `</div>`;
+  }
+
+  out += `</div>`;
+  return out;
+}
+
+function editFokuszeit() {
+  const p = me();
+  document.getElementById('mb').innerHTML = `<div class="mt">Fokuszeit einstellen</div>`
+    + `<div style="font-size:12px;color:var(--t2);margin-bottom:16px">Deine tägliche Fokuszeit — in dieser Zeit werden P1-Aufgaben priorisiert.</div>`
+    + `<div class="f2"><div class="fl"><label>Von</label><input type="time" id="fs" value="${p.fokusStart||'09:00'}"></div>`
+    + `<div class="fl"><label>Bis</label><input type="time" id="fe" value="${p.fokusEnd||'11:00'}"></div></div>`
+    + `<div class="mf"><button class="btn btn-gr" onclick="cm()">Abbrechen</button><button class="btn btn-dk" onclick="saveFokuszeit()">Speichern</button></div>`;
+  document.getElementById('ovl').classList.add('open');
+}
+async function saveFokuszeit() {
+  const p = me(); if (!p) return;
+  p.fokusStart = document.getElementById('fs').value;
+  p.fokusEnd   = document.getElementById('fe').value;
+  await dbPatch('personen', p.id, {fokus_start: p.fokusStart, fokus_end: p.fokusEnd});
+  cm(); render();
+}
 function rSB(){
   const sorted=[...S.teams].sort((a,b)=>a.id==='gf'?-1:b.id==='gf'?1:0);
   let h='';
@@ -659,6 +783,9 @@ function rTag(){
 
   // KPIs optional
   out+=kpiBlock(aP);
+
+  // Zeitstrahl
+  out+=rZeitstrahl(myA);
 
   // NEU
   if(neu.length){
@@ -1105,6 +1232,7 @@ function openNeu(pf={}){
     +[null,'P1','P2','P3'].map(pr=>{const bg=pr==='P1'?'var(--red-bg)':pr==='P2'?'#fff7ed':'var(--gray-bg)';const tc=pr==='P1'?'var(--red)':pr==='P2'?'#c2410c':'var(--t2)';return`<button id="pbp-${pr||'k'}" onclick="selPrioBtn(this,'${pr}')" style="font-size:12px;padding:4px 11px;border-radius:8px;border:1px solid ${pr?tc:'var(--bd)'};background:${bg};color:${tc};cursor:pointer;font-family:inherit">${pr||'kein'}</button>`;}).join('')
     +`</div></div>`
     +`<div class="f2"><div class="fl"><label>Dauer</label><select id="nh">${Object.keys(SH).map(h=>`<option value="${h}"${(pf.geplant||1)==h?' selected':''}>${SH[h]}</option>`).join('')}</select></div><div class="fl"><label>Deadline</label><input type="date" id="ndl" value="${pf.dl||''}"></div></div>`
+  +`<div class="f2"><div class="fl"><label>Uhrzeit (optional)</label><input type="time" id="nuhr" value="${pf.uhrzeit||''}" placeholder="z.B. 09:00"></div><div class="fl"><label>Ort / Link</label><input id="nort" value="${pf.ort||''}" placeholder="z.B. Büro, Meet-Link…"></div></div>`
     +(isGF()?`<div class="fl"><label style="display:flex;align-items:center;gap:8px;text-transform:none;font-size:13px;font-weight:400"><input type="checkbox" id="nvert" style="width:auto"> Vertraulich — nur GF sichtbar</label></div>`:'')
     +`<div class="fl"><label>Notiz</label><input id="nno" value="${pf.notiz||''}" placeholder="Optional…"></div>`
     +`<div class="mf"><button class="btn btn-gr" onclick="cm()">Abbrechen</button><button class="btn btn-dk" onclick="saveNeu()">Speichern</button></div>`;
@@ -1148,7 +1276,10 @@ async function saveNeu(){
     status:_selPrio?'backlog':'neu',prio:_selPrio||null,
     ziel_id:zielId,teilziel_id:teilzielId,
     geplant:parseFloat(document.getElementById('nh').value)||1,
-    gebucht:0,dl:document.getElementById('ndl').value||null,
+    gebucht:0,
+    dl:document.getElementById('ndl').value||null,
+    uhrzeit:document.getElementById('nuhr').value||null,
+    ort:document.getElementById('nort').value.trim()||null,
     ua:[],notiz:document.getElementById('nno').value.trim(),
     akt_seit:null,vertraulich:vert
   };
