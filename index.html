@@ -536,7 +536,12 @@ function rTag(){
     out+='<button onclick="fertig(\''+a.id+'\')" style="flex:1;padding:13px;border-radius:12px;background:#fff;color:var(--text);border:none;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer">✓ Erledigt</button>';
     out+='<button onclick="pauseA(\''+a.id+'\')" style="padding:13px 16px;border-radius:12px;background:rgba(255,255,255,.15);color:#fff;border:none;font-family:inherit;font-size:14px;cursor:pointer">⏸</button>';
     out+='<button onclick="openDetail(\''+a.id+'\')" style="padding:13px 16px;border-radius:12px;background:rgba(255,255,255,.15);color:#fff;border:none;font-family:inherit;font-size:14px;cursor:pointer">···</button>';
-    out+='</div></div>';
+    out+='</div>';
+    // Schritte direkt hinzufügen während aktiv
+    out+='<div style="margin-top:12px;border-top:1px solid rgba(255,255,255,.15);padding-top:12px">';
+    out+=stepsHtml(a,true);
+    out+='</div>';
+    out+='</div>';
     if(aktiv.length>1){
       aktiv.slice(1).forEach(a2=>{
         out+='<div onclick="openDetail(\''+a2.id+'\')" style="background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:12px 14px;margin-bottom:8px;cursor:pointer;display:flex;align-items:center;gap:10px">';
@@ -632,10 +637,11 @@ function rTag(){
     out+='<span style="font-size:12px;color:var(--green);opacity:.7">'+erl.length+' Aufgabe'+(erl.length>1?'n':'')+'</span></summary>';
     out+='<div style="margin-top:8px">';
     erl.forEach(a=>{
-      out+='<div style="background:var(--green-bg);border:1px solid var(--green-bd);border-radius:10px;padding:9px 14px;margin-bottom:5px;display:flex;align-items:center;gap:8px">';
-      out+='<span style="flex:1;font-size:12px;text-decoration:line-through;color:var(--t2)">'+a.titel+'</span>';
-      if(a.gebucht)out+='<span style="font-size:11px;color:var(--green);font-weight:600">'+fmt(a.gebucht*3600)+'</span>';
-      out+='</div>';
+      out+='<div onclick="openDetail(\''+a.id+'\')" style="background:var(--green-bg);border:1px solid var(--green-bd);border-radius:10px;padding:9px 14px;margin-bottom:5px;display:flex;align-items:center;gap:8px;cursor:pointer" onmouseenter="this.style.background=\'#dcfce7\'" onmouseleave="this.style.background=\'var(--green-bg)\'">'
+        +'<span style="flex:1;font-size:12px;text-decoration:line-through;color:var(--t2)">'+a.titel+'</span>'
+        +(a.gebucht?'<span style="font-size:11px;color:var(--green);font-weight:600">'+fmt(a.gebucht*3600)+'</span>':'')
+        +'<span style="font-size:10px;color:var(--t3)">···</span>'
+        +'</div>';
     });
     out+='</div></details>';
   }
