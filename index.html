@@ -511,6 +511,7 @@ function rTag(){
   const erl=myA.filter(a=>a.status==='erledigt');
   const offene=[...neu,...bl].sort((a,b)=>{const po={'P1':0,'P2':1,'P3':2};return(po[a.prio]??3)-(po[b.prio]??3);});
   const naechste=aktiv.length?null:(offene[0]||null);
+  const alleGeschafft=!aktiv.length&&!neu.length&&!bl.length;
   let out='';
 
   // AKTIV
@@ -578,6 +579,13 @@ function rTag(){
     out+='<button onclick="startenA(\''+naechste.id+'\')" style="flex:1;padding:14px;border-radius:12px;background:var(--text);color:#fff;border:none;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer">▶ Starten</button>';
     out+='<button onclick="openDetail(\''+naechste.id+'\')" style="padding:14px 18px;border-radius:12px;background:var(--gray-bg);color:var(--t2);border:1px solid var(--bd);font-family:inherit;font-size:13px;font-weight:500;cursor:pointer">Details</button>';
     out+='</div></div>';
+  } else if(alleGeschafft){
+    out+='<div style="background:var(--green);border-radius:18px;padding:32px 24px;margin-bottom:16px;color:#fff;text-align:center">';
+    out+='<div style="font-size:36px;margin-bottom:12px">🎉</div>';
+    out+='<div style="font-size:20px;font-weight:700;margin-bottom:6px">Alles erledigt!</div>';
+    out+='<div style="font-size:13px;opacity:.8;margin-bottom:20px">Keine offenen Aufgaben — gut gemacht.</div>';
+    out+='<button onclick="openNeu()" style="padding:12px 24px;border-radius:12px;background:#fff;color:var(--green);border:none;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer">+ Neue Aufgabe</button>';
+    out+='</div>';
   } else if(!myA.length){
     out+='<div style="background:var(--green);border-radius:18px;padding:32px 24px;margin-bottom:16px;color:#fff;text-align:center">';
     out+='<div style="font-size:36px;margin-bottom:12px">🎉</div>';
