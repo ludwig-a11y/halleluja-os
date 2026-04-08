@@ -580,25 +580,29 @@ function durationToH(geplant) {
   return (geplant / TOTAL_H) * 100;
 }
 
-function rZeitstrahl(myA) {
+function naechsteP1(myA){
+  return (myA||[]).filter(a=>a.prio==='P1'&&(a.status==='backlog'||a.status==='neu')).sort((a,b)=>(a.prio||'P9').localeCompare(b.prio||'P9'))[0]||null;
+}
+
+function rZeitstrahl(myA){
   const heute = myA.filter(a => a.status !== 'erledigt');
   const mitUhrzeit = heute.filter(a => a.uhrzeit);
-  const ohneUhrzeit = heute.filter(a => !a.uhrzeit && a.prio === 'P1');
 
-  // Fokuszeit aus Person-Settings
+  // Nächste P1 Aufgabe ohne Uhrzeit → in Fokuszeit anzeigen
+  const naechsteP1 = heute.filter(a => !a.uhrzeit && a.prio === 'P1' && (a.status === 'backlog' || a.status === 'neu'))
+    .sort((a,b) => (a.prio||'P9').localeCompare(b.prio||'P9'))[0] || null;
+
   const p = me();
-  const fokusStart = p.fokusStart || '09:00';
-  const fokusEnd   = p.fokusEnd   || '11:00';
+  const fokusStart = p.fokus_start || '09:00';
+  const fokusEnd   = p.fokus_end   || '11:00';
   const fokusStartY = timeToY(fokusStart);
   const fokusEndY   = timeToY(fokusEnd);
   const fokusH      = fokusEndY - fokusStartY;
 
-  // Jetzt-Linie
   const now = new Date();
   const nowY = ((now.getHours() + now.getMinutes()/60 - START_H) / TOTAL_H) * 100;
   const showNow = nowY >= 0 && nowY <= 100;
 
-  // Stunden-Labels
   const hours = [];
   for (let h = START_H; h <= END_H; h++) hours.push(h);
 
@@ -624,20 +628,21 @@ function rZeitstrahl(myA) {
   // Stunden-Linien
   hours.forEach(h => {
     const y = ((h - START_H) / TOTAL_H) * 100;
-    const isMainHour = h % 2 === 0;
-    out += `<div style="position:absolute;top:${y}%;left:0;right:0;height:1px;background:${isMainHour?'var(--bd)':'rgba(0,0,0,.04)'}"></div>`;
+    out += `<div style="position:absolute;top:${y}%;left:0;right:0;height:1px;background:${h%2===0?'var(--bd)':'rgba(0,0,0,.04)'}"></div>`;
   });
 
   // Fokuszeit Block
-  out += `<div style="position:absolute;top:${fokusStartY}%;left:0;right:0;height:${fokusH}%;background:rgba(29,78,216,.07);border-left:3px solid var(--blue);z-index:1">`;
+  out += `<div style="position:absolute;top:${fokusStartY}%;left:0;right:0;height:${fokusH}%;background:rgba(29,78,216,.06);border-left:3px solid var(--blue);z-index:1">`;
   out += `<div style="font-size:9px;font-weight:700;color:var(--blue);padding:3px 6px;opacity:.8">🎯 Fokuszeit</div>`;
-  out += `</div>`;
 
-  // Arbeitszeit Schatten (07-17 oder 09-17)
-  const wsStart = (me().teams||[]).includes('werkstatt') ? '07:00' : '09:00';
-  const wsY = timeToY(wsStart);
-  const wsH = timeToY('17:00') - wsY;
-  out += `<div style="position:absolute;top:${wsY}%;left:0;right:0;height:${wsH}%;background:rgba(0,0,0,.02);z-index:0"></div>`;
+  // Nächste P1 in Fokuszeit anzeigen
+  if (naechsteP1) {
+    out += `<div onclick="openDetail('${naechsteP1.id}')" style="margin:2px 4px;background:var(--red-bg);border-left:3px solid var(--red);border-radius:0 6px 6px 0;padding:4px 8px;cursor:pointer">`;
+    out += `<div style="font-size:10px;font-weight:600;color:var(--red);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">▶ ${naechsteP1.titel}</div>`;
+    out += `<div style="font-size:9px;color:var(--t3)">Nächste P1 · ${fmtH(naechsteP1.geplant)}</div>`;
+    out += `</div>`;
+  }
+  out += `</div>`;
 
   // Aufgaben mit Uhrzeit
   mitUhrzeit.forEach(a => {
@@ -661,17 +666,7 @@ function rZeitstrahl(myA) {
     out += `</div>`;
   }
 
-  out += `</div></div>`; // Zeitstrahl Ende
-
-  // P1 ohne Uhrzeit — Hinweis
-  if (ohneUhrzeit.length) {
-    out += `<div style="margin-top:10px;padding:8px 12px;background:var(--amber-bg);border:1px solid var(--amber-bd);border-radius:9px;font-size:11px;color:var(--amber)">`;
-    out += `<span style="font-weight:600">⚠ ${ohneUhrzeit.length} P1-Aufgabe${ohneUhrzeit.length>1?'n':''} ohne Uhrzeit:</span> `;
-    out += ohneUhrzeit.map(a => a.titel).join(', ');
-    out += `</div>`;
-  }
-
-  out += `</div>`;
+  out += `</div></div></div>`;
   return out;
 }
 
@@ -784,8 +779,8 @@ function rTag(){
   // KPIs optional
   out+=kpiBlock(aP);
 
-  // Zeitstrahl
-  out+=rZeitstrahl(myA);
+  // Zeitstrahl — eingeklappt, ganz oben als optionaler Tagesplan
+  out+=`<details style="margin-bottom:16px"><summary style="cursor:pointer;list-style:none;display:flex;align-items:center;justify-content:space-between;padding:9px 12px;background:var(--sf);border:1px solid var(--bd);border-radius:10px"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:13px">📅</span><span style="font-size:12px;font-weight:600;color:var(--text)">Tagesplan</span>${naechsteP1(myA)?`<span class="tag" style="background:var(--red-bg);color:var(--red)">▶ ${naechsteP1(myA).titel}</span>`:''}</div><span style="font-size:10px;color:var(--t3)">anzeigen</span></summary><div style="margin-top:8px">${rZeitstrahl(myA)}</div></details>`;
 
   // NEU
   if(neu.length){
@@ -823,6 +818,13 @@ function rTag(){
   // BACKLOG
   if(bl.length){
     out+=secHead('Backlog','var(--t2)');
+    out+=`<div style="display:flex;gap:12px;margin-bottom:10px;padding:8px 12px;background:var(--sf);border:1px solid var(--bd);border-radius:9px">`
+      +`<span style="font-size:10px;color:var(--red);font-weight:600">P1 Konsequenzen heute</span>`
+      +`<span style="color:var(--bd)">·</span>`
+      +`<span style="font-size:10px;color:#c2410c;font-weight:600">P2 Wichtig, kein Feuer</span>`
+      +`<span style="color:var(--bd)">·</span>`
+      +`<span style="font-size:10px;color:var(--t2);font-weight:600">P3 Wenn Zeit ist</span>`
+      +`</div>`;
     bl.forEach(a=>{
       const tzN=getTZName(a),zN=getZielName(a);
       out+=`<div class="card" style="display:flex;align-items:center;gap:10px;padding:10px 13px">`
