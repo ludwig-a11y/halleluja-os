@@ -17,8 +17,6 @@
   --gray-bg:#f8f8f7;
 }
 body{font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;font-size:13px;color:var(--text);background:var(--bg);height:100vh;overflow:hidden;display:flex;flex-direction:column}
-
-/* ── MOBILE ── */
 @media(max-width:768px){
   .bar{padding:0 12px;height:50px}
   .logo{font-size:14px;font-weight:700;border:none;padding:0;margin:0}
@@ -28,26 +26,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;font-size:1
   .main{padding:14px 14px 90px}
   .modal{border-radius:20px 20px 0 0;width:100%;max-width:100%;position:fixed;bottom:0;left:0;right:0;max-height:90vh;padding:20px 18px 32px}
   .ovl{align-items:flex-end;padding:0}
-  .card{padding:14px}
-  .pin-key{padding:16px}
-  .ph{flex-wrap:wrap;gap:10px}
-  .phs{margin-left:0;width:100%;justify-content:space-between}
   .f2{grid-template-columns:1fr}
-  /* Bottom Tab Bar */
   #mob-tabs{display:flex}
-  /* Floating add button */
   #mob-add{display:flex}
 }
-@media(min-width:769px){
-  #mob-tabs{display:none}
-  #mob-add{display:none}
-}
+@media(min-width:769px){#mob-tabs{display:none}#mob-add{display:none}}
 #mob-tabs{position:fixed;bottom:0;left:0;right:0;height:60px;background:var(--sf);border-top:1px solid var(--bd);z-index:50;align-items:center;justify-content:space-around;padding:0 8px}
 .mob-tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border:none;background:transparent;cursor:pointer;font-family:inherit;padding:8px 4px;color:var(--t3);font-size:9px;font-weight:500}
 .mob-tab.on{color:var(--text)}
 .mob-tab svg{width:20px;height:20px}
 #mob-add{position:fixed;bottom:72px;right:18px;z-index:51;width:52px;height:52px;border-radius:50%;background:var(--text);color:#fff;border:none;font-size:26px;cursor:pointer;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(0,0,0,.25);font-family:inherit}
-
 #login-screen{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:200}
 .login-box{background:var(--sf);border:1px solid var(--bd);border-radius:18px;padding:32px 36px;width:340px;max-width:95vw}
 .login-title{font-size:17px;font-weight:700;margin-bottom:4px}
@@ -83,9 +71,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;font-size:1
 .sbn{width:100%;text-align:left;padding:7px 8px;border-radius:9px;border:none;cursor:pointer;background:transparent;font-family:inherit;margin-bottom:2px;display:flex;align-items:center;gap:8px}
 .sbn.on,.sbn:hover{background:var(--bg)}
 .av{border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0}
-.card{background:var(--sf);border:1px solid var(--bd);border-radius:14px;padding:13px 15px;margin-bottom:8px}
-.card.aktiv-c{border:2px solid var(--text)}
-.card.neu-c{border:1.5px solid var(--red-bd);background:var(--red-bg)}
 .tag{font-size:10px;padding:2px 8px;border-radius:99px;font-weight:500;white-space:nowrap;display:inline-block}
 .btn{font-size:11px;padding:5px 12px;border-radius:8px;border:none;cursor:pointer;font-family:inherit;font-weight:500}
 .btn-dk{background:var(--text);color:#fff}
@@ -111,10 +96,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;font-size:1
 .sc.dn{background:var(--text);border-color:var(--text)}
 .sl{font-size:11px}.sl.dn{text-decoration:line-through;color:var(--t3)}
 .asi{flex:1;font-size:11px;padding:4px 8px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--text);font-family:inherit;outline:none}
-.ph{display:flex;align-items:center;gap:12px;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--bd)}
-.phs{margin-left:auto;display:flex;gap:16px}
-.phv{font-size:18px;font-weight:700;line-height:1}
-.phl{font-size:10px;color:var(--t3);margin-top:1px}
 .zcard{border-radius:14px;padding:18px;margin-bottom:14px;border:1px solid}
 .pbar{height:5px;border-radius:99px;background:rgba(0,0,0,.08);overflow:hidden;flex:1}
 .pbar-fill{height:100%;border-radius:99px;transition:width .3s}
@@ -133,16 +114,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;font-size:1
 .tz-title{font-size:13px;font-weight:600;color:var(--purple);flex:1}
 .tz-done{text-decoration:line-through;opacity:.5}
 .tz-add-btn{display:flex;align-items:center;gap:6px;padding:8px 12px;border-radius:9px;border:1.5px dashed var(--purple-bd);background:transparent;color:var(--purple);font-size:11px;font-family:inherit;cursor:pointer;width:100%;margin-top:6px;opacity:.7}
-.tz-add-btn:hover{opacity:1;background:rgba(124,58,237,.06)}
+.tz-add-btn:hover{opacity:1}
 .team-block{background:var(--sf);border:1px solid var(--bd);border-radius:14px;margin-bottom:14px;overflow:hidden}
 .team-block-head{padding:14px 16px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:12px;background:var(--gray-bg)}
 .team-h-row{display:flex;align-items:center;gap:10px;padding:9px 16px;border-bottom:1px solid var(--bd)}
 .team-h-row:last-child{border:none}
 .team-h-row:hover{background:var(--gray-bg)}
-.empty-state{text-align:center;color:var(--t3);padding:60px 20px;font-size:13px;line-height:1.8}
 .settings-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--bd)}
 .settings-row:last-child{border:none}
-.ci-banner{background:var(--purple-bg);border:1px solid var(--purple-bd);border-radius:11px;padding:11px 14px;margin-bottom:16px;display:flex;align-items:center;gap:10px;cursor:pointer}
 .ai-result{background:var(--purple-bg);border:1px solid var(--purple-bd);border-radius:10px;padding:12px;margin:10px 0;font-size:12px;line-height:1.6}
 </style>
 </head>
@@ -168,7 +147,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;font-size:1
   <div class="checkin-box">
     <div style="font-size:36px;margin-bottom:12px" id="ci-emoji">☀️</div>
     <div style="font-size:18px;font-weight:700;margin-bottom:6px" id="ci-title">Guten Morgen!</div>
-    <div style="font-size:13px;color:var(--t2);margin-bottom:16px;line-height:1.5" id="ci-sub">Was ist heute deine wichtigste Priorität?</div>
+    <div style="font-size:13px;color:var(--t2);margin-bottom:16px;line-height:1.5" id="ci-sub"></div>
     <div id="ci-suggestions" style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px;text-align:left"></div>
     <input class="checkin-input" id="ci-input" placeholder="Heute schaffe ich…"/>
     <button class="checkin-btn" onclick="saveCheckin()">Loslegen →</button>
@@ -188,7 +167,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;font-size:1
     <button class="nt ai-btn" onclick="openAI()">✦ mit KI</button>
     <button class="nt new-btn" onclick="openNeu()">+ Aufgabe</button>
     <div style="margin-left:8px;display:flex;align-items:center;gap:6px">
-      <div id="me-badge" style="display:flex;align-items:center;gap:6px;padding:0 6px;cursor:pointer;border-radius:8px" onclick="logout()"></div>
+      <div id="me-badge" style="display:flex;align-items:center;gap:6px;padding:0 6px;cursor:pointer" onclick="logout()"></div>
       <button id="btn-settings" style="display:none;font-size:11px;padding:4px 10px;border-radius:8px;border:1px solid var(--bd);background:transparent;color:var(--t2);cursor:pointer;font-family:inherit" onclick="openSettings()">⚙</button>
     </div>
   </div>
@@ -196,8 +175,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;font-size:1
     <div class="sb" id="sb"></div>
     <div class="main" id="main"></div>
   </div>
-
-  <!-- Mobile Bottom Tabs -->
   <div id="mob-tabs">
     <button class="mob-tab on" id="mobt-tag" onclick="nav('tag',null);updMobTabs('tag')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
@@ -212,13 +189,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;font-size:1
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="7" r="3"/><path d="M3 21v-2a4 4 0 014-4h4a4 4 0 014 4v2"/><path d="M16 3.13a4 4 0 010 7.75"/><path d="M21 21v-2a4 4 0 00-3-3.87"/></svg>
       Team
     </button>
-    <button class="mob-tab" id="mobt-ich" onclick="openSettings()">
+    <button class="mob-tab" onclick="openSettings()">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
       Ich
     </button>
   </div>
-
-  <!-- Mobile Floating Add Button -->
   <button id="mob-add" onclick="openNeu()">+</button>
 </div>
 
@@ -227,9 +202,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;font-size:1
 </div>
 
 <script>
-// ═══════════════════════════════════════════════
-// SUPABASE
-// ═══════════════════════════════════════════════
 const SUPA_URL='https://zkxeuphsbufdvskkuahk.supabase.co';
 const SUPA_KEY='sb_publishable_41EMxtYZYsYL5KR1KS_RrA_1mV1SRAL';
 
@@ -237,105 +209,56 @@ async function supa(path,opts={}){
   try{
     const r=await fetch(SUPA_URL+'/rest/v1/'+path,{
       headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json','Prefer':opts.prefer||'return=representation',...(opts.headers||{})},
-      method:opts.method||'GET',
-      body:opts.body?JSON.stringify(opts.body):undefined
+      method:opts.method||'GET',body:opts.body?JSON.stringify(opts.body):undefined
     });
     if(!r.ok){console.error('Supabase',path,await r.text());return null;}
     const t=await r.text();return t?JSON.parse(t):null;
-  }catch(e){console.error('supa error',e);return null;}
+  }catch(e){console.error('supa',e);return null;}
 }
-async function dbGet(table,query=''){return await supa(table+(query?'?'+query:'?select=*'));}
-async function dbPatch(table,id,body){return await supa(table+'?id=eq.'+id,{method:'PATCH',body,prefer:'return=minimal'});}
-async function dbInsert(table,body){return await supa(table,{method:'POST',body});}
-async function dbDelete(table,id){return await supa(table+'?id=eq.'+id,{method:'DELETE',prefer:'return=minimal'});}
-async function dbUpsert(table,body,onConflict){return await supa(table,{method:'POST',body,prefer:'resolution=merge-duplicates,return=minimal',headers:{'Prefer':'resolution=merge-duplicates,return=minimal'}});}
+async function dbGet(t,q){return supa(t+(q?'?'+q:'?select=*'));}
+async function dbPatch(t,id,b){return supa(t+'?id=eq.'+id,{method:'PATCH',body:b,prefer:'return=minimal'});}
+async function dbInsert(t,b){return supa(t,{method:'POST',body:b});}
+async function dbDelete(t,id){return supa(t+'?id=eq.'+id,{method:'DELETE',prefer:'return=minimal'});}
 
-// ═══════════════════════════════════════════════
-// CONSTANTS
-// ═══════════════════════════════════════════════
 const FARBEN=[
   {bg:'#f0fdf4',tc:'#15803d',bd:'#86efac'},{bg:'#eff6ff',tc:'#1d4ed8',bd:'#93c5fd'},
   {bg:'#fff7ed',tc:'#c2410c',bd:'#fed7aa'},{bg:'#faf5ff',tc:'#7c3aed',bd:'#ddd6fe'},
   {bg:'#f1f0ef',tc:'#44403c',bd:'#d4d0cb'},{bg:'#fdf2f8',tc:'#9d174d',bd:'#fbcfe8'}
 ];
-const CL=[
-  {bg:'#f0fdf4',tc:'#15803d'},{bg:'#eff6ff',tc:'#1d4ed8'},{bg:'#faf5ff',tc:'#7c3aed'},
-  {bg:'#fff7ed',tc:'#c2410c'},{bg:'#f1f0ef',tc:'#44403c'},{bg:'#fdf2f8',tc:'#9d174d'}
-];
+const CL=[{bg:'#f0fdf4',tc:'#15803d'},{bg:'#eff6ff',tc:'#1d4ed8'},{bg:'#faf5ff',tc:'#7c3aed'},{bg:'#fff7ed',tc:'#c2410c'},{bg:'#f1f0ef',tc:'#44403c'},{bg:'#fdf2f8',tc:'#9d174d'}];
 const TODAY='2026-04-05';
 const FREQ=['täglich','wöchentlich','monatlich'];
 const SH={'0.25':'15min','0.5':'30min','0.75':'45min','1':'1h','1.5':'1h30','2':'2h','3':'3h','4':'4h','5':'5h','8':'8h'};
-const TYP_INFO={
-  strategisch:{label:'Strategisch',bg:'var(--blue-bg)',tc:'var(--blue)'},
-  operativ:   {label:'Operativ',   bg:'var(--gray-bg)',tc:'var(--t2)'},
-  random:     {label:'Random',     bg:'var(--amber-bg)',tc:'var(--amber)'}
-};
+const TYP_INFO={strategisch:{label:'Strategisch',bg:'var(--blue-bg)',tc:'var(--blue)'},operativ:{label:'Operativ',bg:'var(--gray-bg)',tc:'var(--t2)'},random:{label:'Random',bg:'var(--amber-bg)',tc:'var(--amber)'}};
+const START_H=6,END_H=20,TOTAL_H=14;
 
-// ═══════════════════════════════════════════════
-// STATE
-// ═══════════════════════════════════════════════
 let S={personen:[],teams:[],ziele:[],aufgaben:[],kpiVals:{},checkins:{}};
 let aP=null,realMe=null,aV='tag',timIv=null,_selPrio=null;
 let _kid=Date.now();
 const nid=p=>p+(++_kid);
 
-// ═══════════════════════════════════════════════
-// LOAD
-// ═══════════════════════════════════════════════
 async function loadData(){
   const [personen,teams,ziele,kpis,teilziele,aufgaben,kpiVals,checkins]=await Promise.all([
-    dbGet('personen','select=*&order=ci'),
-    dbGet('teams','select=*'),
-    dbGet('ziele','select=*&order=created_at'),
-    dbGet('kpis','select=*'),
-    dbGet('teilziele','select=*&order=created_at'),
-    dbGet('aufgaben','select=*&order=created_at'),
-    dbGet('kpi_vals','select=*'),
-    dbGet('checkins','select=*'),
+    dbGet('personen','select=*&order=ci'),dbGet('teams','select=*'),dbGet('ziele','select=*&order=created_at'),
+    dbGet('kpis','select=*'),dbGet('teilziele','select=*&order=created_at'),dbGet('aufgaben','select=*&order=created_at'),
+    dbGet('kpi_vals','select=*'),dbGet('checkins','select=*'),
   ]);
-
   S.personen=personen||[];
   S.teams=(teams||[]).map(t=>({...t,members:t.members||[]}));
-
-  // Ziele mit KPIs und Teilzielen zusammenführen
-  S.ziele=(ziele||[]).map(z=>({
-    ...z,
-    verantwortlichId:z.verantwortlich_id,
+  S.ziele=(ziele||[]).map(z=>({...z,verantwortlichId:z.verantwortlich_id,
     kpis:(kpis||[]).filter(k=>k.ziel_id===z.id).map(k=>({...k,zielId:k.ziel_id})),
-    teilziele:(teilziele||[]).filter(t=>t.ziel_id===z.id).map(t=>({
-      ...t,zielId:t.ziel_id,verantwortlichId:t.verantwortlich_id,datum:t.datum||''
-    }))
+    teilziele:(teilziele||[]).filter(t=>t.ziel_id===z.id).map(t=>({...t,zielId:t.ziel_id,verantwortlichId:t.verantwortlich_id,datum:t.datum||''}))
   }));
-
-  // Aufgaben normalisieren
-  S.aufgaben=(aufgaben||[]).map(a=>({
-    ...a,
-    zielId:a.ziel_id||null,
-    teilzielId:a.teilziel_id||null,
-    aktSeit:a.akt_seit?new Date(a.akt_seit).getTime():null,
-    dl:a.dl||'',
+  S.aufgaben=(aufgaben||[]).map(a=>({...a,zielId:a.ziel_id||null,teilzielId:a.teilziel_id||null,
+    aktSeit:a.akt_seit?new Date(a.akt_seit).getTime():null,dl:a.dl||'',
     ua:Array.isArray(a.ua)?a.ua:(typeof a.ua==='string'?JSON.parse(a.ua||'[]'):[])
   }));
-
-  // KPI Vals — letzter Wert pro Person+KPI
   S.kpiVals={};
-  (kpiVals||[]).forEach(v=>{
-    const key=v.pid+'-'+v.kpi_id;
-    if(!S.kpiVals[key]||v.datum>S.kpiVals[key].datum)
-      S.kpiVals[key]={val:v.val,datum:v.datum};
-  });
-
-  // Checkins — letzter pro Person
+  (kpiVals||[]).forEach(v=>{const key=v.pid+'-'+v.kpi_id;if(!S.kpiVals[key]||v.datum>S.kpiVals[key].datum)S.kpiVals[key]={val:v.val,datum:v.datum};});
   S.checkins={};
-  (checkins||[]).forEach(c=>{
-    if(!S.checkins[c.pid]||c.datum>S.checkins[c.pid].date)
-      S.checkins[c.pid]={date:c.datum,morgen:c.morgen,abend:c.abend};
-  });
+  (checkins||[]).forEach(c=>{if(!S.checkins[c.pid]||c.datum>S.checkins[c.pid].date)S.checkins[c.pid]={date:c.datum,morgen:c.morgen,abend:c.abend};});
 }
 
-// ═══════════════════════════════════════════════
-// HELPERS
-// ═══════════════════════════════════════════════
 const person=id=>S.personen.find(p=>p.id===id);
 const me=()=>person(aP);
 const cl=p=>p?CL[p.ci%CL.length]:CL[0];
@@ -344,6 +267,9 @@ const isLead=()=>{const m=me();return m&&(m.stufe==='lead'||m.stufe==='gf');};
 const zielObj=id=>S.ziele.find(z=>z.id===id);
 const kpiOk=k=>{const v=kpiVal(k);return k.inv?v<=k.ziel:v>=k.ziel*0.85;};
 const kpiVal=k=>{const e=S.kpiVals[aP+'-'+k.id];return e!==undefined?e.val:k.ist;};
+const canSeeTeam=()=>isLead();
+const canSee=a=>!(a.vertraulich&&!isGF());
+const canManageTZ=zid=>{const z=zielObj(zid);return z&&(isGF()||z.verantwortlichId===aP);};
 
 function myTeamIds(){
   const m=me();if(!m)return[];
@@ -351,64 +277,81 @@ function myTeamIds(){
   S.teams.forEach(t=>{if((m.teams||[]).includes(t.id))t.members.forEach(id=>{if(!ids.includes(id))ids.push(id);});});
   return ids;
 }
-const canSeeTeam=()=>isLead();
-const canSee=a=>!(a.vertraulich&&!isGF());
-const canManageTZ=zid=>{const z=zielObj(zid);return z&&(isGF()||z.verantwortlichId===aP);};
-
 function tzObj(zid,tzid){const z=zielObj(zid);return z?(z.teilziele||[]).find(t=>t.id===tzid):null;}
 function getTZName(a){if(a.teilzielId&&a.zielId){const tz=tzObj(a.zielId,a.teilzielId);return tz?tz.name:null;}return null;}
 function getZielName(a){if(a.zielId){const z=zielObj(a.zielId);return z?z.name:null;}return null;}
-
 function typInfo(a){return TYP_INFO[a.typ]||TYP_INFO.operativ;}
-
-// Fokus = % strategische Aufgaben von allen offenen
 function fokusQ(pids){
   const as=S.aufgaben.filter(a=>pids.includes(a.pid)&&a.status!=='erledigt'&&canSee(a));
   if(!as.length)return 0;
   return Math.round(as.filter(a=>a.typ==='strategisch').length/as.length*100);
 }
-
-// Fortschritt eines Ziels aus Teilzielen berechnen
-function zielPct(z){
-  const tzs=z.teilziele||[];
-  if(!tzs.length)return z.pct||0;
-  return Math.round(tzs.filter(t=>t.erledigt).length/tzs.length*100);
-}
-
-function elapsedSec(a){
-  let s=(a.gebucht||0)*3600;
-  if(a.status==='aktiv'&&a.aktSeit)s+=(Date.now()-a.aktSeit)/1000;
-  return s;
-}
-function fmt(s){
-  s=Math.round(s);const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sc=s%60;
-  if(h>0)return h+':'+('0'+m).slice(-2)+':'+('0'+sc).slice(-2);
-  return('0'+m).slice(-2)+':'+('0'+sc).slice(-2);
-}
-function fmtH(h){
-  if(!h||h===0)return'–';if(h<1)return Math.round(h*60)+'min';
-  const fh=Math.floor(h),m=Math.round((h-fh)*60);return fh+'h'+(m?' '+m+'min':'');
-}
+function zielPct(z){const tzs=z.teilziele||[];if(!tzs.length)return z.pct||0;return Math.round(tzs.filter(t=>t.erledigt).length/tzs.length*100);}
+function elapsedSec(a){let s=(a.gebucht||0)*3600;if(a.status==='aktiv'&&a.aktSeit)s+=(Date.now()-a.aktSeit)/1000;return s;}
+function fmt(s){s=Math.round(s);const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sc=s%60;if(h>0)return h+':'+('0'+m).slice(-2)+':'+('0'+sc).slice(-2);return('0'+m).slice(-2)+':'+('0'+sc).slice(-2);}
+function fmtH(h){if(!h||h===0)return'–';if(h<1)return Math.round(h*60)+'min';const fh=Math.floor(h),m=Math.round((h-fh)*60);return fh+'h'+(m?' '+m+'min':'');}
 function dli(d){
   if(!d)return null;
   const df=Math.round((new Date(d)-new Date(TODAY))/86400000);
-  if(df<0) return{l:Math.abs(df)+'d überfällig',bg:'var(--red-bg)',c:'var(--red)'};
+  if(df<0)return{l:Math.abs(df)+'d überfällig',bg:'var(--red-bg)',c:'var(--red)'};
   if(df===0)return{l:'Heute fällig',bg:'var(--red-bg)',c:'var(--red)'};
   if(df===1)return{l:'Morgen',bg:'#fff7ed',c:'#c2410c'};
-  if(df<=4) return{l:'in '+df+' Tagen',bg:'var(--amber-bg)',c:'var(--amber)'};
+  if(df<=4)return{l:'in '+df+' Tagen',bg:'var(--amber-bg)',c:'var(--amber)'};
   return{l:d.slice(8)+'.'+d.slice(5,7)+'.',bg:'var(--gray-bg)',c:'var(--t3)'};
 }
 
-// HTML helpers
-function av(p,size=24,fs=9){const c=cl(p);return`<div class="av" style="width:${size}px;height:${size}px;font-size:${fs}px;background:${c.tc};color:#fff">${p.k}</div>`;}
-function typTag(a){const t=typInfo(a);return`<span class="tag" style="background:${t.bg};color:${t.tc}">${t.label}</span>`;}
-function prioTag(p){if(!p)return'';const bg=p==='P1'?'var(--red-bg)':p==='P2'?'#fff7ed':'var(--gray-bg)';const tc=p==='P1'?'var(--red)':p==='P2'?'#c2410c':'var(--t2)';return`<span class="tag" style="background:${bg};color:${tc}">${p}</span>`;}
-function dlTag(dl){const d=dli(dl);if(!d)return'';return`<span class="tag" style="background:${d.bg};color:${d.c}">${d.l}</span>`;}
-function secHead(label,color='var(--t2)',extra=''){return`<div style="font-size:10px;font-weight:700;color:${color};text-transform:uppercase;letter-spacing:.6px;margin:16px 0 8px;display:flex;align-items:center;gap:8px">${label}${extra}</div>`;}
+function av(p,size,fs){size=size||24;fs=fs||9;const c=cl(p);return '<div class="av" style="width:'+size+'px;height:'+size+'px;font-size:'+fs+'px;background:'+c.tc+';color:#fff">'+p.k+'</div>';}
+function typTag(a){const t=typInfo(a);return '<span class="tag" style="background:'+t.bg+';color:'+t.tc+'">'+t.label+'</span>';}
+function prioTag(p){
+  if(!p)return'';
+  const bg=p==='P1'?'var(--red-bg)':p==='P2'?'#fff7ed':'var(--gray-bg)';
+  const tc=p==='P1'?'var(--red)':p==='P2'?'#c2410c':'var(--t2)';
+  const tip=p==='P1'?'P1 — Konsequenzen heute. Kunde wartet, Umsatz liegt auf dem Tisch, oder etwas geht kaputt.':p==='P2'?'P2 — Wichtig, kein Feuer. Bringt uns voran — aber der Schaden kommt erst später.':'P3 — Wenn Zeit ist. Die Welt dreht sich weiter.';
+  return '<span class="tag" style="background:'+bg+';color:'+tc+';cursor:help" title="'+tip+'">'+p+'</span>';
+}
+function dlTag(dl){const d=dli(dl);if(!d)return'';return '<span class="tag" style="background:'+d.bg+';color:'+d.c+'">'+d.l+'</span>';}
 
-// ═══════════════════════════════════════════════
+function getPaddelCount(pid){
+  return S.aufgaben.filter(a=>a.pid===pid&&a.status==='erledigt').length;
+}
+
+function showKonfetti(){
+  const canvas=document.createElement('canvas');
+  canvas.style.cssText='position:fixed;inset:0;z-index:999;pointer-events:none;width:100%;height:100%';
+  canvas.width=window.innerWidth;canvas.height=window.innerHeight;
+  document.body.appendChild(canvas);
+  const ctx=canvas.getContext('2d');
+  const colors=['#FFD700','#FF6B6B','#4ECDC4','#45B7D1','#96CEB4','#FFEAA7','#DDA0DD'];
+  const pieces=Array.from({length:80},()=>({
+    x:Math.random()*canvas.width,y:-20,w:8+Math.random()*8,h:8+Math.random()*8,
+    r:Math.random()*Math.PI*2,vx:(Math.random()-.5)*6,vy:3+Math.random()*4,vr:(Math.random()-.5)*.2,
+    color:colors[Math.floor(Math.random()*colors.length)]
+  }));
+  let frame=0;
+  function draw(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    pieces.forEach(p=>{ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.r);ctx.fillStyle=p.color;ctx.fillRect(-p.w/2,-p.h/2,p.w,p.h);ctx.restore();p.x+=p.vx;p.y+=p.vy;p.r+=p.vr;p.vy+=.1;});
+    frame++;if(frame<120)requestAnimationFrame(draw);else canvas.remove();
+  }
+  draw();
+}
+
+function showPaddelCelebration(pid){
+  const p=person(pid);if(!p)return;
+  const count=getPaddelCount(pid);
+  const el=document.createElement('div');
+  el.style.cssText='position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(0);z-index:998;background:#fff;border-radius:24px;padding:32px 40px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.2);transition:transform .3s cubic-bezier(.34,1.56,.64,1)';
+  el.innerHTML='<div style="font-size:56px;margin-bottom:8px">🏅</div>'
+    +'<div style="font-size:22px;font-weight:800;color:var(--text);margin-bottom:4px">+1 Paddelschlag!</div>'
+    +'<div style="font-size:14px;color:var(--t2);margin-bottom:16px">'+p.name+' · '+count+' insgesamt</div>'
+    +(count>=5?'<div style="font-size:13px;background:var(--amber-bg);color:var(--amber);border-radius:99px;padding:4px 14px;font-weight:600">🏆 Auf Kurs für das goldene Paddel!</div>':'');
+  document.body.appendChild(el);
+  setTimeout(()=>{el.style.transform='translate(-50%,-50%) scale(1)';},10);
+  setTimeout(()=>{el.style.transform='translate(-50%,-50%) scale(0)';setTimeout(()=>el.remove(),300);},2500);
+  showKonfetti();
+}
+
 // CHECK-IN
-// ═══════════════════════════════════════════════
 function shouldCheckin(){
   const ci=S.checkins[aP],h=new Date().getHours();
   if(!ci||ci.date!==TODAY)return'morgen';
@@ -423,25 +366,13 @@ function showCheckin(){
   document.getElementById('ci-sub').textContent=isEve?'Was nimmst du dir für morgen vor?':'Was ist heute deine wichtigste Priorität?';
   document.getElementById('ci-input').placeholder=isEve?'Morgen fokussiere ich mich auf…':'Heute schaffe ich…';
   document.getElementById('ci-input').value='';
-
-  // Gestern abend's Vorsatz anzeigen
-  const ci=S.checkins[aP];
-  const vorSatz=isEve?null:(ci&&ci.abend&&ci.date!==TODAY?ci.abend:null);
-
-  // Top-Aufgaben vorschlagen
   const sugg=S.aufgaben.filter(a=>a.pid===aP&&(a.status==='backlog'||a.status==='neu')&&canSee(a)).sort((a,b)=>(a.prio||'P9').localeCompare(b.prio||'P9')).slice(0,3);
   const box=document.getElementById('ci-suggestions');
-  let html='';
-  if(vorSatz)html+=`<div style="background:var(--purple-bg);border:1px solid var(--purple-bd);border-radius:9px;padding:8px 12px;font-size:12px;color:var(--purple);margin-bottom:8px">💡 Gestern geplant: <strong>${vorSatz}</strong></div>`;
-  if(sugg.length){
-    html+=`<div style="font-size:11px;color:var(--t3);margin-bottom:4px">Top-Aufgaben — antippen zum Übernehmen:</div>`;
-    html+=sugg.map(a=>{
-      const bg=a.prio==='P1'?'var(--red-bg)':a.prio==='P2'?'#fff7ed':'var(--gray-bg)';
-      const tc=a.prio==='P1'?'var(--red)':a.prio==='P2'?'#c2410c':'var(--t2)';
-      return`<div onclick="document.getElementById('ci-input').value='${a.titel.replace(/'/g,"\\'")}'" style="padding:9px 12px;border-radius:10px;border:1px solid ${tc};background:${bg};color:${tc};cursor:pointer;font-size:12px;font-weight:500;display:flex;align-items:center;gap:8px">${a.prio?`<span style="font-size:10px;font-weight:700">${a.prio}</span>`:''} ${a.titel}</div>`;
-    }).join('');
-  }
-  box.innerHTML=html;
+  box.innerHTML=sugg.map(a=>{
+    const bg=a.prio==='P1'?'var(--red-bg)':a.prio==='P2'?'#fff7ed':'var(--gray-bg)';
+    const tc=a.prio==='P1'?'var(--red)':a.prio==='P2'?'#c2410c':'var(--t2)';
+    return '<div onclick="document.getElementById(\'ci-input\').value=\''+a.titel.replace(/'/g,"\\'").replace(/"/g,'&quot;')+'\'" style="padding:9px 12px;border-radius:10px;border:1px solid '+tc+';background:'+bg+';color:'+tc+';cursor:pointer;font-size:12px;font-weight:500">'+a.titel+'</div>';
+  }).join('');
   document.getElementById('checkin-screen').classList.add('open');
   setTimeout(()=>document.getElementById('ci-input').focus(),100);
 }
@@ -456,27 +387,21 @@ async function saveCheckin(){
 }
 function skipCheckin(){document.getElementById('checkin-screen').classList.remove('open');}
 
-// ═══════════════════════════════════════════════
 // LOGIN
-// ═══════════════════════════════════════════════
 let loginSel=null,pinIn='';
-
 function initLogin(){
-  const grid=document.getElementById('person-grid');
-  grid.innerHTML='';
+  const grid=document.getElementById('person-grid');grid.innerHTML='';
   S.personen.forEach(p=>{
-    const btn=document.createElement('button');
-    btn.className='person-btn';btn.id='pb-'+p.id;
-    btn.innerHTML=av(p,30,11)+`<span style="font-size:12px;font-weight:500">${p.name}</span>`;
-    btn.onclick=()=>selPerson(p.id);
-    grid.appendChild(btn);
+    const btn=document.createElement('button');btn.className='person-btn';btn.id='pb-'+p.id;
+    btn.innerHTML=av(p,30,11)+'<span style="font-size:12px;font-weight:500">'+p.name+'</span>';
+    btn.onclick=()=>selPerson(p.id);grid.appendChild(btn);
   });
   buildPad();
 }
 function selPerson(id){
   loginSel=id;pinIn='';updDots();
   document.querySelectorAll('.person-btn').forEach(b=>b.classList.remove('selected'));
-  document.getElementById('pb-'+id)?.classList.add('selected');
+  document.getElementById('pb-'+id)&&document.getElementById('pb-'+id).classList.add('selected');
   document.getElementById('pin-section').style.display='block';
   document.getElementById('login-err').textContent='';
 }
@@ -488,540 +413,337 @@ function buildPad(){
     btn.onclick=()=>pinPress(k);pad.appendChild(btn);
   });
 }
-function pinPress(k){
-  if(k==='⌫')pinIn=pinIn.slice(0,-1);else if(pinIn.length<4)pinIn+=k;
-  updDots();if(pinIn.length===4)tryLogin();
-}
+function pinPress(k){if(k==='⌫')pinIn=pinIn.slice(0,-1);else if(pinIn.length<4)pinIn+=k;updDots();if(pinIn.length===4)tryLogin();}
 function updDots(){for(let i=0;i<4;i++){const d=document.getElementById('pd'+i);if(d)d.className='pin-dot'+(i<pinIn.length?' filled':'');}}
 function tryLogin(){
   const p=person(loginSel);
   if(!p){document.getElementById('login-err').textContent='Nicht gefunden.';pinIn='';updDots();return;}
   if(pinIn===(p.pin||'0000')){
     aP=loginSel;realMe=loginSel;
-    // Session speichern
     try{localStorage.setItem('h_session',JSON.stringify({pid:loginSel,ts:Date.now()}));}catch(e){}
     document.getElementById('login-screen').style.display='none';
     document.getElementById('app').style.display='flex';
     updateBadge();render();
     if(shouldCheckin())showCheckin();
   } else {
-    document.getElementById('login-err').textContent='Falsche PIN.';
-    pinIn='';updDots();
+    document.getElementById('login-err').textContent='Falsche PIN.';pinIn='';updDots();
   }
 }
 function updateBadge(){
   const p=me();if(!p)return;
-  document.getElementById('me-badge').innerHTML=av(p,26,9)
-    +`<span style="font-size:11px;color:var(--t2)">${p.name}</span>`
-    +`<span style="font-size:10px;color:var(--t3)">Abmelden</span>`;
+  document.getElementById('me-badge').innerHTML=av(p,26,9)+'<span style="font-size:11px;color:var(--t2)">'+p.name+'</span><span style="font-size:10px;color:var(--t3)">Abmelden</span>';
   document.getElementById('btn-settings').style.display=isGF()?'block':'none';
 }
 function logout(){
   aP=null;realMe=null;pinIn='';loginSel=null;
   try{localStorage.removeItem('h_session');}catch(e){}
-  removeBackBtn();
+  document.getElementById('back-to-me')&&document.getElementById('back-to-me').remove();
   document.getElementById('app').style.display='none';
   document.getElementById('login-screen').style.display='flex';
   document.querySelectorAll('.person-btn').forEach(b=>b.classList.remove('selected'));
   document.getElementById('pin-section').style.display='none';
 }
 
-// ═══════════════════════════════════════════════
-// BACK BUTTON
-// ═══════════════════════════════════════════════
 function showBackBtn(){
-  removeBackBtn();
+  const old=document.getElementById('back-to-me');if(old)old.remove();
   if(!realMe||aP===realMe)return;
   const p=person(realMe),c=cl(p);
-  const btn=document.createElement('button');
-  btn.id='back-to-me';
-  btn.textContent=`← Zurück zu ${p.name}`;
-  btn.style.cssText=`position:fixed;bottom:20px;right:20px;z-index:99;padding:10px 16px;border-radius:10px;background:${c.tc};color:#fff;border:none;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.2)`;
-  btn.onclick=()=>{aP=realMe;updateBadge();render();removeBackBtn();};
+  const btn=document.createElement('button');btn.id='back-to-me';
+  btn.textContent='← Zurück zu '+p.name;
+  btn.style.cssText='position:fixed;bottom:20px;right:20px;z-index:99;padding:10px 16px;border-radius:10px;background:'+c.tc+';color:#fff;border:none;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.2)';
+  btn.onclick=()=>{aP=realMe;updateBadge();render();btn.remove();};
   document.body.appendChild(btn);
 }
-function removeBackBtn(){document.getElementById('back-to-me')?.remove();}
 
-// ═══════════════════════════════════════════════
-// NAV
-// ═══════════════════════════════════════════════
-function updMobTabs(v){
-  ['tag','ziele','team'].forEach(t=>{
-    const el=document.getElementById('mobt-'+t);
-    if(el)el.className='mob-tab'+(t===v?' on':'');
-  });
-}
+function updMobTabs(v){['tag','ziele','team'].forEach(t=>{const el=document.getElementById('mobt-'+t);if(el)el.className='mob-tab'+(t===v?' on':'');});}
 function nav(v,btn){
   aV=v;
   document.querySelectorAll('.nt:not(.ai-btn):not(.new-btn)').forEach(b=>b.classList.remove('on'));
-  btn?.classList.add('on');
-  updMobTabs(v);
-  render();
+  if(btn)btn.classList.add('on');
+  updMobTabs(v);render();
 }
 function render(){
   document.getElementById('nav-team').style.display=canSeeTeam()?'':'none';
   rSB();
-  if(aV==='tag')rTag();
-  else if(aV==='ziele')rZiele();
-  else if(aV==='team')rTeam();
+  if(aV==='tag')rTag();else if(aV==='ziele')rZiele();else if(aV==='team')rTeam();
 }
 
-// ═══════════════════════════════════════════════
-// PADDEL / GAMIFICATION
-// ═══════════════════════════════════════════════
-function getPaddelCount(pid){
-  // Anzahl erledigter Aufgaben diese Woche
-  const now=new Date(TODAY);
-  const dayOfWeek=now.getDay()||7;
-  const monday=new Date(now);
-  monday.setDate(now.getDate()-(dayOfWeek-1));
-  const monStr=monday.toISOString().slice(0,10);
-  return S.aufgaben.filter(a=>a.pid===pid&&a.status==='erledigt'&&(a.updated_at||'')>=monStr).length;
-}
-
-function showKonfetti(){
-  const canvas=document.createElement('canvas');
-  canvas.style.cssText='position:fixed;inset:0;z-index:999;pointer-events:none;width:100%;height:100%';
-  canvas.width=window.innerWidth;canvas.height=window.innerHeight;
-  document.body.appendChild(canvas);
-  const ctx=canvas.getContext('2d');
-  const pieces=Array.from({length:80},()=>({
-    x:Math.random()*canvas.width,y:-20,
-    w:8+Math.random()*8,h:8+Math.random()*8,
-    r:Math.random()*Math.PI*2,
-    vx:(Math.random()-0.5)*6,vy:3+Math.random()*4,
-    vr:(Math.random()-0.5)*0.2,
-    color:['#FFD700','#FF6B6B','#4ECDC4','#45B7D1','#96CEB4','#FFEAA7','#DDA0DD','#98D8C8'][Math.floor(Math.random()*8)]
-  }));
-  let frame=0;
-  function draw(){
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-    pieces.forEach(p=>{
-      ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.r);
-      ctx.fillStyle=p.color;ctx.fillRect(-p.w/2,-p.h/2,p.w,p.h);
-      ctx.restore();
-      p.x+=p.vx;p.y+=p.vy;p.r+=p.vr;p.vy+=0.1;
-    });
-    frame++;
-    if(frame<120)requestAnimationFrame(draw);
-    else canvas.remove();
-  }
-  draw();
-}
-
-function showPaddelCelebration(pid){
-  const p=person(pid);if(!p)return;
-  const count=getPaddelCount(pid)+1;
-  const el=document.createElement('div');
-  el.style.cssText=`position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(0);z-index:998;background:#fff;border-radius:24px;padding:32px 40px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.2);transition:transform .3s cubic-bezier(.34,1.56,.64,1)`;
-  el.innerHTML=`<div style="font-size:56px;margin-bottom:8px">🏅</div>`
-    +`<div style="font-size:22px;font-weight:800;color:var(--text);margin-bottom:4px">+1 Paddelschlag!</div>`
-    +`<div style="font-size:14px;color:var(--t2);margin-bottom:16px">${p.name} · ${count} diese Woche</div>`
-    +(count>=5?`<div style="font-size:13px;background:var(--amber-bg);color:var(--amber);border-radius:99px;padding:4px 14px;font-weight:600">🏆 Auf Kurs für das goldene Paddel!</div>`:'');
-  document.body.appendChild(el);
-  setTimeout(()=>el.style.transform='translate(-50%,-50%) scale(1)',10);
-  setTimeout(()=>{el.style.transform='translate(-50%,-50%) scale(0)';setTimeout(()=>el.remove(),300);},2500);
-  showKonfetti();
-}
-const START_H = 6;  // 06:00
-const END_H   = 20; // 20:00
-const TOTAL_H = END_H - START_H;
-
-function timeToY(timeStr) {
-  if (!timeStr) return null;
-  const [h, m] = timeStr.split(':').map(Number);
-  return ((h + m/60 - START_H) / TOTAL_H) * 100;
-}
-function durationToH(geplant) {
-  return (geplant / TOTAL_H) * 100;
-}
-
-function naechsteP1(myA){
-  return (myA||[]).filter(a=>a.prio==='P1'&&(a.status==='backlog'||a.status==='neu')).sort((a,b)=>(a.prio||'P9').localeCompare(b.prio||'P9'))[0]||null;
-}
-
-function rZeitstrahl(myA){
-  const heute = myA.filter(a => a.status !== 'erledigt');
-  const mitUhrzeit = heute.filter(a => a.uhrzeit);
-
-  // Nächste P1 Aufgabe ohne Uhrzeit → in Fokuszeit anzeigen
-  const naechsteP1 = heute.filter(a => !a.uhrzeit && a.prio === 'P1' && (a.status === 'backlog' || a.status === 'neu'))
-    .sort((a,b) => (a.prio||'P9').localeCompare(b.prio||'P9'))[0] || null;
-
-  const p = me();
-  const fokusStart = p.fokus_start || '09:00';
-  const fokusEnd   = p.fokus_end   || '11:00';
-  const fokusStartY = timeToY(fokusStart);
-  const fokusEndY   = timeToY(fokusEnd);
-  const fokusH      = fokusEndY - fokusStartY;
-
-  const now = new Date();
-  const nowY = ((now.getHours() + now.getMinutes()/60 - START_H) / TOTAL_H) * 100;
-  const showNow = nowY >= 0 && nowY <= 100;
-
-  const hours = [];
-  for (let h = START_H; h <= END_H; h++) hours.push(h);
-
-  let out = `<div style="margin-bottom:24px">`;
-  out += `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">`;
-  out += `<div style="font-size:10px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.6px">Tagesplan</div>`;
-  out += `<button onclick="editFokuszeit()" style="font-size:10px;padding:2px 8px;border-radius:6px;border:1px solid var(--bd);background:transparent;color:var(--t2);cursor:pointer;font-family:inherit">⚙ Fokuszeit: ${fokusStart}–${fokusEnd}</button>`;
-  out += `</div>`;
-
-  out += `<div style="display:flex;gap:0;position:relative">`;
-
-  // Stunden-Labels links
-  out += `<div style="width:36px;flex-shrink:0;position:relative;height:${TOTAL_H * 48}px">`;
-  hours.forEach(h => {
-    const y = ((h - START_H) / TOTAL_H) * 100;
-    out += `<div style="position:absolute;top:calc(${y}% - 7px);right:4px;font-size:9px;color:var(--t3);font-weight:500">${h}:00</div>`;
-  });
-  out += `</div>`;
-
-  // Zeitstrahl
-  out += `<div style="flex:1;position:relative;height:${TOTAL_H * 48}px;background:var(--gray-bg);border-radius:10px;overflow:hidden">`;
-
-  // Stunden-Linien
-  hours.forEach(h => {
-    const y = ((h - START_H) / TOTAL_H) * 100;
-    out += `<div style="position:absolute;top:${y}%;left:0;right:0;height:1px;background:${h%2===0?'var(--bd)':'rgba(0,0,0,.04)'}"></div>`;
-  });
-
-  // Fokuszeit Block
-  out += `<div style="position:absolute;top:${fokusStartY}%;left:0;right:0;height:${fokusH}%;background:rgba(29,78,216,.06);border-left:3px solid var(--blue);z-index:1">`;
-  out += `<div style="font-size:9px;font-weight:700;color:var(--blue);padding:3px 6px;opacity:.8">🎯 Fokuszeit</div>`;
-
-  // Nächste P1 in Fokuszeit anzeigen
-  if (naechsteP1) {
-    out += `<div onclick="openDetail('${naechsteP1.id}')" style="margin:2px 4px;background:var(--red-bg);border-left:3px solid var(--red);border-radius:0 6px 6px 0;padding:4px 8px;cursor:pointer">`;
-    out += `<div style="font-size:10px;font-weight:600;color:var(--red);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">▶ ${naechsteP1.titel}</div>`;
-    out += `<div style="font-size:9px;color:var(--t3)">Nächste P1 · ${fmtH(naechsteP1.geplant)}</div>`;
-    out += `</div>`;
-  }
-  out += `</div>`;
-
-  // Aufgaben mit Uhrzeit
-  mitUhrzeit.forEach(a => {
-    const y = timeToY(a.uhrzeit);
-    if (y === null) return;
-    const h = durationToH(a.geplant||1);
-    const c = a.prio==='P1'?'var(--red)':a.prio==='P2'?'#c2410c':'var(--blue)';
-    const bg = a.prio==='P1'?'var(--red-bg)':a.prio==='P2'?'#fff7ed':'var(--blue-bg)';
-    const isAktiv = a.status === 'aktiv';
-    out += `<div onclick="openDetail('${a.id}')" style="position:absolute;top:${y}%;left:4px;right:4px;height:max(${h}%,4%);background:${bg};border-left:3px solid ${c};border-radius:0 6px 6px 0;padding:3px 7px;cursor:pointer;z-index:2;overflow:hidden;${isAktiv?'box-shadow:0 0 0 1.5px '+c:''}">`;
-    out += `<div style="font-size:10px;font-weight:600;color:${c};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${isAktiv?'● ':''} ${a.titel}</div>`;
-    out += `<div style="font-size:9px;color:var(--t3)">${a.uhrzeit} · ${fmtH(a.geplant)}</div>`;
-    out += `</div>`;
-  });
-
-  // Jetzt-Linie
-  if (showNow) {
-    out += `<div style="position:absolute;top:${nowY}%;left:0;right:0;height:2px;background:var(--red);z-index:10">`;
-    out += `<div style="position:absolute;left:-1px;top:-4px;width:10px;height:10px;border-radius:50%;background:var(--red)"></div>`;
-    out += `<div style="position:absolute;right:4px;top:-8px;font-size:9px;font-weight:700;color:var(--red)">${now.getHours()}:${('0'+now.getMinutes()).slice(-2)}</div>`;
-    out += `</div>`;
-  }
-
-  out += `</div></div></div>`;
-  return out;
-}
-
-function editFokuszeit() {
-  const p = me();
-  document.getElementById('mb').innerHTML = `<div class="mt">Fokuszeit einstellen</div>`
-    + `<div style="font-size:12px;color:var(--t2);margin-bottom:16px">Deine tägliche Fokuszeit — in dieser Zeit werden P1-Aufgaben priorisiert.</div>`
-    + `<div class="f2"><div class="fl"><label>Von</label><input type="time" id="fs" value="${p.fokusStart||'09:00'}"></div>`
-    + `<div class="fl"><label>Bis</label><input type="time" id="fe" value="${p.fokusEnd||'11:00'}"></div></div>`
-    + `<div class="mf"><button class="btn btn-gr" onclick="cm()">Abbrechen</button><button class="btn btn-dk" onclick="saveFokuszeit()">Speichern</button></div>`;
-  document.getElementById('ovl').classList.add('open');
-}
-async function saveFokuszeit() {
-  const p = me(); if (!p) return;
-  p.fokusStart = document.getElementById('fs').value;
-  p.fokusEnd   = document.getElementById('fe').value;
-  await dbPatch('personen', p.id, {fokus_start: p.fokusStart, fokus_end: p.fokusEnd});
-  cm(); render();
-}
+// SIDEBAR
 function rSB(){
   const sorted=[...S.teams].sort((a,b)=>a.id==='gf'?-1:b.id==='gf'?1:0);
   let h='';
   sorted.forEach(t=>{
-    const vis=t.members.filter(id=>{
-      const p=person(id);if(!p)return false;
-      if(isGF())return true;
-      if(isLead())return myTeamIds().includes(id);
-      return id===aP;
-    });
+    const vis=t.members.filter(id=>{const p=person(id);if(!p)return false;if(isGF())return true;if(isLead())return myTeamIds().includes(id);return id===aP;});
     if(!vis.length)return;
-    h+=`<div class="gl">${t.name}</div>`;
+    h+='<div class="gl">'+t.name+'</div>';
     vis.forEach(id=>{
       const p=person(id);if(!p)return;
       const c=cl(p),isMe=id===aP;
       const pA=S.aufgaben.filter(x=>x.pid===id&&canSee(x));
       const nC=pA.filter(x=>x.status==='neu').length,aC=pA.filter(x=>x.status==='aktiv').length;
       const paddel=getPaddelCount(id);
-      h+=`<button class="sbn${isMe?' on':''}" onclick="switchPerson('${id}')">`
-        +`<div class="av" style="width:22px;height:22px;font-size:8px;background:${isMe?c.tc:'#eee'};color:${isMe?'#fff':c.tc}">${p.k}</div>`
-        +`<span style="flex:1;font-size:11px;font-weight:${isMe?600:400};color:${isMe?c.tc:'var(--text)'}">${p.name}</span>`
-        +`<div style="display:flex;gap:3px;align-items:center">`
-        +(paddel?`<span style="font-size:9px;color:var(--amber)">🏅${paddel}</span>`:'')
-        +(nC?`<span style="font-size:8px;background:var(--red-bg);color:var(--red);border-radius:99px;padding:1px 4px;font-weight:700">${nC}</span>`:'')
-        +(aC?`<span style="font-size:8px;background:${c.bg};color:${c.tc};border-radius:99px;padding:1px 4px;font-weight:700">${aC}</span>`:'')
-        +`</div></button>`;
+      h+='<button class="sbn'+(isMe?' on':'')+'" onclick="switchPerson(\''+id+'\')"><div class="av" style="width:22px;height:22px;font-size:8px;background:'+(isMe?c.tc:'#eee')+';color:'+(isMe?'#fff':c.tc)+'">'+p.k+'</div>'
+        +'<span style="flex:1;font-size:11px;font-weight:'+(isMe?600:400)+';color:'+(isMe?c.tc:'var(--text)')+'">'+p.name+'</span>'
+        +'<div style="display:flex;gap:3px;align-items:center">'
+        +(paddel?'<span style="font-size:9px;color:var(--amber)">🏅'+paddel+'</span>':'')
+        +(nC?'<span style="font-size:8px;background:var(--red-bg);color:var(--red);border-radius:99px;padding:1px 4px;font-weight:700">'+nC+'</span>':'')
+        +(aC?'<span style="font-size:8px;background:'+c.bg+';color:'+c.tc+';border-radius:99px;padding:1px 4px;font-weight:700">'+aC+'</span>':'')
+        +'</div></button>';
     });
   });
   document.getElementById('sb').innerHTML=h;
 }
-function switchPerson(id){
-  if(isGF()||myTeamIds().includes(id)||id===aP){
-    aP=id;updateBadge();render();showBackBtn();
-  }
-}
+function switchPerson(id){if(isGF()||myTeamIds().includes(id)||id===aP){aP=id;updateBadge();render();showBackBtn();}}
 
-// ═══════════════════════════════════════════════
 // STEPS
-// ═══════════════════════════════════════════════
 function stepsHtml(a,ed){
   let out='';
-  if(a.ua?.length){
+  if(a.ua&&a.ua.length){
     out+='<div class="sw">';
     a.ua.forEach((u,i)=>{
-      out+=`<div class="sr" onclick="toggleStep('${a.id}',${i})">`
-        +`<div class="sc${u.d?' dn':''}">${u.d?'<span style="color:#fff;font-size:8px">✓</span>':''}</div>`
-        +`<span class="sl${u.d?' dn':''}">${u.t}</span>`
-        +(ed?`<button onclick="event.stopPropagation();delStep('${a.id}',${i})" style="margin-left:auto;font-size:10px;background:none;border:none;color:var(--t3);cursor:pointer">✕</button>`:'')
+      out+='<div class="sr" onclick="toggleStep(\''+a.id+'\','+i+')">'
+        +'<div class="sc'+(u.d?' dn':'')+'">'+(u.d?'<span style="color:#fff;font-size:8px">✓</span>':'')+'</div>'
+        +'<span class="sl'+(u.d?' dn':'')+'">'+u.t+'</span>'
+        +(ed?'<button onclick="event.stopPropagation();delStep(\''+a.id+'\','+i+')" style="margin-left:auto;font-size:10px;background:none;border:none;color:var(--t3);cursor:pointer">✕</button>':'')
         +'</div>';
     });
     out+='</div>';
   }
-  if(ed)out+=`<div style="display:flex;gap:6px;margin-top:6px"><input class="asi" id="si-${a.id}" placeholder="+ Schritt…" onkeydown="if(event.key==='Enter')addStep('${a.id}')"><button onclick="addStep('${a.id}')" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);cursor:pointer">+</button></div>`;
+  if(ed)out+='<div style="display:flex;gap:6px;margin-top:6px"><input class="asi" id="si-'+a.id+'" placeholder="+ Schritt…" onkeydown="if(event.key===\'Enter\')addStep(\''+a.id+'\')"><button onclick="addStep(\''+a.id+'\')" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);cursor:pointer">+</button></div>';
   return out;
 }
 
-// ═══════════════════════════════════════════════
-// MEIN TAG — Sam Ovens Style
-// ═══════════════════════════════════════════════
+// ZEITSTRAHL
+function timeToY(ts){if(!ts)return null;const parts=ts.split(':');const h=parseInt(parts[0]),m=parseInt(parts[1]);return((h+m/60-START_H)/TOTAL_H)*100;}
+function durationToH(g){return(g/TOTAL_H)*100;}
+
+function rZeitstrahl(myA){
+  const heute=myA.filter(a=>a.status!=='erledigt');
+  const mitUhrzeit=heute.filter(a=>a.uhrzeit);
+  const p=me();
+  const fokusStart=p.fokus_start||'09:00',fokusEnd=p.fokus_end||'11:00';
+  const fsy=timeToY(fokusStart),fey=timeToY(fokusEnd),fh=fey-fsy;
+  const now=new Date();
+  const nowY=((now.getHours()+now.getMinutes()/60-START_H)/TOTAL_H)*100;
+  const showNow=nowY>=0&&nowY<=100;
+  const naechsteP1=heute.filter(a=>!a.uhrzeit&&a.prio==='P1'&&(a.status==='backlog'||a.status==='neu'))[0]||null;
+  const hours=[];for(let h=START_H;h<=END_H;h++)hours.push(h);
+  let out='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">'
+    +'<div style="font-size:10px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.6px">Tagesplan</div>'
+    +'<button onclick="editFokuszeit()" style="font-size:10px;padding:2px 8px;border-radius:6px;border:1px solid var(--bd);background:transparent;color:var(--t2);cursor:pointer;font-family:inherit">⚙ Fokuszeit: '+fokusStart+'–'+fokusEnd+'</button>'
+    +'</div>';
+  out+='<div style="display:flex;gap:0;position:relative">';
+  out+='<div style="width:36px;flex-shrink:0;position:relative;height:'+(TOTAL_H*48)+'px">';
+  hours.forEach(h=>{const y=((h-START_H)/TOTAL_H)*100;out+='<div style="position:absolute;top:calc('+y+'% - 7px);right:4px;font-size:9px;color:var(--t3);font-weight:500">'+h+':00</div>';});
+  out+='</div>';
+  out+='<div style="flex:1;position:relative;height:'+(TOTAL_H*48)+'px;background:var(--gray-bg);border-radius:10px;overflow:hidden">';
+  hours.forEach(h=>{const y=((h-START_H)/TOTAL_H)*100;out+='<div style="position:absolute;top:'+y+'%;left:0;right:0;height:1px;background:'+(h%2===0?'var(--bd)':'rgba(0,0,0,.04)')+'"></div>';});
+  out+='<div style="position:absolute;top:'+fsy+'%;left:0;right:0;height:'+fh+'%;background:rgba(29,78,216,.06);border-left:3px solid var(--blue);z-index:1">';
+  out+='<div style="font-size:9px;font-weight:700;color:var(--blue);padding:3px 6px;opacity:.8">🎯 Fokuszeit</div>';
+  if(naechsteP1){
+    out+='<div onclick="openDetail(\''+naechsteP1.id+'\')" style="margin:2px 4px;background:var(--red-bg);border-left:3px solid var(--red);border-radius:0 6px 6px 0;padding:4px 8px;cursor:pointer">';
+    out+='<div style="font-size:10px;font-weight:600;color:var(--red);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">▶ '+naechsteP1.titel+'</div>';
+    out+='<div style="font-size:9px;color:var(--t3)">Nächste P1 · '+fmtH(naechsteP1.geplant)+'</div></div>';
+  }
+  out+='</div>';
+  mitUhrzeit.forEach(a=>{
+    const y=timeToY(a.uhrzeit);if(y===null)return;
+    const h=durationToH(a.geplant||1);
+    const c=a.prio==='P1'?'var(--red)':a.prio==='P2'?'#c2410c':'var(--blue)';
+    const bg=a.prio==='P1'?'var(--red-bg)':a.prio==='P2'?'#fff7ed':'var(--blue-bg)';
+    out+='<div onclick="openDetail(\''+a.id+'\')" style="position:absolute;top:'+y+'%;left:4px;right:4px;height:max('+h+'%,4%);background:'+bg+';border-left:3px solid '+c+';border-radius:0 6px 6px 0;padding:3px 7px;cursor:pointer;z-index:2;overflow:hidden">';
+    out+='<div style="font-size:10px;font-weight:600;color:'+c+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+a.titel+'</div>';
+    out+='<div style="font-size:9px;color:var(--t3)">'+a.uhrzeit+' · '+fmtH(a.geplant)+'</div></div>';
+  });
+  if(showNow){
+    out+='<div style="position:absolute;top:'+nowY+'%;left:0;right:0;height:2px;background:var(--red);z-index:10">';
+    out+='<div style="position:absolute;left:-1px;top:-4px;width:10px;height:10px;border-radius:50%;background:var(--red)"></div>';
+    out+='<div style="position:absolute;right:4px;top:-8px;font-size:9px;font-weight:700;color:var(--red)">'+now.getHours()+':'+('0'+now.getMinutes()).slice(-2)+'</div></div>';
+  }
+  out+='</div></div>';
+  return out;
+}
+
+function editFokuszeit(){
+  const p=me();
+  document.getElementById('mb').innerHTML='<div class="mt">Fokuszeit einstellen</div>'
+    +'<div style="font-size:12px;color:var(--t2);margin-bottom:16px">Deine tägliche Fokuszeit — in dieser Zeit werden P1-Aufgaben priorisiert.</div>'
+    +'<div class="f2"><div class="fl"><label>Von</label><input type="time" id="fs" value="'+(p.fokus_start||'09:00')+'"></div>'
+    +'<div class="fl"><label>Bis</label><input type="time" id="fe" value="'+(p.fokus_end||'11:00')+'"></div></div>'
+    +'<div class="mf"><button class="btn btn-gr" onclick="cm()">Abbrechen</button><button class="btn btn-dk" onclick="saveFokuszeit()">Speichern</button></div>';
+  document.getElementById('ovl').classList.add('open');
+}
+async function saveFokuszeit(){
+  const p=me();if(!p)return;
+  p.fokus_start=document.getElementById('fs').value;
+  p.fokus_end=document.getElementById('fe').value;
+  await dbPatch('personen',p.id,{fokus_start:p.fokus_start,fokus_end:p.fokus_end});
+  cm();render();
+}
+
+// KPI BLOCK
+function kpiBlock(pid){
+  const items=[];
+  S.ziele.forEach(z=>(z.kpis||[]).forEach(k=>{if(k.pid===pid)items.push({k,z});}));
+  if(!items.length)return'';
+  let h='<details style="margin-bottom:16px"><summary style="cursor:pointer;font-size:10px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.6px;list-style:none;display:flex;align-items:center;gap:6px"><span>▸</span> KPI Check <span style="font-weight:400;text-transform:none;color:var(--t3)">— 2 Minuten</span></summary><div style="margin-top:10px">';
+  items.forEach(function(item){
+    const k=item.k;
+    const val=kpiVal(k),ok=k.inv?val<=k.ziel:val>=k.ziel*0.85;
+    const pct=k.inv?Math.max(0,100-Math.round(Math.max(0,val-k.ziel)/Math.max(k.ziel,.1)*100)):Math.round(Math.min(100,(val/(k.ziel||1))*100));
+    const col=ok?'var(--green)':'#c2410c';
+    h+='<div class="kpi-row" onclick="editKpiVal(\''+k.id+'\','+val+',\''+k.ziel+'\',\''+(k.unit||'')+'\')">'
+      +'<span style="font-size:12px;flex:1">'+k.label+'</span>'
+      +'<div class="kpi-track"><div class="kpi-fill" style="width:'+Math.max(0,Math.min(100,pct))+'%;background:'+col+'"></div></div>'
+      +'<span style="font-size:12px;font-weight:600;color:'+col+';min-width:64px;text-align:right">'+val+(k.unit||'')+' / '+k.ziel+(k.unit||'')+'</span></div>';
+  });
+  h+='</div></details>';return h;
+}
+function editKpiVal(kid,def,z,unit){
+  document.getElementById('mb').innerHTML='<div class="mt">KPI eintragen</div>'
+    +'<div class="fl"><label>Aktueller Wert (Ziel: '+z+unit+')</label><input id="kv" type="number" value="'+def+'" autofocus style="font-size:22px;font-weight:700"></div>'
+    +'<div class="mf"><button class="btn btn-gr" onclick="cm()">Abbrechen</button><button class="btn btn-dk" onclick="saveKpiVal(\''+kid+'\')">Speichern</button></div>';
+  document.getElementById('ovl').classList.add('open');
+}
+async function saveKpiVal(kid){
+  const val=parseFloat(document.getElementById('kv').value)||0;
+  S.kpiVals[aP+'-'+kid]={val,datum:TODAY};
+  await supa('kpi_vals',{method:'POST',body:{pid:aP,kpi_id:kid,val,datum:TODAY},prefer:'resolution=merge-duplicates,return=minimal'});
+  cm();render();
+}
+
+// MEIN TAG
 function rTag(){
-  const p=me(),c=cl(p);
   const myA=S.aufgaben.filter(a=>a.pid===aP&&canSee(a));
   const aktiv=myA.filter(a=>a.status==='aktiv');
   const neu=myA.filter(a=>a.status==='neu');
   const bl=myA.filter(a=>a.status==='backlog').sort((a,b)=>(a.prio||'P9').localeCompare(b.prio||'P9'));
   const erl=myA.filter(a=>a.status==='erledigt');
-
-  // Nächste Aufgabe — P1 zuerst, dann P2, dann P3
-  const naechste=aktiv.length?null:[...neu,...bl].sort((a,b)=>{
-    const po={'P1':0,'P2':1,'P3':2};
-    return (po[a.prio]??3)-(po[b.prio]??3);
-  })[0]||null;
-
-  const ci=S.checkins[aP];
+  const naechste=aktiv.length?null:[...neu,...bl].sort((a,b)=>{const po={P1:0,P2:1,P3:2};return(po[a.prio]!=null?po[a.prio]:3)-(po[b.prio]!=null?po[b.prio]:3);})[0]||null;
+  const fq=fokusQ([aP]);
   let out='';
 
-  // ── ZONE 1: JETZT — die eine Sache ──
+  // ZONE 1: AKTIV oder NÄCHSTE AUFGABE
   if(aktiv.length){
-    // Läuft gerade
     const a=aktiv[0];
     const s=elapsedSec(a),pct=Math.min(100,Math.round(s/((a.geplant||1)*3600)*100));
     const uD=a.ua.filter(u=>u.d).length;
-    out+=`<div style="background:var(--text);border-radius:18px;padding:24px;margin-bottom:16px;color:#fff">`;
-    out+=`<div style="font-size:10px;font-weight:700;opacity:.5;letter-spacing:.8px;text-transform:uppercase;margin-bottom:8px">🔥 Läuft gerade</div>`;
-    out+=`<div style="font-size:20px;font-weight:700;margin-bottom:4px;line-height:1.3">${a.titel}</div>`;
-    if(a.zielId){const z=zielObj(a.zielId);out+=`<div style="font-size:12px;opacity:.6;margin-bottom:16px">${z?z.name:''}</div>`;}
-    else out+=`<div style="font-size:12px;opacity:.6;margin-bottom:16px">${typInfo(a).label}</div>`;
-    // Timer groß
-    out+=`<div data-tid="${a.id}" style="margin-bottom:16px">`;
-    out+=`<div style="display:flex;align-items:baseline;gap:6px;margin-bottom:8px">`;
-    out+=`<div class="tn" style="font-size:36px;font-weight:700;font-family:monospace;color:#fff">${fmt(s)}</div>`;
-    out+=`<div style="font-size:13px;opacity:.5">/ ${fmtH(a.geplant)}</div>`;
-    out+=`</div>`;
-    out+=`<div style="height:4px;background:rgba(255,255,255,.15);border-radius:99px;overflow:hidden"><div class="tf" style="height:100%;border-radius:99px;background:#fff;width:${pct}%"></div></div>`;
-    out+=`</div>`;
-    // Steps
-    if(a.ua.length){
-      out+=`<div style="margin-bottom:16px;font-size:12px;opacity:.7">${uD}/${a.ua.length} Schritte erledigt</div>`;
-    }
-    // Buttons
-    out+=`<div style="display:flex;gap:10px">`;
-    out+=`<button onclick="fertig('${a.id}')" style="flex:1;padding:13px;border-radius:12px;background:#fff;color:var(--text);border:none;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer">✓ Erledigt</button>`;
-    out+=`<button onclick="pauseA('${a.id}')" style="padding:13px 16px;border-radius:12px;background:rgba(255,255,255,.15);color:#fff;border:none;font-family:inherit;font-size:14px;cursor:pointer">⏸</button>`;
-    out+=`<button onclick="openDetail('${a.id}')" style="padding:13px 16px;border-radius:12px;background:rgba(255,255,255,.15);color:#fff;border:none;font-family:inherit;font-size:14px;cursor:pointer">···</button>`;
-    out+=`</div></div>`;
-
-    // Weitere aktive
-    if(aktiv.length>1){
-      out+=`<div style="margin-bottom:16px">`;
-      aktiv.slice(1).forEach(a2=>{
-        out+=`<div onclick="openDetail('${a2.id}')" style="background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:12px 14px;margin-bottom:8px;cursor:pointer;display:flex;align-items:center;gap:10px">`;
-        out+=`<div class="dot" style="background:var(--blue)"></div>`;
-        out+=`<div style="flex:1;font-size:13px;font-weight:500">${a2.titel}</div>`;
-        out+=`<div data-tid="${a2.id}" style="font-family:monospace;font-size:12px;color:var(--t2)">${fmt(elapsedSec(a2))}</div>`;
-        out+=`</div>`;
-      });
-      out+=`</div>`;
-    }
-
-  } else if(naechste) {
+    out+='<div style="background:var(--text);border-radius:18px;padding:24px;margin-bottom:16px;color:#fff">';
+    out+='<div style="font-size:10px;font-weight:700;opacity:.5;letter-spacing:.8px;text-transform:uppercase;margin-bottom:8px">🔥 Läuft gerade</div>';
+    out+='<div style="font-size:20px;font-weight:700;margin-bottom:4px;line-height:1.3">'+a.titel+'</div>';
+    const zN=getZielName(a);
+    if(zN)out+='<div style="font-size:12px;opacity:.6;margin-bottom:16px">'+zN+'</div>';
+    else out+='<div style="font-size:12px;opacity:.6;margin-bottom:16px">'+typInfo(a).label+'</div>';
+    out+='<div data-tid="'+a.id+'" style="margin-bottom:16px">';
+    out+='<div style="display:flex;align-items:baseline;gap:6px;margin-bottom:8px">';
+    out+='<div class="tn" style="font-size:36px;font-weight:700;font-family:monospace;color:#fff">'+fmt(s)+'</div>';
+    out+='<div style="font-size:13px;opacity:.5">/ '+fmtH(a.geplant)+'</div></div>';
+    out+='<div style="height:4px;background:rgba(255,255,255,.15);border-radius:99px;overflow:hidden"><div class="tf" style="height:100%;border-radius:99px;background:#fff;width:'+pct+'%"></div></div>';
+    out+='</div>';
+    if(a.ua.length)out+='<div style="margin-bottom:12px;font-size:12px;opacity:.7">'+uD+'/'+a.ua.length+' Schritte</div>';
+    out+='<div style="display:flex;gap:10px">';
+    out+='<button onclick="fertig(\''+a.id+'\')" style="flex:1;padding:13px;border-radius:12px;background:#fff;color:var(--text);border:none;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer">✓ Erledigt</button>';
+    out+='<button onclick="pauseA(\''+a.id+'\')" style="padding:13px 16px;border-radius:12px;background:rgba(255,255,255,.15);color:#fff;border:none;font-family:inherit;font-size:14px;cursor:pointer">⏸</button>';
+    out+='<button onclick="openDetail(\''+a.id+'\')" style="padding:13px 16px;border-radius:12px;background:rgba(255,255,255,.15);color:#fff;border:none;font-family:inherit;font-size:14px;cursor:pointer">···</button>';
+    out+='</div></div>';
+    aktiv.slice(1).forEach(function(a2){
+      out+='<div onclick="openDetail(\''+a2.id+'\')" style="background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:12px 14px;margin-bottom:8px;cursor:pointer;display:flex;align-items:center;gap:10px">';
+      out+='<div class="dot" style="background:var(--blue)"></div>';
+      out+='<div style="flex:1;font-size:13px;font-weight:500">'+a2.titel+'</div>';
+      out+='<div data-tid="'+a2.id+'" style="font-family:monospace;font-size:12px;color:var(--t2)">'+fmt(elapsedSec(a2))+'</div></div>';
+    });
+  } else if(naechste){
     const zN=getZielName(naechste),tzN=getTZName(naechste);
     const pc=naechste.prio==='P1'?'var(--red)':naechste.prio==='P2'?'#c2410c':'var(--t2)';
     const pb=naechste.prio==='P1'?'var(--red-bg)':naechste.prio==='P2'?'#fff7ed':'var(--gray-bg)';
-    out+=`<div style="background:var(--sf);border:1.5px solid var(--bd);border-radius:18px;padding:24px;margin-bottom:16px;cursor:pointer;transition:box-shadow .15s" onclick="openDetail('${naechste.id}')" onmouseenter="this.style.boxShadow='0 4px 20px rgba(0,0,0,.08)'" onmouseleave="this.style.boxShadow='none'">`;
-    out+=`<div style="font-size:10px;font-weight:700;color:var(--t3);letter-spacing:.8px;text-transform:uppercase;margin-bottom:12px">🎯 Nächste Aufgabe</div>`;
-    out+=`<div style="font-size:22px;font-weight:700;color:var(--text);margin-bottom:10px;line-height:1.3">${naechste.titel}</div>`;
-    out+=`<div style="display:flex;gap:8px;align-items:center;margin-bottom:20px;flex-wrap:wrap">`;
-    if(naechste.prio)out+=`<span style="font-size:11px;background:${pb};color:${pc};border-radius:99px;padding:3px 10px;font-weight:700">${naechste.prio}</span>`;
-    if(zN)out+=`<span style="font-size:12px;color:var(--t2)">${zN}</span>`;
-    if(tzN)out+=`<span style="font-size:12px;color:var(--purple)"> · ${tzN}</span>`;
-    if(naechste.dl){const d=dli(naechste.dl);if(d)out+=`<span style="font-size:11px;color:${d.c}">${d.l}</span>`;}
-    if(naechste.geplant)out+=`<span style="font-size:11px;color:var(--t3)">${fmtH(naechste.geplant)}</span>`;
-    out+=`</div>`;
-    if(naechste.ua?.length){
-      out+=`<div style="margin-bottom:16px;padding:10px 12px;background:var(--gray-bg);border-radius:10px">`;
-      naechste.ua.slice(0,3).forEach(u=>{
-        out+=`<div style="display:flex;align-items:center;gap:8px;padding:3px 0;font-size:12px;color:${u.d?'var(--t3)':'var(--text)'}">`;
-        out+=`<div style="width:12px;height:12px;border-radius:3px;border:1.5px solid ${u.d?'var(--green)':'var(--bd)'};background:${u.d?'var(--green)':'transparent'};flex-shrink:0;display:flex;align-items:center;justify-content:center">${u.d?'<span style="color:#fff;font-size:8px">✓</span>':''}</div>`;
-        out+=`<span style="${u.d?'text-decoration:line-through':''}">${u.t}</span>`;
-        out+=`</div>`;
+    out+='<div style="background:var(--sf);border:1.5px solid var(--bd);border-radius:18px;padding:24px;margin-bottom:16px;cursor:pointer" onclick="openDetail(\''+naechste.id+'\')">';
+    out+='<div style="font-size:10px;font-weight:700;color:var(--t3);letter-spacing:.8px;text-transform:uppercase;margin-bottom:12px">🎯 Nächste Aufgabe</div>';
+    out+='<div style="font-size:22px;font-weight:700;color:var(--text);margin-bottom:10px;line-height:1.3">'+naechste.titel+'</div>';
+    out+='<div style="display:flex;gap:8px;align-items:center;margin-bottom:20px;flex-wrap:wrap">';
+    if(naechste.prio)out+='<span style="font-size:11px;background:'+pb+';color:'+pc+';border-radius:99px;padding:3px 10px;font-weight:700">'+naechste.prio+'</span>';
+    if(zN)out+='<span style="font-size:12px;color:var(--t2)">'+zN+'</span>';
+    if(tzN)out+='<span style="font-size:12px;color:var(--purple)">'+tzN+'</span>';
+    if(naechste.dl){const d=dli(naechste.dl);if(d)out+='<span style="font-size:11px;color:'+d.c+'">'+d.l+'</span>';}
+    if(naechste.geplant)out+='<span style="font-size:11px;color:var(--t3)">'+fmtH(naechste.geplant)+'</span>';
+    out+='</div>';
+    if(naechste.ua&&naechste.ua.length){
+      out+='<div style="margin-bottom:16px;padding:10px 12px;background:var(--gray-bg);border-radius:10px">';
+      naechste.ua.slice(0,3).forEach(function(u){
+        out+='<div style="display:flex;align-items:center;gap:8px;padding:3px 0;font-size:12px"><div style="width:12px;height:12px;border-radius:3px;border:1.5px solid '+(u.d?'var(--green)':'var(--bd)')+';flex-shrink:0"></div><span style="'+(u.d?'text-decoration:line-through;color:var(--t3)':'')+'">'+ u.t+'</span></div>';
       });
-      if(naechste.ua.length>3)out+=`<div style="font-size:11px;color:var(--t3);margin-top:4px">+${naechste.ua.length-3} weitere</div>`;
-      out+=`</div>`;
+      if(naechste.ua.length>3)out+='<div style="font-size:11px;color:var(--t3);margin-top:4px">+'+( naechste.ua.length-3)+' weitere</div>';
+      out+='</div>';
     }
-    if(naechste.notiz)out+=`<div style="font-size:12px;color:var(--t2);font-style:italic;margin-bottom:16px;padding:8px 12px;background:var(--gray-bg);border-radius:8px">${naechste.notiz}</div>`;
-    out+=`<div style="display:flex;gap:10px" onclick="event.stopPropagation()">`;
-    out+=`<button onclick="startenA('${naechste.id}')" style="flex:1;padding:14px;border-radius:12px;background:var(--text);color:#fff;border:none;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer">▶ Starten</button>`;
-    out+=`<button onclick="openDetail('${naechste.id}')" style="padding:14px 18px;border-radius:12px;background:var(--gray-bg);color:var(--t2);border:1px solid var(--bd);font-family:inherit;font-size:13px;font-weight:500;cursor:pointer">Details</button>`;
-    out+=`</div></div>`;· ${tzN}</span>`;
-    if(naechste.dl){const d=dli(naechste.dl);if(d)out+=`<span style="font-size:11px;opacity:.7">· ${d.l}</span>`;}
-    out+=`</div>`;
-    out+=`<div style="display:flex;gap:10px">`;
-    out+=`<button onclick="startenA('${naechste.id}')" style="flex:1;padding:14px;border-radius:12px;background:#fff;color:var(--text);border:none;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer">▶ Jetzt starten</button>`;
-    out+=`<button onclick="openDetail('${naechste.id}')" style="padding:14px 16px;border-radius:12px;background:rgba(255,255,255,.15);color:#fff;border:none;font-family:inherit;font-size:14px;cursor:pointer">···</button>`;
-    out+=`</div></div>`;
-
+    if(naechste.notiz)out+='<div style="font-size:12px;color:var(--t2);font-style:italic;margin-bottom:16px">'+naechste.notiz+'</div>';
+    out+='<div style="display:flex;gap:10px" onclick="event.stopPropagation()">';
+    out+='<button onclick="startenA(\''+naechste.id+'\')" style="flex:1;padding:14px;border-radius:12px;background:var(--text);color:#fff;border:none;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer">▶ Starten</button>';
+    out+='<button onclick="openDetail(\''+naechste.id+'\')" style="padding:14px 18px;border-radius:12px;background:var(--gray-bg);color:var(--t2);border:1px solid var(--bd);font-family:inherit;font-size:13px;font-weight:500;cursor:pointer">Details</button>';
+    out+='</div></div>';
   } else if(!myA.length){
-    out+=`<div style="background:var(--green);border-radius:18px;padding:32px 24px;margin-bottom:16px;color:#fff;text-align:center">`;
-    out+=`<div style="font-size:36px;margin-bottom:12px">🎉</div>`;
-    out+=`<div style="font-size:20px;font-weight:700;margin-bottom:6px">Alles erledigt!</div>`;
-    out+=`<div style="font-size:13px;opacity:.8;margin-bottom:20px">Keine offenen Aufgaben.</div>`;
-    out+=`<button onclick="openNeu()" style="padding:12px 24px;border-radius:12px;background:#fff;color:var(--green);border:none;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer">+ Neue Aufgabe</button>`;
-    out+=`</div>`;
+    out+='<div style="background:var(--green);border-radius:18px;padding:32px 24px;margin-bottom:16px;color:#fff;text-align:center">';
+    out+='<div style="font-size:36px;margin-bottom:12px">🎉</div>';
+    out+='<div style="font-size:20px;font-weight:700;margin-bottom:6px">Alles erledigt!</div>';
+    out+='<div style="font-size:13px;opacity:.8;margin-bottom:20px">Keine offenen Aufgaben.</div>';
+    out+='<button onclick="openNeu()" style="padding:12px 24px;border-radius:12px;background:#fff;color:var(--green);border:none;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer">+ Neue Aufgabe</button>';
+    out+='</div>';
   }
 
-  // ── NEU — Priorität setzen ──
+  // ZONE 2: NEU
   if(neu.length){
-    out+=`<div style="background:var(--red-bg);border:1.5px solid var(--red-bd);border-radius:14px;padding:14px 16px;margin-bottom:12px">`;
-    out+=`<div style="font-size:11px;font-weight:700;color:var(--red);margin-bottom:10px">⚡ ${neu.length} neue Aufgabe${neu.length>1?'n':''} — Priorität setzen</div>`;
-    neu.forEach(a=>{
-      out+=`<div style="background:#fff;border-radius:10px;padding:10px 12px;margin-bottom:8px">`;
-      out+=`<div style="font-size:13px;font-weight:600;margin-bottom:8px">${a.titel}</div>`;
-      out+=`<div style="display:flex;gap:6px">`;
-      ['P1','P2','P3'].forEach(pr=>{
+    out+='<div style="background:var(--red-bg);border:1.5px solid var(--red-bd);border-radius:14px;padding:14px 16px;margin-bottom:12px">';
+    out+='<div style="font-size:11px;font-weight:700;color:var(--red);margin-bottom:10px">⚡ '+neu.length+' neue Aufgabe'+(neu.length>1?'n':'')+' — Priorität setzen</div>';
+    neu.forEach(function(a){
+      out+='<div style="background:#fff;border-radius:10px;padding:10px 12px;margin-bottom:8px">';
+      out+='<div style="font-size:13px;font-weight:600;margin-bottom:8px">'+a.titel+'</div>';
+      out+='<div style="display:flex;gap:6px">';
+      ['P1','P2','P3'].forEach(function(pr){
         const bg=pr==='P1'?'var(--red)':pr==='P2'?'#c2410c':'var(--t2)';
-        out+=`<button onclick="setPrio('${a.id}','${pr}')" style="flex:1;padding:7px;border-radius:8px;background:${bg};color:#fff;border:none;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer">${pr}</button>`;
+        out+='<button onclick="setPrio(\''+a.id+'\',\''+pr+'\')" style="flex:1;padding:7px;border-radius:8px;background:'+bg+';color:#fff;border:none;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer">'+pr+'</button>';
       });
-      out+=`<button onclick="openDetail('${a.id}')" style="padding:7px 10px;border-radius:8px;background:var(--gray-bg);color:var(--t2);border:1px solid var(--bd);font-family:inherit;font-size:12px;cursor:pointer">···</button>`;
-      out+=`</div></div>`;
+      out+='<button onclick="openDetail(\''+a.id+'\')" style="padding:7px 10px;border-radius:8px;background:var(--gray-bg);color:var(--t2);border:1px solid var(--bd);font-family:inherit;font-size:12px;cursor:pointer">···</button>';
+      out+='</div></div>';
     });
-    out+=`</div>`;
+    out+='</div>';
   }
 
-  // ── WEITERE AUFGABEN — eingeklappt ──
-  const weitere=bl.filter(a=>a.id!==naechste?.id);
+  // ZONE 3: WEITERE + ERLEDIGT + TAGESPLAN (eingeklappt)
+  const weitere=bl.filter(a=>a.id!==(naechste&&naechste.id));
   if(weitere.length){
-    out+=`<details style="margin-bottom:12px"><summary style="list-style:none;cursor:pointer;padding:12px 16px;background:var(--sf);border:1px solid var(--bd);border-radius:12px;display:flex;align-items:center;justify-content:space-between">`;
-    out+=`<span style="font-size:13px;font-weight:600">Weitere Aufgaben</span>`;
-    out+=`<span style="font-size:12px;color:var(--t3)">${weitere.length} · anzeigen</span></summary>`;
-    out+=`<div style="margin-top:8px">`;
-    weitere.forEach(a=>{
+    out+='<details style="margin-bottom:12px"><summary style="list-style:none;cursor:pointer;padding:12px 16px;background:var(--sf);border:1px solid var(--bd);border-radius:12px;display:flex;align-items:center;justify-content:space-between"><span style="font-size:13px;font-weight:600">Weitere Aufgaben</span><span style="font-size:12px;color:var(--t3)">'+weitere.length+' · anzeigen</span></summary><div style="margin-top:8px">';
+    weitere.forEach(function(a){
       const zN=getZielName(a);
-      out+=`<div onclick="openDetail('${a.id}')" style="background:var(--sf);border:1px solid var(--bd);border-radius:10px;padding:10px 14px;margin-bottom:6px;cursor:pointer;display:flex;align-items:center;gap:10px">`;
-      out+=`<div style="flex:1"><div style="font-size:12px;font-weight:500">${a.titel}</div>`;
-      out+=`<div style="display:flex;gap:5px;margin-top:3px">${prioTag(a.prio)}${zN?`<span style="font-size:10px;color:var(--t3)">${zN}</span>`:''} ${dlTag(a.dl)}</div></div>`;
-      out+=`<button onclick="event.stopPropagation();startenA('${a.id}')" style="font-size:11px;padding:5px 10px;border-radius:8px;background:var(--text);color:#fff;border:none;font-family:inherit;cursor:pointer">▶</button>`;
-      out+=`</div>`;
+      out+='<div onclick="openDetail(\''+a.id+'\')" style="background:var(--sf);border:1px solid var(--bd);border-radius:10px;padding:10px 14px;margin-bottom:6px;cursor:pointer;display:flex;align-items:center;gap:10px">';
+      out+='<div style="flex:1"><div style="font-size:12px;font-weight:500">'+a.titel+'</div>';
+      out+='<div style="display:flex;gap:5px;margin-top:3px">'+prioTag(a.prio)+(zN?'<span style="font-size:10px;color:var(--t3)">'+zN+'</span>':'')+' '+dlTag(a.dl)+'</div></div>';
+      out+='<button onclick="event.stopPropagation();startenA(\''+a.id+'\')" style="font-size:11px;padding:5px 10px;border-radius:8px;background:var(--text);color:#fff;border:none;font-family:inherit;cursor:pointer">▶</button>';
+      out+='</div>';
     });
-    out+=`</div></details>`;
+    out+='</div></details>';
   }
 
-  // ── HEUTE ERLEDIGT — eingeklappt ──
   if(erl.length){
-    out+=`<details style="margin-bottom:12px"><summary style="list-style:none;cursor:pointer;padding:12px 16px;background:var(--green-bg);border:1px solid var(--green-bd);border-radius:12px;display:flex;align-items:center;justify-content:space-between">`;
-    out+=`<span style="font-size:13px;font-weight:600;color:var(--green)">✓ Heute erledigt</span>`;
-    out+=`<span style="font-size:12px;color:var(--green);opacity:.7">${erl.length} Aufgabe${erl.length>1?'n':''}</span></summary>`;
-    out+=`<div style="margin-top:8px">`;
-    erl.forEach(a=>{
-      out+=`<div style="background:var(--green-bg);border:1px solid var(--green-bd);border-radius:10px;padding:9px 14px;margin-bottom:5px;display:flex;align-items:center;gap:8px">`;
-      out+=`<span style="flex:1;font-size:12px;text-decoration:line-through;color:var(--t2)">${a.titel}</span>`;
-      out+=a.gebucht?`<span style="font-size:11px;color:var(--green);font-weight:600">${fmt(a.gebucht*3600)}</span>`:'';
-      out+=`</div>`;
+    out+='<details style="margin-bottom:12px"><summary style="list-style:none;cursor:pointer;padding:12px 16px;background:var(--green-bg);border:1px solid var(--green-bd);border-radius:12px;display:flex;align-items:center;justify-content:space-between"><span style="font-size:13px;font-weight:600;color:var(--green)">✓ Heute erledigt</span><span style="font-size:12px;color:var(--green);opacity:.7">'+erl.length+' Aufgabe'+(erl.length>1?'n':'')+'</span></summary><div style="margin-top:8px">';
+    erl.forEach(function(a){
+      out+='<div style="background:var(--green-bg);border:1px solid var(--green-bd);border-radius:10px;padding:9px 14px;margin-bottom:5px;display:flex;align-items:center;gap:8px">';
+      out+='<span style="flex:1;font-size:12px;text-decoration:line-through;color:var(--t2)">'+a.titel+'</span>';
+      out+=(a.gebucht?'<span style="font-size:11px;color:var(--green);font-weight:600">'+fmt(a.gebucht*3600)+'</span>':'');
+      out+='</div>';
     });
-    out+=`</div></details>`;
+    out+='</div></details>';
   }
 
-  // ── TAGESPLAN + KPIs — ganz unten, eingeklappt ──
-  out+=`<details style="margin-bottom:12px"><summary style="list-style:none;cursor:pointer;padding:12px 16px;background:var(--sf);border:1px solid var(--bd);border-radius:12px;display:flex;align-items:center;justify-content:space-between">`;
-  out+=`<span style="font-size:13px;font-weight:600">📅 Tagesplan</span>`;
-  out+=`<span style="font-size:12px;color:var(--t3)">anzeigen</span></summary>`;
-  out+=`<div style="margin-top:8px">${rZeitstrahl(myA)}</div></details>`;
+  out+='<details style="margin-bottom:12px"><summary style="list-style:none;cursor:pointer;padding:12px 16px;background:var(--sf);border:1px solid var(--bd);border-radius:12px;display:flex;align-items:center;justify-content:space-between"><span style="font-size:13px;font-weight:600">📅 Tagesplan</span><span style="font-size:12px;color:var(--t3)">anzeigen</span></summary><div style="margin-top:8px">'+rZeitstrahl(myA)+'</div></details>';
 
   out+=kpiBlock(aP);
-
-  // Fokus Score
-  const fq=fokusQ([aP]);
-  if(myA.length)out+=`<div class="focus-bar"><span style="font-size:11px;color:var(--t2)">Fokus heute</span><div class="focus-track"><div class="focus-fill" style="width:${fq}%"></div></div><span style="font-size:11px;font-weight:600">${fq}% strategisch</span></div>`;
+  if(myA.length)out+='<div class="focus-bar"><span style="font-size:11px;color:var(--t2)">Fokus heute</span><div class="focus-track"><div class="focus-fill" style="width:'+fq+'%"></div></div><span style="font-size:11px;font-weight:600">'+fq+'% strategisch</span></div>';
 
   document.getElementById('main').innerHTML=out;
   startTimers();
 }
 
-// ═══════════════════════════════════════════════
-// KPI BLOCK
-// ═══════════════════════════════════════════════
-function kpiBlock(pid){
-  const items=[];
-  S.ziele.forEach(z=>(z.kpis||[]).forEach(k=>{if(k.pid===pid)items.push({k,z});}));
-  if(!items.length)return'';
-  let h=`<details style="margin-bottom:16px"><summary style="cursor:pointer;font-size:10px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.6px;list-style:none;display:flex;align-items:center;gap:6px"><span>▸</span> KPI Check <span style="font-weight:400;text-transform:none;color:var(--t3)">— 2 Minuten</span></summary><div style="margin-top:10px">`;
-  items.forEach(({k})=>{
-    const val=kpiVal(k);
-    const ok=k.inv?val<=k.ziel:val>=k.ziel*0.85;
-    const pct=k.inv?Math.max(0,100-Math.round(Math.max(0,val-k.ziel)/Math.max(k.ziel,.1)*100)):Math.round(Math.min(100,(val/(k.ziel||1))*100));
-    const col=ok?'var(--green)':'#c2410c';
-    h+=`<div class="kpi-row" onclick="editKpiVal('${k.id}',${val},'${k.ziel}','${k.unit||''}')">`
-      +`<span style="font-size:12px;flex:1">${k.label}</span>`
-      +`<div class="kpi-track"><div class="kpi-fill" style="width:${Math.max(0,Math.min(100,pct))}%;background:${col}"></div></div>`
-      +`<span style="font-size:12px;font-weight:600;color:${col};min-width:64px;text-align:right">${val}${k.unit||''} / ${k.ziel}${k.unit||''}</span></div>`;
-  });
-  h+='</div></details>';return h;
-}
-function editKpiVal(kid,def,z,unit){
-  document.getElementById('mb').innerHTML=`<div class="mt">KPI eintragen</div>`
-    +`<div class="fl"><label>Aktueller Wert (Ziel: ${z}${unit})</label><input id="kv" type="number" value="${def}" autofocus style="font-size:22px;font-weight:700"></div>`
-    +`<div class="mf"><button class="btn btn-gr" onclick="cm()">Abbrechen</button><button class="btn btn-dk" onclick="saveKpiVal('${kid}')">Speichern</button></div>`;
-  document.getElementById('ovl').classList.add('open');
-}
-async function saveKpiVal(kid){
-  const val=parseFloat(document.getElementById('kv').value)||0;
-  const key=aP+'-'+kid;
-  S.kpiVals[key]={val,datum:TODAY};
-  // In Supabase upserten
-  await supa('kpi_vals',{method:'POST',body:{pid:aP,kpi_id:kid,val,datum:TODAY},prefer:'resolution=merge-duplicates,return=minimal'});
-  cm();render();
-}
-
-// ═══════════════════════════════════════════════
-// AUFGABEN ACTIONS
-// ═══════════════════════════════════════════════
-async function setPrio(id,pr){
-  const a=S.aufgaben.find(x=>x.id===id);if(!a)return;
-  a.prio=pr;a.status='backlog';
-  await dbPatch('aufgaben',id,{prio:pr,status:'backlog'});render();
-}
-async function startenA(id){
-  const a=S.aufgaben.find(x=>x.id===id);if(!a)return;
-  a.status='aktiv';a.aktSeit=Date.now();
-  await dbPatch('aufgaben',id,{status:'aktiv',akt_seit:new Date().toISOString()});render();
-}
+// ACTIONS
+async function setPrio(id,pr){const a=S.aufgaben.find(x=>x.id===id);if(!a)return;a.prio=pr;a.status='backlog';await dbPatch('aufgaben',id,{prio:pr,status:'backlog'});render();}
+async function startenA(id){const a=S.aufgaben.find(x=>x.id===id);if(!a)return;a.status='aktiv';a.aktSeit=Date.now();await dbPatch('aufgaben',id,{status:'aktiv',akt_seit:new Date().toISOString()});render();}
 async function pauseA(id){
   const a=S.aufgaben.find(x=>x.id===id);if(!a||a.status!=='aktiv')return;
   const gebucht=Math.round(((a.gebucht||0)+(Date.now()-(a.aktSeit||Date.now()))/3600000)*100)/100;
@@ -1034,8 +756,7 @@ async function fertig(id){
   const pid=a.pid;
   a.gebucht=gebucht;a.aktSeit=null;a.status='erledigt';a.updated_at=new Date().toISOString();
   await dbPatch('aufgaben',id,{gebucht,akt_seit:null,status:'erledigt',updated_at:new Date().toISOString()});
-  showPaddelCelebration(pid);
-  render();
+  showPaddelCelebration(pid);render();
 }
 async function toggleStep(id,i){
   const a=S.aufgaben.find(x=>x.id===id);if(!a)return;
@@ -1052,30 +773,26 @@ async function addStep(id){
 }
 async function delStep(id,i){
   const a=S.aufgaben.find(x=>x.id===id);if(!a)return;
-  a.ua.splice(i,1);
-  await dbPatch('aufgaben',id,{ua:a.ua});render();
+  a.ua.splice(i,1);await dbPatch('aufgaben',id,{ua:a.ua});render();
 }
 
-// ═══════════════════════════════════════════════
-// DETAIL MODAL
-// ═══════════════════════════════════════════════
+// DETAIL
 function openDetail(id){
   const a=S.aufgaben.find(x=>x.id===id);if(!a)return;
   const d=dli(a.dl),tzN=getTZName(a),zN=getZielName(a);
-  document.getElementById('mb').innerHTML=`<div class="mt">${a.titel}</div>`
-    +`<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:14px">${typTag(a)}${prioTag(a.prio)}${zN?`<span class="tag" style="background:var(--gray-bg);color:var(--t2)">${zN}</span>`:''}${tzN?`<span class="tag" style="background:var(--purple-bg);color:var(--purple)">${tzN}</span>`:''}${d?`<span class="tag" style="background:${d.bg};color:${d.c}">${d.l}</span>`:''}${a.vertraulich?'<span class="lock">vertraulich</span>':''}</div>`
-    +(a.notiz?`<div style="font-size:12px;color:var(--t2);background:var(--gray-bg);border-radius:8px;padding:8px 10px;margin-bottom:12px;font-style:italic">${a.notiz}</div>`:'')
-    +`<div class="fl"><label>Status</label><div style="display:flex;gap:5px;flex-wrap:wrap">`
-    +[['neu','Neu','var(--red-bg)','var(--red)'],['backlog','Backlog','var(--gray-bg)','var(--t2)'],['aktiv','Aktiv','var(--blue-bg)','var(--blue)'],['erledigt','Erledigt','var(--green-bg)','var(--green)']].map(x=>
-      `<button onclick="setStatusModal('${id}','${x[0]}')" style="font-size:11px;padding:4px 10px;border-radius:8px;border:${a.status===x[0]?'2px':'1px'} solid ${a.status===x[0]?'var(--text)':'var(--bd)'};background:${a.status===x[0]?x[2]:'var(--sf)'};color:${a.status===x[0]?x[3]:'var(--t2)'};cursor:pointer;font-family:inherit;font-weight:${a.status===x[0]?600:400}">${x[1]}</button>`
-    ).join('')+`</div></div>`
-    +`<div class="fl"><label>Teilziel zuordnen</label><select id="det-tz" onchange="setTeilziel('${id}',this.value)">`
-    +`<option value="">— kein Teilziel —</option>`
-    +(a.zielId?(zielObj(a.zielId)?.teilziele||[]).map(tz=>`<option value="${tz.id}"${a.teilzielId===tz.id?' selected':''}>${tz.name}</option>`).join(''):'')
-    +`</select></div>`
-    +`<div class="fl"><label>Schritte</label>${stepsHtml(a,true)}</div>`
-    +`<div style="font-size:11px;color:var(--t2);padding:10px 0;border-top:1px solid var(--bd)">Zeit: <strong>${fmt(elapsedSec(a))}</strong> von ${fmtH(a.geplant)} geplant</div>`
-    +`<div class="mf"><button class="btn btn-red" onclick="delAufgabe('${id}')">Löschen</button><button class="btn btn-gr" onclick="cm()">Schließen</button></div>`;
+  document.getElementById('mb').innerHTML='<div class="mt">'+a.titel+'</div>'
+    +'<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:14px">'+typTag(a)+prioTag(a.prio)+(zN?'<span class="tag" style="background:var(--gray-bg);color:var(--t2)">'+zN+'</span>':'')+(tzN?'<span class="tag" style="background:var(--purple-bg);color:var(--purple)">'+tzN+'</span>':'')+(d?'<span class="tag" style="background:'+d.bg+';color:'+d.c+'">'+d.l+'</span>':'')+(a.vertraulich?'<span class="lock">vertraulich</span>':'')+'</div>'
+    +(a.notiz?'<div style="font-size:12px;color:var(--t2);background:var(--gray-bg);border-radius:8px;padding:8px 10px;margin-bottom:12px;font-style:italic">'+a.notiz+'</div>':'')
+    +'<div class="fl"><label>Status</label><div style="display:flex;gap:5px;flex-wrap:wrap">'
+    +[['neu','Neu','var(--red-bg)','var(--red)'],['backlog','Backlog','var(--gray-bg)','var(--t2)'],['aktiv','Aktiv','var(--blue-bg)','var(--blue)'],['erledigt','Erledigt','var(--green-bg)','var(--green)']].map(function(x){
+      return '<button onclick="setStatusModal(\''+id+'\',\''+x[0]+'\')" style="font-size:11px;padding:4px 10px;border-radius:8px;border:'+(a.status===x[0]?'2px':'1px')+' solid '+(a.status===x[0]?'var(--text)':'var(--bd)')+';background:'+(a.status===x[0]?x[2]:'var(--sf)')+';color:'+(a.status===x[0]?x[3]:'var(--t2)')+';cursor:pointer;font-family:inherit;font-weight:'+(a.status===x[0]?600:400)+'">'+x[1]+'</button>';
+    }).join('')+'</div></div>'
+    +'<div class="fl"><label>Teilziel</label><select id="det-tz" onchange="setTeilziel(\''+id+'\',this.value)"><option value="">— kein Teilziel —</option>'
+    +(a.zielId?(zielObj(a.zielId)&&zielObj(a.zielId).teilziele||[]).map(function(tz){return '<option value="'+tz.id+'"'+(a.teilzielId===tz.id?' selected':'')+'>'+tz.name+'</option>';}).join(''):'')
+    +'</select></div>'
+    +'<div class="fl"><label>Schritte</label>'+stepsHtml(a,true)+'</div>'
+    +'<div style="font-size:11px;color:var(--t2);padding:10px 0;border-top:1px solid var(--bd)">Zeit: <strong>'+fmt(elapsedSec(a))+'</strong> von '+fmtH(a.geplant)+' geplant</div>'
+    +'<div class="mf"><button class="btn btn-red" onclick="delAufgabe(\''+id+'\')">Löschen</button><button class="btn btn-gr" onclick="cm()">Schließen</button></div>';
   document.getElementById('ovl').classList.add('open');
 }
 async function setStatusModal(id,st){
@@ -1083,671 +800,54 @@ async function setStatusModal(id,st){
   let patch={status:st};
   if(st==='aktiv')patch.akt_seit=new Date().toISOString();
   else if(a.status==='aktiv'){patch.gebucht=Math.round(((a.gebucht||0)+(Date.now()-(a.aktSeit||Date.now()))/3600000)*100)/100;patch.akt_seit=null;}
-  Object.assign(a,{status:st,aktSeit:st==='aktiv'?Date.now():null,...(patch.gebucht!==undefined?{gebucht:patch.gebucht}:{})});
+  Object.assign(a,{status:st,aktSeit:st==='aktiv'?Date.now():null});
   await dbPatch('aufgaben',id,patch);openDetail(id);render();
 }
-async function setTeilziel(id,tzid){
-  const a=S.aufgaben.find(x=>x.id===id);if(!a)return;
-  a.teilzielId=tzid||null;
-  await dbPatch('aufgaben',id,{teilziel_id:tzid||null});
-}
-async function delAufgabe(id){
-  if(!confirm('Aufgabe löschen?'))return;
-  S.aufgaben=S.aufgaben.filter(x=>x.id!==id);
-  await dbDelete('aufgaben',id);cm();render();
-}
+async function setTeilziel(id,tzid){const a=S.aufgaben.find(x=>x.id===id);if(!a)return;a.teilzielId=tzid||null;await dbPatch('aufgaben',id,{teilziel_id:tzid||null});}
+async function delAufgabe(id){if(!confirm('Aufgabe löschen?'))return;S.aufgaben=S.aufgaben.filter(x=>x.id!==id);await dbDelete('aufgaben',id);cm();render();}
 
-// ═══════════════════════════════════════════════
 // ZIELE
-// ═══════════════════════════════════════════════
 function rZiele(){
-  let out=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">`
-    +`<div><div style="font-size:16px;font-weight:700">Ziele</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Strategische Ziele & Teilziele</div></div>`
-    +(isGF()?`<button class="btn btn-dk" onclick="addZiel()">+ Neues Ziel</button>`:'')
+  let out='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">'
+    +'<div><div style="font-size:16px;font-weight:700">Ziele</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Strategische Ziele & Teilziele</div></div>'
+    +(isGF()?'<button class="btn btn-dk" onclick="addZiel()">+ Neues Ziel</button>':'')
     +'</div>';
-
-  S.ziele.forEach(z=>{
-    const f=FARBEN[z.farbe]||FARBEN[0];
-    const verantw=person(z.verantwortlichId);
-    const pct=zielPct(z);
-    const okK=(z.kpis||[]).filter(kpiOk).length;
-    const badK=(z.kpis||[]).filter(k=>!kpiOk(k));
+  S.ziele.forEach(function(z){
+    const f=FARBEN[z.farbe]||FARBEN[0],verantw=person(z.verantwortlichId);
+    const pct=zielPct(z),okK=(z.kpis||[]).filter(kpiOk).length,badK=(z.kpis||[]).filter(k=>!kpiOk(k));
     const zA=S.aufgaben.filter(a=>a.zielId===z.id&&a.status!=='erledigt'&&canSee(a));
-
-    out+=`<div class="zcard" style="background:${f.bg};border-color:${f.bd}">`;
-
-    // Header
-    out+=`<div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:14px">`
-      +`<div style="flex:1">`
-      +`<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px;flex-wrap:wrap">`
-      +`<div style="font-size:15px;font-weight:700;color:${f.tc}">${z.name}</div>`
-      +(verantw?`<span style="font-size:11px;color:${f.tc};opacity:.7">Verantw.: ${verantw.name}</span>`:'')
-      +(isGF()?`<button onclick="editZiel('${z.id}')" style="font-size:10px;padding:2px 8px;border-radius:6px;border:0.5px solid ${f.bd};background:rgba(255,255,255,.5);color:${f.tc};cursor:pointer;font-family:inherit;opacity:.7">bearbeiten</button>`:'')
-      +`</div>`
-      +`<div style="display:flex;align-items:center;gap:10px"><div class="pbar"><div class="pbar-fill" style="width:${pct}%;background:${pct>=70?f.tc:'#f59e0b'}"></div></div><span style="font-size:13px;font-weight:700;color:${pct>=70?f.tc:'#c2410c'};min-width:36px">${pct}%</span></div>`
-      +`<div style="font-size:11px;color:${f.tc};opacity:.65;margin-top:3px">${pct>=70?'✓ Auf Kurs':'⚠ Unter Plan'}${z.kpis.length?' · '+okK+'/'+z.kpis.length+' KPIs auf Kurs':''}</div>`
-      +`</div>`
-      +(badK.length?`<div style="background:var(--red-bg);border:1px solid var(--red-bd);border-radius:9px;padding:8px 10px;min-width:140px;flex-shrink:0"><div style="font-size:10px;font-weight:600;color:var(--red);margin-bottom:4px">Handlungsbedarf</div>${badK.map(k=>`<div style="font-size:10px;color:var(--red)">· ${k.label}: ${k.ist}${k.unit||''} → ${k.ziel}${k.unit||''}</div>`).join('')}</div>`:'')
-      +`</div>`;
-
-    // KPIs
+    out+='<div class="zcard" style="background:'+f.bg+';border-color:'+f.bd+'">';
+    out+='<div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:14px"><div style="flex:1">';
+    out+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px;flex-wrap:wrap">';
+    out+='<div style="font-size:15px;font-weight:700;color:'+f.tc+'">'+z.name+'</div>';
+    if(verantw)out+='<span style="font-size:11px;color:'+f.tc+';opacity:.7">Verantw.: '+verantw.name+'</span>';
+    if(isGF())out+='<button onclick="editZiel(\''+z.id+'\')" style="font-size:10px;padding:2px 8px;border-radius:6px;border:0.5px solid '+f.bd+';background:rgba(255,255,255,.5);color:'+f.tc+';cursor:pointer;font-family:inherit;opacity:.7">bearbeiten</button>';
+    out+='</div>';
+    out+='<div style="display:flex;align-items:center;gap:10px"><div class="pbar"><div class="pbar-fill" style="width:'+pct+'%;background:'+(pct>=70?f.tc:'#f59e0b')+'"></div></div><span style="font-size:13px;font-weight:700;color:'+(pct>=70?f.tc:'#c2410c')+';min-width:36px">'+pct+'%</span></div>';
+    out+='<div style="font-size:11px;color:'+f.tc+';opacity:.65;margin-top:3px">'+(pct>=70?'✓ Auf Kurs':'⚠ Unter Plan')+(z.kpis.length?' · '+okK+'/'+z.kpis.length+' KPIs auf Kurs':'')+'</div>';
+    out+='</div>';
+    if(badK.length)out+='<div style="background:var(--red-bg);border:1px solid var(--red-bd);border-radius:9px;padding:8px 10px;min-width:140px;flex-shrink:0"><div style="font-size:10px;font-weight:600;color:var(--red);margin-bottom:4px">Handlungsbedarf</div>'+badK.map(k=>'<div style="font-size:10px;color:var(--red)">· '+k.label+': '+k.ist+(k.unit||'')+' → '+k.ziel+(k.unit||'')+'</div>').join('')+'</div>';
+    out+='</div>';
     if(z.kpis.length||isGF()){
-      out+=`<details style="margin-bottom:14px"><summary style="cursor:pointer;font-size:10px;font-weight:700;color:${f.tc};opacity:.65;text-transform:uppercase;letter-spacing:.5px;list-style:none">▸ KPIs (${z.kpis.length})</summary>`;
-      out+=`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:8px;margin-top:10px">`;
-      z.kpis.forEach(k=>{
+      out+='<details style="margin-bottom:14px"><summary style="cursor:pointer;font-size:10px;font-weight:700;color:'+f.tc+';opacity:.65;text-transform:uppercase;letter-spacing:.5px;list-style:none">▸ KPIs ('+z.kpis.length+')</summary>';
+      out+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:8px;margin-top:10px">';
+      z.kpis.forEach(function(k){
         const val=kpiVal(k),ok=kpiOk(k),p2=person(k.pid);
         const pct2=k.inv?Math.max(0,100-Math.round(Math.max(0,val-k.ziel)/Math.max(k.ziel,.1)*100)):Math.round(Math.min(100,val/(k.ziel||1)*100));
         const isMe=k.pid===aP;
-        out+=`<div ${isGF()?`onclick="editKpiDef('${z.id}','${k.id}')" style="cursor:pointer;"`:''} style="background:rgba(255,255,255,.75);border:${isMe?`2px solid ${f.tc}`:`0.5px solid ${f.bd}`};border-radius:10px;padding:11px 12px;position:relative">`
-          +(isMe?`<div style="position:absolute;top:6px;right:8px;font-size:9px;background:${f.tc};color:#fff;padding:1px 5px;border-radius:99px;font-weight:600">Ich</div>`:'')
-          +`<div style="font-size:9px;color:var(--t3);margin-bottom:3px;text-transform:uppercase">${p2?p2.name:'–'} · ${k.freq}</div>`
-          +`<div style="font-size:20px;font-weight:700;color:${ok?f.tc:'var(--red)'};line-height:1;margin-bottom:2px">${val}${k.unit||''}</div>`
-          +`<div style="font-size:11px;font-weight:600;margin-bottom:1px">${k.label}</div>`
-          +`<div style="font-size:9px;color:var(--t3);margin-bottom:6px">Ziel: ${k.ziel}${k.unit||''}</div>`
-          +`<div style="height:3px;border-radius:99px;background:rgba(0,0,0,.07);overflow:hidden"><div style="height:100%;border-radius:99px;background:${ok?f.tc:'var(--red)'};width:${Math.max(0,Math.min(100,pct2))}%"></div></div></div>`;
+        out+='<div '+(isGF()?'onclick="editKpiDef(\''+z.id+'\',\''+k.id+'\')" style="cursor:pointer;"':'')+' style="background:rgba(255,255,255,.75);border:'+(isMe?'2px solid '+f.tc:'0.5px solid '+f.bd)+';border-radius:10px;padding:11px 12px;position:relative">';
+        if(isMe)out+='<div style="position:absolute;top:6px;right:8px;font-size:9px;background:'+f.tc+';color:#fff;padding:1px 5px;border-radius:99px;font-weight:600">Ich</div>';
+        out+='<div style="font-size:9px;color:var(--t3);margin-bottom:3px;text-transform:uppercase">'+(p2?p2.name:'–')+' · '+k.freq+'</div>';
+        out+='<div style="font-size:20px;font-weight:700;color:'+(ok?f.tc:'var(--red)')+';line-height:1;margin-bottom:2px">'+val+(k.unit||'')+'</div>';
+        out+='<div style="font-size:11px;font-weight:600;margin-bottom:1px">'+k.label+'</div>';
+        out+='<div style="font-size:9px;color:var(--t3);margin-bottom:6px">Ziel: '+k.ziel+(k.unit||'')+'</div>';
+        out+='<div style="height:3px;border-radius:99px;background:rgba(0,0,0,.07);overflow:hidden"><div style="height:100%;border-radius:99px;background:'+(ok?f.tc:'var(--red)')+';width:'+Math.max(0,Math.min(100,pct2))+'%"></div></div></div>';
       });
-      if(isGF())out+=`<div onclick="addKpi('${z.id}')" style="border:1.5px dashed ${f.bd};border-radius:10px;padding:11px 12px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;color:${f.tc};gap:4px;opacity:.5;min-height:90px" onmouseenter="this.style.opacity='0.9'" onmouseleave="this.style.opacity='0.5'"><span style="font-size:20px">+</span><span style="font-size:11px">KPI</span></div>`;
+      if(isGF())out+='<div onclick="addKpi(\''+z.id+'\')" style="border:1.5px dashed '+f.bd+';border-radius:10px;padding:11px 12px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;color:'+f.tc+';gap:4px;opacity:.5;min-height:90px" onmouseenter="this.style.opacity=\'0.9\'" onmouseleave="this.style.opacity=\'0.5\'"><span style="font-size:20px">+</span><span style="font-size:11px">KPI</span></div>';
       out+='</div></details>';
     }
-
-    // Teilziele
-    out+=`<div style="font-size:10px;font-weight:700;color:${f.tc};opacity:.65;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Teilziele</div>`;
-    (z.teilziele||[]).forEach(tz=>{
+    out+='<div style="font-size:10px;font-weight:700;color:'+f.tc+';opacity:.65;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Teilziele</div>';
+    (z.teilziele||[]).forEach(function(tz){
       const tzV=person(tz.verantwortlichId),tzA=zA.filter(a=>a.teilzielId===tz.id);
-      out+=`<div class="tz-block" style="${tz.erledigt?'opacity:.55':''}">`
-        +`<div class="tz-head">`
-        +(canManageTZ(z.id)?`<input type="checkbox" ${tz.erledigt?'checked':''} onclick="toggleTZ('${z.id}','${tz.id}')" style="flex-shrink:0">`:'')
-        +`<div style="flex:1"><span class="tz-title${tz.erledigt?' tz-done':''}">${tz.name}</span>`
-        +`<div style="display:flex;gap:8px;margin-top:2px">`
-        +(tzV?`<span style="font-size:10px;color:var(--purple);opacity:.7">${tzV.name}</span>`:'')
-        +(tz.datum?`<span style="font-size:10px;color:var(--purple);opacity:.7">bis ${tz.datum.slice(8)}.${tz.datum.slice(5,7)}.</span>`:'')
-        +`</div></div>`
-        +`<div style="display:flex;gap:5px">`
-        +(canManageTZ(z.id)?`<button onclick="editTZ('${z.id}','${tz.id}')" style="font-size:10px;padding:2px 8px;border-radius:6px;border:1px solid var(--purple-bd);background:rgba(255,255,255,.5);color:var(--purple);cursor:pointer;font-family:inherit">···</button>`:'')
-        +`<button onclick="openNeu({zielId:'${z.id}',teilzielId:'${tz.id}'})" style="font-size:10px;padding:2px 8px;border-radius:6px;border:1px solid var(--purple-bd);background:rgba(255,255,255,.5);color:var(--purple);cursor:pointer;font-family:inherit">+ Aufgabe</button>`
-        +`</div></div>`;
-      if(tzA.length){
-        out+='<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:6px">';
-        tzA.forEach(a=>{
-          const p2=person(a.pid);
-          out+=`<div onclick="openDetail('${a.id}')" style="background:rgba(255,255,255,.6);border:0.5px solid var(--purple-bd);border-radius:7px;padding:4px 10px;font-size:11px;display:flex;align-items:center;gap:6px;cursor:pointer" onmouseenter="this.style.background='rgba(255,255,255,.95)'" onmouseleave="this.style.background='rgba(255,255,255,.6)'">`
-            +`<span style="font-size:8px;color:${a.status==='aktiv'?'var(--blue)':a.status==='erledigt'?'var(--green)':'var(--t3)'}">●</span>`
-            +`<span>${a.titel}</span>`
-            +(p2?`<span style="color:var(--t3);font-size:10px">· ${p2.name}</span>`:'')
-            +prioTag(a.prio)
-            +(a.status==='erledigt'?'<span style="font-size:9px;color:var(--green)">✓</span>':'')
-            +'</div>';
-        });
-        out+='</div>';
-      }
-      out+='</div>';
-    });
-    if(canManageTZ(z.id))out+=`<button class="tz-add-btn" onclick="openAddTZ('${z.id}')">+ Teilziel hinzufügen</button>`;
-
-    // + Aufgabe Button
-    out+=`<div style="margin-top:10px"><button onclick="openNeu({zielId:'${z.id}'})" style="width:100%;padding:9px;border-radius:10px;border:1.5px dashed ${f.bd};background:transparent;color:${f.tc};font-size:12px;font-family:inherit;cursor:pointer;font-weight:500;opacity:.7" onmouseenter="this.style.opacity='1'" onmouseleave="this.style.opacity='0.7'">+ Aufgabe zu diesem Ziel hinzufügen</button></div>`;
-
-    // Weitere Aufgaben ohne Teilziel
-    const aOhneTZ=zA.filter(a=>!a.teilzielId);
-    if(aOhneTZ.length){
-      out+=`<div style="font-size:10px;font-weight:700;color:${f.tc};opacity:.65;text-transform:uppercase;letter-spacing:.5px;margin:12px 0 6px">Weitere Aufgaben</div>`;
-      out+='<div style="display:flex;gap:6px;flex-wrap:wrap">';
-      aOhneTZ.forEach(a=>{const p2=person(a.pid);out+=`<div style="background:rgba(255,255,255,.75);border:0.5px solid ${f.bd};border-radius:8px;padding:5px 10px;font-size:11px;display:flex;align-items:center;gap:5px"><span style="font-size:8px;color:${a.status==='aktiv'?f.tc:'var(--t3)'}">●</span>${a.titel}${p2?`<span style="color:var(--t3);font-size:10px">· ${p2.name}</span>`:''}</div>`;});
-      out+='</div>';
-    }
-    out+='</div>';
-  });
-  document.getElementById('main').innerHTML=out;
-}
-
-// ═══════════════════════════════════════════════
-// TEILZIELE CRUD
-// ═══════════════════════════════════════════════
-async function toggleTZ(zid,tzid){
-  const z=zielObj(zid);if(!z)return;
-  const tz=(z.teilziele||[]).find(t=>t.id===tzid);if(!tz)return;
-  tz.erledigt=!tz.erledigt;
-  await dbPatch('teilziele',tzid,{erledigt:tz.erledigt});rZiele();
-}
-function openAddTZ(zid){
-  document.getElementById('mb').innerHTML=`<div class="mt">Teilziel hinzufügen</div>`
-    +`<div class="fl"><label>Name</label><input id="tzn" placeholder="z.B. Messe München vorbereitet" autofocus></div>`
-    +`<div class="f2"><div class="fl"><label>Verantwortlich</label><select id="tzv">${S.personen.map(p=>`<option value="${p.id}">${p.name}</option>`).join('')}</select></div>`
-    +`<div class="fl"><label>Bis wann</label><input type="date" id="tzd"></div></div>`
-    +`<div class="mf"><button class="btn btn-gr" onclick="cm()">Abbrechen</button><button class="btn btn-dk" onclick="saveTZ('${zid}',null)">Speichern</button></div>`;
-  document.getElementById('ovl').classList.add('open');
-}
-function editTZ(zid,tzid){
-  const z=zielObj(zid);if(!z)return;
-  const tz=(z.teilziele||[]).find(t=>t.id===tzid);if(!tz)return;
-  document.getElementById('mb').innerHTML=`<div class="mt">Teilziel bearbeiten</div>`
-    +`<div class="fl"><label>Name</label><input id="tzn" value="${tz.name}" autofocus></div>`
-    +`<div class="f2"><div class="fl"><label>Verantwortlich</label><select id="tzv">${S.personen.map(p=>`<option value="${p.id}"${tz.verantwortlichId===p.id?' selected':''}>${p.name}</option>`).join('')}</select></div>`
-    +`<div class="fl"><label>Bis wann</label><input type="date" id="tzd" value="${tz.datum||''}"></div></div>`
-    +`<div class="mf"><button class="btn btn-red" onclick="delTZ('${zid}','${tzid}')">Löschen</button><button class="btn btn-gr" onclick="cm()">Abbrechen</button><button class="btn btn-dk" onclick="saveTZ('${zid}','${tzid}')">Speichern</button></div>`;
-  document.getElementById('ovl').classList.add('open');
-}
-async function saveTZ(zid,tzid){
-  const z=zielObj(zid);if(!z)return;
-  const name=document.getElementById('tzn').value.trim();if(!name)return;
-  const vid=document.getElementById('tzv').value,datum=document.getElementById('tzd').value;
-  if(tzid){
-    const tz=(z.teilziele||[]).find(t=>t.id===tzid);
-    if(tz){tz.name=name;tz.verantwortlichId=vid;tz.datum=datum;}
-    await dbPatch('teilziele',tzid,{name,verantwortlich_id:vid,datum:datum||null});
-  } else {
-    const id=nid('tz'),rec={id,ziel_id:zid,name,verantwortlich_id:vid,datum:datum||null,erledigt:false};
-    z.teilziele=z.teilziele||[];
-    z.teilziele.push({...rec,zielId:zid,verantwortlichId:vid,datum:datum||''});
-    await dbInsert('teilziele',rec);
-  }
-  cm();rZiele();
-}
-async function delTZ(zid,tzid){
-  if(!confirm('Teilziel löschen?'))return;
-  const z=zielObj(zid);if(!z)return;
-  z.teilziele=(z.teilziele||[]).filter(t=>t.id!==tzid);
-  S.aufgaben.forEach(a=>{if(a.teilzielId===tzid)a.teilzielId=null;});
-  await dbDelete('teilziele',tzid);cm();rZiele();
-}
-
-// ═══════════════════════════════════════════════
-// ZIEL CRUD
-// ═══════════════════════════════════════════════
-async function addZiel(){
-  const id=nid('z'),rec={id,name:'Neues Ziel',farbe:Math.floor(Math.random()*FARBEN.length),pct:0,verantwortlich_id:null};
-  S.ziele.push({...rec,verantwortlichId:null,kpis:[],teilziele:[]});
-  await dbInsert('ziele',rec);
-  rZiele();editZiel(id);
-}
-function editZiel(zid){
-  const z=S.ziele.find(x=>x.id===zid);if(!z)return;
-  document.getElementById('mb').innerHTML=`<div class="mt">Ziel bearbeiten</div>`
-    +`<div class="fl"><label>Name</label><input id="zn" value="${z.name}" autofocus></div>`
-    +`<div class="fl"><label>Verantwortlich</label><select id="zver"><option value="">— niemand —</option>${S.personen.map(p=>`<option value="${p.id}"${z.verantwortlichId===p.id?' selected':''}>${p.name}</option>`).join('')}</select></div>`
-    +`<div class="fl"><label>Farbe</label><div style="display:flex;gap:8px;margin-top:4px">${FARBEN.map((f,i)=>`<div onclick="selZF(${i})" id="zfc${i}" style="width:24px;height:24px;border-radius:50%;background:${f.tc};cursor:pointer;border:${(z.farbe||0)===i?'3px':'2px'} solid ${(z.farbe||0)===i?'var(--text)':'transparent'}"></div>`).join('')}</div></div>`
-    +`<input type="hidden" id="zfarbe" value="${z.farbe||0}">`
-    +`<div class="mf"><button class="btn btn-red" onclick="delZiel('${zid}')">Löschen</button><button class="btn btn-gr" onclick="cm()">Abbrechen</button><button class="btn btn-dk" onclick="saveZiel('${zid}')">Speichern</button></div>`;
-  document.getElementById('ovl').classList.add('open');
-}
-function selZF(i){
-  document.getElementById('zfarbe').value=i;
-  FARBEN.forEach((_,j)=>{const el=document.getElementById('zfc'+j);if(el)el.style.border=(j===i?'3px solid var(--text)':'2px solid transparent');});
-}
-async function saveZiel(zid){
-  const z=S.ziele.find(x=>x.id===zid);if(!z)return;
-  const name=document.getElementById('zn').value.trim()||z.name;
-  const verantwortlichId=document.getElementById('zver').value||null;
-  const farbe=parseInt(document.getElementById('zfarbe').value)||0;
-  z.name=name;z.verantwortlichId=verantwortlichId;z.farbe=farbe;
-  await dbPatch('ziele',zid,{name,verantwortlich_id:verantwortlichId,farbe});
-  cm();rZiele();
-}
-async function delZiel(zid){
-  if(!confirm('Ziel wirklich löschen?'))return;
-  // Erst Aufgaben des Ziels entzielen
-  S.aufgaben.forEach(a=>{if(a.zielId===zid){a.zielId=null;a.teilzielId=null;a.typ='operativ';}});
-  await supa('aufgaben?ziel_id=eq.'+zid,{method:'PATCH',body:{ziel_id:null,teilziel_id:null,typ:'operativ'},prefer:'return=minimal'});
-  // Dann KPIs löschen
-  const z=zielObj(zid);
-  if(z)(z.kpis||[]).forEach(k=>dbDelete('kpis',k.id));
-  // Dann Teilziele löschen
-  if(z)(z.teilziele||[]).forEach(t=>dbDelete('teilziele',t.id));
-  // Dann Ziel löschen
-  S.ziele=S.ziele.filter(x=>x.id!==zid);
-  await dbDelete('ziele',zid);
-  cm();rZiele();
-}
-
-// KPI CRUD
-async function addKpi(zid){
-  const z=zielObj(zid);if(!z)return;
-  const id=nid('k'),rec={id,ziel_id:zid,label:'Neuer KPI',ist:0,ziel:10,unit:'',freq:'täglich',pid:S.personen[0]?.id||'',inv:false};
-  z.kpis.push({...rec,zielId:zid});
-  await dbInsert('kpis',rec);rZiele();editKpiDef(zid,id);
-}
-function editKpiDef(zid,kid){
-  if(!isGF())return;
-  const z=zielObj(zid);if(!z)return;const k=z.kpis.find(x=>x.id===kid);if(!k)return;
-  document.getElementById('mb').innerHTML=`<div class="mt">KPI bearbeiten</div>`
-    +`<div class="fl"><label>Name</label><input id="kl" value="${k.label}" autofocus></div>`
-    +`<div class="f2"><div class="fl"><label>Ist-Wert</label><input id="ki" type="number" value="${k.ist}"></div><div class="fl"><label>Ziel-Wert</label><input id="kz" type="number" value="${k.ziel}"></div></div>`
-    +`<div class="f2"><div class="fl"><label>Einheit</label><input id="ku" value="${k.unit||''}" placeholder="%, Stk…"></div><div class="fl"><label>Rhythmus</label><select id="kf">${FREQ.map(f=>`<option${k.freq===f?' selected':''}>${f}</option>`).join('')}</select></div></div>`
-    +`<div class="fl"><label>Verantwortlich</label><select id="kp">${S.personen.map(p=>`<option value="${p.id}"${k.pid===p.id?' selected':''}>${p.name}</option>`).join('')}</select></div>`
-    +`<div class="fl"><label style="text-transform:none;font-size:13px;font-weight:400;display:flex;align-items:center;gap:8px"><input type="checkbox" id="kinv"${k.inv?' checked':''} style="width:auto"> Niedriger ist besser</label></div>`
-    +`<div class="mf"><button class="btn btn-red" onclick="delKpi('${zid}','${kid}')">Löschen</button><button class="btn btn-gr" onclick="cm()">Abbrechen</button><button class="btn btn-dk" onclick="saveKpi('${zid}','${kid}')">Speichern</button></div>`;
-  document.getElementById('ovl').classList.add('open');
-}
-async function saveKpi(zid,kid){
-  const z=zielObj(zid);if(!z)return;const k=z.kpis.find(x=>x.id===kid);if(!k)return;
-  k.label=document.getElementById('kl').value.trim()||k.label;
-  k.ist=parseFloat(document.getElementById('ki').value)||0;
-  k.ziel=parseFloat(document.getElementById('kz').value)||0;
-  k.unit=document.getElementById('ku').value;
-  k.freq=document.getElementById('kf').value;
-  k.pid=document.getElementById('kp').value;
-  k.inv=document.getElementById('kinv').checked;
-  await dbPatch('kpis',kid,{label:k.label,ist:k.ist,ziel:k.ziel,unit:k.unit,freq:k.freq,pid:k.pid,inv:k.inv});
-  cm();rZiele();
-}
-async function delKpi(zid,kid){
-  const z=zielObj(zid);if(!z)return;
-  z.kpis=z.kpis.filter(x=>x.id!==kid);
-  await dbDelete('kpis',kid);cm();rZiele();
-}
-
-// ═══════════════════════════════════════════════
-// NEUE AUFGABE
-// ═══════════════════════════════════════════════
-function openNeu(pf={}){
-  _selPrio=pf.prio||null;
-  // Wer bekommt die Aufgabe — immer realMe als Default, nie aP wenn fremdes Profil
-  const defaultPid=pf.pid||realMe||aP;
-
-  document.getElementById('mb').innerHTML=`<div class="mt">Neue Aufgabe</div>`
-    +`<div class="fl"><label>Was soll gemacht werden?</label><input id="nt" value="${pf.titel||''}" placeholder="Konkret und aktiv formulieren…" autofocus></div>`
-    +`<div class="f2"><div class="fl"><label>Wer?</label><select id="np">${S.personen.map(p=>`<option value="${p.id}"${defaultPid===p.id?' selected':''}>${p.name}</option>`).join('')}</select></div>`
-    +`<div class="fl"><label>Typ</label><select id="ntyp" onchange="updateNeuForm()">`
-    +`<option value="strategisch"${pf.zielId?'':''}>Strategisch (hat Ziel)</option>`
-    +`<option value="operativ"${!pf.zielId&&!pf.random?' selected':''}>Operativ</option>`
-    +`<option value="random"${pf.random?' selected':''}>Random</option>`
-    +`</select></div></div>`
-    +`<div id="neu-ziel-wrap" class="fl"><label>Ziel</label><select id="nziel" onchange="updateNeuTZ()">${S.ziele.map(z=>`<option value="${z.id}"${pf.zielId===z.id?' selected':''}>${z.name}</option>`).join('')}</select></div>`
-    +`<div id="neu-tz-wrap" class="fl"><label>Teilziel (optional)</label><select id="ntz"><option value="">— kein Teilziel —</option></select></div>`
-    +`<div class="fl"><label>Priorität</label><div style="display:flex;gap:6px;margin-top:2px">`
-    +[null,'P1','P2','P3'].map(pr=>{const bg=pr==='P1'?'var(--red-bg)':pr==='P2'?'#fff7ed':'var(--gray-bg)';const tc=pr==='P1'?'var(--red)':pr==='P2'?'#c2410c':'var(--t2)';return`<button id="pbp-${pr||'k'}" onclick="selPrioBtn(this,'${pr}')" style="font-size:12px;padding:4px 11px;border-radius:8px;border:1px solid ${pr?tc:'var(--bd)'};background:${bg};color:${tc};cursor:pointer;font-family:inherit">${pr||'kein'}</button>`;}).join('')
-    +`</div></div>`
-    +`<div class="f2"><div class="fl"><label>Dauer</label><select id="nh">${Object.keys(SH).map(h=>`<option value="${h}"${(pf.geplant||1)==h?' selected':''}>${SH[h]}</option>`).join('')}</select></div><div class="fl"><label>Deadline</label><input type="date" id="ndl" value="${pf.dl||''}"></div></div>`
-  +`<div class="f2"><div class="fl"><label>Uhrzeit (optional)</label><input type="time" id="nuhr" value="${pf.uhrzeit||''}" placeholder="z.B. 09:00"></div><div class="fl"><label>Ort / Link</label><input id="nort" value="${pf.ort||''}" placeholder="z.B. Büro, Meet-Link…"></div></div>`
-    +(isGF()?`<div class="fl"><label style="display:flex;align-items:center;gap:8px;text-transform:none;font-size:13px;font-weight:400"><input type="checkbox" id="nvert" style="width:auto"> Vertraulich — nur GF sichtbar</label></div>`:'')
-    +`<div class="fl"><label>Notiz</label><input id="nno" value="${pf.notiz||''}" placeholder="Optional…"></div>`
-    +`<div class="mf"><button class="btn btn-gr" onclick="cm()">Abbrechen</button><button class="btn btn-dk" onclick="saveNeu()">Speichern</button></div>`;
-  document.getElementById('ovl').classList.add('open');
-
-  // Typ vorauswählen
-  if(pf.zielId){document.getElementById('ntyp').value='strategisch';}
-  updateNeuForm();
-
-  // Teilziel vorauswählen
-  if(pf.teilzielId){setTimeout(()=>{const s=document.getElementById('ntz');if(s)s.value=pf.teilzielId;},50);}
-}
-function updateNeuForm(){
-  const typ=document.getElementById('ntyp')?.value;
-  const zw=document.getElementById('neu-ziel-wrap'),tw=document.getElementById('neu-tz-wrap');
-  if(typ==='strategisch'){zw.style.display='';tw.style.display='';updateNeuTZ();}
-  else{zw.style.display='none';tw.style.display='none';}
-}
-function updateNeuTZ(){
-  const zSel=document.getElementById('nziel');if(!zSel)return;
-  const z=zielObj(zSel.value),tzSel=document.getElementById('ntz');
-  tzSel.innerHTML='<option value="">— kein Teilziel —</option>';
-  if(z)(z.teilziele||[]).filter(t=>!t.erledigt).forEach(t=>{tzSel.innerHTML+=`<option value="${t.id}">${t.name}</option>`;});
-}
-function selPrioBtn(btn,pr){
-  _selPrio=(!pr||pr==='null')?null:pr;
-  document.querySelectorAll('[id^="pbp-"]').forEach(b=>b.style.outline='none');
-  btn.style.outline='2px solid var(--text)';
-}
-async function saveNeu(){
-  const t=document.getElementById('nt').value.trim();if(!t)return;
-  const typ=document.getElementById('ntyp').value;
-  const zielId=typ==='strategisch'?(document.getElementById('nziel')?.value||null):null;
-  const tzSel=document.getElementById('ntz');
-  const teilzielId=typ==='strategisch'&&tzSel?tzSel.value||null:null;
-  const vert=document.getElementById('nvert')?document.getElementById('nvert').checked:false;
-  const pid=document.getElementById('np').value;
-  const id=nid('a');
-  const rec={
-    id,pid,titel:t,typ,
-    status:_selPrio?'backlog':'neu',prio:_selPrio||null,
-    ziel_id:zielId,teilziel_id:teilzielId,
-    geplant:parseFloat(document.getElementById('nh').value)||1,
-    gebucht:0,
-    dl:document.getElementById('ndl').value||null,
-    uhrzeit:document.getElementById('nuhr').value||null,
-    ort:document.getElementById('nort').value.trim()||null,
-    ua:[],notiz:document.getElementById('nno').value.trim(),
-    akt_seit:null,vertraulich:vert
-  };
-  // Lokaler State
-  S.aufgaben.push({...rec,zielId,teilzielId,aktSeit:null,dl:rec.dl||''});
-  await dbInsert('aufgaben',rec);
-  cm();render();
-}
-
-// ═══════════════════════════════════════════════
-// KI
-// ═══════════════════════════════════════════════
-function openAI(){
-  document.getElementById('mb').innerHTML=`<div class="mt">✦ Aufgabe mit KI erstellen</div>`
-    +`<div style="font-size:12px;color:var(--t2);margin-bottom:12px;line-height:1.6">Beschreib die Aufgabe frei — die KI erstellt und weist sie zu.</div>`
-    +`<div style="background:var(--gray-bg);border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:11px;color:var(--t3)">Beispiele:<br>„Erstelle für Fabian eine Aufgabe Wartungsplan bis Freitag unter Ziel Qualität P1"<br>„Kristina: Messe München buchen bis 10. April, P1"<br>„Random für Do: Kunde Müller zurückrufen"</div>`
-    +`<div class="fl"><textarea id="ai-inp" rows="3" placeholder="Beschreibe die Aufgabe…" style="resize:none;font-size:13px"></textarea></div>`
-    +`<div id="ai-out"></div>`
-    +`<div class="mf"><button class="btn btn-gr" onclick="cm()">Abbrechen</button><button class="btn btn-purple" onclick="runAI()">✦ Erstellen</button></div>`;
-  document.getElementById('ovl').classList.add('open');
-  document.getElementById('ai-inp').focus();
-}
-async function runAI(){
-  const inp=document.getElementById('ai-inp').value.trim();if(!inp)return;
-  const out=document.getElementById('ai-out');
-  out.innerHTML=`<div style="padding:10px;color:var(--purple);font-size:12px">⟳ KI denkt nach…</div>`;
-  const sys=`Du bist Assistent für Halleluja OS. Extrahiere eine Aufgabe und antworte NUR mit JSON:
-{"titel":"...","pid":"lu|si|kr|do|fa","typ":"strategisch|operativ|random","zielId":"z1|z2|z3|null","teilzielId":"tz1|tz2|tz3|tz4|null","prio":"P1|P2|P3|null","dl":"YYYY-MM-DD|null","notiz":"..."}
-Personen: lu=Ludwig,si=Simon,kr=Kristina,do=Dominic,fa=Fabian
-Ziele: z1=Umsatz Q2,z2=After Sales,z3=Qualität — nur wenn typ=strategisch
-Teilziele: tz1=Messe München,tz2=Pipeline KW16,tz3=Tourenoptimierung,tz4=Wartung
-Heute: ${TODAY}. Freitag=2026-04-10.`;
-  try{
-    const resp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:500,system:sys,messages:[{role:'user',content:inp}]})});
-    const data=await resp.json();
-    const text=data.content?.map(c=>c.text||'').join('')||'';
-    let parsed;
-    try{parsed=JSON.parse(text.replace(/```json|```/g,'').trim());}
-    catch(e){out.innerHTML=`<div class="ai-result" style="background:var(--red-bg);border-color:var(--red-bd)">Konnte nicht verarbeiten.</div>`;return;}
-    const p2=person(parsed.pid),z2=parsed.zielId?zielObj(parsed.zielId):null;
-    const tzN=parsed.teilzielId&&parsed.zielId?(zielObj(parsed.zielId)?.teilziele||[]).find(t=>t.id===parsed.teilzielId)?.name:null;
-    const ti=TYP_INFO[parsed.typ]||TYP_INFO.operativ;
-    const safeJ=JSON.stringify(parsed).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-    out.innerHTML=`<div class="ai-result">`
-      +`<div style="font-size:13px;font-weight:600;margin-bottom:8px">${parsed.titel}</div>`
-      +`<div style="display:flex;gap:5px;flex-wrap:wrap">`
-      +(p2?`<span class="tag" style="background:var(--blue-bg);color:var(--blue)">${p2.name}</span>`:'')
-      +`<span class="tag" style="background:${ti.bg};color:${ti.tc}">${ti.label}</span>`
-      +(parsed.prio?prioTag(parsed.prio):'')
-      +(z2?`<span class="tag" style="background:var(--green-bg);color:var(--green)">${z2.name}</span>`:'')
-      +(tzN?`<span class="tag" style="background:var(--purple-bg);color:var(--purple)">${tzN}</span>`:'')
-      +(parsed.dl?dlTag(parsed.dl):'')
-      +`</div>${parsed.notiz?`<div style="font-size:11px;color:var(--t2);margin-top:6px;font-style:italic">${parsed.notiz}</div>`:''}</div>`
-      +`<div class="mf" style="margin-top:10px"><button class="btn btn-gr" onclick="openAI()">Nochmal</button><button class="btn btn-purple" onclick="confirmAI('${safeJ}')">✓ Aufgabe anlegen</button></div>`;
-  }catch(e){out.innerHTML=`<div class="ai-result" style="background:var(--red-bg);border-color:var(--red-bd)">Fehler: ${e.message}</div>`;}
-}
-async function confirmAI(jsonStr){
-  let p;try{p=JSON.parse(jsonStr);}catch(e){return;}
-  const id=nid('a'),rec={
-    id,pid:p.pid||realMe,titel:p.titel,typ:p.typ||'operativ',
-    status:p.prio?'backlog':'neu',prio:p.prio||null,
-    ziel_id:p.zielId||null,teilziel_id:p.teilzielId||null,
-    geplant:1,gebucht:0,dl:p.dl||null,ua:[],notiz:p.notiz||'',akt_seit:null,vertraulich:false
-  };
-  S.aufgaben.push({...rec,zielId:rec.ziel_id,teilzielId:rec.teilziel_id,aktSeit:null,dl:rec.dl||''});
-  await dbInsert('aufgaben',rec);cm();render();
-}
-
-// ═══════════════════════════════════════════════
-// TEAM
-// ═══════════════════════════════════════════════
-function rTeam(){
-  const teams=isGF()?[...S.teams].sort((a,b)=>a.id==='gf'?-1:b.id==='gf'?1:0):S.teams.filter(t=>(me().teams||[]).includes(t.id));
-  let out=`<div style="margin-bottom:20px"><div style="font-size:16px;font-weight:700">Team</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Wer macht was</div></div>`;
-  teams.forEach(t=>{
-    const mids=t.members,fq=fokusQ(mids);
-    const aktiv=S.aufgaben.filter(a=>mids.includes(a.pid)&&a.status==='aktiv'&&canSee(a));
-    const pipeline=S.aufgaben.filter(a=>mids.includes(a.pid)&&(a.status==='backlog'||a.status==='neu')&&canSee(a)).sort((a,b)=>(a.prio||'P9').localeCompare(b.prio||'P9')).slice(0,8);
-
-    out+=`<div class="team-block"><div class="team-block-head">`
-      +`<div style="flex:1"><div style="font-size:14px;font-weight:700;margin-bottom:6px">${t.name}</div>`
-      +`<div style="display:flex;align-items:center;gap:8px"><div class="focus-track" style="flex:1;margin:0"><div class="focus-fill" style="width:${fq}%"></div></div><span style="font-size:11px;font-weight:600;white-space:nowrap">${fq}% strategisch</span></div></div>`
-      +`<div style="display:flex;gap:6px;flex-shrink:0">${mids.map(id=>{const p=person(id);return p?av(p,28,10):'';}).join('')}</div></div>`;
-
-    if(aktiv.length){
-      out+=`<div style="padding:10px 16px 2px;font-size:10px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.5px">Läuft gerade</div>`;
-      aktiv.forEach(a=>{
-        const p2=person(a.pid),tzN=getTZName(a),ti=typInfo(a);
-        out+=`<div class="team-h-row"><div class="dot" style="background:var(--blue);flex-shrink:0"></div>`
-          +`<div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${a.titel}${a.vertraulich?'<span class="lock" style="margin-left:5px">🔒</span>':''}</div>`
-          +`<div style="display:flex;gap:5px;margin-top:2px">${p2?`<span style="font-size:10px;color:var(--t3)">${p2.name}</span>`:''}<span style="font-size:10px;color:${ti.tc}">· ${ti.label}</span>${a.zielId?`<span style="font-size:10px;color:var(--t2)">· ${getZielName(a)}</span>`:''}${tzN?`<span style="font-size:10px;color:var(--purple)">· ${tzN}</span>`:''}</div></div>${prioTag(a.prio)}</div>`;
-      });
-    }
-    if(pipeline.length){
-      out+=`<div style="padding:10px 16px 2px;font-size:10px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px">Nächste Prioritäten</div>`;
-      pipeline.forEach(a=>{
-        const p2=person(a.pid),tzN=getTZName(a),ti=typInfo(a);
-        out+=`<div class="team-h-row"><div class="dot" style="background:var(--bd);flex-shrink:0"></div>`
-          +`<div style="flex:1;min-width:0"><div style="font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${a.titel}${a.vertraulich?'<span class="lock" style="margin-left:5px">🔒</span>':''}</div>`
-          +`<div style="display:flex;gap:5px;margin-top:2px">${p2?`<span style="font-size:10px;color:var(--t3)">${p2.name}</span>`:''}<span style="font-size:10px;color:${ti.tc}">· ${ti.label}</span>${a.zielId?`<span style="font-size:10px;color:var(--t2)">· ${getZielName(a)}</span>`:''}${tzN?`<span style="font-size:10px;color:var(--purple)">· ${tzN}</span>`:''}</div></div>${prioTag(a.prio)}</div>`;
-      });
-    }
-    if(!aktiv.length&&!pipeline.length)out+=`<div style="padding:14px 16px;font-size:12px;color:var(--t3);font-style:italic">Keine aktiven Aufgaben</div>`;
-    out+='<div style="height:4px"></div></div>';
-  });
-  document.getElementById('main').innerHTML=out;
-}
-
-// ═══════════════════════════════════════════════
-// SETTINGS
-// ═══════════════════════════════════════════════
-function openSettings(){
-  let h=`<div class="mt">Einstellungen</div>`;
-
-  // Personen
-  h+=`<div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Personen</div>`;
-  S.personen.forEach(p=>{
-    const teamNames=(p.teams||[]).map(tid=>S.teams.find(t=>t.id===tid)?.name||'').filter(Boolean).join(', ');
-    h+=`<div class="settings-row">${av(p,30,11)}<div style="flex:1"><div style="font-size:12px;font-weight:500">${p.name}</div><div style="font-size:10px;color:var(--t3)">${p.rolle}${teamNames?' · '+teamNames:''}</div></div><button onclick="editPerson('${p.id}')" class="btn btn-gr" style="font-size:10px;padding:3px 9px">bearbeiten</button></div>`;
-  });
-  h+=`<button onclick="openNutzer()" class="btn btn-gr" style="margin-top:8px;width:100%">+ Person hinzufügen</button>`;
-
-  // Teams
-  h+=`<div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin:20px 0 10px">Teams</div>`;
-  S.teams.forEach(t=>{
-    const members=t.members.map(id=>person(id)?.name||'').filter(Boolean).join(', ');
-    h+=`<div class="settings-row"><div style="flex:1"><div style="font-size:12px;font-weight:500">${t.name}</div><div style="font-size:10px;color:var(--t3)">${members||'Keine Mitglieder'}</div></div><button onclick="editTeam('${t.id}')" class="btn btn-gr" style="font-size:10px;padding:3px 9px">bearbeiten</button></div>`;
-  });
-  h+=`<button onclick="addTeam()" class="btn btn-gr" style="margin-top:8px;width:100%">+ Team hinzufügen</button>`;
-
-  h+=`<div class="mf"><button class="btn btn-gr" onclick="cm()">Schließen</button></div>`;
-  document.getElementById('mb').innerHTML=h;document.getElementById('ovl').classList.add('open');
-}
-
-function editTeam(tid){
-  const t=S.teams.find(x=>x.id===tid);if(!t)return;
-  const memberChecks=S.personen.map(p=>`
-    <label style="display:flex;align-items:center;gap:8px;padding:6px 0;cursor:pointer">
-      <input type="checkbox" value="${p.id}" ${t.members.includes(p.id)?'checked':''} style="width:auto">
-      ${av(p,22,8)}
-      <span style="font-size:12px">${p.name} <span style="color:var(--t3);font-size:10px">${p.rolle}</span></span>
-    </label>`).join('');
-  document.getElementById('mb').innerHTML=`<div class="mt">Team bearbeiten</div>`
-    +`<div class="fl"><label>Name</label><input id="tn" value="${t.name}" autofocus></div>`
-    +`<div class="fl"><label>Mitglieder</label><div style="background:var(--gray-bg);border-radius:8px;padding:4px 10px" id="tmembers">${memberChecks}</div></div>`
-    +`<div class="mf"><button class="btn btn-red" onclick="delTeam('${tid}')">Löschen</button><button class="btn btn-gr" onclick="openSettings()">Zurück</button><button class="btn btn-dk" onclick="saveTeam('${tid}')">Speichern</button></div>`;
-  document.getElementById('ovl').classList.add('open');
-}
-
-function addTeam(){
-  const memberChecks=S.personen.map(p=>`
-    <label style="display:flex;align-items:center;gap:8px;padding:6px 0;cursor:pointer">
-      <input type="checkbox" value="${p.id}" style="width:auto">
-      ${av(p,22,8)}
-      <span style="font-size:12px">${p.name} <span style="color:var(--t3);font-size:10px">${p.rolle}</span></span>
-    </label>`).join('');
-  document.getElementById('mb').innerHTML=`<div class="mt">Team hinzufügen</div>`
-    +`<div class="fl"><label>Name</label><input id="tn" placeholder="z.B. Marketing" autofocus></div>`
-    +`<div class="fl"><label>Mitglieder</label><div style="background:var(--gray-bg);border-radius:8px;padding:4px 10px">${memberChecks}</div></div>`
-    +`<div class="mf"><button class="btn btn-gr" onclick="openSettings()">Zurück</button><button class="btn btn-dk" onclick="saveTeam(null)">Speichern</button></div>`;
-  document.getElementById('ovl').classList.add('open');
-}
-
-async function saveTeam(tid){
-  const name=document.getElementById('tn').value.trim();if(!name)return;
-  const checked=[...document.querySelectorAll('#mb input[type=checkbox]:checked')].map(c=>c.value);
-
-  if(tid){
-    const t=S.teams.find(x=>x.id===tid);if(!t)return;
-    const oldMembers=[...t.members];
-    t.name=name;t.members=checked;
-    // Personen-Teams aktualisieren
-    S.personen.forEach(p=>{
-      const wasIn=oldMembers.includes(p.id),isIn=checked.includes(p.id);
-      if(wasIn&&!isIn)p.teams=(p.teams||[]).filter(x=>x!==tid);
-      if(!wasIn&&isIn){p.teams=p.teams||[];if(!p.teams.includes(tid))p.teams.push(tid);}
-    });
-    await dbPatch('teams',tid,{name,members:checked});
-  } else {
-    const id=nid('t'),rec={id,name,members:checked};
-    S.teams.push(rec);
-    await dbInsert('teams',rec);
-    // Personen zuordnen
-    checked.forEach(pid=>{const p=person(pid);if(p&&!p.teams.includes(id))p.teams.push(id);});
-  }
-  // Personen in DB updaten
-  await Promise.all(S.personen.map(p=>dbPatch('personen',p.id,{teams:p.teams})));
-  openSettings();render();
-}
-
-async function delTeam(tid){
-  if(!confirm('Team löschen?'))return;
-  S.teams=S.teams.filter(x=>x.id!==tid);
-  S.personen.forEach(p=>{p.teams=(p.teams||[]).filter(x=>x!==tid);});
-  await dbDelete('teams',tid);
-  await Promise.all(S.personen.map(p=>dbPatch('personen',p.id,{teams:p.teams})));
-  openSettings();render();
-}
-function editPerson(pid){
-  const p=person(pid);if(!p)return;
-  document.getElementById('mb').innerHTML=`<div class="mt">Person bearbeiten</div>`
-    +`<div class="f2"><div class="fl"><label>Name</label><input id="en" value="${p.name}" autofocus></div><div class="fl"><label>Kürzel</label><input id="ek" value="${p.k}" maxlength="3"></div></div>`
-    +`<div class="fl"><label>Rolle</label><input id="er" value="${p.rolle}"></div>`
-    +`<div class="fl"><label>Stufe</label><select id="es">${[['team','Teammitglied'],['lead','Team-Lead'],['gf','Geschäftsführung']].map(x=>`<option value="${x[0]}"${p.stufe===x[0]?' selected':''}>${x[1]}</option>`).join('')}</select></div>`
-    +`<div class="fl"><label>PIN</label><input id="ep" type="password" value="${p.pin}" maxlength="4"></div>`
-    +`<div class="mf">${pid!==realMe?`<button class="btn btn-red" onclick="deletePerson('${pid}')">Löschen</button>`:''}<button class="btn btn-gr" onclick="openSettings()">Zurück</button><button class="btn btn-dk" onclick="savePerson('${pid}')">Speichern</button></div>`;
-  document.getElementById('ovl').classList.add('open');
-}
-async function savePerson(pid){
-  const p=person(pid);if(!p)return;
-  p.name=document.getElementById('en').value.trim()||p.name;
-  p.k=document.getElementById('ek').value.trim().toUpperCase().slice(0,3)||p.k;
-  p.rolle=document.getElementById('er').value.trim()||p.rolle;
-  p.stufe=document.getElementById('es').value;
-  const np=document.getElementById('ep').value.trim();
-  if(np.length===4&&/^\d{4}$/.test(np))p.pin=np;
-  await dbPatch('personen',pid,{name:p.name,k:p.k,rolle:p.rolle,stufe:p.stufe,pin:p.pin});
-  openSettings();render();
-}
-async function deletePerson(pid){
-  if(!confirm('Person löschen?'))return;
-  S.personen=S.personen.filter(x=>x.id!==pid);
-  S.teams.forEach(t=>{t.members=t.members.filter(id=>id!==pid);});
-  await dbDelete('personen',pid);openSettings();render();
-}
-function openNutzer(){
-  document.getElementById('mb').innerHTML=`<div class="mt">Person hinzufügen</div>`
-    +`<div class="f2"><div class="fl"><label>Name</label><input id="un" autofocus></div><div class="fl"><label>Kürzel (2-3 Buchst.)</label><input id="uk" maxlength="3"></div></div>`
-    +`<div class="fl"><label>Rolle</label><input id="ur" placeholder="z.B. Verkauf"></div>`
-    +`<div class="fl"><label>Team</label><select id="ut">${S.teams.map(t=>`<option value="${t.id}">${t.name}</option>`).join('')}</select></div>`
-    +`<div class="fl"><label>Stufe</label><select id="ust"><option value="team">Teammitglied</option><option value="lead">Team-Lead</option><option value="gf">Geschäftsführung</option></select></div>`
-    +`<div class="fl"><label>PIN (4 Ziffern)</label><input id="upin" type="password" maxlength="4" placeholder="z.B. 6789"></div>`
-    +`<div class="mf"><button class="btn btn-gr" onclick="openSettings()">Zurück</button><button class="btn btn-dk" onclick="saveNutzer()">Hinzufügen</button></div>`;
-  document.getElementById('ovl').classList.add('open');
-}
-async function saveNutzer(){
-  const name=document.getElementById('un').value.trim(),k=document.getElementById('uk').value.trim().toUpperCase().slice(0,3);
-  if(!name||!k)return;
-  const pin=document.getElementById('upin').value.trim();
-  if(!pin||pin.length!==4||!/^\d{4}$/.test(pin)){alert('4-stellige PIN erforderlich.');return;}
-  const tid=document.getElementById('ut').value,id='u'+Date.now(),ci=S.personen.length%CL.length;
-  const p={id,name,k,rolle:document.getElementById('ur').value.trim()||'Teammitglied',stufe:document.getElementById('ust').value,ci,teams:[tid],pin};
-  S.personen.push(p);
-  await dbInsert('personen',p);
-  const t=S.teams.find(x=>x.id===tid);
-  if(t){t.members.push(id);await dbPatch('teams',tid,{members:t.members});}
-  // Login sofort aktualisieren
-  initLogin();
-  openSettings();render();
-}
-
-// ═══════════════════════════════════════════════
-// TIMERS
-// ═══════════════════════════════════════════════
-function startTimers(){
-  if(timIv)clearInterval(timIv);
-  timIv=setInterval(()=>{
-    // Aufgaben-Timer
-    document.querySelectorAll('[data-tid]').forEach(el=>{
-      const a=S.aufgaben.find(x=>x.id===el.dataset.tid);if(!a)return;
-      const s=elapsedSec(a),pct=Math.min(100,Math.round(s/((a.geplant||1)*3600)*100));
-      const n=el.querySelector('.tn'),f=el.querySelector('.tf');
-      if(n)n.textContent=fmt(s);if(f)f.style.width=pct+'%';
-    });
-    // Live-Uhr
-    const now=new Date();
-    const hh=('0'+now.getHours()).slice(-2),mm=('0'+now.getMinutes()).slice(-2);
-    const clock=document.getElementById('live-clock');
-    if(clock)clock.textContent=hh+':'+mm;
-    // Fokuszeit-Banner
-    if(aP){
-      const p=me();
-      if(p){
-        const fs=p.fokus_start||'09:00',fe=p.fokus_end||'11:00';
-        const [fsh,fsm]=fs.split(':').map(Number),[feh,fem]=fe.split(':').map(Number);
-        const nowMin=now.getHours()*60+now.getMinutes();
-        const startMin=fsh*60+fsm,endMin=feh*60+fem;
-        const inFokus=nowMin>=startMin&&nowMin<endMin;
-        const banner=document.getElementById('fokus-banner'),label=document.getElementById('fokus-label');
-        if(banner&&label){
-          banner.style.display=inFokus?'flex':'none';
-          if(inFokus)label.textContent=`Fokuszeit bis ${fe} — bitte nicht stören`;
-        }
-      }
-    }
-  },1000);
-}
-
-function cm(){document.getElementById('ovl').classList.remove('open');}
-window.addEventListener('keydown',e=>{if(e.key==='Escape')cm();});
-
-// ═══════════════════════════════════════════════
-// BOOT
-// ═══════════════════════════════════════════════
-(async()=>{
-  document.getElementById('login-screen').innerHTML=`<div style="font-size:13px;color:var(--t3);text-align:center;padding-top:40vh">Lädt…</div>`;
-  await loadData();
-
-  document.getElementById('login-screen').innerHTML=`<div class="login-box">
-    <div class="login-title">Halleluja OS</div>
-    <div class="login-sub">Wer bist du heute?</div>
-    <div class="person-grid" id="person-grid"></div>
-    <div id="pin-section" style="display:none">
-      <div class="pin-row">
-        <div class="pin-dot" id="pd0"></div><div class="pin-dot" id="pd1"></div>
-        <div class="pin-dot" id="pd2"></div><div class="pin-dot" id="pd3"></div>
-      </div>
-      <div class="pin-pad" id="pin-pad"></div>
-      <div class="login-err" id="login-err"></div>
-    </div>
-  </div>`;
-  initLogin();
-
-  // Session prüfen
-  try{
-    const raw=localStorage.getItem('h_session');
-    if(raw){
-      const s=JSON.parse(raw);
-      const ttl=8*60*60*1000;
-      if(Date.now()-s.ts<ttl&&person(s.pid)){
-        aP=s.pid;realMe=s.pid;
-        document.getElementById('login-screen').style.display='none';
-        document.getElementById('app').style.display='flex';
-        updateBadge();render();
-        if(shouldCheckin())showCheckin();
-      } else {
-        localStorage.removeItem('h_session');
-      }
-    }
-  }catch(e){}
-
-  // Auto-Logout alle 60 Sekunden prüfen
-  setInterval(()=>{
-    if(!aP)return;
-    try{
-      const raw=localStorage.getItem('h_session');
-      if(!raw){logout();return;}
-      const s=JSON.parse(raw);
-      if(Date.now()-s.ts>8*60*60*1000){logout();alert('Du wurdest nach 8 Stunden automatisch ausgeloggt.');}
-    }catch(e){}
-  },60000);
-})();
-</script>
-</body>
-</html>
+      out+='<div class="tz-block" style="'+(tz.erledigt?'opacity:.55':'')+'"><div class="tz-head">';
+      if(canManageTZ(z.id))out+='<input type="checkbox" '+(tz.erledigt?'checked
