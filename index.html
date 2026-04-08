@@ -743,112 +743,156 @@ function stepsHtml(a,ed){
 }
 
 // ═══════════════════════════════════════════════
-// MEIN TAG
+// MEIN TAG — Sam Ovens Style
 // ═══════════════════════════════════════════════
 function rTag(){
   const p=me(),c=cl(p);
   const myA=S.aufgaben.filter(a=>a.pid===aP&&canSee(a));
-  const neu=myA.filter(a=>a.status==='neu');
   const aktiv=myA.filter(a=>a.status==='aktiv');
+  const neu=myA.filter(a=>a.status==='neu');
   const bl=myA.filter(a=>a.status==='backlog').sort((a,b)=>(a.prio||'P9').localeCompare(b.prio||'P9'));
   const erl=myA.filter(a=>a.status==='erledigt');
-  const fq=fokusQ([aP]);
+
+  // Nächste Aufgabe — P1 zuerst, dann P2, dann P3
+  const naechste=aktiv.length?null:[...neu,...bl].sort((a,b)=>{
+    const po={'P1':0,'P2':1,'P3':2};
+    return (po[a.prio]??3)-(po[b.prio]??3);
+  })[0]||null;
+
   const ci=S.checkins[aP];
   let out='';
 
-  // Header
-  out+=`<div class="ph">${av(p,44,16)}`
-    +`<div><div style="font-size:15px;font-weight:700">${p.name}</div><div style="font-size:11px;color:var(--t3)">${p.rolle}</div></div>`
-    +`<div class="phs">`
-    +[{l:'neu',v:neu.length,c:'var(--red)'},{l:'aktiv',v:aktiv.length,c:'var(--blue)'},{l:'backlog',v:bl.length,c:'var(--t3)'},{l:'erledigt',v:erl.length,c:'var(--green)'}]
-      .map(x=>`<div style="text-align:center"><div class="phv" style="color:${x.v>0&&x.l!=='backlog'?x.c:'var(--t3)'}">${x.v}</div><div class="phl">${x.l}</div></div>`).join('')
-    +`</div></div>`;
+  // ── ZONE 1: JETZT — die eine Sache ──
+  if(aktiv.length){
+    // Läuft gerade
+    const a=aktiv[0];
+    const s=elapsedSec(a),pct=Math.min(100,Math.round(s/((a.geplant||1)*3600)*100));
+    const uD=a.ua.filter(u=>u.d).length;
+    out+=`<div style="background:var(--text);border-radius:18px;padding:24px;margin-bottom:16px;color:#fff">`;
+    out+=`<div style="font-size:10px;font-weight:700;opacity:.5;letter-spacing:.8px;text-transform:uppercase;margin-bottom:8px">🔥 Läuft gerade</div>`;
+    out+=`<div style="font-size:20px;font-weight:700;margin-bottom:4px;line-height:1.3">${a.titel}</div>`;
+    if(a.zielId){const z=zielObj(a.zielId);out+=`<div style="font-size:12px;opacity:.6;margin-bottom:16px">${z?z.name:''}</div>`;}
+    else out+=`<div style="font-size:12px;opacity:.6;margin-bottom:16px">${typInfo(a).label}</div>`;
+    // Timer groß
+    out+=`<div data-tid="${a.id}" style="margin-bottom:16px">`;
+    out+=`<div style="display:flex;align-items:baseline;gap:6px;margin-bottom:8px">`;
+    out+=`<div class="tn" style="font-size:36px;font-weight:700;font-family:monospace;color:#fff">${fmt(s)}</div>`;
+    out+=`<div style="font-size:13px;opacity:.5">/ ${fmtH(a.geplant)}</div>`;
+    out+=`</div>`;
+    out+=`<div style="height:4px;background:rgba(255,255,255,.15);border-radius:99px;overflow:hidden"><div class="tf" style="height:100%;border-radius:99px;background:#fff;width:${pct}%"></div></div>`;
+    out+=`</div>`;
+    // Steps
+    if(a.ua.length){
+      out+=`<div style="margin-bottom:16px;font-size:12px;opacity:.7">${uD}/${a.ua.length} Schritte erledigt</div>`;
+    }
+    // Buttons
+    out+=`<div style="display:flex;gap:10px">`;
+    out+=`<button onclick="fertig('${a.id}')" style="flex:1;padding:13px;border-radius:12px;background:#fff;color:var(--text);border:none;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer">✓ Erledigt</button>`;
+    out+=`<button onclick="pauseA('${a.id}')" style="padding:13px 16px;border-radius:12px;background:rgba(255,255,255,.15);color:#fff;border:none;font-family:inherit;font-size:14px;cursor:pointer">⏸</button>`;
+    out+=`<button onclick="openDetail('${a.id}')" style="padding:13px 16px;border-radius:12px;background:rgba(255,255,255,.15);color:#fff;border:none;font-family:inherit;font-size:14px;cursor:pointer">···</button>`;
+    out+=`</div></div>`;
 
-  // Check-in Banner
-  if(ci?.date===TODAY&&ci.morgen){
-    const isEve=new Date().getHours()>=17&&!ci.abend;
-    out+=`<div class="ci-banner" onclick="${isEve?'showCheckin()':''}">
-      <span style="font-size:16px">${isEve?'🌙':'☀️'}</span>
-      <div style="flex:1">
-        <div style="font-size:11px;font-weight:600;color:var(--purple)">Priorität heute</div>
-        <div style="font-size:12px;color:var(--text);margin-top:2px">${ci.morgen}</div>
-        ${ci.abend?`<div style="font-size:11px;color:var(--purple);margin-top:4px">Morgen: ${ci.abend}</div>`:''}
-      </div>
-      ${isEve?`<span style="font-size:11px;color:var(--purple);font-weight:500">Abend-Check →</span>`:''}
-    </div>`;
+    // Weitere aktive
+    if(aktiv.length>1){
+      out+=`<div style="margin-bottom:16px">`;
+      aktiv.slice(1).forEach(a2=>{
+        out+=`<div onclick="openDetail('${a2.id}')" style="background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:12px 14px;margin-bottom:8px;cursor:pointer;display:flex;align-items:center;gap:10px">`;
+        out+=`<div class="dot" style="background:var(--blue)"></div>`;
+        out+=`<div style="flex:1;font-size:13px;font-weight:500">${a2.titel}</div>`;
+        out+=`<div data-tid="${a2.id}" style="font-family:monospace;font-size:12px;color:var(--t2)">${fmt(elapsedSec(a2))}</div>`;
+        out+=`</div>`;
+      });
+      out+=`</div>`;
+    }
+
+  } else if(naechste) {
+    // Nächste Aufgabe — groß und klar
+    const isP1=naechste.prio==='P1';
+    const zN=getZielName(naechste),tzN=getTZName(naechste);
+    out+=`<div style="background:${isP1?'var(--red)':'var(--text)'};border-radius:18px;padding:24px;margin-bottom:16px;color:#fff">`;
+    out+=`<div style="font-size:10px;font-weight:700;opacity:.6;letter-spacing:.8px;text-transform:uppercase;margin-bottom:8px">🎯 Nächste Aufgabe</div>`;
+    out+=`<div style="font-size:22px;font-weight:700;margin-bottom:6px;line-height:1.3">${naechste.titel}</div>`;
+    out+=`<div style="display:flex;gap:8px;align-items:center;margin-bottom:20px;flex-wrap:wrap">`;
+    if(naechste.prio)out+=`<span style="font-size:11px;background:rgba(255,255,255,.2);border-radius:99px;padding:2px 10px;font-weight:700">${naechste.prio}</span>`;
+    if(zN)out+=`<span style="font-size:11px;opacity:.7">${zN}</span>`;
+    if(tzN)out+=`<span style="font-size:11px;opacity:.7">· ${tzN}</span>`;
+    if(naechste.dl){const d=dli(naechste.dl);if(d)out+=`<span style="font-size:11px;opacity:.7">· ${d.l}</span>`;}
+    out+=`</div>`;
+    out+=`<div style="display:flex;gap:10px">`;
+    out+=`<button onclick="startenA('${naechste.id}')" style="flex:1;padding:14px;border-radius:12px;background:#fff;color:var(--text);border:none;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer">▶ Jetzt starten</button>`;
+    out+=`<button onclick="openDetail('${naechste.id}')" style="padding:14px 16px;border-radius:12px;background:rgba(255,255,255,.15);color:#fff;border:none;font-family:inherit;font-size:14px;cursor:pointer">···</button>`;
+    out+=`</div></div>`;
+
+  } else if(!myA.length){
+    out+=`<div style="background:var(--green);border-radius:18px;padding:32px 24px;margin-bottom:16px;color:#fff;text-align:center">`;
+    out+=`<div style="font-size:36px;margin-bottom:12px">🎉</div>`;
+    out+=`<div style="font-size:20px;font-weight:700;margin-bottom:6px">Alles erledigt!</div>`;
+    out+=`<div style="font-size:13px;opacity:.8;margin-bottom:20px">Keine offenen Aufgaben.</div>`;
+    out+=`<button onclick="openNeu()" style="padding:12px 24px;border-radius:12px;background:#fff;color:var(--green);border:none;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer">+ Neue Aufgabe</button>`;
+    out+=`</div>`;
   }
 
-  // KPIs optional
+  // ── NEU — Priorität setzen ──
+  if(neu.length){
+    out+=`<div style="background:var(--red-bg);border:1.5px solid var(--red-bd);border-radius:14px;padding:14px 16px;margin-bottom:12px">`;
+    out+=`<div style="font-size:11px;font-weight:700;color:var(--red);margin-bottom:10px">⚡ ${neu.length} neue Aufgabe${neu.length>1?'n':''} — Priorität setzen</div>`;
+    neu.forEach(a=>{
+      out+=`<div style="background:#fff;border-radius:10px;padding:10px 12px;margin-bottom:8px">`;
+      out+=`<div style="font-size:13px;font-weight:600;margin-bottom:8px">${a.titel}</div>`;
+      out+=`<div style="display:flex;gap:6px">`;
+      ['P1','P2','P3'].forEach(pr=>{
+        const bg=pr==='P1'?'var(--red)':pr==='P2'?'#c2410c':'var(--t2)';
+        out+=`<button onclick="setPrio('${a.id}','${pr}')" style="flex:1;padding:7px;border-radius:8px;background:${bg};color:#fff;border:none;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer">${pr}</button>`;
+      });
+      out+=`<button onclick="openDetail('${a.id}')" style="padding:7px 10px;border-radius:8px;background:var(--gray-bg);color:var(--t2);border:1px solid var(--bd);font-family:inherit;font-size:12px;cursor:pointer">···</button>`;
+      out+=`</div></div>`;
+    });
+    out+=`</div>`;
+  }
+
+  // ── WEITERE AUFGABEN — eingeklappt ──
+  const weitere=bl.filter(a=>a.id!==naechste?.id);
+  if(weitere.length){
+    out+=`<details style="margin-bottom:12px"><summary style="list-style:none;cursor:pointer;padding:12px 16px;background:var(--sf);border:1px solid var(--bd);border-radius:12px;display:flex;align-items:center;justify-content:space-between">`;
+    out+=`<span style="font-size:13px;font-weight:600">Weitere Aufgaben</span>`;
+    out+=`<span style="font-size:12px;color:var(--t3)">${weitere.length} · anzeigen</span></summary>`;
+    out+=`<div style="margin-top:8px">`;
+    weitere.forEach(a=>{
+      const zN=getZielName(a);
+      out+=`<div onclick="openDetail('${a.id}')" style="background:var(--sf);border:1px solid var(--bd);border-radius:10px;padding:10px 14px;margin-bottom:6px;cursor:pointer;display:flex;align-items:center;gap:10px">`;
+      out+=`<div style="flex:1"><div style="font-size:12px;font-weight:500">${a.titel}</div>`;
+      out+=`<div style="display:flex;gap:5px;margin-top:3px">${prioTag(a.prio)}${zN?`<span style="font-size:10px;color:var(--t3)">${zN}</span>`:''} ${dlTag(a.dl)}</div></div>`;
+      out+=`<button onclick="event.stopPropagation();startenA('${a.id}')" style="font-size:11px;padding:5px 10px;border-radius:8px;background:var(--text);color:#fff;border:none;font-family:inherit;cursor:pointer">▶</button>`;
+      out+=`</div>`;
+    });
+    out+=`</div></details>`;
+  }
+
+  // ── HEUTE ERLEDIGT — eingeklappt ──
+  if(erl.length){
+    out+=`<details style="margin-bottom:12px"><summary style="list-style:none;cursor:pointer;padding:12px 16px;background:var(--green-bg);border:1px solid var(--green-bd);border-radius:12px;display:flex;align-items:center;justify-content:space-between">`;
+    out+=`<span style="font-size:13px;font-weight:600;color:var(--green)">✓ Heute erledigt</span>`;
+    out+=`<span style="font-size:12px;color:var(--green);opacity:.7">${erl.length} Aufgabe${erl.length>1?'n':''}</span></summary>`;
+    out+=`<div style="margin-top:8px">`;
+    erl.forEach(a=>{
+      out+=`<div style="background:var(--green-bg);border:1px solid var(--green-bd);border-radius:10px;padding:9px 14px;margin-bottom:5px;display:flex;align-items:center;gap:8px">`;
+      out+=`<span style="flex:1;font-size:12px;text-decoration:line-through;color:var(--t2)">${a.titel}</span>`;
+      out+=a.gebucht?`<span style="font-size:11px;color:var(--green);font-weight:600">${fmt(a.gebucht*3600)}</span>`:'';
+      out+=`</div>`;
+    });
+    out+=`</div></details>`;
+  }
+
+  // ── TAGESPLAN + KPIs — ganz unten, eingeklappt ──
+  out+=`<details style="margin-bottom:12px"><summary style="list-style:none;cursor:pointer;padding:12px 16px;background:var(--sf);border:1px solid var(--bd);border-radius:12px;display:flex;align-items:center;justify-content:space-between">`;
+  out+=`<span style="font-size:13px;font-weight:600">📅 Tagesplan</span>`;
+  out+=`<span style="font-size:12px;color:var(--t3)">anzeigen</span></summary>`;
+  out+=`<div style="margin-top:8px">${rZeitstrahl(myA)}</div></details>`;
+
   out+=kpiBlock(aP);
 
-  // Zeitstrahl — eingeklappt, ganz oben als optionaler Tagesplan
-  out+=`<details style="margin-bottom:16px"><summary style="cursor:pointer;list-style:none;display:flex;align-items:center;justify-content:space-between;padding:9px 12px;background:var(--sf);border:1px solid var(--bd);border-radius:10px"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:13px">📅</span><span style="font-size:12px;font-weight:600;color:var(--text)">Tagesplan</span>${naechsteP1(myA)?`<span class="tag" style="background:var(--red-bg);color:var(--red)">▶ ${naechsteP1(myA).titel}</span>`:''}</div><span style="font-size:10px;color:var(--t3)">anzeigen</span></summary><div style="margin-top:8px">${rZeitstrahl(myA)}</div></details>`;
-
-  // NEU
-  if(neu.length){
-    out+=secHead('Neu — Priorität setzen','var(--red)',`<span style="background:var(--red-bg);color:var(--red);border-radius:99px;padding:1px 7px;font-size:10px;font-weight:600">${neu.length}</span>`);
-    neu.forEach(a=>{
-      const tzN=getTZName(a),zN=getZielName(a);
-      out+=`<div class="card neu-c">`
-        +`<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px">`
-        +`<div style="flex:1"><div style="font-size:13px;font-weight:600;margin-bottom:5px">${a.titel}${a.vertraulich?'<span class="lock" style="margin-left:6px">vertraulich</span>':''}</div>`
-        +`<div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center">${typTag(a)}${zN?`<span class="tag" style="background:var(--gray-bg);color:var(--t2)">${zN}</span>`:''}${tzN?`<span class="tag" style="background:var(--purple-bg);color:var(--purple)">${tzN}</span>`:''} ${dlTag(a.dl)}${a.notiz?`<span style="font-size:10px;color:var(--t3);font-style:italic">${a.notiz}</span>`:''}</div></div>`
-        +`<button class="btn btn-gr" onclick="openDetail('${a.id}')">···</button></div>`
-        +`<div style="display:flex;gap:5px;align-items:center"><span style="font-size:10px;color:var(--t3);margin-right:2px">Priorität:</span>`
-        +['P1','P2','P3'].map(pr=>{const bg=pr==='P1'?'var(--red-bg)':pr==='P2'?'#fff7ed':'var(--gray-bg)';const tc=pr==='P1'?'var(--red)':pr==='P2'?'#c2410c':'var(--t2)';return`<button style="font-size:11px;padding:3px 9px;border-radius:8px;border:1px solid ${tc};background:${bg};color:${tc};cursor:pointer;font-family:inherit" onclick="setPrio('${a.id}','${pr}')">${pr}</button>`;}).join('')
-        +`</div></div>`;
-    });
-  }
-
-  // AKTIV
-  if(aktiv.length){
-    out+=secHead('Läuft gerade','var(--blue)');
-    aktiv.forEach(a=>{
-      const s=elapsedSec(a),pct=Math.min(100,Math.round(s/((a.geplant||1)*3600)*100));
-      const uD=a.ua.filter(u=>u.d).length,tzN=getTZName(a),zN=getZielName(a);
-      out+=`<div class="card aktiv-c">`
-        +`<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:${a.ua.length?'8px':'0'}">`
-        +`<div class="dot" style="background:var(--blue);margin-top:6px"></div>`
-        +`<div style="flex:1"><div style="font-size:13px;font-weight:600;margin-bottom:5px">${a.titel}${a.vertraulich?'<span class="lock" style="margin-left:6px">vertraulich</span>':''}</div>`
-        +`<div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center">${typTag(a)}${prioTag(a.prio)}${zN?`<span class="tag" style="background:var(--gray-bg);color:var(--t2)">${zN}</span>`:''}${tzN?`<span class="tag" style="background:var(--purple-bg);color:var(--purple)">${tzN}</span>`:''} ${dlTag(a.dl)}${a.ua.length?`<span style="font-size:10px;color:var(--t3)">${uD}/${a.ua.length} Schritte</span>`:''}</div></div>`
-        +`<div data-tid="${a.id}" class="timer"><div class="tn">${fmt(s)}</div><div style="font-size:9px;color:var(--t3)">/ ${fmtH(a.geplant)}</div><div class="tbar"><div class="tf" style="width:${pct}%"></div></div></div></div>`
-        +stepsHtml(a,true)
-        +`<div style="display:flex;gap:5px;margin-top:8px"><button class="btn btn-ok" onclick="fertig('${a.id}')">✓ Erledigt</button><button class="btn btn-gr" onclick="pauseA('${a.id}')">⏸ Pause</button><button class="btn btn-gr" onclick="openDetail('${a.id}')">···</button></div></div>`;
-    });
-  }
-
-  // BACKLOG
-  if(bl.length){
-    out+=secHead('Backlog','var(--t2)');
-    out+=`<div style="display:flex;gap:12px;margin-bottom:10px;padding:8px 12px;background:var(--sf);border:1px solid var(--bd);border-radius:9px">`
-      +`<span style="font-size:10px;color:var(--red);font-weight:600">P1 Konsequenzen heute</span>`
-      +`<span style="color:var(--bd)">·</span>`
-      +`<span style="font-size:10px;color:#c2410c;font-weight:600">P2 Wichtig, kein Feuer</span>`
-      +`<span style="color:var(--bd)">·</span>`
-      +`<span style="font-size:10px;color:var(--t2);font-weight:600">P3 Wenn Zeit ist</span>`
-      +`</div>`;
-    bl.forEach(a=>{
-      const tzN=getTZName(a),zN=getZielName(a);
-      out+=`<div class="card" style="display:flex;align-items:center;gap:10px;padding:10px 13px">`
-        +`<div class="dot" style="background:var(--bd)"></div>`
-        +`<div style="flex:1"><div style="font-size:12px;font-weight:500;margin-bottom:4px">${a.titel}${a.vertraulich?'<span class="lock" style="margin-left:5px">vertraulich</span>':''}</div>`
-        +`<div style="display:flex;gap:5px;flex-wrap:wrap">${typTag(a)}${prioTag(a.prio)}${zN?`<span class="tag" style="background:var(--gray-bg);color:var(--t2)">${zN}</span>`:''}${tzN?`<span class="tag" style="background:var(--purple-bg);color:var(--purple)">${tzN}</span>`:''} ${dlTag(a.dl)}</div></div>`
-        +`<button class="btn btn-dk" onclick="startenA('${a.id}')">▶ Starten</button></div>`;
-    });
-  }
-
-  // ERLEDIGT
-  if(erl.length){
-    out+=secHead('Heute erledigt','var(--green)');
-    erl.forEach(a=>{
-      out+=`<div style="background:var(--green-bg);border:1px solid var(--green-bd);border-radius:10px;padding:8px 12px;margin-bottom:5px;display:flex;align-items:center;gap:8px">`
-        +`<span style="flex:1;font-size:11px;text-decoration:line-through;color:var(--t2)">${a.titel}</span>`
-        +(a.gebucht?`<span style="font-size:11px;color:var(--green);font-weight:600">${fmt(a.gebucht*3600)}</span>`:'')
-        +'</div>';
-    });
-  }
-
-  if(!myA.length)out+=`<div class="empty-state">Keine Aufgaben.<br><button class="btn btn-dk" onclick="openNeu()" style="margin-top:14px">+ Aufgabe hinzufügen</button></div>`;
+  // Fokus Score
+  const fq=fokusQ([aP]);
   if(myA.length)out+=`<div class="focus-bar"><span style="font-size:11px;color:var(--t2)">Fokus heute</span><div class="focus-track"><div class="focus-fill" style="width:${fq}%"></div></div><span style="font-size:11px;font-weight:600">${fq}% strategisch</span></div>`;
 
   document.getElementById('main').innerHTML=out;
