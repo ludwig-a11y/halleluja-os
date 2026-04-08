@@ -806,16 +806,35 @@ function rTag(){
     }
 
   } else if(naechste) {
-    // Nächste Aufgabe — groß und klar
-    const isP1=naechste.prio==='P1';
     const zN=getZielName(naechste),tzN=getTZName(naechste);
-    out+=`<div style="background:${isP1?'var(--red)':'var(--text)'};border-radius:18px;padding:24px;margin-bottom:16px;color:#fff">`;
-    out+=`<div style="font-size:10px;font-weight:700;opacity:.6;letter-spacing:.8px;text-transform:uppercase;margin-bottom:8px">🎯 Nächste Aufgabe</div>`;
-    out+=`<div style="font-size:22px;font-weight:700;margin-bottom:6px;line-height:1.3">${naechste.titel}</div>`;
+    const pc=naechste.prio==='P1'?'var(--red)':naechste.prio==='P2'?'#c2410c':'var(--t2)';
+    const pb=naechste.prio==='P1'?'var(--red-bg)':naechste.prio==='P2'?'#fff7ed':'var(--gray-bg)';
+    out+=`<div style="background:var(--sf);border:1.5px solid var(--bd);border-radius:18px;padding:24px;margin-bottom:16px;cursor:pointer;transition:box-shadow .15s" onclick="openDetail('${naechste.id}')" onmouseenter="this.style.boxShadow='0 4px 20px rgba(0,0,0,.08)'" onmouseleave="this.style.boxShadow='none'">`;
+    out+=`<div style="font-size:10px;font-weight:700;color:var(--t3);letter-spacing:.8px;text-transform:uppercase;margin-bottom:12px">🎯 Nächste Aufgabe</div>`;
+    out+=`<div style="font-size:22px;font-weight:700;color:var(--text);margin-bottom:10px;line-height:1.3">${naechste.titel}</div>`;
     out+=`<div style="display:flex;gap:8px;align-items:center;margin-bottom:20px;flex-wrap:wrap">`;
-    if(naechste.prio)out+=`<span style="font-size:11px;background:rgba(255,255,255,.2);border-radius:99px;padding:2px 10px;font-weight:700">${naechste.prio}</span>`;
-    if(zN)out+=`<span style="font-size:11px;opacity:.7">${zN}</span>`;
-    if(tzN)out+=`<span style="font-size:11px;opacity:.7">· ${tzN}</span>`;
+    if(naechste.prio)out+=`<span style="font-size:11px;background:${pb};color:${pc};border-radius:99px;padding:3px 10px;font-weight:700">${naechste.prio}</span>`;
+    if(zN)out+=`<span style="font-size:12px;color:var(--t2)">${zN}</span>`;
+    if(tzN)out+=`<span style="font-size:12px;color:var(--purple)">· ${tzN}</span>`;
+    if(naechste.dl){const d=dli(naechste.dl);if(d)out+=`<span style="font-size:11px;color:${d.c}">${d.l}</span>`;}
+    if(naechste.geplant)out+=`<span style="font-size:11px;color:var(--t3)">${fmtH(naechste.geplant)}</span>`;
+    out+=`</div>`;
+    if(naechste.ua?.length){
+      out+=`<div style="margin-bottom:16px;padding:10px 12px;background:var(--gray-bg);border-radius:10px">`;
+      naechste.ua.slice(0,3).forEach(u=>{
+        out+=`<div style="display:flex;align-items:center;gap:8px;padding:3px 0;font-size:12px;color:${u.d?'var(--t3)':'var(--text)'}">`;
+        out+=`<div style="width:12px;height:12px;border-radius:3px;border:1.5px solid ${u.d?'var(--green)':'var(--bd)'};background:${u.d?'var(--green)':'transparent'};flex-shrink:0;display:flex;align-items:center;justify-content:center">${u.d?'<span style="color:#fff;font-size:8px">✓</span>':''}</div>`;
+        out+=`<span style="${u.d?'text-decoration:line-through':''}">${u.t}</span>`;
+        out+=`</div>`;
+      });
+      if(naechste.ua.length>3)out+=`<div style="font-size:11px;color:var(--t3);margin-top:4px">+${naechste.ua.length-3} weitere</div>`;
+      out+=`</div>`;
+    }
+    if(naechste.notiz)out+=`<div style="font-size:12px;color:var(--t2);font-style:italic;margin-bottom:16px;padding:8px 12px;background:var(--gray-bg);border-radius:8px">${naechste.notiz}</div>`;
+    out+=`<div style="display:flex;gap:10px" onclick="event.stopPropagation()">`;
+    out+=`<button onclick="startenA('${naechste.id}')" style="flex:1;padding:14px;border-radius:12px;background:var(--text);color:#fff;border:none;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer">▶ Starten</button>`;
+    out+=`<button onclick="openDetail('${naechste.id}')" style="padding:14px 18px;border-radius:12px;background:var(--gray-bg);color:var(--t2);border:1px solid var(--bd);font-family:inherit;font-size:13px;font-weight:500;cursor:pointer">Details</button>`;
+    out+=`</div></div>`;· ${tzN}</span>`;
     if(naechste.dl){const d=dli(naechste.dl);if(d)out+=`<span style="font-size:11px;opacity:.7">· ${d.l}</span>`;}
     out+=`</div>`;
     out+=`<div style="display:flex;gap:10px">`;
