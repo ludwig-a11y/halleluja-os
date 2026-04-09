@@ -155,6 +155,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;font-size:1
 .prio-dd-item:hover{background:var(--gray-bg)}
 .prio-dd-item:first-child{border-radius:10px 10px 0 0}
 .prio-dd-item:last-child{border-radius:0 0 10px 10px}
+@keyframes bell-shake{0%,100%{transform:rotate(0)}15%{transform:rotate(18deg)}30%{transform:rotate(-16deg)}45%{transform:rotate(12deg)}60%{transform:rotate(-10deg)}75%{transform:rotate(6deg)}90%{transform:rotate(-4deg)}}
+@keyframes sonder-pulse{0%,100%{box-shadow:0 0 0 0 rgba(161,98,7,.4)}50%{box-shadow:0 0 0 8px rgba(161,98,7,0)}}
+.kpi-item.sonder{border-color:var(--amber);background:var(--amber-bg)}
 </style>
 </head>
 <body>
@@ -442,7 +445,57 @@ async function incrementKpi(kpiId,pid){
   const newVal=Math.max(0,(cur||0)+1);
   await _saveKpi(kpiId,pid,newVal);
   render();
-  showPaddelCelebration(pid);
+  if(k.sonder)showSonderCelebration(pid,k.label,newVal,k.ziel);
+  else showPaddelCelebration(pid);
+}
+function showSonderCelebration(pid,label,val,ziel){
+  const p=person(pid);
+  try{
+    const ctx=new(window.AudioContext||window.webkitAudioContext)();
+    [[880,0],[660,.15],[440,.35],[550,.6],[440,.9]].forEach(([freq,t])=>{
+      const o=ctx.createOscillator(),g=ctx.createGain();
+      o.connect(g);g.connect(ctx.destination);
+      o.type='sine';o.frequency.value=freq;
+      g.gain.setValueAtTime(.5,ctx.currentTime+t);
+      g.gain.exponentialRampToValueAtTime(.001,ctx.currentTime+t+1.2);
+      o.start(ctx.currentTime+t);o.stop(ctx.currentTime+t+1.5);
+    });
+  }catch(e){}
+  const el=document.createElement('div');
+  el.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column;cursor:pointer;text-align:center;padding:24px';
+  el.onclick=()=>el.remove();
+  el.innerHTML='<div style="font-size:90px;animation:bell-shake .6s ease infinite">🔔</div>'
+    +'<div style="font-size:11px;font-weight:700;letter-spacing:3px;color:var(--amber);text-transform:uppercase;margin:16px 0 8px">Verkauf abgeschlossen</div>'
+    +'<div style="font-size:36px;font-weight:900;color:#fff;margin-bottom:8px">'+(p?p.name:'')+'</div>'
+    +'<div style="font-size:18px;color:rgba(255,255,255,.7);margin-bottom:32px">'+label+' · '+val+' / '+ziel+'</div>'
+    +'<div style="font-size:12px;color:rgba(255,255,255,.35)">Tippen zum Schließen</div>';
+  document.body.appendChild(el);
+  showKonfetti();
+  setTimeout(()=>el.remove(),10000);
+}
+let _sonderSeen={},_sonderPoll=null;
+function startSonderPoller(){
+  if(_sonderPoll)return;
+  const sonderKpis=S.ziele.flatMap(z=>z.kpis||[]).filter(k=>k.sonder);
+  sonderKpis.forEach(k=>{const v=S.kpiVals[aP+'-'+k.id];_sonderSeen[k.id]=v?.datum===TODAY?v.val:0;});
+  _sonderPoll=setInterval(async()=>{
+    if(!isGF())return;
+    const sk=S.ziele.flatMap(z=>z.kpis||[]).filter(k=>k.sonder);
+    if(!sk.length)return;
+    const ids='('+sk.map(k=>'\''+k.id+'\'').join(',')+')';
+    const rows=await dbGet('kpi_vals','kpi_id=in.'+ids+'&datum=eq.'+TODAY);
+    if(!rows)return;
+    rows.forEach(row=>{
+      const prev=_sonderSeen[row.kpi_id]??0;
+      if(row.val>prev&&row.pid!==aP){
+        _sonderSeen[row.kpi_id]=row.val;
+        const k=sk.find(x=>x.id===row.kpi_id);
+        showSonderCelebration(row.pid,k?.label||'Verkauf',row.val,k?.ziel||'?');
+      } else if(row.val>prev){
+        _sonderSeen[row.kpi_id]=row.val;
+      }
+    });
+  },5000);
 }
 function isFällig(freq){
   const now=new Date();
@@ -464,7 +517,8 @@ function rKpiBlock(pid){
     const displayVal=todayVal!==null?todayVal:kpiVal(k);
     const ok=k.inv?displayVal<=k.ziel:displayVal>=k.ziel*0.85;
     const pct=Math.min(100,Math.round((k.inv?Math.max(0,k.ziel-displayVal+k.ziel):displayVal)/(k.ziel||1)*100));
-    out+='<div class="kpi-item '+(fällig?'fällig':'inaktiv')+'">';
+    const showBtn=fällig||k.sonder;
+    out+='<div class="kpi-item '+(k.sonder?'sonder':fällig?'fällig':'inaktiv')+'">';
     out+='<div class="kpi-name">'+k.label+(k.unit?'<span style="font-weight:400"> · '+k.unit+'</span>':'')+'</div>';
     out+='<div class="kpi-goal-ref">→ '+k.zielName+'</div>';
     out+='<div style="display:flex;align-items:baseline;gap:4px">';
@@ -473,15 +527,19 @@ function rKpiBlock(pid){
     out+='</div>';
     out+='<div style="height:3px;border-radius:99px;background:rgba(0,0,0,.07);overflow:hidden;margin:5px 0">'
       +'<div style="height:100%;border-radius:99px;background:'+(ok?'var(--green)':'var(--red)')+';width:'+pct+'%"></div></div>';
-    out+='<div class="kpi-freq-label">'+freqLabel(k.freq)+(fällig?'':' · nicht heute fällig')+'</div>';
-    if(fällig){
-      out+='<button onclick="incrementKpi(\''+k.id+'\',\''+pid+'\')" style="width:100%;margin-top:10px;padding:10px;border-radius:10px;background:var(--text);color:#fff;border:none;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer;letter-spacing:.02em">+ 1</button>';
-      out+='<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--bd)">';
-      out+='<div style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">Tagesabschluss</div>';
-      out+='<div class="kpi-entry">'
-        +'<input type="number" id="kpi-inp-'+k.id+'" value="'+(todayVal!==null?todayVal:displayVal)+'" min="0" placeholder="Finalwert" style="width:0;min-width:0;flex:1" onkeydown="if(event.key===\'Enter\'){event.preventDefault();submitKpi(\''+k.id+'\',\''+pid+'\')}">'
-        +'<button onclick="submitKpi(\''+k.id+'\',\''+pid+'\')">✓</button>'
-        +'</div></div>';
+    if(!k.sonder)out+='<div class="kpi-freq-label">'+freqLabel(k.freq)+(fällig?'':' · nicht heute fällig')+'</div>';
+    if(showBtn){
+      if(k.sonder){
+        out+='<button onclick="incrementKpi(\''+k.id+'\',\''+pid+'\')" style="width:100%;margin-top:12px;padding:14px;border-radius:12px;background:var(--amber);color:#fff;border:none;font-family:inherit;font-size:17px;font-weight:800;cursor:pointer;letter-spacing:.03em;animation:sonder-pulse 2s infinite">🔔 Verkauf eintragen</button>';
+      }else{
+        out+='<button onclick="incrementKpi(\''+k.id+'\',\''+pid+'\')" style="width:100%;margin-top:10px;padding:10px;border-radius:10px;background:var(--text);color:#fff;border:none;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer;letter-spacing:.02em">+ 1</button>';
+        out+='<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--bd)">';
+        out+='<div style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">Tagesabschluss</div>';
+        out+='<div class="kpi-entry">'
+          +'<input type="number" id="kpi-inp-'+k.id+'" value="'+(todayVal!==null?todayVal:displayVal)+'" min="0" placeholder="Finalwert" style="width:0;min-width:0;flex:1" onkeydown="if(event.key===\'Enter\'){event.preventDefault();submitKpi(\''+k.id+'\',\''+pid+'\')}">'
+          +'<button onclick="submitKpi(\''+k.id+'\',\''+pid+'\')">✓</button>'
+          +'</div></div>';
+      }
     }
     out+='</div>';
   });
@@ -742,7 +800,7 @@ function tryLogin(){
     try{localStorage.setItem('h_session',JSON.stringify({pid:loginSel,ts:Date.now()}));}catch(e){}
     document.getElementById('login-screen').style.display='none';
     document.getElementById('app').style.display='flex';
-    updateBadge();render();
+    updateBadge();render();startSonderPoller();
   } else {
     document.getElementById('login-err').textContent='Falsche PIN.';pinIn='';updDots();
   }
@@ -1286,6 +1344,7 @@ function editKpiDef(zid,kid){
     +'<div class="f2"><div class="fl"><label>Einheit</label><input id="ku" value="'+(k.unit||'')+'" placeholder="%, Stk…"></div><div class="fl"><label>Rhythmus</label><select id="kf">'+FREQ.map(f=>'<option'+(k.freq===f?' selected':'')+'>'+f+'</option>').join('')+'</select></div></div>'
     +'<div class="fl"><label>Verantwortlich</label><select id="kp">'+S.personen.map(p=>'<option value="'+p.id+'"'+(k.pid===p.id?' selected':'')+'>'+p.name+'</option>').join('')+'</select></div>'
     +'<div class="fl"><label style="text-transform:none;font-size:13px;font-weight:400;display:flex;align-items:center;gap:8px"><input type="checkbox" id="kinv"'+(k.inv?' checked':'')+' style="width:auto"> Niedriger ist besser</label></div>'
+    +'<div class="fl"><label style="text-transform:none;font-size:13px;font-weight:400;display:flex;align-items:center;gap:8px"><input type="checkbox" id="ksonder"'+(k.sonder?' checked':'')+' style="width:auto"> 🔔 Sonder-KPI (Glocken-Celebration für GF)</label></div>'
     +'<div class="mf"><button class="btn btn-red" onclick="delKpi(\''+zid+'\',\''+kid+'\')">Löschen</button><button class="btn btn-gr" onclick="cm()">Abbrechen</button><button class="btn btn-dk" onclick="saveKpi(\''+zid+'\',\''+kid+'\')">Speichern</button></div>';
   document.getElementById('ovl').classList.add('open');
 }
@@ -1298,7 +1357,8 @@ async function saveKpi(zid,kid){
   k.freq=document.getElementById('kf').value;
   k.pid=document.getElementById('kp').value;
   k.inv=document.getElementById('kinv').checked;
-  await dbPatch('kpis',kid,{label:k.label,ist:k.ist,ziel:k.ziel,unit:k.unit,freq:k.freq,pid:k.pid,inv:k.inv});
+  k.sonder=document.getElementById('ksonder').checked;
+  await dbPatch('kpis',kid,{label:k.label,ist:k.ist,ziel:k.ziel,unit:k.unit,freq:k.freq,pid:k.pid,inv:k.inv,sonder:k.sonder});
   cm();rZiele();
 }
 async function delKpi(zid,kid){
@@ -1630,7 +1690,7 @@ window.addEventListener('keydown',e=>{if(e.key==='Escape')cm();});
         aP=s.pid;realMe=s.pid;
         document.getElementById('login-screen').style.display='none';
         document.getElementById('app').style.display='flex';
-        updateBadge();render();
+        updateBadge();render();startSonderPoller();
       } else localStorage.removeItem('h_session');
     }
   }catch(e){}
