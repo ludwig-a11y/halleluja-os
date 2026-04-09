@@ -1341,7 +1341,7 @@ async function runAI(){
   const zielList=S.ziele.map(z=>z.id+'='+z.name).join(',');
   const sys='Du bist Assistent für Halleluja OS. Extrahiere eine Aufgabe und antworte NUR mit JSON:\n{"titel":"...","pid":"person_id","typ":"strategisch|operativ|random","zielId":"ziel_id|null","prio":"P1|P2|P3|null","dl":"YYYY-MM-DD|null","notiz":"..."}\nPersonen: '+personList+'\nZiele: '+zielList+'\nHeute: '+TODAY;
   try{
-    const resp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:500,system:sys,messages:[{role:'user',content:inp}]})});
+    const resp=await fetch('https://halleluja-app.germanywestcentral.cloudapp.azure.com/n8n/webhook/ki-proxy',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:500,system:sys,messages:[{role:'user',content:inp}]})});
     const data=await resp.json();
     const text=data.content?.map(c=>c.text||'').join('')||'';
     let parsed;
