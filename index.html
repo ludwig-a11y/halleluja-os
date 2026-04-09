@@ -456,8 +456,8 @@ function rKpiBlock(pid){
       +'<div style="height:100%;border-radius:99px;background:'+(ok?'var(--green)':'var(--red)')+';width:'+pct+'%"></div></div>';
     out+='<div class="kpi-freq-label">'+freqLabel(k.freq)+(fällig?'':' · nicht heute fällig')+'</div>';
     if(fällig){
-      out+='<div class="kpi-entry">'
-        +'<input type="number" id="kpi-inp-'+k.id+'" value="'+(todayVal!==null?todayVal:displayVal)+'" min="0" placeholder="Ist-Wert">'
+      out+='<div class="kpi-entry" style="margin-top:8px">'
+        +'<input type="number" id="kpi-inp-'+k.id+'" value="'+(todayVal!==null?todayVal:displayVal)+'" min="0" placeholder="Ist-Wert" style="width:0;min-width:0;flex:1" onkeydown="if(event.key===\'Enter\'){event.preventDefault();submitKpi(\''+k.id+'\',\''+pid+'\')}">'
         +'<button onclick="submitKpi(\''+k.id+'\',\''+pid+'\')">✓</button>'
         +'</div>';
     }
@@ -466,11 +466,22 @@ function rKpiBlock(pid){
   out+='</div></div>';
   return out;
 }
-function submitKpi(kpiId,pid){
+async function submitKpi(kpiId,pid){
   const el=document.getElementById('kpi-inp-'+kpiId);if(!el)return;
   const val=parseFloat(el.value)||0;
+  const allKpis=S.ziele.flatMap(z=>z.kpis||[]);
+  const k=allKpis.find(x=>x.id===kpiId);
+  const wasOk=k?(k.inv?val<=k.ziel:val>=k.ziel*0.85):false;
   saveKpiTodayVal(kpiId,pid,val);
+  S.kpiVals[pid+'-'+kpiId]={val,datum:TODAY};
+  const existing=S.kpiVals[pid+'-'+kpiId];
+  if(existing&&existing.datum===TODAY){
+    await supa('kpi_vals?pid=eq.'+pid+'&kpi_id=eq.'+kpiId+'&datum=eq.'+TODAY,{method:'PATCH',body:{val},prefer:'return=minimal'});
+  }else{
+    await supa('kpi_vals',{method:'POST',body:{pid,kpi_id:kpiId,val,datum:TODAY}});
+  }
   render();
+  if(wasOk)showPaddelCelebration(pid);
 }
 
 function rDelegBlock(pid){
