@@ -425,6 +425,25 @@ function saveKpiTodayVal(kpiId,pid,val){
   S.kpiToday[pid+'-'+kpiId]=val;
   try{localStorage.setItem('kpiToday_'+TODAY,JSON.stringify(S.kpiToday));}catch(e){}
 }
+async function _saveKpi(kpiId,pid,val){
+  saveKpiTodayVal(kpiId,pid,val);
+  const existing=S.kpiVals[pid+'-'+kpiId];
+  S.kpiVals[pid+'-'+kpiId]={val,datum:TODAY};
+  if(existing&&existing.datum===TODAY){
+    await supa('kpi_vals?pid=eq.'+pid+'&kpi_id=eq.'+kpiId+'&datum=eq.'+TODAY,{method:'PATCH',body:{val},prefer:'return=minimal'});
+  }else{
+    await supa('kpi_vals',{method:'POST',body:{pid,kpi_id:kpiId,val,datum:TODAY}});
+  }
+}
+async function incrementKpi(kpiId,pid){
+  const allKpis=S.ziele.flatMap(z=>z.kpis||[]);
+  const k=allKpis.find(x=>x.id===kpiId);if(!k)return;
+  const cur=getKpiTodayVal(kpiId,pid)??kpiVal(k);
+  const newVal=Math.max(0,(cur||0)+1);
+  await _saveKpi(kpiId,pid,newVal);
+  render();
+  showPaddelCelebration(pid);
+}
 function isFällig(freq){
   const now=new Date();
   if(freq==='täglich')return true;
@@ -456,10 +475,13 @@ function rKpiBlock(pid){
       +'<div style="height:100%;border-radius:99px;background:'+(ok?'var(--green)':'var(--red)')+';width:'+pct+'%"></div></div>';
     out+='<div class="kpi-freq-label">'+freqLabel(k.freq)+(fällig?'':' · nicht heute fällig')+'</div>';
     if(fällig){
-      out+='<div class="kpi-entry" style="margin-top:8px">'
-        +'<input type="number" id="kpi-inp-'+k.id+'" value="'+(todayVal!==null?todayVal:displayVal)+'" min="0" placeholder="Ist-Wert" style="width:0;min-width:0;flex:1" onkeydown="if(event.key===\'Enter\'){event.preventDefault();submitKpi(\''+k.id+'\',\''+pid+'\')}">'
+      out+='<button onclick="incrementKpi(\''+k.id+'\',\''+pid+'\')" style="width:100%;margin-top:10px;padding:10px;border-radius:10px;background:var(--text);color:#fff;border:none;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer;letter-spacing:.02em">+ 1</button>';
+      out+='<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--bd)">';
+      out+='<div style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">Tagesabschluss</div>';
+      out+='<div class="kpi-entry">'
+        +'<input type="number" id="kpi-inp-'+k.id+'" value="'+(todayVal!==null?todayVal:displayVal)+'" min="0" placeholder="Finalwert" style="width:0;min-width:0;flex:1" onkeydown="if(event.key===\'Enter\'){event.preventDefault();submitKpi(\''+k.id+'\',\''+pid+'\')}">'
         +'<button onclick="submitKpi(\''+k.id+'\',\''+pid+'\')">✓</button>'
-        +'</div>';
+        +'</div></div>';
     }
     out+='</div>';
   });
@@ -469,19 +491,8 @@ function rKpiBlock(pid){
 async function submitKpi(kpiId,pid){
   const el=document.getElementById('kpi-inp-'+kpiId);if(!el)return;
   const val=parseFloat(el.value)||0;
-  const allKpis=S.ziele.flatMap(z=>z.kpis||[]);
-  const k=allKpis.find(x=>x.id===kpiId);
-  const wasOk=k?(k.inv?val<=k.ziel:val>=k.ziel*0.85):false;
-  saveKpiTodayVal(kpiId,pid,val);
-  S.kpiVals[pid+'-'+kpiId]={val,datum:TODAY};
-  const existing=S.kpiVals[pid+'-'+kpiId];
-  if(existing&&existing.datum===TODAY){
-    await supa('kpi_vals?pid=eq.'+pid+'&kpi_id=eq.'+kpiId+'&datum=eq.'+TODAY,{method:'PATCH',body:{val},prefer:'return=minimal'});
-  }else{
-    await supa('kpi_vals',{method:'POST',body:{pid,kpi_id:kpiId,val,datum:TODAY}});
-  }
+  await _saveKpi(kpiId,pid,val);
   render();
-  if(wasOk)showPaddelCelebration(pid);
 }
 
 function rDelegBlock(pid){
@@ -489,11 +500,14 @@ function rDelegBlock(pid){
   if(!delegated.length)return'';
   const statusMap={neu:'Neu',backlog:'In Pipeline',aktiv:'Läuft',erledigt:'Erledigt'};
   const statusColor={neu:'var(--red)',backlog:'var(--t3)',aktiv:'var(--blue)',erledigt:'var(--green)'};
-  let out='<div class="deleg-block"><div class="deleg-label">Meine Delegationen</div>';
+  let out='<details style="margin-bottom:12px"><summary style="list-style:none;cursor:pointer;padding:12px 16px;background:var(--sf);border:1px solid var(--bd);border-radius:12px;display:flex;align-items:center;justify-content:space-between">';
+  out+='<span style="font-size:13px;font-weight:600">Meine Delegationen</span>';
+  out+='<span style="font-size:12px;color:var(--t3)">'+delegated.length+' · anzeigen</span></summary>';
+  out+='<div style="margin-top:8px;background:var(--sf);border:1px solid var(--bd);border-radius:12px;overflow:hidden">';
   delegated.forEach(a=>{
     const assignee=person(a.pid);
     const st=a.status||'neu';
-    out+='<div class="deleg-row" style="cursor:pointer" onclick="openDetail(\''+a.id+'\')" onmouseenter="this.style.background=\'var(--gray-bg)\'" onmouseleave="this.style.background=\'\'">';
+    out+='<div class="deleg-row" style="cursor:pointer;border-radius:0" onclick="openDetail(\''+a.id+'\')" onmouseenter="this.style.background=\'var(--gray-bg)\'" onmouseleave="this.style.background=\'\'">';
     out+='<div style="flex:1;min-width:0">';
     out+='<div style="font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+a.titel+'</div>';
     out+='<div style="display:flex;gap:6px;margin-top:2px;align-items:center">';
@@ -504,7 +518,7 @@ function rDelegBlock(pid){
     out+='<div style="font-size:11px;font-weight:600;color:'+statusColor[st]+'">'+statusMap[st]+'</div>';
     out+='</div></div>';
   });
-  out+='</div>';
+  out+='</div></details>';
   return out;
 }
 
