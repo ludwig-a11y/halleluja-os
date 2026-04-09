@@ -449,8 +449,8 @@ function rKpiBlock(pid){
     out+='<div class="kpi-name">'+k.label+'</div>';
     out+='<div class="kpi-goal-ref">→ '+k.zielName+'</div>';
     out+='<div style="display:flex;align-items:baseline;gap:5px">';
-    out+='<div class="kpi-val '+(ok?'ok':'nok')+'">'+displayVal+(k.unit||'')+'</div>';
-    out+='<div class="kpi-soll">/ '+k.ziel+(k.unit||'')+'</div>';
+    out+='<div class="kpi-val '+(ok?'ok':'nok')+'">'+displayVal+(k.unit?'<span style="font-size:11px;font-weight:500"> '+k.unit+'</span>':'')+'</div>';
+    out+='<div class="kpi-soll">/ '+k.ziel+(k.unit?' '+k.unit:'')+'</div>';
     out+='</div>';
     out+='<div style="height:3px;border-radius:99px;background:rgba(0,0,0,.07);overflow:hidden;margin:5px 0">'
       +'<div style="height:100%;border-radius:99px;background:'+(ok?'var(--green)':'var(--red)')+';width:'+pct+'%"></div></div>';
