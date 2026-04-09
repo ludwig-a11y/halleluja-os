@@ -327,7 +327,11 @@ const zielObj=id=>S.ziele.find(z=>z.id===id);
 const kpiVal=k=>{const e=S.kpiVals[aP+'-'+k.id];return e!==undefined?e.val:k.ist;};
 const kpiOk=k=>{const v=kpiVal(k);return k.inv?v<=k.ziel:v>=k.ziel*0.85;};
 const canSeeTeam=()=>isLead();
-const canSee=a=>!(a.vertraulich&&!isGF());
+const canSee=a=>{
+  if(a.vertraulich&&!isGF())return false;
+  if(a.zielId){const z=zielObj(a.zielId);if(z&&z.vertraulich&&!isGF())return false;}
+  return true;
+};
 
 // Prio change permission: GF always, own task always, created-by always
 const canChangePrio=a=>{
@@ -750,28 +754,38 @@ function rTag(){
   } else if(naechste){
     const zN=getZielName(naechste),tzN=getTZName(naechste);
     const editable=canChangePrio(naechste);
-    out+='<div style="background:var(--sf);border:1.5px solid var(--bd);border-radius:18px;padding:24px;margin-bottom:16px;cursor:pointer" onclick="openDetail(\''+naechste.id+'\')" onmouseenter="this.style.boxShadow=\'0 4px 20px rgba(0,0,0,.08)\'" onmouseleave="this.style.boxShadow=\'none\'">';
+    const from=naechste.erstelltVon&&naechste.erstelltVon!==aP?person(naechste.erstelltVon):null;
+    out+='<div style="background:var(--sf);border:1.5px solid var(--bd);border-radius:18px;padding:24px;margin-bottom:16px;">';
     out+='<div style="font-size:13px;font-weight:700;color:var(--text);letter-spacing:.01em;margin-bottom:12px">Fang hier an.</div>';
-    out+='<div style="font-size:22px;font-weight:700;color:var(--text);margin-bottom:10px;line-height:1.3">'+naechste.titel+'</div>';
-    out+='<div style="display:flex;gap:8px;align-items:center;margin-bottom:20px;flex-wrap:wrap" onclick="event.stopPropagation()">';
+    out+='<div style="font-size:22px;font-weight:700;color:var(--text);margin-bottom:10px;line-height:1.3;cursor:pointer" onclick="openDetail(\''+naechste.id+'\')">'+naechste.titel+'</div>';
+    out+='<div style="display:flex;gap:8px;align-items:center;margin-bottom:16px;flex-wrap:wrap">';
     if(naechste.prio)out+=prioTag(naechste.prio,naechste.id,editable);
     if(zN)out+='<span style="font-size:12px;color:var(--t2)">'+zN+'</span>';
     if(tzN)out+='<span style="font-size:12px;color:var(--purple)">'+tzN+'</span>';
     if(naechste.dl){const d=dli(naechste.dl);if(d)out+='<span style="font-size:11px;color:'+d.c+'">'+d.l+'</span>';}
     if(naechste.geplant)out+='<span style="font-size:11px;color:var(--t3)">'+fmtH(naechste.geplant)+'</span>';
+    if(from)out+='<span style="font-size:10px;color:var(--t3)">von '+from.name+'</span>';
     out+='</div>';
+    if(naechste.notiz)out+='<div style="font-size:12px;color:var(--t2);font-style:italic;margin-bottom:12px">'+naechste.notiz+'</div>';
+    // Schritte — klickbar und editierbar direkt in der Karte
     if(naechste.ua&&naechste.ua.length){
-      out+='<div style="margin-bottom:16px;padding:10px 12px;background:var(--gray-bg);border-radius:10px">';
-      naechste.ua.slice(0,3).forEach(u=>{
-        out+='<div style="display:flex;align-items:center;gap:8px;padding:3px 0;font-size:12px;color:'+(u.d?'var(--t3)':'var(--text)')+'"><div style="width:12px;height:12px;border-radius:3px;border:1.5px solid '+(u.d?'var(--green)':'var(--bd)')+';background:'+(u.d?'var(--green)':'transparent')+';flex-shrink:0"></div><span style="'+(u.d?'text-decoration:line-through':'')+'">'+u.t+'</span></div>';
+      out+='<div style="margin-bottom:14px;padding:10px 12px;background:var(--gray-bg);border-radius:10px">';
+      naechste.ua.forEach((u,i)=>{
+        out+='<div class="sr" onclick="toggleStep(\''+naechste.id+'\','+i+')" style="padding:5px 0">'
+          +'<div class="sc'+(u.d?' dn':'')+'">'+( u.d?'<span style="color:#fff;font-size:8px">✓</span>':'')+  '</div>'
+          +'<span class="sl'+(u.d?' dn':'')+'" style="font-size:12px">'+u.t+'</span>'
+          +'</div>';
       });
-      if(naechste.ua.length>3)out+='<div style="font-size:11px;color:var(--t3);margin-top:4px">+'+(naechste.ua.length-3)+' weitere</div>';
       out+='</div>';
     }
-    if(naechste.notiz)out+='<div style="font-size:12px;color:var(--t2);font-style:italic;margin-bottom:16px">'+naechste.notiz+'</div>';
-    out+='<div style="display:flex;gap:10px" onclick="event.stopPropagation()">';
+    // Schritt hinzufügen
+    out+='<div style="display:flex;gap:6px;margin-bottom:16px">'
+      +'<input class="asi" id="si-'+naechste.id+'" placeholder="+ Schritt hinzufügen…" onkeydown="if(event.key===\'Enter\')addStep(\''+naechste.id+'\')" style="font-size:12px;padding:6px 10px">'
+      +'<button onclick="addStep(\''+naechste.id+'\')" style="font-size:11px;padding:5px 10px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);cursor:pointer">+</button>'
+      +'</div>';
+    out+='<div style="display:flex;gap:10px">';
     out+='<button onclick="startenA(\''+naechste.id+'\')" style="flex:1;padding:14px;border-radius:12px;background:var(--text);color:#fff;border:none;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer">▶ Starten</button>';
-    out+='<button onclick="openDetail(\''+naechste.id+'\')" style="padding:14px 18px;border-radius:12px;background:var(--gray-bg);color:var(--t2);border:1px solid var(--bd);font-family:inherit;font-size:13px;font-weight:500;cursor:pointer">Details</button>';
+    out+='<button onclick="openDetail(\''+naechste.id+'\')" style="padding:14px 18px;border-radius:12px;background:var(--gray-bg);color:var(--t2);border:1px solid var(--bd);font-family:inherit;font-size:13px;font-weight:500;cursor:pointer">···</button>';
     out+='</div></div>';
   } else if(alleGeschafft||!myA.length){
     out+='<div style="background:var(--green);border-radius:18px;padding:32px 24px;margin-bottom:16px;color:#fff;text-align:center">';
@@ -1065,6 +1079,7 @@ function editZiel(zid){
   document.getElementById('mb').innerHTML='<div class="mt">Ziel bearbeiten</div>'
     +'<div class="fl"><label>Name</label><input id="zn" value="'+z.name+'" autofocus></div>'
     +'<div class="fl"><label>Verantwortlich</label><select id="zver"><option value="">— niemand —</option>'+S.personen.map(p=>'<option value="'+p.id+'"'+(z.verantwortlichId===p.id?' selected':'')+'>'+p.name+'</option>').join('')+'</select></div>'
+    +'<div class="fl"><label style="display:flex;align-items:center;gap:8px;text-transform:none;font-size:13px;font-weight:400"><input type="checkbox" id="zvert" '+(z.vertraulich?'checked':'')+' style="width:auto"> Vertraulich — nur Geschäftsführung</label></div>'
     +'<div class="fl"><label>Farbe</label><div style="display:flex;gap:8px;margin-top:4px">'+FARBEN.map((f,i)=>'<div onclick="selZF('+i+')" id="zfc'+i+'" style="width:24px;height:24px;border-radius:50%;background:'+f.tc+';cursor:pointer;border:'+((z.farbe||0)===i?'3px':'2px')+' solid '+((z.farbe||0)===i?'var(--text)':'transparent')+'"></div>').join('')+'</div></div>'
     +'<input type="hidden" id="zfarbe" value="'+(z.farbe||0)+'">'
     +'<div class="mf"><button class="btn btn-red" onclick="delZiel(\''+zid+'\')">Löschen</button><button class="btn btn-gr" onclick="cm()">Abbrechen</button><button class="btn btn-dk" onclick="saveZiel(\''+zid+'\')">Speichern</button></div>';
@@ -1079,8 +1094,9 @@ async function saveZiel(zid){
   const name=document.getElementById('zn').value.trim()||z.name;
   const verantwortlichId=document.getElementById('zver').value||null;
   const farbe=parseInt(document.getElementById('zfarbe').value)||0;
-  z.name=name;z.verantwortlichId=verantwortlichId;z.farbe=farbe;
-  await dbPatch('ziele',zid,{name,verantwortlich_id:verantwortlichId,farbe});
+  const vertraulich=document.getElementById('zvert')?.checked||false;
+  z.name=name;z.verantwortlichId=verantwortlichId;z.farbe=farbe;z.vertraulich=vertraulich;
+  await dbPatch('ziele',zid,{name,verantwortlich_id:verantwortlichId,farbe,vertraulich});
   cm();rZiele();
 }
 async function delZiel(zid){
