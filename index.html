@@ -825,11 +825,12 @@ function rTag(){
     out+='<div style="margin-top:8px">';
     weitere.forEach(a=>{
       const zN=getZielName(a),editable=canChangePrio(a);
-      out+='<div style="background:var(--sf);border:1px solid var(--bd);border-radius:10px;padding:10px 14px;margin-bottom:6px;display:flex;align-items:center;gap:10px">';
+      out+='<div style="background:var(--sf);border:1px solid var(--bd);border-radius:10px;padding:10px 14px;margin-bottom:6px;cursor:pointer" onclick="openDetail(\''+a.id+'\')" onmouseenter="this.style.background=\'var(--gray-bg)\'" onmouseleave="this.style.background=\'var(--sf)\'">';
+      out+='<div style="display:flex;align-items:center;gap:10px">';
       out+='<div style="flex:1"><div style="font-size:12px;font-weight:500">'+a.titel+'</div>';
-      out+='<div style="display:flex;gap:5px;margin-top:3px;align-items:center">'+prioTag(a.prio,a.id,editable)+(zN?'<span style="font-size:10px;color:var(--t3)">'+zN+'</span>':'')+' '+dlTag(a.dl)+'</div></div>';
-      out+='<button onclick="event.stopPropagation();startenA(\''+a.id+'\')" style="font-size:11px;padding:5px 10px;border-radius:8px;background:var(--text);color:#fff;border:none;font-family:inherit;cursor:pointer">▶</button>';
-      out+='</div>';
+      out+='<div style="display:flex;gap:5px;margin-top:3px;align-items:center" onclick="event.stopPropagation()">'+prioTag(a.prio,a.id,editable)+(zN?'<span style="font-size:10px;color:var(--t3)">'+zN+'</span>':'')+' '+dlTag(a.dl)+'</div></div>';
+      out+='<button onclick="event.stopPropagation();startenA(\''+a.id+'\')" style="font-size:11px;padding:5px 10px;border-radius:8px;background:var(--text);color:#fff;border:none;font-family:inherit;cursor:pointer;flex-shrink:0">▶</button>';
+      out+='</div></div>';
     });
     out+='</div></details>';
   }
