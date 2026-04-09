@@ -1021,18 +1021,37 @@ function openDetail(id){
   const a=S.aufgaben.find(x=>x.id===id);if(!a)return;
   const d=dli(a.dl),tzN=getTZName(a),zN=getZielName(a);
   const from=a.erstelltVon&&a.erstelltVon!==a.pid?person(a.erstelltVon):null;
+  const zielOpts=S.ziele.map(z=>'<option value="'+z.id+'"'+(a.zielId===z.id?' selected':'')+'>'+z.name+'</option>').join('');
   document.getElementById('mb').innerHTML='<div class="mt">'+a.titel+'</div>'
     +'<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:14px">'+typTag(a)+prioTag(a.prio,a.id,canChangePrio(a))+(zN?'<span class="tag" style="background:var(--gray-bg);color:var(--t2)">'+zN+'</span>':'')+(tzN?'<span class="tag" style="background:var(--purple-bg);color:var(--purple)">'+tzN+'</span>':'')+(d?'<span class="tag" style="background:'+d.bg+';color:'+d.c+'">'+d.l+'</span>':'')+(a.vertraulich?'<span class="lock">vertraulich</span>':'')+(from?'<span class="tag" style="background:var(--gray-bg);color:var(--t2)">von '+from.name+'</span>':'')+'</div>'
-    +(a.notiz?'<div style="font-size:12px;color:var(--t2);background:var(--gray-bg);border-radius:8px;padding:8px 10px;margin-bottom:12px;font-style:italic">'+a.notiz+'</div>':'')
+    +'<div class="fl"><label>Titel</label><input id="det-titel" value="'+a.titel.replace(/"/g,'&quot;')+'" style="font-size:13px;font-weight:500" onblur="saveDetailField(\''+id+'\',\'titel\',this.value)"></div>'
+    +'<div class="fl"><label>Notiz</label><textarea id="det-notiz" rows="2" placeholder="Notiz…" style="resize:none;font-size:12px" onblur="saveDetailField(\''+id+'\',\'notiz\',this.value)">'+( a.notiz||'')+'</textarea></div>'
+    +'<div class="fl" style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'
+    +'<div><label>Deadline</label><input type="date" id="det-dl" value="'+(a.dl||'')+'" onchange="saveDetailField(\''+id+'\',\'dl\',this.value)"></div>'
+    +'<div><label>Geplant (h)</label><input type="number" id="det-geplant" value="'+(a.geplant||'')+'" min="0" step="0.5" placeholder="Std." onblur="saveDetailField(\''+id+'\',\'geplant\',parseFloat(this.value)||null)"></div>'
+    +'</div>'
+    +'<div class="fl"><label>Ziel</label><select id="det-ziel" onchange="saveDetailField(\''+id+'\',\'ziel_id\',this.value||null)"><option value="">— kein Ziel —</option>'+zielOpts+'</select></div>'
     +'<div class="fl"><label>Status</label><div style="display:flex;gap:5px;flex-wrap:wrap">'
     +[['neu','Neu','var(--red-bg)','var(--red)'],['backlog','Backlog','var(--gray-bg)','var(--t2)'],['aktiv','Aktiv','var(--blue-bg)','var(--blue)'],['erledigt','Erledigt','var(--green-bg)','var(--green)']].map(x=>
       '<button onclick="setStatusModal(\''+id+'\',\''+x[0]+'\')" style="font-size:11px;padding:4px 10px;border-radius:8px;border:'+(a.status===x[0]?'2px':'1px')+' solid '+(a.status===x[0]?'var(--text)':'var(--bd)')+';background:'+(a.status===x[0]?x[2]:'var(--sf)')+';color:'+(a.status===x[0]?x[3]:'var(--t2)')+';cursor:pointer;font-family:inherit;font-weight:'+(a.status===x[0]?600:400)+'">'+x[1]+'</button>'
     ).join('')+'</div></div>'
-    +'<div class="fl"><label>Teilziel zuordnen</label><select id="det-tz" onchange="setTeilziel(\''+id+'\',this.value)"><option value="">— kein Teilziel —</option>'+(a.zielId?(zielObj(a.zielId)?.teilziele||[]).map(tz=>'<option value="'+tz.id+'"'+(a.teilzielId===tz.id?' selected':'')+'>'+tz.name+'</option>').join(''):'')+'</select></div>'
+    +'<div class="fl"><label>Teilziel</label><select id="det-tz" onchange="setTeilziel(\''+id+'\',this.value)"><option value="">— kein Teilziel —</option>'+(a.zielId?(zielObj(a.zielId)?.teilziele||[]).map(tz=>'<option value="'+tz.id+'"'+(a.teilzielId===tz.id?' selected':'')+'>'+tz.name+'</option>').join(''):'')+'</select></div>'
     +'<div class="fl"><label>Schritte</label>'+stepsHtml(a,true)+'</div>'
     +'<div style="font-size:11px;color:var(--t2);padding:10px 0;border-top:1px solid var(--bd)">Zeit: <strong>'+fmt(elapsedSec(a))+'</strong> von '+fmtH(a.geplant)+' geplant</div>'
     +'<div class="mf"><button class="btn btn-red" onclick="delAufgabe(\''+id+'\')">Löschen</button><button class="btn btn-gr" onclick="cm()">Schließen</button></div>';
   document.getElementById('ovl').classList.add('open');
+}
+async function saveDetailField(id,field,val){
+  const a=S.aufgaben.find(x=>x.id===id);if(!a)return;
+  if(field==='titel'){if(!val||!val.trim())return;a.titel=val.trim();}
+  else if(field==='notiz'){a.notiz=val.trim()||null;}
+  else if(field==='dl'){a.dl=val||null;}
+  else if(field==='geplant'){a.geplant=val;}
+  else if(field==='ziel_id'){a.zielId=val||null;a.teilzielId=null;}
+  const patch={[field]:field==='titel'?a.titel:field==='notiz'?a.notiz:field==='dl'?a.dl:field==='geplant'?a.geplant:val||null};
+  if(field==='ziel_id')patch.teilziel_id=null;
+  await dbPatch('aufgaben',id,patch);
+  render();
 }
 async function setStatusModal(id,st){
   const a=S.aufgaben.find(x=>x.id===id);if(!a)return;
