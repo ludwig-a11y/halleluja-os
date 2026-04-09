@@ -482,7 +482,7 @@ function rDelegBlock(pid){
   delegated.forEach(a=>{
     const assignee=person(a.pid);
     const st=a.status||'neu';
-    out+='<div class="deleg-row">';
+    out+='<div class="deleg-row" style="cursor:pointer" onclick="openDetail(\''+a.id+'\')" onmouseenter="this.style.background=\'var(--gray-bg)\'" onmouseleave="this.style.background=\'\'">';
     out+='<div style="flex:1;min-width:0">';
     out+='<div style="font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+a.titel+'</div>';
     out+='<div style="display:flex;gap:6px;margin-top:2px;align-items:center">';
