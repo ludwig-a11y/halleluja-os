@@ -285,17 +285,18 @@ function checkP1Done(pid){
   if(p1.length>0&&p1.every(a=>a.status==='erledigt'))setTimeout(showQuote,400);
 }
 
-let S={personen:[],teams:[],ziele:[],aufgaben:[],kpiVals:{},checkins:{},kpiToday:{}};
+let S={personen:[],teams:[],ziele:[],aufgaben:[],kpiVals:{},checkins:{},kpiToday:{},signale:[]};
 let aP=null,realMe=null,aV='tag',timIv=null,_selPrio=null;
 let _kid=Date.now();
 const nid=p=>p+(++_kid);
 
 async function loadData(){
-  const [personen,teams,ziele,kpis,teilziele,aufgaben,kpiVals,checkins]=await Promise.all([
+  const [personen,teams,ziele,kpis,teilziele,aufgaben,kpiVals,checkins,signale]=await Promise.all([
     dbGet('personen','select=*&order=ci'),dbGet('teams','select=*'),
     dbGet('ziele','select=*&order=created_at'),dbGet('kpis','select=*'),
     dbGet('teilziele','select=*&order=created_at'),dbGet('aufgaben','select=*&order=created_at'),
     dbGet('kpi_vals','select=*'),dbGet('checkins','select=*'),
+    dbGet('signale','select=*&order=created_at.desc'),
   ]);
   S.personen=personen||[];
   S.teams=(teams||[]).map(t=>({...t,members:t.members||[]}));
@@ -312,8 +313,7 @@ async function loadData(){
   }));
   S.kpiVals={};
   (kpiVals||[]).forEach(v=>{const k=v.pid+'-'+v.kpi_id;if(!S.kpiVals[k]||v.datum>S.kpiVals[k].datum)S.kpiVals[k]={val:v.val,datum:v.datum};});
-  S.checkins={};
-  (checkins||[]).forEach(c=>{if(!S.checkins[c.pid]||c.datum>S.checkins[c.pid].date)S.checkins[c.pid]={date:c.datum,morgen:c.morgen,abend:c.abend};});
+  S.signale=(signale||[]);
   // load kpiToday from localStorage
   try{S.kpiToday=JSON.parse(localStorage.getItem('kpiToday_'+TODAY)||'{}');}catch(e){S.kpiToday={};}
 }
@@ -853,6 +853,9 @@ function rTag(){
   // DELEGATION BLOCK
   out+=rDelegBlock(aP);
 
+  // Signal Block
+  out+=rSignalBlock(aP);
+
   document.getElementById('main').innerHTML=out;
   startTimers();
 }
@@ -1305,10 +1308,8 @@ function rTeam(){
     if(!aktiv.length&&!pipeline.length)out+='<div style="padding:14px 16px;font-size:12px;color:var(--t3);font-style:italic">Keine aktiven Aufgaben</div>';
     out+='<div style="height:4px"></div></div>';
   });
+  out+=rSignaleTeam();
   document.getElementById('main').innerHTML=out;
-}
-
-function openSettings(){
   let h='<div class="mt">Einstellungen</div>';
   h+='<div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Personen</div>';
   S.personen.forEach(p=>{
