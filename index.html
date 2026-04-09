@@ -145,7 +145,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;font-size:1
 
 .deleg-block{background:var(--sf);border:1px solid var(--bd);border-radius:14px;padding:14px 16px;margin-top:16px}
 .deleg-label{font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px}
-.deleg-row{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--bd)}
+.deleg-row{display:flex;align-items:center;gap:10px;padding:8px 14px;border-bottom:1px solid var(--bd)}
 .deleg-row:last-child{border:none}
 
 .prio-wrap{position:relative;display:inline-block}
@@ -1107,7 +1107,7 @@ function openDetail(id){
   const zielOpts=S.ziele.map(z=>'<option value="'+z.id+'"'+(a.zielId===z.id?' selected':'')+'>'+z.name+'</option>').join('');
   document.getElementById('mb').innerHTML='<div class="mt">'+a.titel+'</div>'
     +'<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:14px">'+typTag(a)+prioTag(a.prio,a.id,canChangePrio(a))+(zN?'<span class="tag" style="background:var(--gray-bg);color:var(--t2)">'+zN+'</span>':'')+(tzN?'<span class="tag" style="background:var(--purple-bg);color:var(--purple)">'+tzN+'</span>':'')+(d?'<span class="tag" style="background:'+d.bg+';color:'+d.c+'">'+d.l+'</span>':'')+(a.vertraulich?'<span class="lock">vertraulich</span>':'')+(from?'<span class="tag" style="background:var(--gray-bg);color:var(--t2)">von '+from.name+'</span>':'')+'</div>'
-    +'<div class="fl"><label>Titel</label><input id="det-titel" value="'+a.titel.replace(/"/g,'&quot;')+'" style="font-size:13px;font-weight:500" onblur="saveDetailField(\''+id+'\',\'titel\',this.value)"></div>'
+    +'<div class="fl"><label>Titel</label><div style="display:flex;gap:6px"><input id="det-titel" value="'+a.titel.replace(/"/g,'&quot;')+'" style="font-size:13px;font-weight:500;flex:1" onblur="saveDetailField(\''+id+'\',\'titel\',this.value)" onkeydown="if(event.key===\'Enter\'){event.preventDefault();saveDetailField(\''+id+'\',\'titel\',this.value);this.blur()}"><button onclick="saveDetailField(\''+id+'\',\'titel\',document.getElementById(\'det-titel\').value)" style="padding:4px 10px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);cursor:pointer;font-size:12px;font-family:inherit;flex-shrink:0">✓</button></div></div>'
     +'<div class="fl"><label>Notiz</label><textarea id="det-notiz" rows="2" placeholder="Notiz…" style="resize:none;font-size:12px" onblur="saveDetailField(\''+id+'\',\'notiz\',this.value)">'+( a.notiz||'')+'</textarea></div>'
     +'<div class="fl" style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'
     +'<div><label>Deadline</label><input type="date" id="det-dl" value="'+(a.dl||'')+'" onchange="saveDetailField(\''+id+'\',\'dl\',this.value)"></div>'
