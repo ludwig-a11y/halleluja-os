@@ -119,7 +119,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;font-size:1
 .settings-row:last-child{border:none}
 .ai-result{background:var(--purple-bg);border:1px solid var(--purple-bd);border-radius:10px;padding:12px;margin:10px 0;font-size:12px;line-height:1.6}
 
-/* QUOTE OVERLAY */
 #quote-overlay{position:fixed;inset:0;background:#0d0d0d;z-index:500;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px;opacity:0;pointer-events:none;transition:opacity .5s}
 #quote-overlay.show{opacity:1;pointer-events:all}
 #quote-text{color:#fff;font-size:20px;font-weight:400;line-height:1.7;max-width:580px;text-align:center;letter-spacing:.01em}
@@ -127,7 +126,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;font-size:1
 #quote-skip{margin-top:32px;background:transparent;border:1px solid #333;color:#444;padding:7px 18px;border-radius:8px;cursor:pointer;font-size:12px;font-family:inherit}
 #quote-skip:hover{border-color:#555;color:#666}
 
-/* KPI BLOCK */
 .kpi-block{background:var(--sf);border:1px solid var(--bd);border-radius:14px;padding:14px 16px;margin-bottom:12px}
 .kpi-block-label{font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px}
 .kpi-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
@@ -145,13 +143,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;font-size:1
 .kpi-entry input{flex:1;padding:4px 7px;border:1px solid var(--bd);border-radius:6px;font-size:13px;font-family:inherit;background:var(--gray-bg);color:var(--text);outline:none}
 .kpi-entry button{padding:4px 9px;border-radius:6px;background:var(--text);color:#fff;border:none;font-size:11px;cursor:pointer;font-family:inherit}
 
-/* DELEGATION BLOCK */
 .deleg-block{background:var(--sf);border:1px solid var(--bd);border-radius:14px;padding:14px 16px;margin-top:16px}
 .deleg-label{font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px}
 .deleg-row{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--bd)}
 .deleg-row:last-child{border:none}
 
-/* PRIO DROPDOWN */
 .prio-wrap{position:relative;display:inline-block}
 .prio-dd{position:absolute;top:24px;left:0;background:var(--sf);border:1px solid var(--bd);border-radius:10px;z-index:50;min-width:130px;box-shadow:0 4px 16px rgba(0,0,0,.1);display:none}
 .prio-dd.open{display:block}
@@ -163,7 +159,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;font-size:1
 </head>
 <body>
 
-<!-- QUOTE OVERLAY -->
 <div id="quote-overlay">
   <div id="quote-text"></div>
   <div id="quote-author"></div>
@@ -257,8 +252,6 @@ const TYP_INFO={
   operativ:{label:'Operativ',bg:'var(--gray-bg)',tc:'var(--t2)'},
   random:{label:'Random',bg:'var(--amber-bg)',tc:'var(--amber)'}
 };
-
-// QUOTES
 const QUOTES=[
   {text:'Wirksamkeit bedeutet nicht, viel zu tun. Sie bedeutet, das Richtige zu tun — konsequent, jeden Tag.',author:'Peter Drucker'},
   {text:'Dafür wirst du bezahlt — nicht dafür, beschäftigt zu sein. Sondern dafür, die wichtigsten Aufgaben konsequent abzuarbeiten. Die, die auf unsere Ziele einzahlen.',author:'Halleluja OS'},
@@ -313,8 +306,9 @@ async function loadData(){
   }));
   S.kpiVals={};
   (kpiVals||[]).forEach(v=>{const k=v.pid+'-'+v.kpi_id;if(!S.kpiVals[k]||v.datum>S.kpiVals[k].datum)S.kpiVals[k]={val:v.val,datum:v.datum};});
+  S.checkins={};
+  (checkins||[]).forEach(c=>{if(!S.checkins[c.pid]||c.datum>S.checkins[c.pid].date)S.checkins[c.pid]={date:c.datum,morgen:c.morgen,abend:c.abend};});
   S.signale=(signale||[]);
-  // load kpiToday from localStorage
   try{S.kpiToday=JSON.parse(localStorage.getItem('kpiToday_'+TODAY)||'{}');}catch(e){S.kpiToday={};}
 }
 
@@ -332,8 +326,6 @@ const canSee=a=>{
   if(a.zielId){const z=zielObj(a.zielId);if(z&&z.vertraulich&&!isGF())return false;}
   return true;
 };
-
-// Prio change permission: GF always, own task always, created-by always
 const canChangePrio=a=>{
   const m=me();if(!m)return false;
   if(m.stufe==='gf')return true;
@@ -341,12 +333,21 @@ const canChangePrio=a=>{
   if(a.erstelltVon===aP)return true;
   return false;
 };
+const canManageTZ=zid=>{const z=zielObj(zid);return z&&(isGF()||z.verantwortlichId===aP);};
 
 function myTeamIds(){
   const m=me();if(!m)return[];
   const ids=[];
   S.teams.forEach(t=>{if((m.teams||[]).includes(t.id))t.members.forEach(id=>{if(!ids.includes(id))ids.push(id);});});
   return ids;
+}
+function visiblePersonIds(viewAs){
+  const m=person(viewAs);if(!m)return S.personen.map(p=>p.id);
+  if(m.stufe==='gf')return S.personen.map(p=>p.id);
+  const myTeam=S.personen.filter(p=>p.team===m.team).map(p=>p.id);
+  const teamIds=[];
+  S.teams.forEach(t=>{if((m.teams||[]).includes(t.id))t.members.forEach(id=>{if(!teamIds.includes(id))teamIds.push(id);});});
+  return [...new Set([m.id,...teamIds])];
 }
 function tzObj(zid,tzid){const z=zielObj(zid);return z?(z.teilziele||[]).find(t=>t.id===tzid):null;}
 function getTZName(a){if(a.teilzielId&&a.zielId){const tz=tzObj(a.zielId,a.teilzielId);return tz?tz.name:null;}return null;}
@@ -402,7 +403,6 @@ function prioTag(p,aid,editable){
   }
   return`<span class="tag" style="background:${bg};color:${tc}" title="${tip}">${p}</span>`;
 }
-
 function togglePrioDD(e,aid){
   e.stopPropagation();
   document.querySelectorAll('.prio-dd.open').forEach(d=>{if(d.id!=='pdd-'+aid)d.classList.remove('open');});
@@ -410,7 +410,6 @@ function togglePrioDD(e,aid){
   if(dd)dd.classList.toggle('open');
 }
 document.addEventListener('click',()=>document.querySelectorAll('.prio-dd.open').forEach(d=>d.classList.remove('open')));
-
 async function changePrio(e,aid,newPrio){
   e.stopPropagation();
   const a=S.aufgaben.find(x=>x.id===aid);if(!a)return;
@@ -419,14 +418,9 @@ async function changePrio(e,aid,newPrio){
   document.querySelectorAll('.prio-dd.open').forEach(d=>d.classList.remove('open'));
   render();
 }
-
 function dlTag(dl){const d=dli(dl);if(!d)return'';return`<span class="tag" style="background:${d.bg};color:${d.c}">${d.l}</span>`;}
 
-// KPI TODAY
-function getKpiTodayVal(kpiId,pid){
-  const k=S.kpiToday[pid+'-'+kpiId];
-  return k!==undefined?k:null;
-}
+function getKpiTodayVal(kpiId,pid){const k=S.kpiToday[pid+'-'+kpiId];return k!==undefined?k:null;}
 function saveKpiTodayVal(kpiId,pid,val){
   S.kpiToday[pid+'-'+kpiId]=val;
   try{localStorage.setItem('kpiToday_'+TODAY,JSON.stringify(S.kpiToday));}catch(e){}
@@ -434,14 +428,13 @@ function saveKpiTodayVal(kpiId,pid,val){
 function isFällig(freq){
   const now=new Date();
   if(freq==='täglich')return true;
-  if(freq==='wöchentlich')return now.getDay()===5;// Freitag
+  if(freq==='wöchentlich')return now.getDay()===5;
   if(freq==='monatlich'){const last=new Date(now.getFullYear(),now.getMonth()+1,0);return now.getDate()===last.getDate();}
   return false;
 }
 function freqLabel(freq){return{täglich:'Täglich',wöchentlich:'Wöchentlich (Freitag)',monatlich:'Monatlich (Monatsletzter)'}[freq]||freq;}
 
 function rKpiBlock(pid){
-  // collect all KPIs for this person across all goals
   const myKpis=[];
   S.ziele.forEach(z=>{(z.kpis||[]).forEach(k=>{if(k.pid===pid)myKpis.push({...k,zielName:z.name});});});
   if(!myKpis.length)return'';
@@ -473,7 +466,6 @@ function rKpiBlock(pid){
   out+='</div></div>';
   return out;
 }
-
 function submitKpi(kpiId,pid){
   const el=document.getElementById('kpi-inp-'+kpiId);if(!el)return;
   const val=parseFloat(el.value)||0;
@@ -481,7 +473,6 @@ function submitKpi(kpiId,pid){
   render();
 }
 
-// DELEGATION BLOCK
 function rDelegBlock(pid){
   const delegated=S.aufgaben.filter(a=>a.erstelltVon===pid&&a.pid!==pid&&a.status!=='erledigt');
   if(!delegated.length)return'';
@@ -506,7 +497,142 @@ function rDelegBlock(pid){
   return out;
 }
 
-// PADDEL
+function rSignalBlock(pid){
+  const mine=S.signale.filter(s=>s.pid===pid);
+  const TYPEN={reklamation:{l:'Reklamation',bg:'var(--red-bg)',tc:'var(--red)',bd:'var(--red-bd)'},reibung:{l:'Reibung',bg:'var(--amber-bg)',tc:'var(--amber)',bd:'var(--amber-bd)'},idee:{l:'Idee',bg:'var(--blue-bg)',tc:'var(--blue)',bd:'var(--blue-bd)'},wiederholung:{l:'↻ Wiederholung',bg:'var(--purple-bg)',tc:'var(--purple)',bd:'var(--purple-bd)'}};
+  let out='<div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--bd)">';
+  out+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">';
+  out+='<div><div style="font-size:12px;font-weight:600;color:var(--text)">Signale</div>';
+  out+='<div style="font-size:10px;color:var(--t3);margin-top:1px">Reklamationen, Reibung, Ideen — 30 Sekunden</div></div>';
+  out+='<button onclick="openSignal()" style="font-size:11px;padding:5px 12px;border-radius:8px;background:var(--text);color:#fff;border:none;font-family:inherit;cursor:pointer;font-weight:500">+ Signal</button>';
+  out+='</div>';
+  if(mine.length===0){
+    out+='<div style="font-size:12px;color:var(--t3);font-style:italic;padding:10px 0">Noch keine Signale — trag ein was dir auffällt.</div>';
+  } else {
+    mine.slice(0,5).forEach(s=>{
+      const t=TYPEN[s.typ]||TYPEN.reibung;
+      out+='<div style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid var(--bd)">';
+      out+='<span style="font-size:10px;padding:2px 8px;border-radius:99px;background:'+t.bg+';color:'+t.tc+';border:1px solid '+t.bd+';white-space:nowrap;flex-shrink:0;font-weight:500">'+t.l+'</span>';
+      out+='<div style="flex:1;min-width:0">';
+      out+='<div style="font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+s.was+'</div>';
+      out+='<div style="font-size:10px;color:var(--t3);margin-top:1px">'+s.bereich+' · '+(s.created_at?new Date(s.created_at).toLocaleDateString('de',{day:'2-digit',month:'2-digit'}):'')+'</div>';
+      out+='</div>';
+      out+='<button onclick="delSignal(\''+s.id+'\')" style="font-size:10px;background:none;border:none;color:var(--t3);cursor:pointer;flex-shrink:0;padding:2px 4px">✕</button>';
+      out+='</div>';
+    });
+    if(mine.length>5)out+='<div style="font-size:11px;color:var(--t3);margin-top:6px">+'+(mine.length-5)+' weitere</div>';
+  }
+  out+='</div>';
+  return out;
+}
+
+function openSignal(){
+  const BEREICHE=['After Sales','Sales','Werkstatt','Marketing','Operations','Organisation','IT'];
+  document.getElementById('mb').innerHTML='<div class="mt">Signal melden</div>'
+    +'<div style="font-size:12px;color:var(--t2);margin-bottom:16px;line-height:1.6">Was ist dir aufgefallen? Kurz und konkret — 30 Sekunden.</div>'
+    +'<div class="fl"><label>Was ist passiert?</label><input id="sig-was" placeholder="z.B. Kunde beschwert sich über Lieferzeit" autofocus></div>'
+    +'<div class="f2">'
+    +'<div class="fl"><label>Typ</label><select id="sig-typ" onchange="updSigTyp(this.value)">'
+    +'<option value="reklamation">Reklamation — Kunde unzufrieden</option>'
+    +'<option value="reibung">Reibung — Prozess hakt</option>'
+    +'<option value="idee">Idee — Verbesserungsvorschlag</option>'
+    +'<option value="wiederholung">Wiederholung — mache ich immer wieder manuell</option>'
+    +'</select></div>'
+    +'<div class="fl"><label>Bereich</label><select id="sig-bereich">'+BEREICHE.map(b=>'<option>'+b+'</option>').join('')+'</select></div>'
+    +'</div>'
+    +'<div id="sig-haeufig-wrap" style="display:none" class="fl"><label>Wie oft machst du das?</label>'
+    +'<select id="sig-haeufig">'
+    +'<option value="täglich">Täglich</option>'
+    +'<option value="mehrmals">Mehrmals pro Woche</option>'
+    +'<option value="wöchentlich">Wöchentlich</option>'
+    +'</select></div>'
+    +'<div class="fl"><label>Notiz (optional)</label><input id="sig-notiz" placeholder="Mehr Details..."></div>'
+    +'<div class="mf"><button class="btn btn-gr" onclick="cm()">Abbrechen</button><button class="btn btn-dk" onclick="saveSignal()">Speichern</button></div>';
+  document.getElementById('ovl').classList.add('open');
+}
+function updSigTyp(v){
+  const w=document.getElementById('sig-haeufig-wrap');
+  if(w)w.style.display=v==='wiederholung'?'':'none';
+}
+async function saveSignal(){
+  const was=document.getElementById('sig-was').value.trim();if(!was)return;
+  const typ=document.getElementById('sig-typ').value;
+  const haeufig=typ==='wiederholung'?(document.getElementById('sig-haeufig')?.value||null):null;
+  const id=nid('sg');
+  const rec={id,pid:aP,was,typ,bereich:document.getElementById('sig-bereich').value,notiz:document.getElementById('sig-notiz').value.trim()||null,haeufig,created_at:new Date().toISOString()};
+  S.signale.unshift(rec);
+  await dbInsert('signale',rec);
+  cm();render();
+}
+async function delSignal(id){
+  S.signale=S.signale.filter(s=>s.id!==id);
+  await dbDelete('signale',id);render();
+}
+
+function rSignaleTeam(){
+  if(!isGF()&&!isLead())return'';
+  const visible=visiblePersonIds(aP);
+  const TYPEN={reklamation:{l:'Reklamation',bg:'var(--red-bg)',tc:'var(--red)',bd:'var(--red-bd)'},reibung:{l:'Reibung',bg:'var(--amber-bg)',tc:'var(--amber)',bd:'var(--amber-bd)'},idee:{l:'Idee',bg:'var(--blue-bg)',tc:'var(--blue)',bd:'var(--blue-bd)'},wiederholung:{l:'↻ Wiederholung',bg:'var(--purple-bg)',tc:'var(--purple)',bd:'var(--purple-bd)'}};
+  const mine=S.signale.filter(s=>visible.includes(s.pid));
+  if(!mine.length)return'';
+  const wdh=mine.filter(s=>s.typ==='wiederholung');
+  const gruppen={};
+  mine.forEach(s=>{if(!gruppen[s.bereich])gruppen[s.bereich]=[];gruppen[s.bereich].push(s);});
+  let out='<div style="margin-top:24px">';
+  out+='<div style="font-size:14px;font-weight:700;margin-bottom:4px">Signale</div>';
+  out+='<div style="font-size:12px;color:var(--t3);margin-bottom:14px">Muster erkennen — Wurzeln lösen</div>';
+  if(wdh.length){
+    out+='<div style="background:var(--purple-bg);border:1px solid var(--purple-bd);border-radius:12px;padding:14px 16px;margin-bottom:12px">';
+    out+='<div style="font-size:11px;font-weight:700;color:var(--purple);margin-bottom:10px">↻ Automatisierungspotenzial</div>';
+    wdh.forEach(s=>{
+      const p2=person(s.pid);
+      const hMap={täglich:'täglich',mehrmals:'mehrmals pro Woche',wöchentlich:'wöchentlich'};
+      out+='<div style="background:rgba(255,255,255,.6);border:1px solid var(--purple-bd);border-radius:8px;padding:9px 12px;margin-bottom:7px">';
+      out+='<div style="font-size:12px;font-weight:500;color:var(--text)">'+s.was+'</div>';
+      out+='<div style="display:flex;align-items:center;gap:8px;margin-top:4px">';
+      if(p2)out+='<span style="font-size:10px;color:var(--purple)">'+p2.name+'</span>';
+      if(s.haeufig)out+='<span style="font-size:10px;color:var(--purple);background:rgba(124,58,237,.1);padding:1px 7px;border-radius:99px">'+hMap[s.haeufig]+'</span>';
+      out+='<span style="font-size:10px;color:var(--t3)">'+s.bereich+'</span>';
+      out+='</div></div>';
+    });
+    out+='<button onclick="openNeu({titel:\'Automatisierung prüfen\'})" style="margin-top:4px;font-size:11px;padding:6px 14px;border-radius:8px;background:var(--purple);color:#fff;border:none;font-family:inherit;cursor:pointer;font-weight:500">→ Automatisierung als Aufgabe anlegen</button>';
+    out+='</div>';
+  }
+  Object.entries(gruppen).sort((a,b)=>b[1].length-a[1].length).forEach(([bereich,sigs])=>{
+    const nwdh=sigs.filter(s=>s.typ!=='wiederholung');
+    if(!nwdh.length)return;
+    const rCount=nwdh.filter(s=>s.typ==='reklamation').length;
+    const reibCount=nwdh.filter(s=>s.typ==='reibung').length;
+    const ideaCount=nwdh.filter(s=>s.typ==='idee').length;
+    const hot=nwdh.length>=3;
+    out+='<div style="background:var(--sf);border:1px solid '+(hot?'var(--red-bd)':'var(--bd)')+';border-radius:12px;margin-bottom:8px;overflow:hidden">';
+    out+='<div style="padding:12px 16px;display:flex;align-items:center;gap:10px;background:'+(hot?'var(--red-bg)':'var(--gray-bg)')+';cursor:pointer" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display===\'none\'?\'block\':\'none\'">';
+    out+='<div style="flex:1"><div style="font-size:13px;font-weight:600;color:'+(hot?'var(--red)':'var(--text)')+'">'+bereich+(hot?' ⚠':'')+'</div>';
+    out+='<div style="display:flex;gap:6px;margin-top:4px">';
+    if(rCount)out+='<span style="font-size:10px;padding:1px 7px;border-radius:99px;background:var(--red-bg);color:var(--red);border:1px solid var(--red-bd)">'+rCount+' Reklamation'+(rCount>1?'en':'')+'</span>';
+    if(reibCount)out+='<span style="font-size:10px;padding:1px 7px;border-radius:99px;background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-bd)">'+reibCount+' Reibung'+(reibCount>1?'en':'')+'</span>';
+    if(ideaCount)out+='<span style="font-size:10px;padding:1px 7px;border-radius:99px;background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-bd)">'+ideaCount+' Idee'+(ideaCount>1?'n':'')+'</span>';
+    out+='</div></div>';
+    out+='<span style="font-size:20px;font-weight:700;color:'+(hot?'var(--red)':'var(--t3)')+'">'+nwdh.length+'</span>';
+    out+='</div>';
+    out+='<div style="display:none">';
+    nwdh.forEach(s=>{
+      const p2=person(s.pid),t=TYPEN[s.typ]||TYPEN.reibung;
+      out+='<div style="padding:10px 16px;border-top:1px solid var(--bd);display:flex;align-items:flex-start;gap:10px">';
+      out+='<span style="font-size:10px;padding:2px 8px;border-radius:99px;background:'+t.bg+';color:'+t.tc+';border:1px solid '+t.bd+';white-space:nowrap;flex-shrink:0">'+t.l+'</span>';
+      out+='<div style="flex:1"><div style="font-size:12px;font-weight:500">'+s.was+'</div>';
+      if(s.notiz)out+='<div style="font-size:11px;color:var(--t2);margin-top:2px;font-style:italic">'+s.notiz+'</div>';
+      out+='<div style="font-size:10px;color:var(--t3);margin-top:2px">'+(p2?p2.name+' · ':'')+(s.created_at?new Date(s.created_at).toLocaleDateString('de',{day:'2-digit',month:'2-digit',year:'2-digit'}):'')+'</div>';
+      out+='</div></div>';
+    });
+    out+='<div style="padding:10px 16px;border-top:1px solid var(--bd)">';
+    out+='<button onclick="openNeu({titel:\''+bereich+': Ursache analysieren & lösen\'})" style="font-size:11px;padding:6px 14px;border-radius:8px;background:var(--text);color:#fff;border:none;font-family:inherit;cursor:pointer">→ Aufgabe daraus machen</button>';
+    out+='</div></div></div>';
+  });
+  out+='</div>';
+  return out;
+}
+
 function getPaddelCount(pid){return S.aufgaben.filter(a=>a.pid===pid&&a.status==='erledigt').length;}
 function showKonfetti(){
   const canvas=document.createElement('canvas');
@@ -549,7 +675,6 @@ function showPaddelCelebration(pid){
   showKonfetti();
 }
 
-// LOGIN
 let loginSel=null,pinIn='';
 function initLogin(){
   const grid=document.getElementById('person-grid');
@@ -613,7 +738,6 @@ function logout(){
   document.querySelectorAll('.person-btn').forEach(b=>b.classList.remove('selected'));
   document.getElementById('pin-section').style.display='none';
 }
-
 function showBackBtn(){
   removeBackBtn();
   if(!realMe||aP===realMe)return;
@@ -654,7 +778,7 @@ function rSB(){
     const vis=t.members.filter(id=>{
       const p=person(id);if(!p)return false;
       if(isGF())return true;
-      if(isLead())return myTeamIds().includes(id);
+      if(isLead())return visiblePersonIds(aP).includes(id);
       return id===aP;
     });
     if(!vis.length)return;
@@ -677,7 +801,7 @@ function rSB(){
   document.getElementById('sb').innerHTML=h;
 }
 function switchPerson(id){
-  if(isGF()||myTeamIds().includes(id)||id===aP){
+  if(isGF()||visiblePersonIds(aP).includes(id)||id===aP){
     aP=id;updateBadge();render();showBackBtn();
   }
 }
@@ -710,14 +834,11 @@ function rTag(){
   const alleGeschafft=!aktiv.length&&!neu.length&&!bl.length;
   let out='';
 
-  // KPI BLOCK (top)
   out+=rKpiBlock(aP);
 
-  // AKTIV
   if(aktiv.length){
     const a=aktiv[0];
     const s=elapsedSec(a),pct=Math.min(100,Math.round(s/((a.geplant||1)*3600)*100));
-    const editable=canChangePrio(a);
     out+='<div style="background:var(--text);border-radius:18px;padding:24px;margin-bottom:16px;color:#fff">';
     out+='<div style="font-size:10px;font-weight:700;opacity:.5;letter-spacing:.8px;text-transform:uppercase;margin-bottom:8px">🔥 Läuft gerade</div>';
     out+='<div style="font-size:20px;font-weight:700;margin-bottom:4px;line-height:1.3">'+a.titel+'</div>';
@@ -740,8 +861,7 @@ function rTag(){
     out+='</div>';
     out+='<div style="margin-top:12px;border-top:1px solid rgba(255,255,255,.15);padding-top:12px">';
     out+=stepsHtml(a,true);
-    out+='</div>';
-    out+='</div>';
+    out+='</div></div>';
     if(aktiv.length>1){
       aktiv.slice(1).forEach(a2=>{
         out+='<div onclick="openDetail(\''+a2.id+'\')" style="background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:12px 14px;margin-bottom:8px;cursor:pointer;display:flex;align-items:center;gap:10px">';
@@ -767,7 +887,6 @@ function rTag(){
     if(from)out+='<span style="font-size:10px;color:var(--t3)">von '+from.name+'</span>';
     out+='</div>';
     if(naechste.notiz)out+='<div style="font-size:12px;color:var(--t2);font-style:italic;margin-bottom:12px">'+naechste.notiz+'</div>';
-    // Schritte — klickbar und editierbar direkt in der Karte
     if(naechste.ua&&naechste.ua.length){
       out+='<div style="margin-bottom:14px;padding:10px 12px;background:var(--gray-bg);border-radius:10px">';
       naechste.ua.forEach((u,i)=>{
@@ -778,7 +897,6 @@ function rTag(){
       });
       out+='</div>';
     }
-    // Schritt hinzufügen
     out+='<div style="display:flex;gap:6px;margin-bottom:16px">'
       +'<input class="asi" id="si-'+naechste.id+'" placeholder="+ Schritt hinzufügen…" onkeydown="if(event.key===\'Enter\')addStep(\''+naechste.id+'\')" style="font-size:12px;padding:6px 10px">'
       +'<button onclick="addStep(\''+naechste.id+'\')" style="font-size:11px;padding:5px 10px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);cursor:pointer">+</button>'
@@ -796,7 +914,6 @@ function rTag(){
     out+='</div>';
   }
 
-  // NEU
   if(neu.length){
     out+='<div style="background:var(--red-bg);border:1.5px solid var(--red-bd);border-radius:14px;padding:14px 16px;margin-bottom:12px">';
     out+='<div style="font-size:11px;font-weight:700;color:var(--red);margin-bottom:10px">⚡ '+neu.length+' neue Aufgabe'+(neu.length>1?'n':'')+' — Priorität setzen</div>';
@@ -816,7 +933,6 @@ function rTag(){
     out+='</div>';
   }
 
-  // WEITERE BACKLOG
   const weitere=bl.filter(a=>a.id!==naechste?.id);
   if(weitere.length){
     out+='<details style="margin-bottom:12px"><summary style="list-style:none;cursor:pointer;padding:12px 16px;background:var(--sf);border:1px solid var(--bd);border-radius:12px;display:flex;align-items:center;justify-content:space-between">';
@@ -835,7 +951,6 @@ function rTag(){
     out+='</div></details>';
   }
 
-  // ERLEDIGT
   if(erl.length){
     out+='<details style="margin-bottom:12px"><summary style="list-style:none;cursor:pointer;padding:12px 16px;background:var(--green-bg);border:1px solid var(--green-bd);border-radius:12px;display:flex;align-items:center;justify-content:space-between">';
     out+='<span style="font-size:13px;font-weight:600;color:var(--green)">✓ Heute erledigt</span>';
@@ -850,10 +965,7 @@ function rTag(){
     out+='</div></details>';
   }
 
-  // DELEGATION BLOCK
   out+=rDelegBlock(aP);
-
-  // Signal Block
   out+=rSignalBlock(aP);
 
   document.getElementById('main').innerHTML=out;
@@ -947,7 +1059,7 @@ function rZiele(){
     +'<div><div style="font-size:16px;font-weight:700">Ziele</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Strategische Ziele & Teilziele</div></div>'
     +(isGF()?'<button class="btn btn-dk" onclick="addZiel()">+ Neues Ziel</button>':'')
     +'</div>';
-  S.ziele.forEach(z=>{
+  S.ziele.filter(z=>!z.vertraulich||isGF()).forEach(z=>{
     const f=FARBEN[z.farbe]||FARBEN[0],verantw=person(z.verantwortlichId);
     const pct=zielPct(z),okK=(z.kpis||[]).filter(kpiOk).length,badK=(z.kpis||[]).filter(k=>!kpiOk(k));
     const zA=S.aufgaben.filter(a=>a.zielId===z.id&&a.status!=='erledigt'&&canSee(a));
@@ -956,6 +1068,7 @@ function rZiele(){
       +'<div style="flex:1"><div style="display:flex;align-items:center;gap:8px;margin-bottom:7px;flex-wrap:wrap">'
       +'<div style="font-size:15px;font-weight:700;color:'+f.tc+'">'+z.name+'</div>'
       +(verantw?'<span style="font-size:11px;color:'+f.tc+';opacity:.7">Verantw.: '+verantw.name+'</span>':'')
+      +(z.vertraulich?'<span class="lock">vertraulich</span>':'')
       +(isGF()?'<button onclick="editZiel(\''+z.id+'\')" style="font-size:10px;padding:2px 8px;border-radius:6px;border:0.5px solid '+f.bd+';background:rgba(255,255,255,.5);color:'+f.tc+';cursor:pointer;font-family:inherit;opacity:.7">bearbeiten</button>':'')
       +'</div>'
       +'<div style="display:flex;align-items:center;gap:10px"><div class="pbar"><div class="pbar-fill" style="width:'+pct+'%;background:'+(pct>=70?f.tc:'#f59e0b')+'"></div></div><span style="font-size:13px;font-weight:700;color:'+(pct>=70?f.tc:'#c2410c')+';min-width:36px">'+pct+'%</span></div>'
@@ -1024,8 +1137,6 @@ function rZiele(){
   document.getElementById('main').innerHTML=out;
 }
 
-const canManageTZ=zid=>{const z=zielObj(zid);return z&&(isGF()||z.verantwortlichId===aP);};
-
 async function toggleTZ(zid,tzid){
   const z=zielObj(zid);if(!z)return;
   const tz=(z.teilziele||[]).find(t=>t.id===tzid);if(!tz)return;
@@ -1074,7 +1185,7 @@ async function delTZ(zid,tzid){
 }
 
 async function addZiel(){
-  const id=nid('z'),rec={id,name:'Neues Ziel',farbe:Math.floor(Math.random()*FARBEN.length),pct:0,verantwortlich_id:null};
+  const id=nid('z'),rec={id,name:'Neues Ziel',farbe:Math.floor(Math.random()*FARBEN.length),pct:0,verantwortlich_id:null,vertraulich:false};
   S.ziele.push({...rec,verantwortlichId:null,kpis:[],teilziele:[]});
   await dbInsert('ziele',rec);rZiele();editZiel(id);
 }
@@ -1160,11 +1271,11 @@ function openNeu(pf={}){
     +'<div class="f2"><div class="fl"><label>Wer?</label><select id="np">'+S.personen.map(p=>'<option value="'+p.id+'"'+(defaultPid===p.id?' selected':'')+'>'+p.name+'</option>').join('')+'</select></div>'
     +'<div class="fl"><label>Typ</label><select id="ntyp" onchange="updateNeuForm()">'
     +'<option value="strategisch">Strategisch (hat Ziel)</option>'
-    +'<option value="operativ"'+((!pf.zielId)?' selected':'')+'>Operativ</option>'
+    +'<option value="operativ" selected>Operativ</option>'
     +'<option value="random">Random</option>'
     +'</select></div></div>'
-    +'<div id="neu-ziel-wrap" class="fl"><label>Ziel</label><select id="nziel" onchange="updateNeuTZ()">'+S.ziele.map(z=>'<option value="'+z.id+'"'+(pf.zielId===z.id?' selected':'')+'>'+z.name+'</option>').join('')+'</select></div>'
-    +'<div id="neu-tz-wrap" class="fl"><label>Teilziel (optional)</label><select id="ntz"><option value="">— kein Teilziel —</option></select></div>'
+    +'<div id="neu-ziel-wrap" class="fl" style="display:none"><label>Ziel</label><select id="nziel" onchange="updateNeuTZ()">'+S.ziele.filter(z=>!z.vertraulich||isGF()).map(z=>'<option value="'+z.id+'"'+(pf.zielId===z.id?' selected':'')+'>'+z.name+'</option>').join('')+'</select></div>'
+    +'<div id="neu-tz-wrap" class="fl" style="display:none"><label>Teilziel (optional)</label><select id="ntz"><option value="">— kein Teilziel —</option></select></div>'
     +'<div class="fl"><label>Priorität</label><div style="display:flex;gap:6px;margin-top:2px">'
     +[null,'P1','P2','P3'].map(pr=>{const bg=pr==='P1'?'var(--red-bg)':pr==='P2'?'#fff7ed':'var(--gray-bg)';const tc=pr==='P1'?'var(--red)':pr==='P2'?'#c2410c':'var(--t2)';return'<button id="pbp-'+(pr||'k')+'" onclick="selPrioBtn(this,\''+pr+'\')" style="font-size:12px;padding:4px 11px;border-radius:8px;border:1px solid '+(pr?tc:'var(--bd)')+';background:'+bg+';color:'+tc+';cursor:pointer;font-family:inherit">'+(pr||'kein')+'</button>';}).join('')
     +'</div></div>'
@@ -1174,8 +1285,7 @@ function openNeu(pf={}){
     +'<div class="fl"><label>Notiz</label><input id="nno" value="'+(pf.notiz||'')+'" placeholder="Optional…"></div>'
     +'<div class="mf"><button class="btn btn-gr" onclick="cm()">Abbrechen</button><button class="btn btn-dk" onclick="saveNeu()">Speichern</button></div>';
   document.getElementById('ovl').classList.add('open');
-  if(pf.zielId)document.getElementById('ntyp').value='strategisch';
-  updateNeuForm();
+  if(pf.zielId){document.getElementById('ntyp').value='strategisch';updateNeuForm();}
   if(pf.teilzielId)setTimeout(()=>{const s=document.getElementById('ntz');if(s)s.value=pf.teilzielId;},50);
 }
 function updateNeuForm(){
@@ -1216,7 +1326,7 @@ async function saveNeu(){
 
 function openAI(){
   document.getElementById('mb').innerHTML='<div class="mt">✦ Aufgabe mit KI erstellen</div>'
-    +'<div style="background:var(--gray-bg);border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:11px;color:var(--t3)">Beispiele:<br>„Erstelle für Fabian Wartungsplan bis Freitag unter Ziel Qualität P1"<br>„Kristina: Messe München buchen bis 10. April, P1"</div>'
+    +'<div style="background:var(--gray-bg);border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:11px;color:var(--t3)">Beispiele:<br>„Erstelle für Fabian Wartungsplan bis Freitag P1"<br>„Kristina: Messe München buchen bis 10. April, P1"</div>'
     +'<div class="fl"><textarea id="ai-inp" rows="3" placeholder="Beschreibe die Aufgabe…" style="resize:none;font-size:13px"></textarea></div>'
     +'<div id="ai-out"></div>'
     +'<div class="mf"><button class="btn btn-gr" onclick="cm()">Abbrechen</button><button class="btn btn-purple" onclick="runAI()">✦ Erstellen</button></div>';
@@ -1269,7 +1379,7 @@ function rTeam(){
   const rankData=S.personen.map(p=>({p,count:getPaddelCount(p.id)})).sort((a,b)=>b.count-a.count).filter(x=>x.count>0);
   if(rankData.length){
     out+='<div style="background:var(--amber-bg);border:1px solid var(--amber-bd);border-radius:14px;padding:14px 16px;margin-bottom:16px">';
-    out+='<div style="font-size:11px;font-weight:700;color:var(--amber);margin-bottom:10px">🏆 Paddel-Rangliste diese Woche</div>';
+    out+='<div style="font-size:11px;font-weight:700;color:var(--amber);margin-bottom:10px">🏆 Paddel-Rangliste</div>';
     rankData.forEach((x,i)=>{
       const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':'';
       out+='<div style="display:flex;align-items:center;gap:10px;padding:5px 0">';
@@ -1310,6 +1420,9 @@ function rTeam(){
   });
   out+=rSignaleTeam();
   document.getElementById('main').innerHTML=out;
+}
+
+function openSettings(){
   let h='<div class="mt">Einstellungen</div>';
   h+='<div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Personen</div>';
   S.personen.forEach(p=>{
@@ -1452,7 +1565,6 @@ function startTimers(){
 function cm(){document.getElementById('ovl').classList.remove('open');}
 window.addEventListener('keydown',e=>{if(e.key==='Escape')cm();});
 
-// BOOT
 (async()=>{
   await loadData();
   document.getElementById('login-screen').innerHTML='<div class="login-box">'
