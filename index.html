@@ -611,7 +611,6 @@ function rSignalBlock(pid){
       out+='<div style="font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+s.was+'</div>';
       out+='<div style="font-size:10px;color:var(--t3);margin-top:1px">'+s.bereich+' · '+(s.created_at?new Date(s.created_at).toLocaleDateString('de',{day:'2-digit',month:'2-digit'}):'')+'</div>';
       out+='</div>';
-      out+='<button onclick="openNeu({titel:\''+s.was.replace(/'/g,'\\\'')+'\'});delSignal(\''+s.id+'\')" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--text);cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0">→ Aufgabe</button>';
       out+='<button onclick="delSignal(\''+s.id+'\')" style="font-size:10px;background:none;border:none;color:var(--t3);cursor:pointer;flex-shrink:0;padding:2px 4px">✕</button>';
       out+='</div>';
     });
@@ -622,39 +621,37 @@ function rSignalBlock(pid){
 }
 
 function openSignal(){
-  const BEREICHE=['After Sales','Sales','Werkstatt','Marketing','Operations','Organisation','IT'];
+  const personOpts=S.personen.map(p=>'<option value="'+p.id+'">'+p.name+'</option>').join('');
   document.getElementById('mb').innerHTML='<div class="mt">Reibung melden</div>'
-    +'<div style="font-size:12px;color:var(--t2);margin-bottom:16px;line-height:1.6">Was hakt? Kurz und konkret — wird direkt zur Aufgabe.</div>'
+    +'<div style="font-size:12px;color:var(--t2);margin-bottom:16px;line-height:1.6">Was hakt? → wird sofort als Aufgabe angelegt.</div>'
     +'<div class="fl"><label>Was ist passiert?</label><input id="sig-was" placeholder="z.B. Kunde beschwert sich über Lieferzeit" autofocus></div>'
     +'<div class="f2">'
-    +'<div class="fl"><label>Typ</label><select id="sig-typ" onchange="updSigTyp(this.value)">'
-    +'<option value="reklamation">Reklamation — Kunde unzufrieden</option>'
-    +'<option value="reibung">Reibung — Prozess hakt</option>'
+    +'<div class="fl"><label>Typ</label><select id="sig-typ">'
+    +'<option value="reklamation">Reklamation</option>'
+    +'<option value="reibung">Reibung</option>'
     +'</select></div>'
-    +'<div class="fl"><label>Bereich</label><select id="sig-bereich">'+BEREICHE.map(b=>'<option>'+b+'</option>').join('')+'</select></div>'
+    +'<div class="fl"><label>Wer löst das?</label><select id="sig-verantw">'+personOpts+'</select></div>'
     +'</div>'
-    +'<div id="sig-haeufig-wrap" style="display:none" class="fl"><label>Wie oft machst du das?</label>'
-    +'<select id="sig-haeufig">'
-    +'<option value="täglich">Täglich</option>'
-    +'<option value="mehrmals">Mehrmals pro Woche</option>'
-    +'<option value="wöchentlich">Wöchentlich</option>'
-    +'</select></div>'
     +'<div class="fl"><label>Notiz (optional)</label><input id="sig-notiz" placeholder="Mehr Details..."></div>'
-    +'<div class="mf"><button class="btn btn-gr" onclick="cm()">Abbrechen</button><button class="btn btn-dk" onclick="saveSignal()">Speichern</button></div>';
+    +'<div class="mf"><button class="btn btn-gr" onclick="cm()">Abbrechen</button><button class="btn btn-dk" onclick="saveSignal()">Aufgabe erstellen</button></div>';
   document.getElementById('ovl').classList.add('open');
-}
-function updSigTyp(v){
-  const w=document.getElementById('sig-haeufig-wrap');
-  if(w)w.style.display=v==='wiederholung'?'':'none';
 }
 async function saveSignal(){
   const was=document.getElementById('sig-was').value.trim();if(!was)return;
   const typ=document.getElementById('sig-typ').value;
-  const haeufig=typ==='wiederholung'?(document.getElementById('sig-haeufig')?.value||null):null;
-  const id=nid('sg');
-  const rec={id,pid:aP,was,typ,bereich:document.getElementById('sig-bereich').value,notiz:document.getElementById('sig-notiz').value.trim()||null,haeufig,created_at:new Date().toISOString()};
+  const verantwPid=document.getElementById('sig-verantw')?.value||aP;
+  const notiz=document.getElementById('sig-notiz').value.trim()||null;
+  const sigId=nid('sg');
+  const rec={id:sigId,pid:aP,was,typ,bereich:'',notiz,haeufig:null,created_at:new Date().toISOString()};
   S.signale.unshift(rec);
   await dbInsert('signale',rec);
+  const typLabel=typ==='reklamation'?'Reklamation':'Reibung';
+  const aId=nid('a');
+  const aRec={id:aId,pid:verantwPid,titel:typLabel+': '+was,typ:'operativ',status:verantwPid!==aP?'zugewiesen':'neu',
+    prio:'P2',ziel_id:null,teilziel_id:null,geplant:1,gebucht:0,
+    dl:null,ua:[],notiz:notiz||null,akt_seit:null,vertraulich:false,erstellt_von:aP};
+  S.aufgaben.push({...aRec,zielId:null,teilzielId:null,aktSeit:null,dl:'',erstelltVon:aP});
+  await dbInsert('aufgaben',aRec);
   cm();render();
 }
 async function delSignal(id){
