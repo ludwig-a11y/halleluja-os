@@ -1198,11 +1198,14 @@ function rTag(){
   }
 
   if(zugewiesenA.length){
-    out+='<div style="background:var(--amber-bg);border:1px solid var(--amber-bd);border-radius:14px;padding:14px 16px;margin-bottom:12px">'
-      +'<div style="font-size:10px;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Inbox — Priorität bestätigen</div>';
+    out+='<div style="background:#fff;border:1.5px solid var(--blue-bd);border-radius:14px;padding:14px 16px;margin-bottom:12px">'
+      +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">'
+      +'<span style="background:var(--blue);color:#fff;font-size:10px;font-weight:700;padding:2px 9px;border-radius:99px">'+zugewiesenA.length+' neu</span>'
+      +'<span style="font-size:13px;font-weight:600">Inbox</span>'
+      +'</div>';
     zugewiesenA.forEach(a=>{
       const from=person(a.erstelltVon);
-      out+='<div style="background:rgba(255,255,255,.75);border-radius:10px;padding:10px 12px;margin-bottom:8px">'
+      out+='<div style="background:var(--gray-bg);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;margin-bottom:8px">'
         +'<div style="font-size:13px;font-weight:600;margin-bottom:3px">'+a.titel+'</div>'
         +(from?'<div style="font-size:11px;color:var(--t2);margin-bottom:8px">von '+from.name+(a.prio?' · Vorschlag: <strong>'+a.prio+'</strong>':'')+'</div>':'')
         +'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px">'
