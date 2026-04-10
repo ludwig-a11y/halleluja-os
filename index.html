@@ -560,11 +560,26 @@ async function bestaetigeAufgabe(id,prio){
   await dbPatch('aufgaben',id,{prio:a.prio,status:a.status});
   render();
 }
+async function klassifiziereAlsRandom(id){
+  const a=S.aufgaben.find(x=>x.id===id);if(!a)return;
+  a.typ='random';a.prio=null;a.status='backlog';
+  await dbPatch('aufgaben',id,{typ:'random',prio:null,status:'backlog'});
+  render();
+}
+async function klassifiziereAlsIdee(id){
+  const a=S.aufgaben.find(x=>x.id===id);if(!a)return;
+  const rec={id:nid('s'),pid:aP,typ:'idee',was:a.titel,warum:'Aus Inbox weitergeleitet (von '+( (S.personen.find(p=>p.id===a.erstelltVon)||{}).name||'?')+')',fuer:null};
+  S.signale.unshift(rec);
+  a.status='idee';
+  await dbInsert('signale',rec);
+  await dbPatch('aufgaben',id,{status:'idee'});
+  render();
+}
 function rDelegBlock(pid){
   const delegated=S.aufgaben.filter(a=>a.erstelltVon===pid&&a.pid!==pid&&a.status!=='erledigt');
   if(!delegated.length)return'';
-  const statusMap={neu:'Neu',backlog:'In Pipeline',aktiv:'Läuft',erledigt:'Erledigt',zugewiesen:'Ausstehend'};
-  const statusColor={neu:'var(--red)',backlog:'var(--t3)',aktiv:'var(--blue)',erledigt:'var(--green)',zugewiesen:'var(--amber)'};
+  const statusMap={neu:'Neu',backlog:'In Pipeline',aktiv:'Läuft',erledigt:'Erledigt',zugewiesen:'Ausstehend',idee:'→ Idee Pool',random:'Random'};
+  const statusColor={neu:'var(--red)',backlog:'var(--t3)',aktiv:'var(--blue)',erledigt:'var(--green)',zugewiesen:'var(--amber)',idee:'var(--blue)',random:'var(--t3)'};
   let out='<details style="margin-bottom:12px"><summary style="list-style:none;cursor:pointer;padding:12px 16px;background:var(--sf);border:1px solid var(--bd);border-radius:12px;display:flex;align-items:center;justify-content:space-between">';
   out+='<span style="font-size:13px;font-weight:600">Meine Delegationen</span>';
   out+='<span style="font-size:12px;color:var(--t3)">'+delegated.length+' · anzeigen</span></summary>';
@@ -1073,14 +1088,19 @@ function rTag(){
       out+='<div style="background:rgba(255,255,255,.75);border-radius:10px;padding:10px 12px;margin-bottom:8px">'
         +'<div style="font-size:13px;font-weight:600;margin-bottom:3px">'+a.titel+'</div>'
         +(from?'<div style="font-size:11px;color:var(--t2);margin-bottom:8px">von '+from.name+(a.prio?' · Vorschlag: <strong>'+a.prio+'</strong>':'')+'</div>':'')
-        +'<div style="display:flex;gap:6px;flex-wrap:wrap">'
+        +'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px">'
         +['P1','P2','P3','null'].map(p=>{
-          const lbl=p==='null'?'Kein':p;
+          const lbl=p==='null'?'Kein Prio':p;
           const bg=p==='P1'?'var(--red-bg)':p==='P2'?'#fff7ed':p==='P3'?'var(--gray-bg)':'var(--sf)';
           const tc=p==='P1'?'var(--red)':p==='P2'?'#c2410c':p==='P3'?'var(--t2)':'var(--t3)';
           const suggested=p===a.prio||(p==='null'&&!a.prio);
           return'<button onclick="bestaetigeAufgabe(\''+a.id+'\',\''+p+'\')" style="font-size:11px;padding:5px 13px;border-radius:8px;border:'+(suggested?'2px solid var(--text)':'1px solid var(--bd)')+';background:'+bg+';color:'+tc+';cursor:pointer;font-family:inherit;font-weight:'+(suggested?700:400)+'">'+lbl+'</button>';
         }).join('')
+        +'</div>'
+        +'<div style="display:flex;gap:6px;align-items:center">'
+        +'<span style="font-size:10px;color:var(--t3)">oder:</span>'
+        +'<button onclick="klassifiziereAlsIdee(\''+a.id+'\')" style="font-size:11px;padding:4px 11px;border-radius:8px;border:1px solid var(--blue-bd);background:var(--blue-bg);color:var(--blue);cursor:pointer;font-family:inherit">💡 Idee</button>'
+        +'<button onclick="klassifiziereAlsRandom(\''+a.id+'\')" style="font-size:11px;padding:4px 11px;border-radius:8px;border:1px solid var(--bd);background:var(--gray-bg);color:var(--t2);cursor:pointer;font-family:inherit">🎲 Random</button>'
         +'</div></div>';
     });
     out+='</div>';
