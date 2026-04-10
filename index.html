@@ -474,25 +474,29 @@ function showSonderCelebration(pid,label,val,ziel){
   showKonfetti();
   setTimeout(()=>el.remove(),10000);
 }
-let _dataPoll=null;
+let _dataPoll=null,_dataHash='';
+function _aufgabenHash(arr){return arr.map(a=>a.id+a.status+(a.updated_at||'')).join('|');}
 function startDataPoller(){
   if(_dataPoll)return;
+  _dataHash=_aufgabenHash(S.aufgaben);
   _dataPoll=setInterval(async()=>{
+    const modalOpen=document.getElementById('ovl')?.classList.contains('open');
     const [aufgaben,signale]=await Promise.all([
       dbGet('aufgaben','select=*&order=created_at'),
       dbGet('signale','select=*&order=created_at.desc')
     ]);
-    if(!aufgaben||!signale)return;
-    const prev=S.aufgaben.length;
+    if(!aufgaben)return;
+    const newHash=_aufgabenHash(aufgaben);
+    if(newHash===_dataHash)return; // nichts geändert
+    _dataHash=newHash;
     S.aufgaben=(aufgaben||[]).map(a=>({
       ...a,zielId:a.ziel_id||null,teilzielId:a.teilziel_id||null,
       aktSeit:a.akt_seit?new Date(a.akt_seit).getTime():null,
       dl:a.dl||'',ua:Array.isArray(a.ua)?a.ua:(typeof a.ua==='string'?JSON.parse(a.ua||'[]'):[]),
       erstelltVon:a.erstellt_von||null
     }));
-    S.signale=signale||[];
-    const mineNeu=S.aufgaben.filter(a=>a.pid===aP&&a.status==='zugewiesen').length;
-    if(mineNeu>0||S.aufgaben.length!==prev)render();
+    if(signale)S.signale=signale;
+    if(!modalOpen)render();
   },60000);
 }
 
