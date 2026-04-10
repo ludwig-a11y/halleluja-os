@@ -1374,38 +1374,20 @@ function rZiele(){
     const f=FARBEN[z.farbe]||FARBEN[0];
     const verantw=person(z.verantwortlichId);
     const visKpis=(z.kpis||[]).filter(k=>isGF()||String(k.pid)===String(aP));
-    const pct=zielPct(z);
-    const okK=visKpis.filter(kpiOk).length;
-    const badK=visKpis.filter(k=>!kpiOk(k));
     const zA=S.aufgaben.filter(a=>a.zielId===z.id&&a.status!=='erledigt'&&canSee(a)&&(isGF()||a.pid===aP));
-    const onTrack=pct>=70;
 
     // Sektion: farbiger Hintergrund-Tint + linker Akzent
     out+='<div style="background:'+f.bg+';border:1px solid '+f.bd+';border-left:3px solid '+f.tc+';border-radius:0 8px 8px 0;padding:16px 20px;margin-bottom:12px">';
 
     // Header
-    out+='<div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:10px">';
+    out+='<div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:'+(visKpis.length?'14':'10')+'px">';
     out+='<div style="flex:1">';
     out+='<div style="font-size:15px;font-weight:700;color:#111;margin-bottom:3px">'+z.name+'</div>';
     out+='<div style="font-size:11px;color:var(--t3);display:flex;align-items:center;gap:6px">';
     if(verantw)out+='<span>'+verantw.name+'</span>';
     if(z.vertraulich)out+='<span class="lock">vertraulich</span>';
     out+='</div></div>';
-    out+='<div style="display:flex;align-items:center;gap:8px;flex-shrink:0">';
-    out+='<div style="font-size:20px;font-weight:800;color:'+(onTrack?f.tc:'var(--amber)')+'">'+pct+'%</div>';
-    if(isGF())out+='<button onclick="editZiel(\''+z.id+'\')" style="font-size:11px;padding:3px 9px;border-radius:7px;border:1px solid var(--bd);background:var(--gray-bg);color:var(--t2);cursor:pointer;font-family:inherit">···</button>';
-    out+='</div></div>';
-
-    // Progress bar
-    out+='<div style="height:5px;background:#f3f4f6;border-radius:99px;overflow:hidden;margin-bottom:8px">';
-    out+='<div style="height:100%;border-radius:99px;background:'+(onTrack?f.tc:'var(--amber)')+';width:'+pct+'%;transition:width .4s"></div>';
-    out+='</div>';
-
-    // Status + bad KPI pills
-    out+='<div style="font-size:11px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:'+(visKpis.length?'14':'16')+'px">';
-    out+='<span style="color:'+(onTrack?f.tc:'var(--amber)')+';font-weight:600">'+(onTrack?'✓ Auf Kurs':'⚠ Unter Plan')+'</span>';
-    if(visKpis.length)out+='<span style="color:var(--t3)">· '+okK+'/'+visKpis.length+' KPIs auf Kurs</span>';
-    badK.forEach(k=>out+='<span style="background:var(--red-bg);color:var(--red);border:1px solid var(--red-bd);border-radius:99px;padding:1px 8px;font-size:10px;font-weight:600">'+k.label+': '+kpiVal(k)+(k.unit||'')+' → '+k.ziel+(k.unit||'')+'</span>');
+    if(isGF())out+='<button onclick="editZiel(\''+z.id+'\')" style="font-size:11px;padding:3px 9px;border-radius:7px;border:1px solid var(--bd);background:var(--gray-bg);color:var(--t2);cursor:pointer;font-family:inherit;flex-shrink:0">···</button>';
     out+='</div>';
 
     // KPI grid (compact, always visible)
@@ -1496,18 +1478,11 @@ function rZiele(){
     out+='<div style="margin-top:8px">';
     out+='<div style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Unternehmensziele</div>';
     andereZiele.forEach(z=>{
-      const f=FARBEN[z.farbe]||FARBEN[0],verantw=person(z.verantwortlichId),pct=zielPct(z),onTrack=pct>=70;
-      out+='<div style="border-left:3px solid '+f.tc+';padding:0 0 16px 16px;margin-bottom:4px">';
-      out+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">';
-      out+='<div>';
+      const f=FARBEN[z.farbe]||FARBEN[0],verantw=person(z.verantwortlichId);
+      out+='<div style="border-left:3px solid '+f.tc+';padding:0 0 12px 16px;margin-bottom:4px">';
       out+='<div style="font-size:13px;font-weight:700;color:#111">'+z.name+'</div>';
       if(verantw)out+='<div style="font-size:10px;color:var(--t3);margin-top:1px">'+verantw.name+'</div>';
       out+='</div>';
-      out+='<div style="font-size:16px;font-weight:800;color:'+(onTrack?f.tc:'var(--amber)')+'">'+pct+'%</div>';
-      out+='</div>';
-      out+='<div style="height:4px;background:#f3f4f6;border-radius:99px;overflow:hidden">';
-      out+='<div style="height:100%;border-radius:99px;background:'+(onTrack?f.tc:'var(--amber)')+';width:'+pct+'%"></div>';
-      out+='</div></div>';
     });
     out+='</div>';
   }
