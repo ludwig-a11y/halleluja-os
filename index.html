@@ -1165,8 +1165,9 @@ function rZiele(){
     +'</div>';
   S.ziele.filter(z=>!z.vertraulich||isGF()).forEach(z=>{
     const f=FARBEN[z.farbe]||FARBEN[0],verantw=person(z.verantwortlichId);
-    const pct=zielPct(z),okK=(z.kpis||[]).filter(kpiOk).length,badK=(z.kpis||[]).filter(k=>!kpiOk(k));
-    const zA=S.aufgaben.filter(a=>a.zielId===z.id&&a.status!=='erledigt'&&canSee(a));
+    const visKpis=(z.kpis||[]).filter(k=>isGF()||k.pid===aP);
+    const pct=zielPct(z),okK=visKpis.filter(kpiOk).length,badK=visKpis.filter(k=>!kpiOk(k));
+    const zA=S.aufgaben.filter(a=>a.zielId===z.id&&a.status!=='erledigt'&&canSee(a)&&(isGF()||a.pid===aP));
     out+='<div class="zcard" style="background:'+f.bg+';border-color:'+f.bd+'">';
     out+='<div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:14px">'
       +'<div style="flex:1"><div style="display:flex;align-items:center;gap:8px;margin-bottom:7px;flex-wrap:wrap">'
@@ -1176,14 +1177,14 @@ function rZiele(){
       +(isGF()?'<button onclick="editZiel(\''+z.id+'\')" style="font-size:10px;padding:2px 8px;border-radius:6px;border:0.5px solid '+f.bd+';background:rgba(255,255,255,.5);color:'+f.tc+';cursor:pointer;font-family:inherit;opacity:.7">bearbeiten</button>':'')
       +'</div>'
       +'<div style="display:flex;align-items:center;gap:10px"><div class="pbar"><div class="pbar-fill" style="width:'+pct+'%;background:'+(pct>=70?f.tc:'#f59e0b')+'"></div></div><span style="font-size:13px;font-weight:700;color:'+(pct>=70?f.tc:'#c2410c')+';min-width:36px">'+pct+'%</span></div>'
-      +'<div style="font-size:11px;color:'+f.tc+';opacity:.65;margin-top:3px">'+(pct>=70?'✓ Auf Kurs':'⚠ Unter Plan')+(z.kpis.length?' · '+okK+'/'+z.kpis.length+' KPIs auf Kurs':'')+'</div>'
+      +'<div style="font-size:11px;color:'+f.tc+';opacity:.65;margin-top:3px">'+(pct>=70?'✓ Auf Kurs':'⚠ Unter Plan')+(visKpis.length?' · '+okK+'/'+visKpis.length+' KPIs auf Kurs':'')+'</div>'
       +'</div>'
       +(badK.length?'<div style="background:var(--red-bg);border:1px solid var(--red-bd);border-radius:9px;padding:8px 10px;min-width:140px;flex-shrink:0"><div style="font-size:10px;font-weight:600;color:var(--red);margin-bottom:4px">Handlungsbedarf</div>'+badK.map(k=>'<div style="font-size:10px;color:var(--red)">· '+k.label+': '+k.ist+(k.unit||'')+' → '+k.ziel+(k.unit||'')+'</div>').join('')+'</div>':'')
       +'</div>';
-    if(z.kpis.length||isGF()){
-      out+='<details style="margin-bottom:14px"><summary style="cursor:pointer;font-size:10px;font-weight:700;color:'+f.tc+';opacity:.65;text-transform:uppercase;letter-spacing:.5px;list-style:none">▸ KPIs ('+z.kpis.length+')</summary>';
+    if(visKpis.length||isGF()){
+      out+='<details style="margin-bottom:14px"><summary style="cursor:pointer;font-size:10px;font-weight:700;color:'+f.tc+';opacity:.65;text-transform:uppercase;letter-spacing:.5px;list-style:none">▸ KPIs ('+visKpis.length+')</summary>';
       out+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:8px;margin-top:10px">';
-      z.kpis.forEach(k=>{
+      visKpis.forEach(k=>{
         const val=kpiVal(k),ok=kpiOk(k),p2=person(k.pid);
         const pct2=k.inv?Math.max(0,100-Math.round(Math.max(0,val-k.ziel)/Math.max(k.ziel,.1)*100)):Math.round(Math.min(100,val/(k.ziel||1)*100));
         const isMe=k.pid===aP;
@@ -1198,8 +1199,9 @@ function rZiele(){
       if(isGF())out+='<div onclick="addKpi(\''+z.id+'\')" style="border:1.5px dashed '+f.bd+';border-radius:10px;padding:11px 12px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;color:'+f.tc+';gap:4px;opacity:.5;min-height:90px" onmouseenter="this.style.opacity=\'0.9\'" onmouseleave="this.style.opacity=\'0.5\'"><span style="font-size:20px">+</span><span style="font-size:11px">KPI</span></div>';
       out+='</div></details>';
     }
-    out+='<div style="font-size:10px;font-weight:700;color:'+f.tc+';opacity:.65;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Teilziele</div>';
-    (z.teilziele||[]).forEach(tz=>{
+    const myTZ=(z.teilziele||[]).filter(tz=>isGF()||tz.verantwortlichId===aP);
+    if(myTZ.length||isGF())out+='<div style="font-size:10px;font-weight:700;color:'+f.tc+';opacity:.65;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Teilziele</div>';
+    myTZ.forEach(tz=>{
       const tzV=person(tz.verantwortlichId),tzA=zA.filter(a=>a.teilzielId===tz.id);
       out+='<div class="tz-block" style="'+(tz.erledigt?'opacity:.55':'')+'"><div class="tz-head">'
         +(canManageTZ(z.id)?'<input type="checkbox" '+(tz.erledigt?'checked':'')+' onclick="toggleTZ(\''+z.id+'\',\''+tz.id+'\')" style="flex-shrink:0">':'')
