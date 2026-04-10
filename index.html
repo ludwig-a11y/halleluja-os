@@ -591,7 +591,7 @@ async function klassifiziereAlsRandom(id){
 }
 async function klassifiziereAlsIdee(id){
   const a=S.aufgaben.find(x=>x.id===id);if(!a)return;
-  const rec={id:nid('s'),pid:aP,typ:'idee',was:a.titel,warum:'Aus Inbox weitergeleitet (von '+( (S.personen.find(p=>p.id===a.erstelltVon)||{}).name||'?')+')',fuer:null};
+  const rec={id:nid('s'),pid:aP,typ:'idee',was:a.titel,warum:'Aus Inbox weitergeleitet (von '+(person(a.erstelltVon)?.name||'?')+')',fuer:null};
   S.signale.unshift(rec);
   a.status='idee';
   await dbInsert('signale',rec);
@@ -626,9 +626,9 @@ function rDelegBlock(pid){
 }
 
 function kapTier(ratio){
-  if(ratio<0.5) return{label:'Luft nach oben',short:'Luft',color:'var(--blue)',bar:'var(--blue)'};
-  if(ratio<=1.1) return{label:'Stretch ↑',short:'Stretch',color:'var(--amber)',bar:'var(--amber)'};
-  return{label:'Sehr ambitioniert',short:'Voll',color:'var(--t2)',bar:'#9ca3af'};
+  if(ratio<0.5) return{label:'Luft nach oben',short:'Luft',color:'var(--blue)',bar:'var(--blue)',bg:'var(--blue-bg)',bd:'var(--blue-bd)'};
+  if(ratio<=1.1) return{label:'Stretch ↑',short:'Stretch',color:'var(--amber)',bar:'var(--amber)',bg:'var(--amber-bg)',bd:'var(--amber-bd)'};
+  return{label:'Sehr ambitioniert',short:'Voll',color:'var(--t2)',bar:'#9ca3af',bg:'var(--gray-bg)',bd:'var(--bd)'};
 }
 function getKapazitaet(pid){
   const p=person(pid);if(!p)return null;
@@ -646,7 +646,7 @@ function getKapazitaet(pid){
   let p1h=0,p23h=0,rnd=0;
   S.aufgaben.forEach(a=>{
     if(a.pid!==pid||a.status==='erledigt'||a.status==='idee')return;
-    if(a.typ==='random'&&a.status!=='erledigt'){rnd++;return;}
+    if(a.typ==='random'){rnd++;return;}
     const thisWeek=a.status==='aktiv'||(a.dl&&a.dl<=weekEndStr);
     if(!thisWeek)return;
     const h=a.geplant||1;
@@ -747,7 +747,7 @@ async function saveSignal(){
   const aRec={id:aId,pid:verantwPid,titel:typLabel+': '+was,typ:'operativ',status:verantwPid!==aP?'zugewiesen':'neu',
     prio:'P2',ziel_id:null,teilziel_id:null,geplant:1,gebucht:0,
     dl:null,ua:[],notiz:notiz||null,akt_seit:null,vertraulich:false,erstellt_von:aP};
-  S.aufgaben.push({...aRec,zielId:null,teilzielId:null,aktSeit:null,dl:'',erstelltVon:aP});
+  S.aufgaben.push(normalizeAufgabe(aRec));
   await dbInsert('aufgaben',aRec);
   cm();render();
 }
@@ -921,9 +921,7 @@ function updateKapPill(){
   const k=getKapazitaet(aP);
   if(!k||!k.fh){el.style.cssText='display:none';return;}
   const t=kapTier(k.fh>0?k.p1h/k.fh:0);
-  const bg=t.bar==='var(--blue)'?'var(--blue-bg)':t.bar==='var(--amber)'?'var(--amber-bg)':'var(--gray-bg)';
-  const bd=t.bar==='var(--blue)'?'var(--blue-bd)':t.bar==='var(--amber)'?'var(--amber-bd)':'var(--bd)';
-  el.style.cssText='display:flex;align-items:center;gap:4px;padding:3px 10px;border-radius:99px;cursor:pointer;background:'+bg+';border:1px solid '+bd;
+  el.style.cssText='display:flex;align-items:center;gap:4px;padding:3px 10px;border-radius:99px;cursor:pointer;background:'+t.bg+';border:1px solid '+t.bd;
   el.innerHTML='<span style="font-size:11px;font-weight:700;color:'+t.color+'">⚡ '+k.p1h.toFixed(0)+'h</span>'
     +'<span style="font-size:10px;color:'+t.color+';opacity:.8">· '+t.short+'</span>';
 }
@@ -1651,7 +1649,7 @@ async function saveNeu(){
     gebucht:0,dl:document.getElementById('ndl').value||null,
     ua:[],notiz:document.getElementById('nno').value.trim(),akt_seit:null,vertraulich:vert,
     erstellt_von:aP};
-  S.aufgaben.push({...rec,zielId,teilzielId,aktSeit:null,dl:rec.dl||'',erstelltVon:aP});
+  S.aufgaben.push(normalizeAufgabe(rec));
   await dbInsert('aufgaben',rec);cm();render();
 }
 
@@ -1700,7 +1698,7 @@ async function confirmAI(p){
     ziel_id:p.zielId||null,teilziel_id:null,
     geplant:1,gebucht:0,dl:p.dl||null,ua:[],notiz:p.notiz||'',akt_seit:null,vertraulich:false,
     erstellt_von:aP};
-  S.aufgaben.push({...rec,zielId:rec.ziel_id,teilzielId:null,aktSeit:null,dl:rec.dl||'',erstelltVon:aP});
+  S.aufgaben.push(normalizeAufgabe(rec));
   await dbInsert('aufgaben',rec);cm();render();
 }
 
