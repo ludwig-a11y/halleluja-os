@@ -588,16 +588,16 @@ function rDelegBlock(pid){
 }
 
 function rSignalBlock(pid){
-  const mine=S.signale.filter(s=>s.pid===pid);
-  const TYPEN={reklamation:{l:'Reklamation',bg:'var(--red-bg)',tc:'var(--red)',bd:'var(--red-bd)'},reibung:{l:'Reibung',bg:'var(--amber-bg)',tc:'var(--amber)',bd:'var(--amber-bd)'},idee:{l:'Idee',bg:'var(--blue-bg)',tc:'var(--blue)',bd:'var(--blue-bd)'},wiederholung:{l:'↻ Wiederholung',bg:'var(--purple-bg)',tc:'var(--purple)',bd:'var(--purple-bd)'}};
+  const mine=S.signale.filter(s=>s.pid===pid&&s.typ!=='idee'&&s.typ!=='wolke');
+  const TYPEN={reklamation:{l:'Reklamation',bg:'var(--red-bg)',tc:'var(--red)',bd:'var(--red-bd)'},reibung:{l:'Reibung',bg:'var(--amber-bg)',tc:'var(--amber)',bd:'var(--amber-bd)'}};
   let out='<div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--bd)">';
   out+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">';
-  out+='<div><div style="font-size:12px;font-weight:600;color:var(--text)">Signale</div>';
-  out+='<div style="font-size:10px;color:var(--t3);margin-top:1px">Reklamationen, Reibung, Ideen — 30 Sekunden</div></div>';
-  out+='<button onclick="openSignal()" style="font-size:11px;padding:5px 12px;border-radius:8px;background:var(--text);color:#fff;border:none;font-family:inherit;cursor:pointer;font-weight:500">+ Signal</button>';
+  out+='<div><div style="font-size:12px;font-weight:600;color:var(--text)">Reibung & Feedback</div>';
+  out+='<div style="font-size:10px;color:var(--t3);margin-top:1px">Operatives Feedback — wird direkt zur Aufgabe</div></div>';
+  out+='<button onclick="openSignal()" style="font-size:11px;padding:5px 12px;border-radius:8px;background:var(--text);color:#fff;border:none;font-family:inherit;cursor:pointer;font-weight:500">+ Melden</button>';
   out+='</div>';
   if(mine.length===0){
-    out+='<div style="font-size:12px;color:var(--t3);font-style:italic;padding:10px 0">Noch keine Signale — trag ein was dir auffällt.</div>';
+    out+='<div style="font-size:12px;color:var(--t3);font-style:italic;padding:10px 0">Keine offenen Rückmeldungen.</div>';
   } else {
     mine.slice(0,5).forEach(s=>{
       const t=TYPEN[s.typ]||TYPEN.reibung;
@@ -607,6 +607,7 @@ function rSignalBlock(pid){
       out+='<div style="font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+s.was+'</div>';
       out+='<div style="font-size:10px;color:var(--t3);margin-top:1px">'+s.bereich+' · '+(s.created_at?new Date(s.created_at).toLocaleDateString('de',{day:'2-digit',month:'2-digit'}):'')+'</div>';
       out+='</div>';
+      out+='<button onclick="openNeu({titel:\''+s.was.replace(/'/g,'\\\'')+'\'});delSignal(\''+s.id+'\')" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--text);cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0">→ Aufgabe</button>';
       out+='<button onclick="delSignal(\''+s.id+'\')" style="font-size:10px;background:none;border:none;color:var(--t3);cursor:pointer;flex-shrink:0;padding:2px 4px">✕</button>';
       out+='</div>';
     });
@@ -618,15 +619,13 @@ function rSignalBlock(pid){
 
 function openSignal(){
   const BEREICHE=['After Sales','Sales','Werkstatt','Marketing','Operations','Organisation','IT'];
-  document.getElementById('mb').innerHTML='<div class="mt">Signal melden</div>'
-    +'<div style="font-size:12px;color:var(--t2);margin-bottom:16px;line-height:1.6">Was ist dir aufgefallen? Kurz und konkret — 30 Sekunden.</div>'
+  document.getElementById('mb').innerHTML='<div class="mt">Reibung melden</div>'
+    +'<div style="font-size:12px;color:var(--t2);margin-bottom:16px;line-height:1.6">Was hakt? Kurz und konkret — wird direkt zur Aufgabe.</div>'
     +'<div class="fl"><label>Was ist passiert?</label><input id="sig-was" placeholder="z.B. Kunde beschwert sich über Lieferzeit" autofocus></div>'
     +'<div class="f2">'
     +'<div class="fl"><label>Typ</label><select id="sig-typ" onchange="updSigTyp(this.value)">'
     +'<option value="reklamation">Reklamation — Kunde unzufrieden</option>'
     +'<option value="reibung">Reibung — Prozess hakt</option>'
-    +'<option value="idee">Idee — Verbesserungsvorschlag</option>'
-    +'<option value="wiederholung">Wiederholung — mache ich immer wieder manuell</option>'
     +'</select></div>'
     +'<div class="fl"><label>Bereich</label><select id="sig-bereich">'+BEREICHE.map(b=>'<option>'+b+'</option>').join('')+'</select></div>'
     +'</div>'
