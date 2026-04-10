@@ -475,24 +475,41 @@ function showSonderCelebration(pid,label,val,ziel){
   showKonfetti();
   setTimeout(()=>el.remove(),10000);
 }
-let _dataPoll=null,_dataHash='',_dataPending=false;
+let _dataPoll=null,_dataHash='',_kpiHash='',_dataPending=false;
 function _aufgabenHash(arr){return arr.map(a=>a.id+a.status+(a.updated_at||'')).join('|');}
+function _kpiHashFn(arr){return arr.map(k=>k.id+(k.sonder?'1':'0')+(k.pid||'')+k.label).join('|');}
 function startDataPoller(){
   if(_dataPoll)return;
   _dataHash=_aufgabenHash(S.aufgaben);
+  _kpiHash=_kpiHashFn(S.ziele.flatMap(z=>z.kpis||[]));
   _dataPoll=setInterval(async()=>{
-    const [aufgaben,signale]=await Promise.all([
+    const [aufgaben,signale,kpis]=await Promise.all([
       dbGet('aufgaben','select=*&order=created_at'),
-      dbGet('signale','select=*&order=created_at.desc')
+      dbGet('signale','select=*&order=created_at.desc'),
+      dbGet('kpis','select=*')
     ]);
-    if(!aufgaben)return;
-    const newHash=_aufgabenHash(aufgaben);
-    if(newHash===_dataHash)return;
-    S.aufgaben=aufgaben.map(normalizeAufgabe);
-    if(signale)S.signale=signale;
+    let changed=false;
+    if(aufgaben){
+      const newHash=_aufgabenHash(aufgaben);
+      if(newHash!==_dataHash){
+        S.aufgaben=aufgaben.map(normalizeAufgabe);
+        if(signale)S.signale=signale;
+        _dataHash=newHash;
+        changed=true;
+      }
+    }
+    if(kpis){
+      const newKpiHash=_kpiHashFn(kpis);
+      if(newKpiHash!==_kpiHash){
+        S.ziele.forEach(z=>{z.kpis=kpis.filter(k=>k.ziel_id===z.id).map(k=>({...k,zielId:k.ziel_id}));});
+        _kpiHash=newKpiHash;
+        changed=true;
+      }
+    }
+    if(!changed)return;
     const modalOpen=document.getElementById('ovl')?.classList.contains('open');
     if(modalOpen){_dataPending=true;}
-    else{_dataHash=newHash;render();}
+    else{render();}
   },60000);
 }
 
