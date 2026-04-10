@@ -287,6 +287,12 @@ let aP=null,realMe=null,aV='tag',timIv=null,_selPrio=null;
 let _kid=Date.now();
 const nid=p=>p+(++_kid);
 
+function normalizeAufgabe(a){
+  return{...a,zielId:a.ziel_id||null,teilzielId:a.teilziel_id||null,
+    aktSeit:a.akt_seit?new Date(a.akt_seit).getTime():null,
+    dl:a.dl||'',ua:Array.isArray(a.ua)?a.ua:(typeof a.ua==='string'?JSON.parse(a.ua||'[]'):[]),
+    erstelltVon:a.erstellt_von||null};
+}
 async function loadData(){
   const [personen,teams,ziele,kpis,teilziele,aufgaben,kpiVals,checkins,signale]=await Promise.all([
     dbGet('personen','select=*&order=ci'),dbGet('teams','select=*'),
@@ -302,12 +308,7 @@ async function loadData(){
     kpis:(kpis||[]).filter(k=>k.ziel_id===z.id).map(k=>({...k,zielId:k.ziel_id})),
     teilziele:(teilziele||[]).filter(t=>t.ziel_id===z.id).map(t=>({...t,zielId:t.ziel_id,verantwortlichId:t.verantwortlich_id,datum:t.datum||''}))
   }));
-  S.aufgaben=(aufgaben||[]).map(a=>({
-    ...a,zielId:a.ziel_id||null,teilzielId:a.teilziel_id||null,
-    aktSeit:a.akt_seit?new Date(a.akt_seit).getTime():null,
-    dl:a.dl||'',ua:Array.isArray(a.ua)?a.ua:(typeof a.ua==='string'?JSON.parse(a.ua||'[]'):[]),
-    erstelltVon:a.erstellt_von||null
-  }));
+  S.aufgaben=(aufgaben||[]).map(normalizeAufgabe);
   S.kpiVals={};
   (kpiVals||[]).forEach(v=>{const k=v.pid+'-'+v.kpi_id;if(!S.kpiVals[k]||v.datum>S.kpiVals[k].datum)S.kpiVals[k]={val:v.val,datum:v.datum};});
   S.checkins={};
@@ -474,29 +475,24 @@ function showSonderCelebration(pid,label,val,ziel){
   showKonfetti();
   setTimeout(()=>el.remove(),10000);
 }
-let _dataPoll=null,_dataHash='';
+let _dataPoll=null,_dataHash='',_dataPending=false;
 function _aufgabenHash(arr){return arr.map(a=>a.id+a.status+(a.updated_at||'')).join('|');}
 function startDataPoller(){
   if(_dataPoll)return;
   _dataHash=_aufgabenHash(S.aufgaben);
   _dataPoll=setInterval(async()=>{
-    const modalOpen=document.getElementById('ovl')?.classList.contains('open');
     const [aufgaben,signale]=await Promise.all([
       dbGet('aufgaben','select=*&order=created_at'),
       dbGet('signale','select=*&order=created_at.desc')
     ]);
     if(!aufgaben)return;
     const newHash=_aufgabenHash(aufgaben);
-    if(newHash===_dataHash)return; // nichts geändert
-    _dataHash=newHash;
-    S.aufgaben=(aufgaben||[]).map(a=>({
-      ...a,zielId:a.ziel_id||null,teilzielId:a.teilziel_id||null,
-      aktSeit:a.akt_seit?new Date(a.akt_seit).getTime():null,
-      dl:a.dl||'',ua:Array.isArray(a.ua)?a.ua:(typeof a.ua==='string'?JSON.parse(a.ua||'[]'):[]),
-      erstelltVon:a.erstellt_von||null
-    }));
+    if(newHash===_dataHash)return;
+    S.aufgaben=aufgaben.map(normalizeAufgabe);
     if(signale)S.signale=signale;
-    if(!modalOpen)render();
+    const modalOpen=document.getElementById('ovl')?.classList.contains('open');
+    if(modalOpen){_dataPending=true;}
+    else{_dataHash=newHash;render();}
   },60000);
 }
 
@@ -629,8 +625,13 @@ function rDelegBlock(pid){
   return out;
 }
 
+function kapTier(ratio){
+  if(ratio<0.5) return{label:'Luft nach oben',short:'Luft',color:'var(--blue)',bar:'var(--blue)'};
+  if(ratio<=1.1) return{label:'Stretch ↑',short:'Stretch',color:'var(--amber)',bar:'var(--amber)'};
+  return{label:'Sehr ambitioniert',short:'Voll',color:'var(--t2)',bar:'#9ca3af'};
+}
 function getKapazitaet(pid){
-  const p=S.personen.find(x=>x.id===pid);if(!p)return null;
+  const p=person(pid);if(!p)return null;
   const sw=p.stunden_woche||40;
   let fh=0;
   if(p.fokus_start&&p.fokus_end){
@@ -640,48 +641,40 @@ function getKapazitaet(pid){
   }
   const rh=Math.max(0,sw-fh);
   const now=new Date();
-  const dow=now.getDay();const daysToSun=dow===0?0:7-dow;
-  const weekEnd=new Date(now);weekEnd.setDate(now.getDate()+daysToSun);
-  const weekEndStr=weekEnd.toISOString().slice(0,10);
-  const dieseWoche=S.aufgaben.filter(a=>a.pid===pid&&a.status!=='erledigt'&&a.status!=='idee'
-    &&(a.status==='aktiv'||(a.dl&&a.dl<=weekEndStr)));
-  const p1h=dieseWoche.filter(a=>a.prio==='P1').reduce((s,a)=>s+(a.geplant||1),0);
-  const p23h=dieseWoche.filter(a=>a.prio==='P2'||a.prio==='P3').reduce((s,a)=>s+(a.geplant||1),0);
-  const rnd=S.aufgaben.filter(a=>a.pid===pid&&a.typ==='random'&&a.status!=='erledigt').length;
+  const daysToSun=now.getDay()===0?0:7-now.getDay();
+  const weekEndStr=new Date(now.getFullYear(),now.getMonth(),now.getDate()+daysToSun).toISOString().slice(0,10);
+  let p1h=0,p23h=0,rnd=0;
+  S.aufgaben.forEach(a=>{
+    if(a.pid!==pid||a.status==='erledigt'||a.status==='idee')return;
+    if(a.typ==='random'&&a.status!=='erledigt'){rnd++;return;}
+    const thisWeek=a.status==='aktiv'||(a.dl&&a.dl<=weekEndStr);
+    if(!thisWeek)return;
+    const h=a.geplant||1;
+    if(a.prio==='P1')p1h+=h;
+    else if(a.prio==='P2'||a.prio==='P3')p23h+=h;
+  });
   return{fh,rh,p1h,p23h,rnd,sw};
 }
 function rKapazitaetBlock(pid){
   const k=getKapazitaet(pid);if(!k||!k.fh)return'';
-  const fPct=Math.min(k.p1h/k.fh,1.4)*100/1.4; // bar maxes at 140% visually
+  const fPct=Math.min(k.p1h/k.fh,1.4)*100/1.4;
   const rPct=k.rh>0?Math.min(k.p23h/k.rh,1.4)*100/1.4:0;
-  const fRatio=k.fh>0?k.p1h/k.fh:0;
-  const rRatio=k.rh>0?k.p23h/k.rh:0;
-  // Stretch-Logik: kein Rot, kein Alarm
-  // <70% = Luft, 70–110% = Stretch (gut), >110% = sehr ambitioniert
-  const fLabel=fRatio<0.5?'Luft nach oben':fRatio<=1.1?'Stretch ↑':'Sehr ambitioniert';
-  const rLabel=rRatio<0.5?'Luft nach oben':rRatio<=1.1?'Stretch ↑':'Sehr ambitioniert';
-  const fc=fRatio<0.5?'var(--blue)':fRatio<=1.1?'var(--amber)':'#9ca3af';
-  const rc=rRatio<0.5?'var(--blue)':rRatio<=1.1?'var(--amber)':'#9ca3af';
-  const fCol=fRatio<0.5?'var(--t2)':fRatio<=1.1?'var(--amber)':'var(--t2)';
-  const rCol=rRatio<0.5?'var(--t2)':rRatio<=1.1?'var(--amber)':'var(--t2)';
+  const ft=kapTier(k.fh>0?k.p1h/k.fh:0);
+  const rt=kapTier(k.rh>0?k.p23h/k.rh:0);
   let out='<div style="background:var(--gray-bg);border:1px solid var(--bd);border-radius:12px;padding:12px 14px;margin-bottom:12px">';
   out+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);margin-bottom:10px">Kapazität diese Woche</div>';
-  // Fokuszeit bar
   out+='<div style="margin-bottom:8px">';
   out+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">';
   out+='<div style="font-size:11px;font-weight:600;color:var(--t2);display:flex;gap:5px;align-items:center">Fokuszeit <span style="font-size:10px;padding:1px 6px;border-radius:99px;background:var(--red-bg);color:var(--red);font-weight:700">P1</span></div>';
-  out+='<div style="font-size:11px;color:'+fCol+'"><span style="font-weight:700">'+k.p1h.toFixed(1)+'h</span> committed · <span style="font-weight:600">'+fLabel+'</span></div></div>';
-  out+='<div style="height:6px;background:#e5e7eb;border-radius:99px;overflow:hidden"><div style="height:100%;border-radius:99px;background:'+fc+';width:'+fPct+'%;transition:width .4s"></div></div>';
-  out+='<div style="font-size:10px;color:var(--t3);margin-top:2px">Zielzone: '+k.fh+'h · diese Woche</div>';
-  out+='</div>';
-  // Restzeit bar
+  out+='<div style="font-size:11px;color:'+ft.color+'"><span style="font-weight:700">'+k.p1h.toFixed(1)+'h</span> committed · <span style="font-weight:600">'+ft.label+'</span></div></div>';
+  out+='<div style="height:6px;background:#e5e7eb;border-radius:99px;overflow:hidden"><div style="height:100%;border-radius:99px;background:'+ft.bar+';width:'+fPct+'%;transition:width .4s"></div></div>';
+  out+='<div style="font-size:10px;color:var(--t3);margin-top:2px">Zielzone: '+k.fh+'h · diese Woche</div></div>';
   out+='<div style="margin-bottom:'+(k.rnd>0?'8':'0')+'px">';
   out+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">';
   out+='<div style="font-size:11px;font-weight:600;color:var(--t2);display:flex;gap:5px;align-items:center">Restzeit <span style="font-size:10px;padding:1px 6px;border-radius:99px;background:#fff7ed;color:#c2410c;font-weight:700">P2</span><span style="font-size:10px;padding:1px 6px;border-radius:99px;background:var(--sf);color:var(--t2);border:1px solid var(--bd);font-weight:600">P3</span></div>';
-  out+='<div style="font-size:11px;color:'+rCol+'"><span style="font-weight:700">'+k.p23h.toFixed(1)+'h</span> committed · <span style="font-weight:600">'+rLabel+'</span></div></div>';
-  out+='<div style="height:6px;background:#e5e7eb;border-radius:99px;overflow:hidden"><div style="height:100%;border-radius:99px;background:'+rc+';width:'+rPct+'%;transition:width .4s"></div></div>';
-  out+='<div style="font-size:10px;color:var(--t3);margin-top:2px">Zielzone: '+k.rh+'h · diese Woche</div>';
-  out+='</div>';
+  out+='<div style="font-size:11px;color:'+rt.color+'"><span style="font-weight:700">'+k.p23h.toFixed(1)+'h</span> committed · <span style="font-weight:600">'+rt.label+'</span></div></div>';
+  out+='<div style="height:6px;background:#e5e7eb;border-radius:99px;overflow:hidden"><div style="height:100%;border-radius:99px;background:'+rt.bar+';width:'+rPct+'%;transition:width .4s"></div></div>';
+  out+='<div style="font-size:10px;color:var(--t3);margin-top:2px">Zielzone: '+k.rh+'h · diese Woche</div></div>';
   if(k.rnd>0){
     out+='<div style="display:flex;justify-content:space-between;align-items:center;padding-top:6px;border-top:1px solid var(--bd)">';
     out+='<div style="font-size:11px;color:var(--t3)">🎲 Random — wenn Luft ist</div>';
@@ -922,21 +915,17 @@ function updateBadge(){
     +'<span style="font-size:11px;color:var(--t2)">'+p.name+'</span>'
     +'<span style="font-size:10px;color:var(--t3)">▾</span>';
   document.getElementById('btn-settings').style.display=isGF()?'block':'none';
-  updateKapPill();
 }
 function updateKapPill(){
   const el=document.getElementById('kap-pill');if(!el)return;
   const k=getKapazitaet(aP);
-  if(!k||!k.fh){el.style.display='none';return;}
-  const ratio=k.fh>0?k.p1h/k.fh:0;
-  const label=ratio<0.5?'Luft':ratio<=1.1?'Stretch':'Voll';
-  const bg=ratio<0.5?'var(--blue-bg)':ratio<=1.1?'var(--amber-bg)':'var(--gray-bg)';
-  const bd=ratio<0.5?'var(--blue-bd)':ratio<=1.1?'var(--amber-bd)':'var(--bd)';
-  const tc=ratio<0.5?'var(--blue)':ratio<=1.1?'var(--amber)':'var(--t2)';
-  el.style.display='flex';
-  el.style.cssText+='align-items:center;gap:4px;padding:3px 10px;border-radius:99px;background:'+bg+';border:1px solid '+bd+';cursor:pointer';
-  el.innerHTML='<span style="font-size:11px;font-weight:700;color:'+tc+'">⚡ '+k.p1h.toFixed(0)+'h</span>'
-    +'<span style="font-size:10px;color:'+tc+';opacity:.8">· '+label+'</span>';
+  if(!k||!k.fh){el.style.cssText='display:none';return;}
+  const t=kapTier(k.fh>0?k.p1h/k.fh:0);
+  const bg=t.bar==='var(--blue)'?'var(--blue-bg)':t.bar==='var(--amber)'?'var(--amber-bg)':'var(--gray-bg)';
+  const bd=t.bar==='var(--blue)'?'var(--blue-bd)':t.bar==='var(--amber)'?'var(--amber-bd)':'var(--bd)';
+  el.style.cssText='display:flex;align-items:center;gap:4px;padding:3px 10px;border-radius:99px;cursor:pointer;background:'+bg+';border:1px solid '+bd;
+  el.innerHTML='<span style="font-size:11px;font-weight:700;color:'+t.color+'">⚡ '+k.p1h.toFixed(0)+'h</span>'
+    +'<span style="font-size:10px;color:'+t.color+';opacity:.8">· '+t.short+'</span>';
 }
 function openMeinProfil(){
   const p=me();if(!p)return;
@@ -1975,7 +1964,10 @@ function startTimers(){
   },1000);
 }
 
-function cm(){document.getElementById('ovl').classList.remove('open');}
+function cm(){
+  document.getElementById('ovl').classList.remove('open');
+  if(_dataPending){_dataPending=false;_dataHash=_aufgabenHash(S.aufgaben);render();}
+}
 window.addEventListener('keydown',e=>{
   if(e.key==='Escape'){cm();return;}
   const ls=document.getElementById('login-screen');
