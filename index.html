@@ -321,7 +321,7 @@ const cl=p=>p?CL[p.ci%CL.length]:CL[0];
 const isGF=()=>{const m=me();return m&&m.stufe==='gf';};
 const isLead=()=>{const m=me();return m&&(m.stufe==='lead'||m.stufe==='gf');};
 const zielObj=id=>S.ziele.find(z=>z.id===id);
-const kpiVal=k=>{const e=S.kpiVals[aP+'-'+k.id];return e!==undefined?e.val:k.ist;};
+const kpiVal=k=>{const e=S.kpiVals[k.pid+'-'+k.id];return e!==undefined?e.val:k.ist;};
 const kpiOk=k=>{const v=kpiVal(k);return k.inv?v<=k.ziel:v>=k.ziel*0.85;};
 const canSeeTeam=()=>isLead();
 const canSee=a=>{
@@ -1454,7 +1454,9 @@ async function saveKpi(zid,kid){
   k.pid=document.getElementById('kp').value;
   k.inv=document.getElementById('kinv').checked;
   k.sonder=document.getElementById('ksonder').checked;
-  await dbPatch('kpis',kid,{label:k.label,ist:k.ist,ziel:k.ziel,unit:k.unit,freq:k.freq,pid:k.pid,inv:k.inv,sonder:k.sonder});
+  const kpiPatch={label:k.label,ist:k.ist,ziel:k.ziel,unit:k.unit,freq:k.freq,pid:k.pid,inv:k.inv};
+  if(k.sonder!==undefined)kpiPatch.sonder=k.sonder;
+  await dbPatch('kpis',kid,kpiPatch);
   cm();rZiele();
 }
 async function delKpi(zid,kid){
