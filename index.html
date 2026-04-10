@@ -1552,6 +1552,76 @@ async function confirmAI(p){
   await dbInsert('aufgaben',rec);cm();render();
 }
 
+function rIdeenPool(){
+  const pool=S.signale.filter(s=>s.typ==='idee'||s.typ==='wolke').sort((a,b)=>b.created_at?.localeCompare(a.created_at||'')||0);
+  const canConvert=isGF()||isLead();
+  let out='<div style="background:var(--sf);border:1px solid var(--bd);border-radius:14px;padding:14px 16px;margin-bottom:16px">';
+  out+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">'
+    +'<div><div style="font-size:13px;font-weight:700">Ideen & Wolken</div>'
+    +'<div style="font-size:11px;color:var(--t3);margin-top:1px">Gemeinsamer Pool — Ideen brauchen Analyse bevor sie Aufgaben werden</div></div>'
+    +'<div style="display:flex;gap:6px">'
+    +'<button onclick="openNeueIdee(\'wolke\')" style="font-size:11px;padding:5px 10px;border-radius:8px;border:1px solid var(--bd);background:var(--gray-bg);color:var(--t2);cursor:pointer;font-family:inherit">☁ Wolke</button>'
+    +'<button onclick="openNeueIdee(\'idee\')" style="font-size:11px;padding:5px 10px;border-radius:8px;border:1px solid var(--blue-bd);background:var(--blue-bg);color:var(--blue);cursor:pointer;font-family:inherit">💡 Idee</button>'
+    +'</div></div>';
+  if(!pool.length){out+='<div style="font-size:12px;color:var(--t3);font-style:italic;padding:8px 0">Noch keine Ideen oder Wolken.</div>';}
+  else{
+    pool.forEach(s=>{
+      const von=person(s.pid);
+      const isIdee=s.typ==='idee';
+      const bg=isIdee?'var(--blue-bg)':'var(--gray-bg)';
+      const tc=isIdee?'var(--blue)':'var(--t2)';
+      const bd=isIdee?'var(--blue-bd)':'var(--bd)';
+      const badge=isIdee?'💡 Idee':'☁ Wolke';
+      out+='<div style="background:#fff;border:1px solid '+bd+';border-radius:10px;padding:10px 12px;margin-bottom:8px">';
+      out+='<div style="display:flex;align-items:flex-start;gap:8px">';
+      out+='<span style="font-size:10px;padding:2px 7px;border-radius:99px;background:'+bg+';color:'+tc+';font-weight:600;flex-shrink:0;margin-top:1px">'+badge+'</span>';
+      out+='<div style="flex:1">';
+      out+='<div style="font-size:13px;font-weight:600;margin-bottom:2px">'+s.was+'</div>';
+      if(s.notiz)out+='<div style="font-size:11px;color:var(--t2);margin-bottom:4px;font-style:italic">💬 '+s.notiz+'</div>';
+      out+='<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">';
+      if(von)out+='<span style="font-size:10px;color:var(--t3)">von '+von.name+'</span>';
+      if(s.bereich)out+='<span style="font-size:10px;color:var(--purple);background:var(--purple-bg);padding:1px 6px;border-radius:99px">für '+s.bereich+'</span>';
+      out+='<span style="font-size:10px;color:var(--t3)">'+(s.created_at?s.created_at.slice(0,10):'')+'</span>';
+      out+='</div></div>';
+      out+='<div style="display:flex;gap:5px;flex-shrink:0">';
+      if(canConvert)out+='<button onclick="ideenZuAufgabe(\''+s.id+'\')" style="font-size:10px;padding:3px 9px;border-radius:7px;border:1px solid var(--bd);background:var(--sf);color:var(--text);cursor:pointer;font-family:inherit;white-space:nowrap">→ Aufgabe</button>';
+      if(s.pid===aP||isGF())out+='<button onclick="delSignal(\''+s.id+'\')" style="font-size:10px;padding:3px 7px;border-radius:7px;border:1px solid var(--red-bd);background:var(--red-bg);color:var(--red);cursor:pointer;font-family:inherit">✕</button>';
+      out+='</div></div></div>';
+    });
+  }
+  out+='</div>';
+  return out;
+}
+function openNeueIdee(typ){
+  const fuerOpts=[
+    '<option value="">— für alle —</option>',
+    ...S.teams.map(t=>'<option value="Team '+t.name+'">Team '+t.name+'</option>'),
+    ...S.personen.filter(p=>p.id!==aP).map(p=>'<option value="'+p.name+'">'+p.name+'</option>')
+  ].join('');
+  const isIdee=typ==='idee';
+  document.getElementById('mb').innerHTML=''
+    +'<div class="mt">'+(isIdee?'💡 Idee einwerfen':'☁ Wolke parken')+'</div>'
+    +(isIdee?'<div style="font-size:11px;color:var(--t2);background:var(--blue-bg);border-radius:8px;padding:8px 10px;margin-bottom:12px">Eine Idee ist kein Auftrag — sie wird erst zur Aufgabe nach Analyse und Mandat.</div>':'<div style="font-size:11px;color:var(--t2);background:var(--gray-bg);border-radius:8px;padding:8px 10px;margin-bottom:12px">Eine Wolke ist eine Beobachtung ohne konkrete Idee. Parken ohne Druck.</div>')
+    +'<div class="fl"><label>'+(isIdee?'Die Idee':'Die Beobachtung')+'</label><input id="id-was" placeholder="'+(isIdee?'Konkret beschreiben…':'Was hast du beobachtet?')+'" autofocus></div>'
+    +'<div class="fl"><label>Warum diese '+(isIdee?'Idee':'Wolke')+'? <span style="font-weight:400;color:var(--t3)">(optional)</span></label><input id="id-why" placeholder="z.B. Sales Call mit X, Muster erkannt…"></div>'
+    +'<div class="fl"><label>Für wen? <span style="font-weight:400;color:var(--t3)">(optional)</span></label><select id="id-fuer">'+fuerOpts+'</select></div>'
+    +'<div class="mf"><button class="btn btn-gr" onclick="cm()">Abbrechen</button><button class="btn btn-dk" onclick="saveIdee(\''+typ+'\')">Einwerfen</button></div>';
+  document.getElementById('ovl').classList.add('open');
+}
+async function saveIdee(typ){
+  const was=document.getElementById('id-was')?.value.trim();if(!was)return;
+  const why=document.getElementById('id-why')?.value.trim()||null;
+  const fuer=document.getElementById('id-fuer')?.value||null;
+  const id=nid('id');
+  const rec={id,pid:aP,was,typ,bereich:fuer||'',notiz:why||null,haeufig:null,created_at:new Date().toISOString()};
+  S.signale.unshift(rec);
+  await dbInsert('signale',rec);
+  cm();render();
+}
+async function ideenZuAufgabe(sid){
+  const s=S.signale.find(x=>x.id===sid);if(!s)return;
+  openNeu({titel:s.was,notiz:s.notiz||''});
+}
 function rTeam(){
   const teams=isGF()?[...S.teams].sort((a,b)=>a.id==='gf'?-1:b.id==='gf'?1:0):S.teams.filter(t=>(me()?.teams||[]).includes(t.id));
   let out='<div style="margin-bottom:20px"><div style="font-size:16px;font-weight:700">Team</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Wer macht was</div></div>';
@@ -1597,6 +1667,7 @@ function rTeam(){
     if(!aktiv.length&&!pipeline.length)out+='<div style="padding:14px 16px;font-size:12px;color:var(--t3);font-style:italic">Keine aktiven Aufgaben</div>';
     out+='<div style="height:4px"></div></div>';
   });
+  out+=rIdeenPool();
   out+=rSignaleTeam();
   document.getElementById('main').innerHTML=out;
 }
