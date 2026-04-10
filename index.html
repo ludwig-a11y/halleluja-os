@@ -1234,7 +1234,11 @@ function rZiele(){
     +'<div><div style="font-size:16px;font-weight:700">Ziele</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Strategische Ziele & Teilziele</div></div>'
     +(isGF()?'<button class="btn btn-dk" onclick="addZiel()">+ Neues Ziel</button>':'')
     +'</div>';
-  S.ziele.filter(z=>!z.vertraulich||isGF()).forEach(z=>{
+  const alleZiele=S.ziele.filter(z=>!z.vertraulich||isGF());
+  const istMeinZiel=z=>isGF()||z.verantwortlichId===aP||(z.teilziele||[]).some(tz=>tz.verantwortlichId===aP);
+  const meineZiele=alleZiele.filter(istMeinZiel).sort((a,b)=>(a.verantwortlichId===aP?0:1)-(b.verantwortlichId===aP?0:1));
+  const andereZiele=alleZiele.filter(z=>!istMeinZiel(z));
+  meineZiele.forEach(z=>{
     const f=FARBEN[z.farbe]||FARBEN[0],verantw=person(z.verantwortlichId);
     const visKpis=(z.kpis||[]).filter(k=>isGF()||k.pid===aP);
     const pct=zielPct(z),okK=visKpis.filter(kpiOk).length,badK=visKpis.filter(k=>!kpiOk(k));
@@ -1311,6 +1315,23 @@ function rZiele(){
     }
     out+='</div>';
   });
+  if(andereZiele.length){
+    out+='<div style="margin-top:8px"><div style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Unternehmensziele</div>';
+    andereZiele.forEach(z=>{
+      const f=FARBEN[z.farbe]||FARBEN[0],verantw=person(z.verantwortlichId),pct=zielPct(z);
+      out+='<div style="background:'+f.bg+';border:1px solid '+f.bd+';border-radius:12px;padding:12px 16px;margin-bottom:8px;display:flex;align-items:center;gap:12px">'
+        +'<div style="flex:1;min-width:0">'
+        +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'
+        +'<span style="font-size:13px;font-weight:700;color:'+f.tc+'">'+z.name+'</span>'
+        +(verantw?'<span style="font-size:10px;color:'+f.tc+';opacity:.6">'+verantw.name+'</span>':'')
+        +'</div>'
+        +'<div style="display:flex;align-items:center;gap:8px">'
+        +'<div class="pbar" style="flex:1"><div class="pbar-fill" style="width:'+pct+'%;background:'+(pct>=70?f.tc:'#f59e0b')+'"></div></div>'
+        +'<span style="font-size:12px;font-weight:700;color:'+(pct>=70?f.tc:'#c2410c');out+=';min-width:36px">'+pct+'%</span>'
+        +'</div></div></div>';
+    });
+    out+='</div>';
+  }
   document.getElementById('main').innerHTML=out;
 }
 
