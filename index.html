@@ -1422,37 +1422,37 @@ function rZiele(){
     // Teilziele
     const myTZ=(z.teilziele||[]).filter(tz=>isGF()||tz.verantwortlichId===aP);
     if(myTZ.length||isGF()){
-      out+='<div style="border-top:1px solid var(--bd);padding-top:12px">';
-      out+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);margin-bottom:8px">Teilziele</div>';
+      out+='<div style="border-top:1px solid '+f.bd+';padding-top:12px">';
+      out+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:'+f.tc+';margin-bottom:8px">Teilziele</div>';
       myTZ.forEach(tz=>{
         const tzV=person(tz.verantwortlichId),tzA=zA.filter(a=>a.teilzielId===tz.id);
-        // Each Teilziel = mini-card
-        out+='<div style="border:1px solid var(--bd);border-radius:10px;margin-bottom:8px;overflow:hidden;'+(tz.erledigt?'opacity:.5':'')+'background:#fff">';
-        // Header row
-        out+='<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--gray-bg)">';
+        // Each Teilziel = mini-card (Option B: weiß + Zielfarbe-Border)
+        out+='<div style="border:1px solid '+f.bd+';border-radius:10px;margin-bottom:8px;overflow:hidden;'+(tz.erledigt?'opacity:.5;':'')+'background:#fff">';
+        // Header row — weißer Hintergrund
+        out+='<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:#fff">';
         if(canManageTZ(z.id))out+='<input type="checkbox" '+(tz.erledigt?'checked':'')+' onclick="toggleTZ(\''+z.id+'\',\''+tz.id+'\')" style="flex-shrink:0;margin:0;width:15px;height:15px;accent-color:'+f.tc+'">';
         out+='<div style="flex:1;min-width:0">';
         out+='<div style="font-size:13px;font-weight:600;color:#111;'+(tz.erledigt?'text-decoration:line-through;':'')+'white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+tz.name+'</div>';
-        if(tzV||tz.datum)out+='<div style="font-size:10px;color:var(--t3);margin-top:1px">'+(tzV?tzV.name:'')+(tz.datum?' · '+tz.datum.slice(8)+'.'+tz.datum.slice(5,7)+'.':'')+'</div>';
+        if(tzV||tz.datum)out+='<div style="font-size:10px;color:var(--t2);margin-top:1px">'+(tzV?tzV.name:'')+(tz.datum?' · '+tz.datum.slice(8)+'.'+tz.datum.slice(5,7)+'.':'')+'</div>';
         out+='</div>';
-        if(tzA.length)out+='<span style="font-size:10px;color:var(--t3);background:#fff;border:1px solid var(--bd);padding:1px 7px;border-radius:99px;flex-shrink:0">'+tzA.length+'</span>';
-        if(canManageTZ(z.id))out+='<button onclick="editTZ(\''+z.id+'\',\''+tz.id+'\')" style="font-size:11px;padding:3px 7px;border-radius:6px;border:1px solid var(--bd);background:#fff;color:var(--t3);cursor:pointer;font-family:inherit;flex-shrink:0">···</button>';
+        if(tzA.length)out+='<span style="font-size:10px;color:'+f.tc+';background:'+f.bg+';border:1px solid '+f.bd+';padding:1px 7px;border-radius:99px;flex-shrink:0;font-weight:600">'+tzA.length+'</span>';
+        if(canManageTZ(z.id))out+='<button onclick="editTZ(\''+z.id+'\',\''+tz.id+'\')" style="font-size:11px;padding:3px 7px;border-radius:6px;border:1px solid '+f.bd+';background:'+f.bg+';color:'+f.tc+';cursor:pointer;font-family:inherit;flex-shrink:0">···</button>';
         out+='</div>';
         // Aufgaben inside card
         if(tzA.length){
           tzA.forEach(a=>{
             const p2=person(a.pid);
-            out+='<div onclick="openDetail(\''+a.id+'\')" style="display:flex;align-items:center;gap:8px;padding:8px 12px 8px '+(canManageTZ(z.id)?'37':'12')+'px;border-top:1px solid var(--bd);cursor:pointer;background:#fff" onmouseenter="this.style.background=\'#f9fafb\'" onmouseleave="this.style.background=\'#fff\'">';
+            out+='<div onclick="openDetail(\''+a.id+'\')" style="display:flex;align-items:center;gap:8px;padding:8px 12px 8px '+(canManageTZ(z.id)?'37':'12')+'px;border-top:1px solid '+f.bd+';cursor:pointer;background:#fff" onmouseenter="this.style.background=\''+f.bg+'\'" onmouseleave="this.style.background=\'#fff\'">';
             out+='<span style="font-size:8px;color:'+(a.status==='aktiv'?'var(--blue)':'var(--t3)')+'">●</span>';
             out+='<span style="flex:1;font-size:12px;color:#111">'+a.titel+'</span>';
-            if(p2)out+='<span style="font-size:10px;color:var(--t3)">'+p2.name+'</span>';
+            if(p2)out+='<span style="font-size:10px;color:var(--t2)">'+p2.name+'</span>';
             out+=prioTag(a.prio,null,false);
             out+='</div>';
           });
         }
         // + Aufgabe footer
-        out+='<div style="padding:7px 12px;border-top:1px solid var(--bd);background:var(--gray-bg)">';
-        out+='<button onclick="openNeu({zielId:\''+z.id+'\',teilzielId:\''+tz.id+'\'})" style="font-size:11px;padding:3px 10px;border-radius:6px;border:1px solid var(--bd);background:#fff;color:var(--t2);cursor:pointer;font-family:inherit">+ Aufgabe</button>';
+        out+='<div style="padding:7px 12px;border-top:1px solid '+f.bd+';background:'+f.bg+'">';
+        out+='<button onclick="openNeu({zielId:\''+z.id+'\',teilzielId:\''+tz.id+'\'})" style="font-size:11px;padding:3px 10px;border-radius:6px;border:1px solid '+f.bd+';background:#fff;color:'+f.tc+';font-weight:500;cursor:pointer;font-family:inherit">+ Aufgabe</button>';
         out+='</div>';
         out+='</div>';
       });
@@ -1479,8 +1479,8 @@ function rZiele(){
 
     // Footer buttons
     out+='<div style="display:flex;align-items:center;gap:8px;margin-top:12px">';
-    if(canManageTZ(z.id))out+='<button onclick="openAddTZ(\''+z.id+'\')" style="font-size:11px;padding:5px 12px;border-radius:8px;border:1.5px dashed var(--bd);background:transparent;color:var(--t3);cursor:pointer;font-family:inherit">+ Teilziel</button>';
-    out+='<button onclick="openNeu({zielId:\''+z.id+'\'})" style="font-size:11px;padding:5px 12px;border-radius:8px;border:1px solid var(--bd);background:var(--gray-bg);color:var(--t2);cursor:pointer;font-family:inherit">+ Aufgabe</button>';
+    if(canManageTZ(z.id))out+='<button onclick="openAddTZ(\''+z.id+'\')" style="font-size:13px;font-weight:600;padding:8px 18px;border-radius:8px;border:none;background:'+f.tc+';color:#fff;cursor:pointer;font-family:inherit">+ Teilziel</button>';
+    out+='<button onclick="openNeu({zielId:\''+z.id+'\'})" style="font-size:11px;padding:8px 14px;border-radius:8px;border:1px solid '+f.bd+';background:transparent;color:'+f.tc+';cursor:pointer;font-family:inherit">+ Aufgabe</button>';
     out+='</div>';
 
     out+='</div>'; // end sektion
