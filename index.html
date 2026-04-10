@@ -1454,8 +1454,9 @@ async function saveKpi(zid,kid){
   k.inv=document.getElementById('kinv').checked;
   k.sonder=document.getElementById('ksonder').checked;
   const kpiPatch={label:k.label,ist:k.ist,ziel:k.ziel,unit:k.unit,freq:k.freq,pid:k.pid,inv:k.inv};
-  if(k.sonder!==undefined)kpiPatch.sonder=k.sonder;
   await dbPatch('kpis',kid,kpiPatch);
+  // sonder separat — falls Column noch nicht existiert, schlägt nur das fehl
+  await supa('kpis?id=eq.'+kid,{method:'PATCH',body:{sonder:!!k.sonder},prefer:'return=minimal'}).catch(()=>{});
   cm();rZiele();
 }
 async function delKpi(zid,kid){
