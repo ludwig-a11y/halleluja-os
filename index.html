@@ -474,6 +474,28 @@ function showSonderCelebration(pid,label,val,ziel){
   showKonfetti();
   setTimeout(()=>el.remove(),10000);
 }
+let _dataPoll=null;
+function startDataPoller(){
+  if(_dataPoll)return;
+  _dataPoll=setInterval(async()=>{
+    const [aufgaben,signale]=await Promise.all([
+      dbGet('aufgaben','select=*&order=created_at'),
+      dbGet('signale','select=*&order=created_at.desc')
+    ]);
+    if(!aufgaben||!signale)return;
+    const prev=S.aufgaben.length;
+    S.aufgaben=(aufgaben||[]).map(a=>({
+      ...a,zielId:a.ziel_id||null,teilzielId:a.teilziel_id||null,
+      aktSeit:a.akt_seit?new Date(a.akt_seit).getTime():null,
+      dl:a.dl||'',ua:Array.isArray(a.ua)?a.ua:(typeof a.ua==='string'?JSON.parse(a.ua||'[]'):[]),
+      erstelltVon:a.erstellt_von||null
+    }));
+    S.signale=signale||[];
+    const mineNeu=S.aufgaben.filter(a=>a.pid===aP&&a.status==='zugewiesen').length;
+    if(mineNeu>0||S.aufgaben.length!==prev)render();
+  },60000);
+}
+
 let _sonderSeen={},_sonderPoll=null;
 function startSonderPoller(){
   if(_sonderPoll)return;
@@ -885,7 +907,7 @@ function tryLogin(){
     try{localStorage.setItem('h_session',JSON.stringify({pid:loginSel,ts:Date.now()}));}catch(e){}
     document.getElementById('login-screen').style.display='none';
     document.getElementById('app').style.display='flex';
-    updateBadge();render();startSonderPoller();
+    updateBadge();render();startSonderPoller();startDataPoller();
   } else {
     document.getElementById('login-err').textContent='Falsche PIN.';pinIn='';updDots();
   }
@@ -1977,7 +1999,7 @@ window.addEventListener('keydown',e=>{
         aP=s.pid;realMe=s.pid;
         document.getElementById('login-screen').style.display='none';
         document.getElementById('app').style.display='flex';
-        updateBadge();render();startSonderPoller();
+        updateBadge();render();startSonderPoller();startDataPoller();
       } else localStorage.removeItem('h_session');
     }
   }catch(e){}
