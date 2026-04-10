@@ -553,11 +553,18 @@ async function submitKpi(kpiId,pid){
   render();
 }
 
+async function bestaetigeAufgabe(id,prio){
+  const a=S.aufgaben.find(x=>x.id===id);if(!a)return;
+  const p=(!prio||prio==='null')?null:prio;
+  a.prio=p;a.status=p?'backlog':'neu';
+  await dbPatch('aufgaben',id,{prio:a.prio,status:a.status});
+  render();
+}
 function rDelegBlock(pid){
   const delegated=S.aufgaben.filter(a=>a.erstelltVon===pid&&a.pid!==pid&&a.status!=='erledigt');
   if(!delegated.length)return'';
-  const statusMap={neu:'Neu',backlog:'In Pipeline',aktiv:'Läuft',erledigt:'Erledigt'};
-  const statusColor={neu:'var(--red)',backlog:'var(--t3)',aktiv:'var(--blue)',erledigt:'var(--green)'};
+  const statusMap={neu:'Neu',backlog:'In Pipeline',aktiv:'Läuft',erledigt:'Erledigt',zugewiesen:'Ausstehend'};
+  const statusColor={neu:'var(--red)',backlog:'var(--t3)',aktiv:'var(--blue)',erledigt:'var(--green)',zugewiesen:'var(--amber)'};
   let out='<details style="margin-bottom:12px"><summary style="list-style:none;cursor:pointer;padding:12px 16px;background:var(--sf);border:1px solid var(--bd);border-radius:12px;display:flex;align-items:center;justify-content:space-between">';
   out+='<span style="font-size:13px;font-weight:600">Meine Delegationen</span>';
   out+='<span style="font-size:12px;color:var(--t3)">'+delegated.length+' · anzeigen</span></summary>';
@@ -949,7 +956,8 @@ function stepsHtml(a,ed){
 }
 
 function rTag(){
-  const myA=S.aufgaben.filter(a=>a.pid===aP&&canSee(a));
+  const zugewiesenA=S.aufgaben.filter(a=>a.pid===aP&&a.status==='zugewiesen');
+  const myA=S.aufgaben.filter(a=>a.pid===aP&&canSee(a)&&a.status!=='zugewiesen');
   const aktiv=myA.filter(a=>a.status==='aktiv');
   const neu=myA.filter(a=>a.status==='neu');
   const bl=myA.filter(a=>a.status==='backlog').sort((a,b)=>(a.prio||'P9').localeCompare(b.prio||'P9'));
@@ -958,6 +966,27 @@ function rTag(){
   const naechste=aktiv.length?null:(offene[0]||null);
   const alleGeschafft=!aktiv.length&&!neu.length&&!bl.length;
   let out='';
+
+  if(zugewiesenA.length){
+    out+='<div style="background:var(--amber-bg);border:1px solid var(--amber-bd);border-radius:14px;padding:14px 16px;margin-bottom:16px">'
+      +'<div style="font-size:10px;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Neu zugewiesen — Priorität bestätigen</div>';
+    zugewiesenA.forEach(a=>{
+      const from=person(a.erstelltVon);
+      out+='<div style="background:rgba(255,255,255,.75);border-radius:10px;padding:10px 12px;margin-bottom:8px">'
+        +'<div style="font-size:13px;font-weight:600;margin-bottom:3px">'+a.titel+'</div>'
+        +(from?'<div style="font-size:11px;color:var(--t2);margin-bottom:8px">von '+from.name+(a.prio?' · Vorschlag: <strong>'+a.prio+'</strong>':'')+'</div>':'')
+        +'<div style="display:flex;gap:6px;flex-wrap:wrap">'
+        +['P1','P2','P3','null'].map(p=>{
+          const lbl=p==='null'?'Kein':p;
+          const bg=p==='P1'?'var(--red-bg)':p==='P2'?'#fff7ed':p==='P3'?'var(--gray-bg)':'var(--sf)';
+          const tc=p==='P1'?'var(--red)':p==='P2'?'#c2410c':p==='P3'?'var(--t2)':'var(--t3)';
+          const suggested=p===a.prio||(p==='null'&&!a.prio);
+          return'<button onclick="bestaetigeAufgabe(\''+a.id+'\',\''+p+'\')" style="font-size:11px;padding:5px 13px;border-radius:8px;border:'+(suggested?'2px solid var(--text)':'1px solid var(--bd)')+';background:'+bg+';color:'+tc+';cursor:pointer;font-family:inherit;font-weight:'+(suggested?700:400)+'">'+lbl+'</button>';
+        }).join('')
+        +'</div></div>';
+    });
+    out+='</div>';
+  }
 
   out+=rKpiBlock(aP);
 
@@ -1464,7 +1493,7 @@ async function saveNeu(){
   const vert=document.getElementById('nvert')?document.getElementById('nvert').checked:false;
   const pid=document.getElementById('np').value;
   const id=nid('a');
-  const rec={id,pid,titel:t,typ,status:_selPrio?'backlog':'neu',prio:_selPrio||null,
+  const rec={id,pid,titel:t,typ,status:pid!==aP?'zugewiesen':(_selPrio?'backlog':'neu'),prio:_selPrio||null,
     ziel_id:zielId,teilziel_id:teilzielId,
     geplant:parseFloat(document.getElementById('nh').value)||1,
     gebucht:0,dl:document.getElementById('ndl').value||null,
