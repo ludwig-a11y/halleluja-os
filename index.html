@@ -500,7 +500,12 @@ let _sonderSeen={},_sonderPoll=null;
 function startSonderPoller(){
   if(_sonderPoll)return;
   const sonderKpis=S.ziele.flatMap(z=>z.kpis||[]).filter(k=>k.sonder);
-  sonderKpis.forEach(k=>{const v=S.kpiVals[aP+'-'+k.id];_sonderSeen[k.id]=v?.datum===TODAY?v.val:0;});
+  // Baseline = max aller Personen heute, nicht nur aP
+  sonderKpis.forEach(k=>{
+    let maxVal=0;
+    Object.entries(S.kpiVals).forEach(([key,v])=>{if(key.endsWith('-'+k.id)&&v.datum===TODAY)maxVal=Math.max(maxVal,v.val);});
+    _sonderSeen[k.id]=maxVal;
+  });
   _sonderPoll=setInterval(async()=>{
     if(!isGF())return;
     const sk=S.ziele.flatMap(z=>z.kpis||[]).filter(k=>k.sonder);
@@ -531,7 +536,7 @@ function freqLabel(freq){return{täglich:'Täglich',wöchentlich:'Wöchentlich (
 
 function rKpiBlock(pid){
   const myKpis=[];
-  S.ziele.forEach(z=>{(z.kpis||[]).forEach(k=>{if(k.pid===pid)myKpis.push({...k,zielName:z.name});});});
+  S.ziele.forEach(z=>{(z.kpis||[]).forEach(k=>{if(String(k.pid)===String(pid))myKpis.push({...k,zielName:z.name});});});
   if(!myKpis.length)return'';
   let out='<div class="kpi-block"><div class="kpi-block-label">Meine KPIs</div><div class="kpi-grid">';
   myKpis.forEach(k=>{
@@ -1368,7 +1373,7 @@ function rZiele(){
   meineZiele.forEach(z=>{
     const f=FARBEN[z.farbe]||FARBEN[0];
     const verantw=person(z.verantwortlichId);
-    const visKpis=(z.kpis||[]).filter(k=>isGF()||k.pid===aP);
+    const visKpis=(z.kpis||[]).filter(k=>isGF()||String(k.pid)===String(aP));
     const pct=zielPct(z);
     const okK=visKpis.filter(kpiOk).length;
     const badK=visKpis.filter(k=>!kpiOk(k));
@@ -1407,7 +1412,7 @@ function rZiele(){
     if(visKpis.length||isGF()){
       out+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:6px;margin-bottom:16px">';
       visKpis.forEach(k=>{
-        const val=kpiVal(k),ok=kpiOk(k),p2=person(k.pid),isMe=k.pid===aP;
+        const val=kpiVal(k),ok=kpiOk(k),p2=person(k.pid),isMe=String(k.pid)===String(aP);
         out+='<div '+(isGF()?'onclick="editKpiDef(\''+z.id+'\',\''+k.id+'\')" style="cursor:pointer"':'')+' style="background:rgba(255,255,255,.75);border:'+(isMe?'1.5px solid '+f.tc:'1px solid '+f.bd)+';border-radius:9px;padding:9px 11px">';
         out+='<div style="font-size:9px;color:var(--t3);margin-bottom:3px">'+(p2?p2.name:'–')+'</div>';
         out+='<div style="font-size:19px;font-weight:800;color:'+(ok?f.tc:'var(--red)')+';line-height:1;margin-bottom:1px">'+val+(k.unit||'')+'</div>';
@@ -1602,7 +1607,7 @@ async function delZiel(zid){
 
 async function addKpi(zid){
   const z=zielObj(zid);if(!z)return;
-  const id=nid('k'),rec={id,ziel_id:zid,label:'Neuer KPI',ist:0,ziel:10,unit:'',freq:'täglich',pid:S.personen[0]?.id||'',inv:false};
+  const id=nid('k'),rec={id,ziel_id:zid,label:'Neuer KPI',ist:0,ziel:10,unit:'',freq:'täglich',pid:S.personen[0]?.id||'',inv:false,sonder:false};
   z.kpis.push({...rec,zielId:zid});
   await dbInsert('kpis',rec);rZiele();editKpiDef(zid,id);
 }
@@ -1613,7 +1618,7 @@ function editKpiDef(zid,kid){
     +'<div class="fl"><label>Name</label><input id="kl" value="'+k.label+'" autofocus></div>'
     +'<div class="f2"><div class="fl"><label>Ist-Wert</label><input id="ki" type="number" value="'+k.ist+'"></div><div class="fl"><label>Ziel-Wert</label><input id="kz" type="number" value="'+k.ziel+'"></div></div>'
     +'<div class="f2"><div class="fl"><label>Einheit</label><input id="ku" value="'+(k.unit||'')+'" placeholder="%, Stk…"></div><div class="fl"><label>Rhythmus</label><select id="kf">'+FREQ.map(f=>'<option'+(k.freq===f?' selected':'')+'>'+f+'</option>').join('')+'</select></div></div>'
-    +'<div class="fl"><label>Verantwortlich</label><select id="kp">'+S.personen.map(p=>'<option value="'+p.id+'"'+(k.pid===p.id?' selected':'')+'>'+p.name+'</option>').join('')+'</select></div>'
+    +'<div class="fl"><label>Verantwortlich</label><select id="kp">'+S.personen.map(p=>'<option value="'+p.id+'"'+(String(k.pid)===String(p.id)?' selected':'')+'>'+p.name+'</option>').join('')+'</select></div>'
     +'<div class="fl"><label style="text-transform:none;font-size:13px;font-weight:400;display:flex;align-items:center;gap:8px"><input type="checkbox" id="kinv"'+(k.inv?' checked':'')+' style="width:auto"> Niedriger ist besser</label></div>'
     +'<div class="fl"><label style="text-transform:none;font-size:13px;font-weight:400;display:flex;align-items:center;gap:8px"><input type="checkbox" id="ksonder"'+(k.sonder?' checked':'')+' style="width:auto"> 🔔 Sonder-KPI (Glocken-Celebration für GF)</label></div>'
     +'<div class="mf"><button class="btn btn-red" onclick="delKpi(\''+zid+'\',\''+kid+'\')">Löschen</button><button class="btn btn-gr" onclick="cm()">Abbrechen</button><button class="btn btn-dk" onclick="saveKpi(\''+zid+'\',\''+kid+'\')">Speichern</button></div>';
@@ -1626,13 +1631,20 @@ async function saveKpi(zid,kid){
   k.ziel=parseFloat(document.getElementById('kz').value)||0;
   k.unit=document.getElementById('ku').value;
   k.freq=document.getElementById('kf').value;
-  k.pid=document.getElementById('kp').value;
+  // pid: Typ beibehalten wie in S.personen (Number oder String), damit === Vergleiche stimmen
+  const rawPid=document.getElementById('kp').value;
+  k.pid=S.personen.find(p=>String(p.id)===rawPid)?.id??rawPid;
   k.inv=document.getElementById('kinv').checked;
   k.sonder=document.getElementById('ksonder').checked;
-  const kpiPatch={label:k.label,ist:k.ist,ziel:k.ziel,unit:k.unit,freq:k.freq,pid:k.pid,inv:k.inv};
+  // sonder im selben PATCH wie alles andere — kein separater Call mehr
+  const kpiPatch={label:k.label,ist:k.ist,ziel:k.ziel,unit:k.unit,freq:k.freq,pid:k.pid,inv:k.inv,sonder:!!k.sonder};
   await dbPatch('kpis',kid,kpiPatch);
-  // sonder separat — falls Column noch nicht existiert, schlägt nur das fehl
-  await supa('kpis?id=eq.'+kid,{method:'PATCH',body:{sonder:!!k.sonder},prefer:'return=minimal'}).catch(()=>{});
+  // _sonderSeen für neu aktivierte Sonder-KPIs initialisieren
+  if(k.sonder&&_sonderSeen[kid]===undefined){
+    let maxVal=0;
+    Object.entries(S.kpiVals).forEach(([key,v])=>{if(key.endsWith('-'+kid)&&v.datum===TODAY)maxVal=Math.max(maxVal,v.val);});
+    _sonderSeen[kid]=maxVal;
+  }
   cm();rZiele();
 }
 async function delKpi(zid,kid){
