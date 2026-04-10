@@ -249,7 +249,7 @@ const CL=[
 ];
 const TODAY=new Date().toISOString().slice(0,10);
 const FREQ=['täglich','wöchentlich','monatlich'];
-const SH={'0.25':'15min','0.5':'30min','0.75':'45min','1':'1h','1.5':'1h30','2':'2h','3':'3h','4':'4h','5':'5h','8':'8h'};
+const SH=[['0.25','15min'],['0.5','30min'],['0.75','45min'],['1','1h'],['1.5','1h30'],['2','2h'],['3','3h'],['4','4h'],['5','5h'],['8','8h']];
 const TYP_INFO={
   strategisch:{label:'Strategisch',bg:'var(--blue-bg)',tc:'var(--blue)'},
   operativ:{label:'Operativ',bg:'var(--gray-bg)',tc:'var(--t2)'},
@@ -1481,7 +1481,7 @@ function openNeu(pf={}){
     +'<div class="fl"><label>Priorität</label><div style="display:flex;gap:6px;margin-top:2px">'
     +[null,'P1','P2','P3'].map(pr=>{const bg=pr==='P1'?'var(--red-bg)':pr==='P2'?'#fff7ed':'var(--gray-bg)';const tc=pr==='P1'?'var(--red)':pr==='P2'?'#c2410c':'var(--t2)';return'<button id="pbp-'+(pr||'k')+'" onclick="selPrioBtn(this,\''+pr+'\')" style="font-size:12px;padding:4px 11px;border-radius:8px;border:1px solid '+(pr?tc:'var(--bd)')+';background:'+bg+';color:'+tc+';cursor:pointer;font-family:inherit">'+(pr||'kein')+'</button>';}).join('')
     +'</div></div>'
-    +'<div class="f2"><div class="fl"><label>Dauer</label><select id="nh">'+Object.keys(SH).map(h=>'<option value="'+h+'"'+((pf.geplant||1)==h?' selected':'')+'>'+SH[h]+'</option>').join('')+'</select></div>'
+    +'<div class="f2"><div class="fl"><label>Dauer</label><select id="nh">'+SH.map(([h,l])=>'<option value="'+h+'"'+((pf.geplant||1)==h?' selected':'')+'>'+l+'</option>').join('')+'</select></div>'
     +'<div class="fl"><label>Deadline</label><input type="date" id="ndl" value="'+(pf.dl||'')+'"></div></div>'
     +(isGF()?'<div class="fl"><label style="display:flex;align-items:center;gap:8px;text-transform:none;font-size:13px;font-weight:400"><input type="checkbox" id="nvert" style="width:auto"> Vertraulich</label></div>':'')
     +'<div class="fl"><label>Notiz</label><input id="nno" value="'+(pf.notiz||'')+'" placeholder="Optional…"></div>'
