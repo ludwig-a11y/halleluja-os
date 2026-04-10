@@ -1357,107 +1357,151 @@ async function delAufgabe(id){
 
 function rZiele(){
   let out='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">'
-    +'<div><div style="font-size:16px;font-weight:700">Ziele</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Strategische Ziele & Teilziele</div></div>'
+    +'<div style="font-size:16px;font-weight:700">Ziele</div>'
     +(isGF()?'<button class="btn btn-dk" onclick="addZiel()">+ Neues Ziel</button>':'')
     +'</div>';
   const alleZiele=S.ziele.filter(z=>!z.vertraulich||isGF());
   const istMeinZiel=z=>isGF()||z.verantwortlichId===aP||(z.teilziele||[]).some(tz=>tz.verantwortlichId===aP);
   const meineZiele=alleZiele.filter(istMeinZiel).sort((a,b)=>(a.verantwortlichId===aP?0:1)-(b.verantwortlichId===aP?0:1));
   const andereZiele=alleZiele.filter(z=>!istMeinZiel(z));
+
   meineZiele.forEach(z=>{
-    const f=FARBEN[z.farbe]||FARBEN[0],verantw=person(z.verantwortlichId);
+    const f=FARBEN[z.farbe]||FARBEN[0];
+    const verantw=person(z.verantwortlichId);
     const visKpis=(z.kpis||[]).filter(k=>isGF()||k.pid===aP);
-    const pct=zielPct(z),okK=visKpis.filter(kpiOk).length,badK=visKpis.filter(k=>!kpiOk(k));
+    const pct=zielPct(z);
+    const okK=visKpis.filter(kpiOk).length;
+    const badK=visKpis.filter(k=>!kpiOk(k));
     const zA=S.aufgaben.filter(a=>a.zielId===z.id&&a.status!=='erledigt'&&canSee(a)&&(isGF()||a.pid===aP));
-    out+='<div class="zcard" style="background:'+f.bg+';border-color:'+f.bd+'">';
-    out+='<div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:14px">'
-      +'<div style="flex:1"><div style="display:flex;align-items:center;gap:8px;margin-bottom:7px;flex-wrap:wrap">'
-      +'<div style="font-size:15px;font-weight:700;color:'+f.tc+'">'+z.name+'</div>'
-      +(verantw?'<span style="font-size:11px;color:'+f.tc+';opacity:.7">Verantw.: '+verantw.name+'</span>':'')
-      +(z.vertraulich?'<span class="lock">vertraulich</span>':'')
-      +(isGF()?'<button onclick="editZiel(\''+z.id+'\')" style="font-size:10px;padding:2px 8px;border-radius:6px;border:0.5px solid '+f.bd+';background:rgba(255,255,255,.5);color:'+f.tc+';cursor:pointer;font-family:inherit;opacity:.7">bearbeiten</button>':'')
-      +'</div>'
-      +'<div style="display:flex;align-items:center;gap:10px"><div class="pbar"><div class="pbar-fill" style="width:'+pct+'%;background:'+(pct>=70?f.tc:'#f59e0b')+'"></div></div><span style="font-size:13px;font-weight:700;color:'+(pct>=70?f.tc:'#c2410c')+';min-width:36px">'+pct+'%</span></div>'
-      +'<div style="font-size:11px;color:'+f.tc+';opacity:.65;margin-top:3px">'+(pct>=70?'✓ Auf Kurs':'⚠ Unter Plan')+(visKpis.length?' · '+okK+'/'+visKpis.length+' KPIs auf Kurs':'')+'</div>'
-      +'</div>'
-      +(badK.length?'<div style="background:var(--red-bg);border:1px solid var(--red-bd);border-radius:9px;padding:8px 10px;min-width:140px;flex-shrink:0"><div style="font-size:10px;font-weight:600;color:var(--red);margin-bottom:4px">Handlungsbedarf</div>'+badK.map(k=>'<div style="font-size:10px;color:var(--red)">· '+k.label+': '+k.ist+(k.unit||'')+' → '+k.ziel+(k.unit||'')+'</div>').join('')+'</div>':'')
-      +'</div>';
+    const onTrack=pct>=70;
+
+    // Card: white, left color accent
+    out+='<div style="background:#fff;border:1px solid var(--bd);border-left:3px solid '+f.tc+';border-radius:0 14px 14px 0;padding:18px 20px;margin-bottom:12px">';
+
+    // Header
+    out+='<div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:10px">';
+    out+='<div style="flex:1">';
+    out+='<div style="font-size:15px;font-weight:700;color:#111;margin-bottom:3px">'+z.name+'</div>';
+    out+='<div style="font-size:11px;color:var(--t3);display:flex;align-items:center;gap:6px">';
+    if(verantw)out+='<span>'+verantw.name+'</span>';
+    if(z.vertraulich)out+='<span class="lock">vertraulich</span>';
+    out+='</div></div>';
+    out+='<div style="display:flex;align-items:center;gap:8px;flex-shrink:0">';
+    out+='<div style="font-size:20px;font-weight:800;color:'+(onTrack?f.tc:'var(--amber)')+'">'+pct+'%</div>';
+    if(isGF())out+='<button onclick="editZiel(\''+z.id+'\')" style="font-size:11px;padding:3px 9px;border-radius:7px;border:1px solid var(--bd);background:var(--gray-bg);color:var(--t2);cursor:pointer;font-family:inherit">···</button>';
+    out+='</div></div>';
+
+    // Progress bar
+    out+='<div style="height:5px;background:#f3f4f6;border-radius:99px;overflow:hidden;margin-bottom:8px">';
+    out+='<div style="height:100%;border-radius:99px;background:'+(onTrack?f.tc:'var(--amber)')+';width:'+pct+'%;transition:width .4s"></div>';
+    out+='</div>';
+
+    // Status + bad KPI pills
+    out+='<div style="font-size:11px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:'+(visKpis.length?'14':'16')+'px">';
+    out+='<span style="color:'+(onTrack?f.tc:'var(--amber)')+';font-weight:600">'+(onTrack?'✓ Auf Kurs':'⚠ Unter Plan')+'</span>';
+    if(visKpis.length)out+='<span style="color:var(--t3)">· '+okK+'/'+visKpis.length+' KPIs auf Kurs</span>';
+    badK.forEach(k=>out+='<span style="background:var(--red-bg);color:var(--red);border:1px solid var(--red-bd);border-radius:99px;padding:1px 8px;font-size:10px;font-weight:600">'+k.label+': '+kpiVal(k)+(k.unit||'')+' → '+k.ziel+(k.unit||'')+'</span>');
+    out+='</div>';
+
+    // KPI grid (compact, always visible)
     if(visKpis.length||isGF()){
-      out+='<details style="margin-bottom:14px"><summary style="cursor:pointer;font-size:10px;font-weight:700;color:'+f.tc+';opacity:.65;text-transform:uppercase;letter-spacing:.5px;list-style:none">▸ KPIs ('+visKpis.length+')</summary>';
-      out+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:8px;margin-top:10px">';
+      out+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:6px;margin-bottom:16px">';
       visKpis.forEach(k=>{
-        const val=kpiVal(k),ok=kpiOk(k),p2=person(k.pid);
-        const pct2=k.inv?Math.max(0,100-Math.round(Math.max(0,val-k.ziel)/Math.max(k.ziel,.1)*100)):Math.round(Math.min(100,val/(k.ziel||1)*100));
-        const isMe=k.pid===aP;
-        out+='<div '+(isGF()?'onclick="editKpiDef(\''+z.id+'\',\''+k.id+'\')" style="cursor:pointer;"':'')+' style="background:rgba(255,255,255,.75);border:'+(isMe?'2px solid '+f.tc:'0.5px solid '+f.bd)+';border-radius:10px;padding:11px 12px;position:relative">'
-          +(isMe?'<div style="position:absolute;top:6px;right:8px;font-size:9px;background:'+f.tc+';color:#fff;padding:1px 5px;border-radius:99px;font-weight:600">Ich</div>':'')
-          +'<div style="font-size:9px;color:var(--t3);margin-bottom:3px;text-transform:uppercase">'+(p2?p2.name:'–')+' · '+k.freq+'</div>'
-          +'<div style="font-size:20px;font-weight:700;color:'+(ok?f.tc:'var(--red)')+';line-height:1;margin-bottom:2px">'+val+(k.unit||'')+'</div>'
-          +'<div style="font-size:11px;font-weight:600;margin-bottom:1px">'+k.label+'</div>'
-          +'<div style="font-size:9px;color:var(--t3);margin-bottom:6px">Ziel: '+k.ziel+(k.unit||'')+'</div>'
-          +'<div style="height:3px;border-radius:99px;background:rgba(0,0,0,.07);overflow:hidden"><div style="height:100%;border-radius:99px;background:'+(ok?f.tc:'var(--red)')+';width:'+Math.max(0,Math.min(100,pct2))+'%"></div></div></div>';
-      });
-      if(isGF())out+='<div onclick="addKpi(\''+z.id+'\')" style="border:1.5px dashed '+f.bd+';border-radius:10px;padding:11px 12px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;color:'+f.tc+';gap:4px;opacity:.5;min-height:90px" onmouseenter="this.style.opacity=\'0.9\'" onmouseleave="this.style.opacity=\'0.5\'"><span style="font-size:20px">+</span><span style="font-size:11px">KPI</span></div>';
-      out+='</div></details>';
-    }
-    const myTZ=(z.teilziele||[]).filter(tz=>isGF()||tz.verantwortlichId===aP);
-    if(myTZ.length||isGF())out+='<div style="font-size:10px;font-weight:700;color:'+f.tc+';opacity:.65;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Teilziele</div>';
-    myTZ.forEach(tz=>{
-      const tzV=person(tz.verantwortlichId),tzA=zA.filter(a=>a.teilzielId===tz.id);
-      out+='<div class="tz-block" style="'+(tz.erledigt?'opacity:.55':'')+'"><div class="tz-head">'
-        +(canManageTZ(z.id)?'<input type="checkbox" '+(tz.erledigt?'checked':'')+' onclick="toggleTZ(\''+z.id+'\',\''+tz.id+'\')" style="flex-shrink:0">':'')
-        +'<div style="flex:1"><span class="tz-title'+(tz.erledigt?' tz-done':'')+'">'+tz.name+'</span>'
-        +'<div style="display:flex;gap:8px;margin-top:2px">'
-        +(tzV?'<span style="font-size:10px;color:var(--purple);opacity:.7">'+tzV.name+'</span>':'')
-        +(tz.datum?'<span style="font-size:10px;color:var(--purple);opacity:.7">bis '+tz.datum.slice(8)+'.'+tz.datum.slice(5,7)+'.</span>':'')
-        +'</div></div>'
-        +'<div style="display:flex;gap:5px">'
-        +(canManageTZ(z.id)?'<button onclick="editTZ(\''+z.id+'\',\''+tz.id+'\')" style="font-size:10px;padding:2px 8px;border-radius:6px;border:1px solid var(--purple-bd);background:rgba(255,255,255,.5);color:var(--purple);cursor:pointer;font-family:inherit">···</button>':'')
-        +'<button onclick="openNeu({zielId:\''+z.id+'\',teilzielId:\''+tz.id+'\'})" style="font-size:10px;padding:2px 8px;border-radius:6px;border:1px solid var(--purple-bd);background:rgba(255,255,255,.5);color:var(--purple);cursor:pointer;font-family:inherit">+ Aufgabe</button>'
-        +'</div></div>';
-      if(tzA.length){
-        out+='<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:6px">';
-        tzA.forEach(a=>{
-          const p2=person(a.pid);
-          out+='<div onclick="openDetail(\''+a.id+'\')" style="background:rgba(255,255,255,.6);border:0.5px solid var(--purple-bd);border-radius:7px;padding:4px 10px;font-size:11px;display:flex;align-items:center;gap:6px;cursor:pointer">'
-            +'<span style="font-size:8px;color:'+(a.status==='aktiv'?'var(--blue)':a.status==='erledigt'?'var(--green)':'var(--t3)')+'">●</span>'
-            +'<span>'+a.titel+'</span>'
-            +(p2?'<span style="color:var(--t3);font-size:10px">· '+p2.name+'</span>':'')
-            +prioTag(a.prio,null,false)
-            +(a.status==='erledigt'?'<span style="font-size:9px;color:var(--green)">✓</span>':'')
-            +'</div>';
-        });
+        const val=kpiVal(k),ok=kpiOk(k),p2=person(k.pid),isMe=k.pid===aP;
+        out+='<div '+(isGF()?'onclick="editKpiDef(\''+z.id+'\',\''+k.id+'\')" style="cursor:pointer"':'')+' style="background:var(--gray-bg);border:'+(isMe?'1.5px solid '+f.tc:'1px solid var(--bd)')+';border-radius:9px;padding:9px 11px">';
+        out+='<div style="font-size:9px;color:var(--t3);margin-bottom:3px">'+(p2?p2.name:'–')+'</div>';
+        out+='<div style="font-size:19px;font-weight:800;color:'+(ok?f.tc:'var(--red)')+';line-height:1;margin-bottom:1px">'+val+(k.unit||'')+'</div>';
+        out+='<div style="font-size:11px;font-weight:600;color:var(--t2)">'+k.label+'</div>';
+        out+='<div style="font-size:10px;color:var(--t3)">Ziel: '+k.ziel+(k.unit||'')+'</div>';
         out+='</div>';
-      }
+      });
+      if(isGF())out+='<div onclick="addKpi(\''+z.id+'\')" style="border:1.5px dashed var(--bd);border-radius:9px;padding:9px 11px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--t3);font-size:22px" onmouseenter="this.style.color=\''+f.tc+'\'" onmouseleave="this.style.color=\'var(--t3)\'">+</div>';
       out+='</div>';
-    });
-    if(canManageTZ(z.id))out+='<button class="tz-add-btn" onclick="openAddTZ(\''+z.id+'\')">+ Teilziel hinzufügen</button>';
-    out+='<div style="margin-top:10px"><button onclick="openNeu({zielId:\''+z.id+'\'})" style="width:100%;padding:9px;border-radius:10px;border:1.5px dashed '+f.bd+';background:transparent;color:'+f.tc+';font-size:12px;font-family:inherit;cursor:pointer;font-weight:500;opacity:.7" onmouseenter="this.style.opacity=\'1\'" onmouseleave="this.style.opacity=\'0.7\'">+ Aufgabe zu diesem Ziel hinzufügen</button></div>';
+    }
+
+    // Teilziele
+    const myTZ=(z.teilziele||[]).filter(tz=>isGF()||tz.verantwortlichId===aP);
+    if(myTZ.length||isGF()){
+      out+='<div style="border-top:1px solid var(--bd);padding-top:12px">';
+      out+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);margin-bottom:10px">Teilziele</div>';
+      myTZ.forEach(tz=>{
+        const tzV=person(tz.verantwortlichId),tzA=zA.filter(a=>a.teilzielId===tz.id);
+        out+='<div style="margin-bottom:10px">';
+        out+='<div style="display:flex;align-items:center;gap:8px">';
+        if(canManageTZ(z.id))out+='<input type="checkbox" '+(tz.erledigt?'checked':'')+' onclick="toggleTZ(\''+z.id+'\',\''+tz.id+'\')" style="flex-shrink:0;margin:0;accent-color:'+f.tc+'">';
+        out+='<div style="flex:1;font-size:13px;font-weight:600;color:#111;'+(tz.erledigt?'text-decoration:line-through;opacity:.4':'')+'">'+tz.name+'</div>';
+        out+='<div style="display:flex;align-items:center;gap:5px;flex-shrink:0">';
+        if(tzV||tz.datum)out+='<span style="font-size:10px;color:var(--t3)">'+(tzV?tzV.name:'')+(tz.datum?' · '+tz.datum.slice(8)+'.'+tz.datum.slice(5,7)+'.':'')+'</span>';
+        if(canManageTZ(z.id))out+='<button onclick="editTZ(\''+z.id+'\',\''+tz.id+'\')" style="font-size:10px;padding:2px 7px;border-radius:6px;border:1px solid var(--bd);background:var(--gray-bg);color:var(--t3);cursor:pointer;font-family:inherit">···</button>';
+        out+='<button onclick="openNeu({zielId:\''+z.id+'\',teilzielId:\''+tz.id+'\'})" style="font-size:10px;padding:2px 8px;border-radius:6px;border:1px solid var(--bd);background:var(--gray-bg);color:var(--t2);cursor:pointer;font-family:inherit">+ Aufgabe</button>';
+        out+='</div></div>';
+        if(tzA.length){
+          out+='<div style="margin-left:24px;margin-top:5px;display:flex;flex-direction:column;gap:3px">';
+          tzA.forEach(a=>{
+            const p2=person(a.pid);
+            out+='<div onclick="openDetail(\''+a.id+'\')" style="display:flex;align-items:center;gap:6px;padding:5px 10px;border-radius:7px;border:1px solid var(--bd);background:var(--gray-bg);cursor:pointer">';
+            out+='<span style="font-size:8px;color:'+(a.status==='aktiv'?'var(--blue)':'var(--t3)')+'">●</span>';
+            out+='<span style="flex:1;font-size:11px">'+a.titel+'</span>';
+            if(p2)out+='<span style="font-size:10px;color:var(--t3)">'+p2.name+'</span>';
+            out+=prioTag(a.prio,null,false);
+            out+='</div>';
+          });
+          out+='</div>';
+        }
+        out+='</div>';
+      });
+      out+='</div>';
+    }
+
+    // Aufgaben ohne Teilziel
     const aOhneTZ=zA.filter(a=>!a.teilzielId);
     if(aOhneTZ.length){
-      out+='<div style="font-size:10px;font-weight:700;color:'+f.tc+';opacity:.65;text-transform:uppercase;letter-spacing:.5px;margin:12px 0 6px">Weitere Aufgaben</div><div style="display:flex;gap:6px;flex-wrap:wrap">';
-      aOhneTZ.forEach(a=>{const p2=person(a.pid);out+='<div style="background:rgba(255,255,255,.75);border:0.5px solid '+f.bd+';border-radius:8px;padding:5px 10px;font-size:11px;display:flex;align-items:center;gap:5px"><span style="font-size:8px;color:'+(a.status==='aktiv'?f.tc:'var(--t3)')+'">●</span>'+a.titel+(p2?'<span style="color:var(--t3);font-size:10px">· '+p2.name+'</span>':'')+'</div>';});
-      out+='</div>';
+      out+='<div style="border-top:1px solid var(--bd);padding-top:10px;margin-top:4px">';
+      out+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);margin-bottom:6px">Weitere Aufgaben</div>';
+      out+='<div style="display:flex;flex-direction:column;gap:3px">';
+      aOhneTZ.forEach(a=>{
+        const p2=person(a.pid);
+        out+='<div onclick="openDetail(\''+a.id+'\')" style="display:flex;align-items:center;gap:6px;padding:5px 10px;border-radius:7px;border:1px solid var(--bd);background:var(--gray-bg);cursor:pointer">';
+        out+='<span style="font-size:8px;color:'+(a.status==='aktiv'?'var(--blue)':'var(--t3)')+'">●</span>';
+        out+='<span style="flex:1;font-size:11px">'+a.titel+'</span>';
+        if(p2)out+='<span style="font-size:10px;color:var(--t3)">'+p2.name+'</span>';
+        out+=prioTag(a.prio,null,false);
+        out+='</div>';
+      });
+      out+='</div></div>';
     }
+
+    // Footer buttons
+    out+='<div style="display:flex;align-items:center;justify-content:space-between;margin-top:14px;padding-top:12px;border-top:1px solid var(--bd)">';
+    out+=(canManageTZ(z.id)?'<button onclick="openAddTZ(\''+z.id+'\')" style="font-size:11px;padding:5px 12px;border-radius:8px;border:1.5px dashed var(--bd);background:transparent;color:var(--t3);cursor:pointer;font-family:inherit">+ Teilziel</button>':'<div></div>');
+    out+='<button onclick="openNeu({zielId:\''+z.id+'\'})" style="font-size:11px;padding:5px 12px;border-radius:8px;border:1px solid var(--bd);background:var(--gray-bg);color:var(--t2);cursor:pointer;font-family:inherit">+ Aufgabe hinzufügen</button>';
+    out+='</div>';
+
     out+='</div>';
   });
+
+  // Andere Ziele
   if(andereZiele.length){
-    out+='<div style="margin-top:8px"><div style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Unternehmensziele</div>';
+    out+='<div style="margin-top:16px">';
+    out+='<div style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Unternehmensziele</div>';
     andereZiele.forEach(z=>{
-      const f=FARBEN[z.farbe]||FARBEN[0],verantw=person(z.verantwortlichId),pct=zielPct(z);
-      out+='<div style="background:'+f.bg+';border:1px solid '+f.bd+';border-radius:12px;padding:12px 16px;margin-bottom:8px;display:flex;align-items:center;gap:12px">'
-        +'<div style="flex:1;min-width:0">'
-        +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'
-        +'<span style="font-size:13px;font-weight:700;color:'+f.tc+'">'+z.name+'</span>'
-        +(verantw?'<span style="font-size:10px;color:'+f.tc+';opacity:.6">'+verantw.name+'</span>':'')
-        +'</div>'
-        +'<div style="display:flex;align-items:center;gap:8px">'
-        +'<div class="pbar" style="flex:1"><div class="pbar-fill" style="width:'+pct+'%;background:'+(pct>=70?f.tc:'#f59e0b')+'"></div></div>'
-        +'<span style="font-size:12px;font-weight:700;color:'+(pct>=70?f.tc:'#c2410c');out+=';min-width:36px">'+pct+'%</span>'
-        +'</div></div></div>';
+      const f=FARBEN[z.farbe]||FARBEN[0],verantw=person(z.verantwortlichId),pct=zielPct(z),onTrack=pct>=70;
+      out+='<div style="background:#fff;border:1px solid var(--bd);border-left:3px solid '+f.tc+';border-radius:0 12px 12px 0;padding:12px 16px;margin-bottom:8px">';
+      out+='<div style="display:flex;align-items:center;gap:12px">';
+      out+='<div style="flex:1">';
+      out+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">';
+      out+='<span style="font-size:13px;font-weight:700;color:#111">'+z.name+'</span>';
+      if(verantw)out+='<span style="font-size:10px;color:var(--t3)">'+verantw.name+'</span>';
+      out+='</div>';
+      out+='<div style="height:4px;background:#f3f4f6;border-radius:99px;overflow:hidden">';
+      out+='<div style="height:100%;border-radius:99px;background:'+(onTrack?f.tc:'var(--amber)')+';width:'+pct+'%"></div>';
+      out+='</div></div>';
+      out+='<div style="font-size:16px;font-weight:800;color:'+(onTrack?f.tc:'var(--amber)')+'">'+pct+'%</div>';
+      out+='</div></div>';
     });
     out+='</div>';
   }
+
   document.getElementById('main').innerHTML=out;
 }
 
