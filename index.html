@@ -1375,8 +1375,8 @@ function rZiele(){
     const zA=S.aufgaben.filter(a=>a.zielId===z.id&&a.status!=='erledigt'&&canSee(a)&&(isGF()||a.pid===aP));
     const onTrack=pct>=70;
 
-    // Card: white, left color accent
-    out+='<div style="background:#fff;border:1px solid var(--bd);border-left:3px solid '+f.tc+';border-radius:0 14px 14px 0;padding:18px 20px;margin-bottom:12px">';
+    // Sektion: kein Card-Rahmen, nur linker Farbstreifen
+    out+='<div style="border-left:3px solid '+f.tc+';padding:0 0 24px 20px;margin-bottom:4px">';
 
     // Header
     out+='<div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:10px">';
@@ -1478,31 +1478,30 @@ function rZiele(){
     }
 
     // Footer buttons
-    out+='<div style="display:flex;align-items:center;justify-content:space-between;margin-top:14px;padding-top:12px;border-top:1px solid var(--bd)">';
-    out+=(canManageTZ(z.id)?'<button onclick="openAddTZ(\''+z.id+'\')" style="font-size:11px;padding:5px 12px;border-radius:8px;border:1.5px dashed var(--bd);background:transparent;color:var(--t3);cursor:pointer;font-family:inherit">+ Teilziel</button>':'<div></div>');
-    out+='<button onclick="openNeu({zielId:\''+z.id+'\'})" style="font-size:11px;padding:5px 12px;border-radius:8px;border:1px solid var(--bd);background:var(--gray-bg);color:var(--t2);cursor:pointer;font-family:inherit">+ Aufgabe hinzufügen</button>';
+    out+='<div style="display:flex;align-items:center;gap:8px;margin-top:12px">';
+    if(canManageTZ(z.id))out+='<button onclick="openAddTZ(\''+z.id+'\')" style="font-size:11px;padding:5px 12px;border-radius:8px;border:1.5px dashed var(--bd);background:transparent;color:var(--t3);cursor:pointer;font-family:inherit">+ Teilziel</button>';
+    out+='<button onclick="openNeu({zielId:\''+z.id+'\'})" style="font-size:11px;padding:5px 12px;border-radius:8px;border:1px solid var(--bd);background:var(--gray-bg);color:var(--t2);cursor:pointer;font-family:inherit">+ Aufgabe</button>';
     out+='</div>';
 
-    out+='</div>';
+    out+='</div>'; // end sektion
   });
 
   // Andere Ziele
   if(andereZiele.length){
-    out+='<div style="margin-top:16px">';
-    out+='<div style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Unternehmensziele</div>';
+    out+='<div style="margin-top:8px">';
+    out+='<div style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Unternehmensziele</div>';
     andereZiele.forEach(z=>{
       const f=FARBEN[z.farbe]||FARBEN[0],verantw=person(z.verantwortlichId),pct=zielPct(z),onTrack=pct>=70;
-      out+='<div style="background:#fff;border:1px solid var(--bd);border-left:3px solid '+f.tc+';border-radius:0 12px 12px 0;padding:12px 16px;margin-bottom:8px">';
-      out+='<div style="display:flex;align-items:center;gap:12px">';
-      out+='<div style="flex:1">';
-      out+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">';
-      out+='<span style="font-size:13px;font-weight:700;color:#111">'+z.name+'</span>';
-      if(verantw)out+='<span style="font-size:10px;color:var(--t3)">'+verantw.name+'</span>';
+      out+='<div style="border-left:3px solid '+f.tc+';padding:0 0 16px 16px;margin-bottom:4px">';
+      out+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">';
+      out+='<div>';
+      out+='<div style="font-size:13px;font-weight:700;color:#111">'+z.name+'</div>';
+      if(verantw)out+='<div style="font-size:10px;color:var(--t3);margin-top:1px">'+verantw.name+'</div>';
+      out+='</div>';
+      out+='<div style="font-size:16px;font-weight:800;color:'+(onTrack?f.tc:'var(--amber)')+'">'+pct+'%</div>';
       out+='</div>';
       out+='<div style="height:4px;background:#f3f4f6;border-radius:99px;overflow:hidden">';
       out+='<div style="height:100%;border-radius:99px;background:'+(onTrack?f.tc:'var(--amber)')+';width:'+pct+'%"></div>';
-      out+='</div></div>';
-      out+='<div style="font-size:16px;font-weight:800;color:'+(onTrack?f.tc:'var(--amber)')+'">'+pct+'%</div>';
       out+='</div></div>';
     });
     out+='</div>';
