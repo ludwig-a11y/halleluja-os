@@ -966,28 +966,6 @@ function rTag(){
   const naechste=aktiv.length?null:(offene[0]||null);
   const alleGeschafft=!aktiv.length&&!neu.length&&!bl.length;
   let out='';
-
-  if(zugewiesenA.length){
-    out+='<div style="background:var(--amber-bg);border:1px solid var(--amber-bd);border-radius:14px;padding:14px 16px;margin-bottom:16px">'
-      +'<div style="font-size:10px;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Neu zugewiesen — Priorität bestätigen</div>';
-    zugewiesenA.forEach(a=>{
-      const from=person(a.erstelltVon);
-      out+='<div style="background:rgba(255,255,255,.75);border-radius:10px;padding:10px 12px;margin-bottom:8px">'
-        +'<div style="font-size:13px;font-weight:600;margin-bottom:3px">'+a.titel+'</div>'
-        +(from?'<div style="font-size:11px;color:var(--t2);margin-bottom:8px">von '+from.name+(a.prio?' · Vorschlag: <strong>'+a.prio+'</strong>':'')+'</div>':'')
-        +'<div style="display:flex;gap:6px;flex-wrap:wrap">'
-        +['P1','P2','P3','null'].map(p=>{
-          const lbl=p==='null'?'Kein':p;
-          const bg=p==='P1'?'var(--red-bg)':p==='P2'?'#fff7ed':p==='P3'?'var(--gray-bg)':'var(--sf)';
-          const tc=p==='P1'?'var(--red)':p==='P2'?'#c2410c':p==='P3'?'var(--t2)':'var(--t3)';
-          const suggested=p===a.prio||(p==='null'&&!a.prio);
-          return'<button onclick="bestaetigeAufgabe(\''+a.id+'\',\''+p+'\')" style="font-size:11px;padding:5px 13px;border-radius:8px;border:'+(suggested?'2px solid var(--text)':'1px solid var(--bd)')+';background:'+bg+';color:'+tc+';cursor:pointer;font-family:inherit;font-weight:'+(suggested?700:400)+'">'+lbl+'</button>';
-        }).join('')
-        +'</div></div>';
-    });
-    out+='</div>';
-  }
-
   out+=rKpiBlock(aP);
 
   if(aktiv.length){
@@ -1083,6 +1061,27 @@ function rTag(){
       });
       out+='<button onclick="openDetail(\''+a.id+'\')" style="padding:7px 10px;border-radius:8px;background:var(--gray-bg);color:var(--t2);border:1px solid var(--bd);font-family:inherit;font-size:12px;cursor:pointer">···</button>';
       out+='</div></div>';
+    });
+    out+='</div>';
+  }
+
+  if(zugewiesenA.length){
+    out+='<div style="background:var(--amber-bg);border:1px solid var(--amber-bd);border-radius:14px;padding:14px 16px;margin-bottom:12px">'
+      +'<div style="font-size:10px;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Inbox — Priorität bestätigen</div>';
+    zugewiesenA.forEach(a=>{
+      const from=person(a.erstelltVon);
+      out+='<div style="background:rgba(255,255,255,.75);border-radius:10px;padding:10px 12px;margin-bottom:8px">'
+        +'<div style="font-size:13px;font-weight:600;margin-bottom:3px">'+a.titel+'</div>'
+        +(from?'<div style="font-size:11px;color:var(--t2);margin-bottom:8px">von '+from.name+(a.prio?' · Vorschlag: <strong>'+a.prio+'</strong>':'')+'</div>':'')
+        +'<div style="display:flex;gap:6px;flex-wrap:wrap">'
+        +['P1','P2','P3','null'].map(p=>{
+          const lbl=p==='null'?'Kein':p;
+          const bg=p==='P1'?'var(--red-bg)':p==='P2'?'#fff7ed':p==='P3'?'var(--gray-bg)':'var(--sf)';
+          const tc=p==='P1'?'var(--red)':p==='P2'?'#c2410c':p==='P3'?'var(--t2)':'var(--t3)';
+          const suggested=p===a.prio||(p==='null'&&!a.prio);
+          return'<button onclick="bestaetigeAufgabe(\''+a.id+'\',\''+p+'\')" style="font-size:11px;padding:5px 13px;border-radius:8px;border:'+(suggested?'2px solid var(--text)':'1px solid var(--bd)')+';background:'+bg+';color:'+tc+';cursor:pointer;font-family:inherit;font-weight:'+(suggested?700:400)+'">'+lbl+'</button>';
+        }).join('')
+        +'</div></div>';
     });
     out+='</div>';
   }
