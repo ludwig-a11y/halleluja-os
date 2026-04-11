@@ -1,0 +1,141 @@
+{
+  "name": "Google Drive → Kontext-Feed (Halleluja OS)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "cronExpression", "expression": "25 6 * * *" }]
+        }
+      },
+      "id": "schedule",
+      "name": "Jeden Morgen 6:25",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://www.googleapis.com/drive/v3/files",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleOAuth2Api",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "q", "value": "modifiedTime > '{{ new Date(Date.now() - 24*60*60*1000).toISOString() }}' and trashed = false" },
+            { "name": "fields", "value": "files(id,name,mimeType,modifiedTime,lastModifyingUser,webViewLink)" },
+            { "name": "orderBy", "value": "modifiedTime desc" },
+            { "name": "pageSize", "value": "30" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "drive-recent",
+      "name": "Drive: Geändert letzte 24h",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [250, 0]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://www.googleapis.com/drive/v3/files",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleOAuth2Api",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "q", "value": "modifiedTime > '{{ new Date(Date.now() - 7*24*60*60*1000).toISOString() }}' and trashed = false and (name contains 'SOP' or name contains 'Prozess' or name contains 'Strategie' or name contains 'KPI' or name contains 'Sales' or name contains 'Marketing' or name contains 'Halleluja')" },
+            { "name": "fields", "value": "files(id,name,mimeType,modifiedTime,lastModifyingUser,webViewLink)" },
+            { "name": "orderBy", "value": "modifiedTime desc" },
+            { "name": "pageSize", "value": "15" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "drive-key-docs",
+      "name": "Drive: Key Docs (7 Tage)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [250, 250],
+      "notes": "⚠️ Keywords anpassen an eure wichtigsten Dokument-Typen"
+    },
+    {
+      "parameters": {
+        "jsCode": "const recentFiles = ($('Drive: Geändert letzte 24h').first().json.files || []);\nconst keyDocs = ($('Drive: Key Docs (7 Tage)').first().json.files || []);\n\nconst today = new Date().toISOString().slice(0, 10);\n\n// MIME type mapping\nconst TYPES = {\n  'application/vnd.google-apps.document': 'Doc',\n  'application/vnd.google-apps.spreadsheet': 'Sheet',\n  'application/vnd.google-apps.presentation': 'Slides',\n  'application/vnd.google-apps.form': 'Form',\n  'application/pdf': 'PDF'\n};\n\n// Zähle nach Typ\nconst typeCounts = {};\nrecentFiles.forEach(f => {\n  const t = TYPES[f.mimeType] || 'Andere';\n  typeCounts[t] = (typeCounts[t] || 0) + 1;\n});\n\nconst typeStr = Object.entries(typeCounts)\n  .sort((a, b) => b[1] - a[1])\n  .map(([t, c]) => `${c}x ${t}`)\n  .join(', ');\n\n// Wer hat bearbeitet?\nconst editors = {};\nrecentFiles.forEach(f => {\n  const name = f.lastModifyingUser?.displayName || 'Unbekannt';\n  editors[name] = (editors[name] || 0) + 1;\n});\nconst editorStr = Object.entries(editors)\n  .sort((a, b) => b[1] - a[1])\n  .slice(0, 4)\n  .map(([n, c]) => `${n}: ${c}`)\n  .join(', ');\n\n// Key Docs Highlights\nconst keyDocNames = keyDocs\n  .slice(0, 5)\n  .map(f => f.name)\n  .join(', ');\n\nlet parts = [];\nparts.push(`${recentFiles.length} Dateien geändert (24h)`);\nif (typeStr) parts.push(`Typen: ${typeStr}`);\nif (editorStr) parts.push(`Bearbeitet von: ${editorStr}`);\nif (keyDocNames) parts.push(`Key Docs (7d): ${keyDocNames}`);\n\nconst zusammenfassung = parts.join('. ') + '.';\n\nreturn [{\n  json: {\n    id: 'kf-gdrive-' + today,\n    pid: null,\n    quelle: 'gdrive',\n    typ: 'aktivitaet',\n    zusammenfassung,\n    rohdaten: {\n      recentCount: recentFiles.length,\n      typeCounts,\n      editors,\n      keyDocs: keyDocs.slice(0, 5).map(f => ({ name: f.name, url: f.webViewLink, modified: f.modifiedTime }))\n    },\n    relevanz: 'niedrig',\n    created_at: new Date().toISOString(),\n    gueltig_bis: today\n  }\n}];"
+      },
+      "id": "code-aggregate",
+      "name": "Zusammenfassen",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [550, 100]
+    },
+    {
+      "parameters": {
+        "method": "DELETE",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/kontext_feed?quelle=eq.gdrive",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_KEY }}" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "supabase-delete",
+      "name": "Alte Drive-Einträge löschen",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [800, 100]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/kontext_feed",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "supabase-insert",
+      "name": "In kontext_feed schreiben",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1050, 100]
+    }
+  ],
+  "connections": {
+    "Jeden Morgen 6:25": {
+      "main": [[
+        { "node": "Drive: Geändert letzte 24h", "type": "main", "index": 0 },
+        { "node": "Drive: Key Docs (7 Tage)", "type": "main", "index": 0 }
+      ]]
+    },
+    "Drive: Geändert letzte 24h": {
+      "main": [[ { "node": "Zusammenfassen", "type": "main", "index": 0 } ]]
+    },
+    "Drive: Key Docs (7 Tage)": {
+      "main": [[ { "node": "Zusammenfassen", "type": "main", "index": 0 } ]]
+    },
+    "Zusammenfassen": {
+      "main": [[ { "node": "Alte Drive-Einträge löschen", "type": "main", "index": 0 } ]]
+    },
+    "Alte Drive-Einträge löschen": {
+      "main": [[ { "node": "In kontext_feed schreiben", "type": "main", "index": 0 } ]]
+    }
+  },
+  "settings": { "executionOrder": "v1" }
+}

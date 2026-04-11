@@ -1,0 +1,163 @@
+{
+  "name": "Gmail → Kontext-Feed (Halleluja OS)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "cronExpression", "expression": "20 6 * * *" }]
+        }
+      },
+      "id": "schedule",
+      "name": "Jeden Morgen 6:20",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://gmail.googleapis.com/gmail/v1/users/me/messages",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleOAuth2Api",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "q", "value": "is:unread -category:promotions -category:social newer_than:2d" },
+            { "name": "maxResults", "value": "30" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "gmail-unread",
+      "name": "Gmail: Ungelesene (2 Tage, ohne Promo/Social)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [250, -100],
+      "notes": "Filtert Promotions & Social raus. Nur echte E-Mails."
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://gmail.googleapis.com/gmail/v1/users/me/messages",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleOAuth2Api",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "q", "value": "from:linkedin.com subject:\"new lead\" newer_than:1d" },
+            { "name": "maxResults", "value": "50" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "gmail-leads",
+      "name": "Gmail: LinkedIn Leads (24h)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [250, 150]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://gmail.googleapis.com/gmail/v1/users/me/messages",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleOAuth2Api",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "q", "value": "(subject:sauna OR subject:anfrage OR subject:bestellung OR subject:reklamation OR subject:beschwerde) is:unread newer_than:3d" },
+            { "name": "maxResults", "value": "20" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "gmail-kunden",
+      "name": "Gmail: Kundenanfragen (3 Tage)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [250, 400],
+      "notes": "⚠️ Keywords anpassen an eure typischen Kundenanfragen-Subjects"
+    },
+    {
+      "parameters": {
+        "jsCode": "const unread = $('Gmail: Ungelesene (2 Tage, ohne Promo/Social)').first().json;\nconst leads = $('Gmail: LinkedIn Leads (24h)').first().json;\nconst kunden = $('Gmail: Kundenanfragen (3 Tage)').first().json;\n\nconst unreadCount = (unread.messages || []).length;\nconst unreadEst = unread.resultSizeEstimate || unreadCount;\nconst leadCount = (leads.messages || []).length;\nconst leadEst = leads.resultSizeEstimate || leadCount;\nconst kundenCount = (kunden.messages || []).length;\nconst kundenEst = kunden.resultSizeEstimate || kundenCount;\n\nconst today = new Date().toISOString().slice(0, 10);\n\nlet parts = [];\nparts.push(`${unreadEst} ungelesene E-Mails (2 Tage, ohne Promo/Social)`);\n\nif (leadEst > 0) {\n  parts.push(`${leadEst} neue LinkedIn-Leads (24h)`);\n}\n\nif (kundenEst > 0) {\n  parts.push(`⚠️ ${kundenEst} ungelesene Kundenanfragen/Reklamationen (3 Tage)`);\n}\n\nif (unreadEst > 50) {\n  parts.push('⚠️ Inbox-Stau: über 50 ungelesene E-Mails');\n}\n\nconst zusammenfassung = parts.join('. ') + '.';\n\nreturn [{\n  json: {\n    id: 'kf-gmail-' + today,\n    pid: null,\n    quelle: 'gmail',\n    typ: 'inbox',\n    zusammenfassung,\n    rohdaten: {\n      unread: unreadEst,\n      linkedinLeads: leadEst,\n      kundenanfragen: kundenEst\n    },\n    relevanz: kundenEst > 0 ? 'hoch' : (unreadEst > 30 ? 'mittel' : 'niedrig'),\n    created_at: new Date().toISOString(),\n    gueltig_bis: today\n  }\n}];"
+      },
+      "id": "code-aggregate",
+      "name": "Zusammenfassen",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [550, 150]
+    },
+    {
+      "parameters": {
+        "method": "DELETE",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/kontext_feed?quelle=eq.gmail",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_KEY }}" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "supabase-delete",
+      "name": "Alte Gmail-Einträge löschen",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [800, 150]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/kontext_feed",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "supabase-insert",
+      "name": "In kontext_feed schreiben",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1050, 150]
+    }
+  ],
+  "connections": {
+    "Jeden Morgen 6:20": {
+      "main": [[
+        { "node": "Gmail: Ungelesene (2 Tage, ohne Promo/Social)", "type": "main", "index": 0 },
+        { "node": "Gmail: LinkedIn Leads (24h)", "type": "main", "index": 0 },
+        { "node": "Gmail: Kundenanfragen (3 Tage)", "type": "main", "index": 0 }
+      ]]
+    },
+    "Gmail: Ungelesene (2 Tage, ohne Promo/Social)": {
+      "main": [[ { "node": "Zusammenfassen", "type": "main", "index": 0 } ]]
+    },
+    "Gmail: LinkedIn Leads (24h)": {
+      "main": [[ { "node": "Zusammenfassen", "type": "main", "index": 0 } ]]
+    },
+    "Gmail: Kundenanfragen (3 Tage)": {
+      "main": [[ { "node": "Zusammenfassen", "type": "main", "index": 0 } ]]
+    },
+    "Zusammenfassen": {
+      "main": [[ { "node": "Alte Gmail-Einträge löschen", "type": "main", "index": 0 } ]]
+    },
+    "Alte Gmail-Einträge löschen": {
+      "main": [[ { "node": "In kontext_feed schreiben", "type": "main", "index": 0 } ]]
+    }
+  },
+  "settings": { "executionOrder": "v1" }
+}
