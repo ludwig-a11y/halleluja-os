@@ -1206,15 +1206,17 @@ function rTag(){
       +'</div>';
   }else if(heuteP1){
     out+='<div style="background:#1a1a1a;border-radius:12px;padding:13px 16px;margin-bottom:14px;display:flex;align-items:center;gap:12px">'
-      +'<div style="flex:1"><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:rgba(255,255,255,.35);margin-bottom:3px">Mein P1 heute</div>'
+      +'<div style="flex:1"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px"><span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:rgba(255,255,255,.35)">Mein P1 heute</span><span style="font-size:10px;color:rgba(255,255,255,.25)">'+['So','Mo','Di','Mi','Do','Fr','Sa'][new Date().getDay()]+', '+new Date().getDate()+'.'+(new Date().getMonth()+1)+'.</span></div>'
       +'<div style="font-size:14px;font-weight:700;color:#fff">'+heuteP1.titel+'</div></div>'
       +'<div style="width:28px;height:28px;border-radius:8px;border:2px solid rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.3);font-size:13px">○</div>'
       +'</div>';
   }else{
     out+='<div style="background:#1a1a1a;border-radius:12px;padding:14px 16px;margin-bottom:14px">'
       +'<div style="font-size:12px;color:rgba(255,255,255,.5);margin-bottom:8px;line-height:1.45;font-style:italic">'
-      +'<span style="color:rgba(255,255,255,.9);font-style:normal;font-weight:600">Was ist das eine Ding,</span><br>'
-      +'das ich heute tue, das alles andere einfacher oder überflüssig macht?</div>'
+      +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">'
+      +'<span style="color:rgba(255,255,255,.9);font-style:normal;font-weight:600;font-size:12px">Was ist die eine Sache, die, wenn erledigt, alles andere einfacher oder überflüssig macht?</span>'
+      +'<span style="font-size:10px;color:rgba(255,255,255,.3);flex-shrink:0;margin-left:10px">'+['So','Mo','Di','Mi','Do','Fr','Sa'][new Date().getDay()]+', '+new Date().getDate()+'.'+(new Date().getMonth()+1)+'.</span>'
+      +'</div>'
       +'<input id="p1-input" onkeydown="if(event.key===\'Enter\')saveP1Today()" type="text" placeholder="Dein P1 für heute…" '
       +'style="width:100%;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:9px 12px;font-family:inherit;font-size:13px;color:#fff;outline:none">'
       +'<div style="font-size:10px;color:rgba(255,255,255,.2);margin-top:6px">Enter zum Speichern</div>'
