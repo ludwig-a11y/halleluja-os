@@ -1522,8 +1522,8 @@ function rTag(){
   const hasSonderKpi=S.ziele.flatMap(z=>z.kpis||[]).some(k=>String(k.pid)===String(aP)&&k.sonder);
   if(hasSonderKpi)out+=rKpiBlock(aP);
 
-  // ── Tages-Briefing (Claude Coach) ──
-  {
+  // ── Strategie-Briefing (nur GF) ──
+  if(isGF()){
     const bKey='briefing-'+aP+'-'+TODAY;
     const cached=localStorage.getItem(bKey);
     const hasKey=!!localStorage.getItem('anthropic_key');
@@ -1575,7 +1575,7 @@ function rTag(){
       out+='<div style="font-size:11px;color:rgba(255,255,255,.4);margin-top:1px">Claude analysiert deinen Tag</div></div>';
       out+='<span style="color:rgba(255,255,255,.3);font-size:16px">›</span></div>';
     }
-  }
+  }// end isGF briefing
 
   // ── Tages-Zeitstrahl (einzeilig, drag-to-reorder) ──
   {
