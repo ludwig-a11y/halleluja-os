@@ -1207,56 +1207,6 @@ function rTag(){
   const alleGeschafft=!aktiv.length&&!neu.length&&!bl.length;
   let out='';
 
-  // ── Tagesauswahl ──
-  const tpIds=getTagesplan();
-  const validTp=tpIds.map(id=>S.aufgaben.find(a=>a.id===id&&String(a.pid)===String(aP)&&a.status!=='erledigt')).filter(Boolean);
-  const dayStr=['So','Mo','Di','Mi','Do','Fr','Sa'][new Date().getDay()]+', '+new Date().getDate()+'.'+(new Date().getMonth()+1)+'.';
-  if(validTp.length>0){
-    out+='<div style="background:#1a1a1a;border-radius:12px;padding:13px 16px;margin-bottom:14px">';
-    out+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">';
-    out+='<span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:rgba(255,255,255,.35)">Heute · '+dayStr+'</span>';
-    out+='<button onclick="setTagesplan([]);render()" style="font-size:10px;color:rgba(255,255,255,.35);background:none;border:none;cursor:pointer;font-family:inherit;padding:0">Umplanen</button>';
-    out+='</div>';
-    validTp.forEach((ta,i)=>{
-      const isAktiv=ta.status==='aktiv';
-      out+='<div style="display:flex;align-items:center;gap:10px'+(i>0?';margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,.07)':'')+'">';
-      out+='<div style="flex:1">';
-      if(ta.prio)out+='<span style="font-size:9px;font-weight:800;background:'+(ta.prio==='P1'?'#dc2626':ta.prio==='P2'?'#c2410c':'#6b7280')+';color:#fff;padding:1px 6px;border-radius:4px;margin-bottom:4px;display:inline-block">'+ta.prio+'</span> ';
-      out+='<span style="font-size:'+(i===0?14:12)+'px;font-weight:'+(i===0?700:500)+';color:'+(isAktiv?'rgba(255,255,255,.4)':'#fff')+'">'+ta.titel+'</span>';
-      out+='</div>';
-      if(isAktiv){out+='<span style="font-size:11px;color:rgba(255,255,255,.3)">läuft</span>';}
-      else{out+='<button onclick="startenA(\''+ta.id+'\')" style="font-size:12px;padding:7px 12px;border-radius:8px;background:rgba(255,255,255,.12);color:#fff;border:none;font-family:inherit;cursor:pointer;flex-shrink:0">▶</button>';}
-      out+='</div>';
-    });
-    out+='</div>';
-  }else{
-    const auswahlPool=[...myA.filter(a=>a.status!=='erledigt')].sort((a,b)=>{
-      const pd={'P1':0,'P2':1,'P3':2};
-      const ps=(pd[a.prio]??3)-(pd[b.prio]??3);
-      if(ps!==0)return ps;
-      const sd={'aktiv':0,'neu':1,'backlog':2};
-      return(sd[a.status]??3)-(sd[b.status]??3);
-    }).slice(0,5);
-    if(auswahlPool.length>0){
-      out+='<div style="background:#1a1a1a;border-radius:12px;padding:14px 16px;margin-bottom:14px">';
-      out+='<div style="margin-bottom:10px">';
-      out+='<div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:2px">Was machst du heute?</div>';
-      out+='<div style="font-size:11px;color:rgba(255,255,255,.35)">'+dayStr+' · Wähle 1–3 Aufgaben</div>';
-      out+='</div>';
-      out+='<div style="display:flex;flex-direction:column;gap:5px;margin-bottom:10px">';
-      auswahlPool.forEach(a=>{
-        out+='<label style="display:flex;align-items:center;gap:9px;cursor:pointer;padding:8px 10px;background:rgba(255,255,255,.05);border-radius:8px">';
-        out+='<input type="checkbox" class="ta-check" value="'+a.id+'" style="width:15px;height:15px;cursor:pointer;accent-color:#fff;flex-shrink:0">';
-        if(a.prio)out+='<span style="font-size:9px;font-weight:800;background:'+(a.prio==='P1'?'#dc2626':a.prio==='P2'?'#c2410c':'#6b7280')+';color:#fff;padding:1px 6px;border-radius:4px;flex-shrink:0">'+a.prio+'</span>';
-        out+='<span style="font-size:12px;font-weight:500;color:#fff;flex:1;line-height:1.3">'+a.titel+'</span>';
-        if(a.status==='aktiv')out+='<span style="font-size:10px;color:rgba(255,255,255,.4)">läuft</span>';
-        out+='</label>';
-      });
-      out+='</div>';
-      out+='<button onclick="saveTagesauswahl()" style="width:100%;padding:10px;border-radius:8px;background:#fff;color:#1a1a1a;border:none;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer">Heute starten →</button>';
-      out+='</div>';
-    }
-  }
   // ── Big 3 Wochenkompass ──
   const{kw:kwAkt}=getKW();
   const wrAktuell=dieseWocheReset(aP);
@@ -1413,12 +1363,23 @@ function rTag(){
   }
 
   const weitere=bl.filter(a=>a.id!==naechste?.id);
-  if(weitere.length){
+  const weitereSichtbar=weitere.slice(0,2);
+  const weitereRest=weitere.slice(2);
+  weitereSichtbar.forEach(a=>{
+    const zN=getZielName(a),editable=canChangePrio(a);
+    out+='<div style="background:var(--sf);border:1px solid var(--bd);border-radius:10px;padding:10px 14px;margin-bottom:6px;cursor:pointer" onclick="openDetail(\''+a.id+'\')" onmouseenter="this.style.background=\'var(--gray-bg)\'" onmouseleave="this.style.background=\'var(--sf)\'">';
+    out+='<div style="display:flex;align-items:center;gap:10px">';
+    out+='<div style="flex:1"><div style="font-size:12px;font-weight:500">'+a.titel+'</div>';
+    out+='<div style="display:flex;gap:5px;margin-top:3px;align-items:center" onclick="event.stopPropagation()">'+prioTag(a.prio,a.id,editable)+(zN?'<span style="font-size:10px;color:var(--t3)">'+zN+'</span>':'')+' '+dlTag(a.dl)+'</div></div>';
+    out+='<button onclick="event.stopPropagation();startenA(\''+a.id+'\')" style="font-size:11px;padding:5px 10px;border-radius:8px;background:var(--text);color:#fff;border:none;font-family:inherit;cursor:pointer;flex-shrink:0">▶</button>';
+    out+='</div></div>';
+  });
+  if(weitereRest.length){
     out+='<details style="margin-bottom:12px"><summary style="list-style:none;cursor:pointer;padding:12px 16px;background:var(--sf);border:1px solid var(--bd);border-radius:12px;display:flex;align-items:center;justify-content:space-between">';
     out+='<span style="font-size:13px;font-weight:600">Weitere Aufgaben</span>';
-    out+='<span style="font-size:12px;color:var(--t3)">'+weitere.length+' · anzeigen</span></summary>';
+    out+='<span style="font-size:12px;color:var(--t3)">'+weitereRest.length+' · anzeigen</span></summary>';
     out+='<div style="margin-top:8px">';
-    weitere.forEach(a=>{
+    weitereRest.forEach(a=>{
       const zN=getZielName(a),editable=canChangePrio(a);
       out+='<div style="background:var(--sf);border:1px solid var(--bd);border-radius:10px;padding:10px 14px;margin-bottom:6px;cursor:pointer" onclick="openDetail(\''+a.id+'\')" onmouseenter="this.style.background=\'var(--gray-bg)\'" onmouseleave="this.style.background=\'var(--sf)\'">';
       out+='<div style="display:flex;align-items:center;gap:10px">';
