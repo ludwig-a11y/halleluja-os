@@ -1276,7 +1276,7 @@ function rTag(){
     const editable=canChangePrio(naechste);
     const from=naechste.erstelltVon&&naechste.erstelltVon!==aP?person(naechste.erstelltVon):null;
     out+='<div style="background:var(--sf);border:1.5px solid var(--bd);border-radius:18px;padding:24px;margin-bottom:16px;">';
-    out+='<div style="font-size:13px;font-weight:700;color:var(--text);letter-spacing:.01em;margin-bottom:12px">Fang hier an.</div>';
+    out+='<div style="font-size:11px;color:var(--t2);font-style:italic;margin-bottom:10px;line-height:1.5">Was ist die eine Sache, die — wenn erledigt — alles andere einfacher oder überflüssig macht?</div>';
     out+='<div style="font-size:22px;font-weight:700;color:var(--text);margin-bottom:10px;line-height:1.3;cursor:pointer" onclick="openDetail(\''+naechste.id+'\')">'+naechste.titel+'</div>';
     out+='<div style="display:flex;gap:8px;align-items:center;margin-bottom:16px;flex-wrap:wrap">';
     if(naechste.prio)out+=prioTag(naechste.prio,naechste.id,editable);
