@@ -1812,20 +1812,27 @@ function nextRecurringDate(fromDate,freq){
 async function toggleStep(id,i){
   const a=S.aufgaben.find(x=>x.id===id);if(!a)return;
   a.ua[i].d=!a.ua[i].d;
-  if(a.ua.every(u=>u.d)&&a.ua.length){a.status='erledigt';a.aktSeit=null;showPaddelCelebration(a.pid);checkP1Done(a.pid);}
-  await dbPatch('aufgaben',id,{ua:a.ua,status:a.status,akt_seit:null});render();
+  const allDone=a.ua.every(u=>u.d)&&a.ua.length;
+  if(allDone){a.status='erledigt';a.aktSeit=null;showPaddelCelebration(a.pid);checkP1Done(a.pid);}
+  await dbPatch('aufgaben',id,{ua:a.ua,status:a.status,akt_seit:null});
+  if(allDone){cm();render();}
+  else if(document.getElementById('ovl')?.classList.contains('open')){openDetail(id);}
+  else{render();}
 }
 async function addStep(id){
   const inp=document.getElementById('si-'+id);if(!inp)return;
   const t=inp.value.trim();if(!t)return;
   const a=S.aufgaben.find(x=>x.id===id);if(!a)return;
-  a.ua.push({t,d:false});inp.value='';
-  await dbPatch('aufgaben',id,{ua:a.ua});render();
+  a.ua.push({t,d:false});
+  await dbPatch('aufgaben',id,{ua:a.ua});
+  // re-render modal if open, otherwise main view
+  if(document.getElementById('ovl')?.classList.contains('open')){openDetail(id);}else{render();}
 }
 async function delStep(id,i){
   const a=S.aufgaben.find(x=>x.id===id);if(!a)return;
   a.ua.splice(i,1);
-  await dbPatch('aufgaben',id,{ua:a.ua});render();
+  await dbPatch('aufgaben',id,{ua:a.ua});
+  if(document.getElementById('ovl')?.classList.contains('open')){openDetail(id);}else{render();}
 }
 
 function tpReorder(fromIdx,toIdx){
