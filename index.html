@@ -332,7 +332,8 @@ const nid=p=>p+(++_kid);
 function normalizeAufgabe(a){
   return{...a,zielId:a.ziel_id||null,teilzielId:a.teilziel_id||null,
     aktSeit:a.akt_seit?new Date(a.akt_seit).getTime():null,
-    dl:a.dl||'',ua:Array.isArray(a.ua)?a.ua:(typeof a.ua==='string'?JSON.parse(a.ua||'[]'):[]),
+    dl:a.dl||'',dl_type:a.dl_type||'bis',
+    ua:Array.isArray(a.ua)?a.ua:(typeof a.ua==='string'?JSON.parse(a.ua||'[]'):[]),
     erstelltVon:a.erstellt_von||null};
 }
 async function loadData(){
@@ -1333,10 +1334,12 @@ function rWoche(){
     if(erlA.length||aktivA.length||geplantA.length){
       out+='<div style="padding:4px 14px 10px 14px">';
       geplantA.forEach(a=>{
+        const isAm=a.dl_type==='am';
         out+='<div onclick="openDetail(\''+a.id+'\')" style="display:flex;align-items:center;gap:8px;padding:5px 0;border-top:1px solid var(--bd);cursor:pointer" onmouseenter="this.style.background=\'var(--gray-bg)\'" onmouseleave="this.style.background=\'\'">';
-        out+='<span style="font-size:10px;color:var(--t3);flex-shrink:0">○</span>';
+        out+='<span style="font-size:10px;flex-shrink:0;color:var(--t3)">'+(isAm?'📅':'○')+'</span>';
         out+='<span style="flex:1;font-size:12px;color:var(--text)">'+a.titel+'</span>';
-        if(a.prio)out+='<span style="font-size:10px;font-weight:700;color:var(--t2)">'+a.prio+'</span>';
+        if(isAm)out+='<span style="font-size:9px;padding:1px 6px;border-radius:99px;background:var(--blue-bg);color:var(--blue);font-weight:600">am</span>';
+        else if(a.prio)out+='<span style="font-size:10px;font-weight:700;color:var(--t2)">'+a.prio+'</span>';
         out+='</div>';
       });
       erlA.forEach(a=>{
@@ -1387,8 +1390,8 @@ function rTag(){
   const zugewiesenA=S.aufgaben.filter(a=>a.pid===aP&&a.status==='zugewiesen');
   const myA=S.aufgaben.filter(a=>a.pid===aP&&canSee(a)&&a.status!=='zugewiesen');
   const aktiv=myA.filter(a=>a.status==='aktiv');
-  const neu=myA.filter(a=>a.status==='neu');
-  const bl=myA.filter(a=>a.status==='backlog').sort((a,b)=>{
+  const neu=myA.filter(a=>a.status==='neu'&&!(a.dl_type==='am'&&a.dl>TODAY));
+  const bl=myA.filter(a=>a.status==='backlog'&&!(a.dl_type==='am'&&a.dl>TODAY)).sort((a,b)=>{
     const pd={'P1':0,'P2':1,'P3':2};
     const pp=(pd[a.prio]??3)-(pd[b.prio]??3);
     if(pp!==0)return pp;
@@ -2063,7 +2066,10 @@ function openNeu(pf={}){
     +[null,'P1','P2','P3'].map(pr=>{const bg=pr==='P1'?'var(--red-bg)':pr==='P2'?'#fff7ed':'var(--gray-bg)';const tc=pr==='P1'?'var(--red)':pr==='P2'?'#c2410c':'var(--t2)';return'<button id="pbp-'+(pr||'k')+'" onclick="selPrioBtn(this,\''+pr+'\')" style="font-size:12px;padding:4px 11px;border-radius:8px;border:1px solid '+(pr?tc:'var(--bd)')+';background:'+bg+';color:'+tc+';cursor:pointer;font-family:inherit">'+(pr||'kein')+'</button>';}).join('')
     +'</div></div>'
     +'<div class="f2"><div class="fl"><label>Dauer</label><select id="nh">'+SH.map(([h,l])=>'<option value="'+h+'"'+((pf.geplant||1)==h?' selected':'')+'>'+l+'</option>').join('')+'</select></div>'
-    +'<div class="fl"><label>Deadline</label><input type="date" id="ndl" value="'+(pf.dl||'')+'"></div></div>'
+    +'<div class="fl"><label>Fällig</label><div style="display:flex;gap:6px;align-items:center"><input type="date" id="ndl" value="'+(pf.dl||'')+'" style="flex:1">'
+    +'<button id="dltype-bis" onclick="document.getElementById(\'dltype-bis\').style.fontWeight=\'700\';document.getElementById(\'dltype-am\').style.fontWeight=\'400\';document.getElementById(\'dltype-bis\').style.background=\'var(--text)\';document.getElementById(\'dltype-bis\').style.color=\'#fff\';document.getElementById(\'dltype-am\').style.background=\'var(--gray-bg)\';document.getElementById(\'dltype-am\').style.color=\'var(--t2)\';this.dataset.v=\'bis\'" style="font-size:11px;padding:5px 10px;border-radius:7px;border:1px solid var(--bd);background:var(--text);color:#fff;cursor:pointer;font-family:inherit;font-weight:700" data-v="bis">bis</button>'
+    +'<button id="dltype-am" onclick="document.getElementById(\'dltype-am\').style.fontWeight=\'700\';document.getElementById(\'dltype-bis\').style.fontWeight=\'400\';document.getElementById(\'dltype-am\').style.background=\'var(--text)\';document.getElementById(\'dltype-am\').style.color=\'#fff\';document.getElementById(\'dltype-bis\').style.background=\'var(--gray-bg)\';document.getElementById(\'dltype-bis\').style.color=\'var(--t2)\';this.dataset.v=\'am\'" style="font-size:11px;padding:5px 10px;border-radius:7px;border:1px solid var(--bd);background:var(--gray-bg);color:var(--t2);cursor:pointer;font-family:inherit" data-v="am">am</button>'
+    +'</div></div>'
     +(isGF()?'<div class="fl"><label style="display:flex;align-items:center;gap:8px;text-transform:none;font-size:13px;font-weight:400"><input type="checkbox" id="nvert" style="width:auto"> Vertraulich</label></div>':'')
     +'<div class="fl"><label>Notiz</label><input id="nno" value="'+(pf.notiz||'')+'" placeholder="Optional…"></div>'
     +'<div class="mf"><button class="btn btn-gr" onclick="cm()">Abbrechen</button><button class="btn btn-dk" onclick="saveNeu()">Speichern</button></div>';
@@ -2099,6 +2105,7 @@ async function saveNeu(){
     ziel_id:zielId,teilziel_id:teilzielId,
     geplant:parseFloat(document.getElementById('nh').value)||1,
     gebucht:0,dl:document.getElementById('ndl').value||null,
+    dl_type:document.getElementById('dltype-bis')?.style.background==='var(--text)'?'bis':'am',
     ua:[],notiz:document.getElementById('nno').value.trim(),akt_seit:null,vertraulich:vert,
     erstellt_von:aP};
   S.aufgaben.push(normalizeAufgabe(rec));
