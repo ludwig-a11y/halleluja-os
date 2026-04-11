@@ -897,13 +897,13 @@ function openWochenreset(){
     +(wr?'<textarea id="wr-blockiert" style="display:none">'+(wr.blockiert||'')+'</textarea>':'')
     +zieleOpts
     +'<div id="wr-tz-section" style="margin-top:10px"></div>'
-    +'<div class="mf"><button onclick="cm()">Später</button>'
-    +'<button onclick="saveWochenreset()" style="background:#15803d;color:#fff;border:none;font-weight:600">Speichern ✓</button></div>';
+    +'<div class="mf"><button class="btn btn-gr" onclick="cm()">Abbrechen</button>'
+    +'<button class="btn btn-dk" onclick="saveWochenreset()">Speichern</button></div>';
   document.getElementById('ovl').classList.add('open');
   if(selZielId){
     updateWRTZSection();
-    setTimeout(()=>{
-      if(wr){
+    if(wr){
+      requestAnimationFrame(()=>{setTimeout(()=>{
         const tzIds=[wr.big3_1_tz_id,wr.big3_2_tz_id,wr.big3_3_tz_id].filter(Boolean);
         document.querySelectorAll('.wr-tz-check').forEach(cb=>{if(tzIds.includes(cb.value))cb.checked=true;});
         let fi=1;
@@ -913,8 +913,8 @@ function openWochenreset(){
             if(inp){inp.value=wr['big3_'+n];fi++;}
           }
         });
-      }
-    },50);
+      },100);});
+    }
   }
 }
 function updateWRTZSection(){
