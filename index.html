@@ -1284,6 +1284,17 @@ function rWoche(){
   const myA=S.aufgaben.filter(a=>String(a.pid)===String(aP)&&canSee(a));
   let out='<div style="font-size:16px;font-weight:700;margin-bottom:20px">Meine Woche · KW '+kw+'</div>';
 
+  // ── Firmen-Fokus ──
+  const fokusZ=S.ziele.find(z=>z.focus);
+  if(fokusZ){
+    const f=FARBEN[fokusZ.farbe||0];
+    out+='<div style="background:'+f.tc+';color:#fff;border-radius:10px;padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;gap:10px">';
+    out+='<span style="font-size:18px">🔥</span>';
+    out+='<div><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;opacity:.7">Firmen-Fokus</div>';
+    out+='<div style="font-size:13px;font-weight:700">'+fokusZ.name+'</div></div>';
+    out+='</div>';
+  }
+
   // ── Big 3 ──
   if(wr&&(wr.big3_1||wr.big3_2)){
     const fz=S.ziele.find(z=>z.id===wr.focus_ziel_id);
@@ -1404,17 +1415,6 @@ function rTag(){
   const alleGeschafft=!aktiv.length&&!neu.length&&!bl.length;
   let out='';
 
-  // ── Firmen-Fokus Banner ──
-  const fokusZ=S.ziele.find(z=>z.focus);
-  if(fokusZ){
-    const f=FARBEN[fokusZ.farbe||0];
-    out+='<div style="background:'+f.tc+';color:#fff;border-radius:10px;padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;gap:10px">';
-    out+='<span style="font-size:18px">🔥</span>';
-    out+='<div><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;opacity:.7">Firmen-Fokus</div>';
-    out+='<div style="font-size:13px;font-weight:700">'+fokusZ.name+'</div></div>';
-    out+='</div>';
-  }
-
   // ── Big 3 Wochenkompass ──
   const{kw:kwAkt}=getKW();
   const wrAktuell=dieseWocheReset(aP);
@@ -1533,19 +1533,28 @@ function rTag(){
   }
 
   if(neu.length){
-    out+='<div style="background:var(--red-bg);border:1.5px solid var(--red-bd);border-radius:14px;padding:14px 16px;margin-bottom:12px">';
-    out+='<div style="font-size:11px;font-weight:700;color:var(--red);margin-bottom:10px">⚡ '+neu.length+' neue Aufgabe'+(neu.length>1?'n':'')+' — Priorität setzen</div>';
+    out+='<div style="background:#fff;border:1.5px solid var(--red-bd);border-radius:14px;padding:14px 16px;margin-bottom:12px">';
+    out+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">';
+    out+='<span style="background:var(--red);color:#fff;font-size:10px;font-weight:700;padding:2px 9px;border-radius:99px">'+neu.length+' neu</span>';
+    out+='<span style="font-size:13px;font-weight:600">Priorität setzen</span>';
+    out+='</div>';
     neu.forEach(a=>{
       const from=a.erstelltVon&&a.erstelltVon!==aP?person(a.erstelltVon):null;
-      out+='<div style="background:#fff;border-radius:10px;padding:10px 12px;margin-bottom:8px">';
-      out+='<div style="font-size:13px;font-weight:600;margin-bottom:4px">'+a.titel+'</div>';
-      if(from)out+='<div style="font-size:10px;color:var(--t3);margin-bottom:8px">von '+from.name+'</div>';
-      out+='<div style="display:flex;gap:6px">';
-      ['P1','P2','P3'].forEach(pr=>{
-        const bg=pr==='P1'?'var(--red)':pr==='P2'?'#c2410c':'var(--t2)';
-        out+='<button onclick="setPrio(\''+a.id+'\',\''+pr+'\')" style="flex:1;padding:7px;border-radius:8px;background:'+bg+';color:#fff;border:none;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer">'+pr+'</button>';
-      });
-      out+='<button onclick="openDetail(\''+a.id+'\')" style="padding:7px 10px;border-radius:8px;background:var(--gray-bg);color:var(--t2);border:1px solid var(--bd);font-family:inherit;font-size:12px;cursor:pointer">···</button>';
+      out+='<div style="background:var(--gray-bg);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;margin-bottom:8px">';
+      out+='<div style="font-size:13px;font-weight:600;margin-bottom:3px">'+a.titel+'</div>';
+      if(from)out+='<div style="font-size:11px;color:var(--t2);margin-bottom:8px">von '+from.name+'</div>';
+      out+='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px">';
+      out+=(['P1','P2','P3','null'].map(pr=>{
+        const lbl=pr==='null'?'Kein Prio':pr;
+        const bg=pr==='P1'?'var(--red-bg)':pr==='P2'?'#fff7ed':pr==='P3'?'var(--gray-bg)':'var(--sf)';
+        const tc=pr==='P1'?'var(--red)':pr==='P2'?'#c2410c':pr==='P3'?'var(--t2)':'var(--t3)';
+        return'<button onclick="setPrio(\''+a.id+'\',\''+(pr==='null'?null:pr)+'\')" style="font-size:11px;padding:5px 13px;border-radius:8px;border:1px solid var(--bd);background:'+bg+';color:'+tc+';cursor:pointer;font-family:inherit">'+lbl+'</button>';
+      }).join(''));
+      out+='</div>';
+      out+='<div style="display:flex;gap:6px;align-items:center">';
+      out+='<span style="font-size:10px;color:var(--t3)">oder:</span>';
+      out+='<button onclick="klassifiziereAlsIdee(\''+a.id+'\')" style="font-size:11px;padding:4px 11px;border-radius:8px;border:1px solid var(--blue-bd);background:var(--blue-bg);color:var(--blue);cursor:pointer;font-family:inherit">💡 Idee</button>';
+      out+='<button onclick="klassifiziereAlsRandom(\''+a.id+'\')" style="font-size:11px;padding:4px 11px;border-radius:8px;border:1px solid var(--bd);background:var(--gray-bg);color:var(--t2);cursor:pointer;font-family:inherit">🎲 Random</button>';
       out+='</div></div>';
     });
     out+='</div>';
