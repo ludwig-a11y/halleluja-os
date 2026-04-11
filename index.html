@@ -1531,20 +1531,37 @@ function rTag(){
       try{
         const b=JSON.parse(cached);
         out+='<div style="background:linear-gradient(135deg,#1a1a1a,#2d2d2d);border-radius:14px;padding:14px 16px;margin-bottom:14px;color:#fff">';
+        // Header
         out+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">';
         out+='<span style="font-size:16px">🧠</span>';
-        out+='<span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;opacity:.5">Tages-Briefing</span>';
+        out+='<span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;opacity:.5">Strategie-Briefing</span>';
         out+='<span style="margin-left:auto;font-size:9px;opacity:.3">'+b.time+'</span>';
         out+='<button onclick="localStorage.removeItem(\''+bKey+'\');aiDailyBriefing()" style="font-size:9px;padding:2px 8px;border-radius:5px;background:rgba(255,255,255,.1);color:rgba(255,255,255,.5);border:none;cursor:pointer;font-family:inherit">↻</button>';
         out+='</div>';
+        // P1 — prominent
         if(b.p1)out+='<div style="background:rgba(255,255,255,.08);border-radius:10px;padding:10px 12px;margin-bottom:8px"><div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;opacity:.4;margin-bottom:4px">Dein #1 heute</div><div style="font-size:13px;font-weight:700">'+b.p1+'</div>'+(b.p1why?'<div style="font-size:11px;opacity:.5;margin-top:2px">'+b.p1why+'</div>':'')+'</div>';
-        if(b.gap)out+='<div style="font-size:11px;opacity:.7;margin-bottom:4px;line-height:1.5">📊 '+b.gap+'</div>';
-        if(b.blocker)out+='<div style="font-size:11px;color:#fbbf24;margin-bottom:4px;line-height:1.5">⚠️ '+b.blocker+'</div>';
-        if(b.velocity)out+='<div style="font-size:11px;opacity:.5;line-height:1.5">⚡ '+b.velocity+'</div>';
+        // Bottleneck — rot/orange
+        if(b.bottleneck)out+='<div style="background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.2);border-radius:8px;padding:8px 10px;margin-bottom:6px;font-size:11px;line-height:1.5"><span style="color:#f87171;font-weight:700">⛔ Engpass:</span> <span style="color:rgba(255,255,255,.7)">'+b.bottleneck+'</span></div>';
+        // Projektion — mit P(Ziel)
+        if(b.projektion){
+          const pMatch=b.projektion.match(/(\d+)%/);
+          const pVal=pMatch?parseInt(pMatch[1]):0;
+          const pColor=pVal>=30?'#4ade80':pVal>=15?'#fbbf24':'#f87171';
+          out+='<div style="background:rgba(255,255,255,.05);border-radius:8px;padding:8px 10px;margin-bottom:6px;display:flex;align-items:center;gap:10px">';
+          if(pVal>0)out+='<div style="width:36px;height:36px;border-radius:8px;background:'+pColor+';color:#000;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;flex-shrink:0">'+pVal+'%</div>';
+          out+='<div style="font-size:11px;color:rgba(255,255,255,.7);line-height:1.5">'+b.projektion+'</div>';
+          out+='</div>';
+        }
+        // Hebel — grün
+        if(b.hebel)out+='<div style="font-size:11px;color:#4ade80;margin-bottom:4px;line-height:1.5;padding:0 2px">🎯 '+b.hebel+'</div>';
+        // Contrarian — lila/besonders
+        if(b.contrarian)out+='<div style="font-size:11px;color:#c084fc;margin-bottom:4px;line-height:1.5;padding:0 2px">🔮 '+b.contrarian+'</div>';
+        // Velocity
+        if(b.velocity)out+='<div style="font-size:11px;opacity:.4;line-height:1.5;padding:0 2px">⚡ '+b.velocity+'</div>';
         // Datenquellen-Badges
         const quellen=[...new Set(S.kontext.map(k=>k.quelle))];
         if(quellen.length){
-          const qIcons={gmail:'📧',hubspot:'🔗',meta:'📣',slack:'💬',gcal:'📅',meeting:'🎙️',crm:'🏢'};
+          const qIcons={gmail:'📧',hubspot:'🔗',meta:'📣',slack:'💬',gcal:'📅',meeting:'🎙️',crm:'🏢',gdrive:'📁'};
           out+='<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,.08)">';
           quellen.forEach(q=>out+='<span style="font-size:9px;padding:2px 7px;border-radius:4px;background:rgba(255,255,255,.08);color:rgba(255,255,255,.4)">'+(qIcons[q]||'📌')+' '+q+'</span>');
           out+='</div>';
@@ -2521,39 +2538,78 @@ async function aiDailyBriefing(){
     return icon+' '+k.quelle+': '+k.zusammenfassung;
   }).join('\n');
   const quellenCount=[...new Set(S.kontext.map(k=>k.quelle))].length;
-  const prompt=`Du bist der tägliche Coach für ${p?p.name:'diese Person'} bei Halleluja Sauna Austria (Premium-Saunen).
+  // Funnel-Daten aus kontext_feed extrahieren (falls HubSpot angebunden)
+  const hubspotData=S.kontext.find(k=>k.quelle==='hubspot'&&k.typ==='pipeline');
+  const hubspotRaw=hubspotData?.rohdaten||{};
+  const metaData=S.kontext.find(k=>k.quelle==='meta');
+  const metaRaw=metaData?.rohdaten||{};
+  const prompt=`Du bist ein Elite-Strategie-Coach für Halleluja Sauna Austria (Premium-Saunen, B2B+B2C).
+Du denkst wie ein Top-Unternehmensberater: spieltheoretisch, bayesianisch, in Systemen.
 Heute ist ${TODAY} (${['So','Mo','Di','Mi','Do','Fr','Sa'][new Date().getDay()]}).
 
+═══════════════════════════════════════
 PERSON: ${p?p.name+' — '+p.rolle:'Unbekannt'}
 ${big3?'BIG 3 DIESE WOCHE: '+big3:'Kein Wochenplan gesetzt.'}
 ${aktiv.length?'GERADE AKTIV: '+aktiv.map(a=>a.titel).join(', '):'Nichts aktiv.'}
 
-FIRMENZIELE:
+═══ FIRMENZIELE ═══
 ${zieleDetail||'keine definiert'}
 ${fokusZ?'🔥 FIRMEN-FOKUS: '+fokusZ.name:''}
 
-OFFENE AUFGABEN:
+═══ OFFENE AUFGABEN ═══
 ${offeneList||'keine'}
 
+═══ VELOCITY ═══
 HEUTE ERLEDIGT: ${erlHeute.map(a=>a.titel).join(', ')||'noch nichts'}
 GESTERN ERLEDIGT: ${erlGestern.map(a=>a.titel).join(', ')||'nichts'}
-DIESE WOCHE ERLEDIGT: ${erlWoche.length} Aufgaben (${Math.round(erlWoche.reduce((s,a)=>s+(a.gebucht||a.geplant||0.5),0)*10)/10}h)
-${beob?'SALES-BEOBACHTUNGEN: '+beob:''}
-${liveDaten?'LIVE-DATEN (von n8n aggregiert):\n'+liveDaten:''}
-${firmenKontext?'FIRMEN-KONTEXT:\n'+firmenKontext:''}
+DIESE WOCHE: ${erlWoche.length} Aufgaben (${Math.round(erlWoche.reduce((s,a)=>s+(a.gebucht||a.geplant||0.5),0)*10)/10}h)
+${beob?'\n═══ SALES-BEOBACHTUNGEN ═══\n'+beob:''}
+${liveDaten?'\n═══ LIVE-DATEN (n8n) ═══\n'+liveDaten:''}
+${firmenKontext?'\n═══ FIRMEN-KONTEXT ═══\n'+firmenKontext:''}
 
-Analysiere und antworte EXAKT in diesem Format (deutsch, knapp, max 1-2 Sätze pro Feld):
-P1: [Die wichtigste Aufgabe heute — aus den offenen Aufgaben ODER eine neue Empfehlung. Beziehe LIVE-DATEN ein wenn vorhanden (z.B. überfällige Leads, offene Anfragen)]
-P1_WHY: [Warum genau diese? 1 Satz]
-GAP: [Ziel-Projektion: "Bei aktuellem Tempo erreichst du X bis Datum Y" — basierend auf KPIs, Velocity UND Live-Daten]
-BLOCKER: [Erkennst du Blocker oder Risiken aus allen Datenquellen? Wenn nicht: "Keine Blocker erkannt"]
-VELOCITY: [Trend: "X Aufgaben/Woche, Yh produktiv — Trend: steigend/stabil/sinkend"]`;
+═══════════════════════════════════════
+DEIN ANALYSE-FRAMEWORK (befolge es strikt):
+
+1. FUNNEL-MATH — Rechne rückwärts vom Jahresziel:
+   Ziel → benötigte Verkäufe/Monat → benötigte Closing Calls → benötigte Setting Calls → benötigte Leads.
+   Vergleiche SOLL mit IST aus den Live-Daten. Wo ist die größte Lücke?
+
+2. BOTTLENECK — Finde den EINEN Engpass im System:
+   Welche Stufe im Funnel hat die schlechteste Conversion?
+   Der Engpass bestimmt den Output des gesamten Systems (Theory of Constraints).
+   ACHTUNG: Der Engpass wandert! Letzte Woche war es vielleicht X, diese Woche ist es Y.
+
+3. SENSITIVITÄT — Welcher Hebel hat den höchsten Expected Value pro Stunde?
+   Berechne: Wenn diese Person HEUTE 4h in Aktion A investiert vs. Aktion B —
+   welche Aktion erhöht P(Jahresziel) am meisten? Sei konkret mit Zahlen.
+
+4. BAYES-PROJEKTION — Schätze P(Ziel erreicht):
+   Prior = aktuelle Trajectory (Velocity × verbleibende Wochen)
+   Evidence = Live-Daten (Pipeline, CPL-Trend, Conversion-Änderungen)
+   Posterior = aktualisierte Wahrscheinlichkeit. Gib eine Zahl in % an.
+   Zeige auch: "Wenn Engpass behoben → P steigt von X% auf Y%"
+
+5. CONTRARIAN CHECK — Frage dich:
+   "Was wenn das Offensichtliche falsch ist?"
+   Gibt es einen nicht-offensichtlichen Hebel den alle übersehen?
+   Gibt es eine Aktivität die AUFHÖREN sollte weil sie EV-negativ ist?
+
+═══════════════════════════════════════
+Antworte EXAKT in diesem Format (deutsch, direkt, keine Floskeln):
+
+P1: [Die eine Sache die diese Person HEUTE tun muss — konkret und spezifisch]
+P1_WHY: [Warum? Verknüpfe mit Funnel-Math oder Bottleneck. 1 Satz.]
+BOTTLENECK: [Der aktuelle System-Engpass. z.B. "Setting-Rate 2% — jeder 50. Lead wird angerufen. DAS limitiert alles."]
+PROJEKTION: [P(Ziel) = X%. Bei aktuellem Tempo: Y bis Datum Z. Wenn Engpass behoben: P steigt auf W%.]
+HEBEL: [Höchster EV-Hebel heute: "4h in [Aktion] → erwarteter Impact: [konkret]"]
+CONTRARIAN: [Was übersehen alle? Oder: welche aktuelle Aktivität ist Zeitverschwendung?]
+VELOCITY: [X Aufgaben/Woche, Yh produktiv — Trend + Bewertung]`;
 
   try{
     const res=await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
       headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:350,messages:[{role:'user',content:prompt}]})
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:700,messages:[{role:'user',content:prompt}]})
     });
     const el=document.getElementById('briefing-loading');if(el)el.remove();
     if(!res.ok){alert('API Fehler: '+res.status);return;}
@@ -2562,12 +2618,13 @@ VELOCITY: [Trend: "X Aufgaben/Woche, Yh produktiv — Trend: steigend/stabil/sin
     const b={
       p1:(text.match(/P1:\s*(.+)/)||[])[1]||'',
       p1why:(text.match(/P1_WHY:\s*(.+)/)||[])[1]||'',
-      gap:(text.match(/GAP:\s*(.+)/)||[])[1]||'',
-      blocker:(text.match(/BLOCKER:\s*(.+)/)||[])[1]||'',
+      bottleneck:(text.match(/BOTTLENECK:\s*(.+)/)||[])[1]||'',
+      projektion:(text.match(/PROJEKTION:\s*(.+)/)||[])[1]||'',
+      hebel:(text.match(/HEBEL:\s*(.+)/)||[])[1]||'',
+      contrarian:(text.match(/CONTRARIAN:\s*(.+)/)||[])[1]||'',
       velocity:(text.match(/VELOCITY:\s*(.+)/)||[])[1]||'',
       time:new Date().getHours()+':'+(''+(new Date().getMinutes())).padStart(2,'0')
     };
-    if(b.blocker&&b.blocker.match(/keine blocker/i))b.blocker='';
     localStorage.setItem(bKey,JSON.stringify(b));
     render();
   }catch(e){
