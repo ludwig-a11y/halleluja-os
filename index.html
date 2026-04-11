@@ -1500,11 +1500,40 @@ async function delAufgabe(id){
 }
 
 function rZiele(){
+  const vorschlaege=S.ziele.filter(z=>z.status==='vorschlag');
+  const meineVorschlaege=vorschlaege.filter(z=>String(z.vorgeschlagen_von)===String(aP));
   let out='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">'
-    +'<div style="font-size:16px;font-weight:700">Ziele</div>'
-    +(isGF()?'<button class="btn btn-dk" onclick="addZiel()">+ Neues Ziel</button>':'')
+    +'<div style="font-size:16px;font-weight:700">Ziele'+(isGF()&&vorschlaege.length?' <span style="font-size:11px;background:var(--amber);color:#fff;border-radius:99px;padding:1px 7px;font-weight:700;vertical-align:middle">'+vorschlaege.length+'</span>':'')+'</div>'
+    +(isGF()?'<button class="btn btn-dk" onclick="addZiel()">+ Neues Ziel</button>':'<button class="btn btn-dk" onclick="vorschlagenZiel()">+ Ziel vorschlagen</button>')
     +'</div>';
-  const alleZiele=S.ziele.filter(z=>!z.vertraulich||isGF());
+  if(isGF()&&vorschlaege.length){
+    out+='<div style="background:#fffbeb;border:1.5px solid #fde68a;border-radius:12px;padding:14px 16px;margin-bottom:20px">';
+    out+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#c2410c;margin-bottom:10px">⏳ '+vorschlaege.length+' Vorschlag'+(vorschlaege.length>1?'e':'')+'</div>';
+    vorschlaege.forEach(z=>{
+      const von=person(z.vorgeschlagen_von);
+      out+='<div style="background:#fff;border:1px solid #fde68a;border-radius:9px;padding:11px 13px;margin-bottom:8px;display:flex;align-items:center;gap:10px">';
+      out+='<div style="flex:1"><div style="font-size:13px;font-weight:600">'+z.name+'</div>';
+      if(von)out+='<div style="font-size:11px;color:var(--t2);margin-top:2px">von '+von.name+'</div>';
+      out+='</div>';
+      out+='<button onclick="freigebenZiel(\''+z.id+'\')" style="font-size:12px;padding:6px 12px;border-radius:8px;background:#15803d;color:#fff;border:none;font-family:inherit;cursor:pointer;font-weight:600">✓ Freigeben</button>';
+      out+='<button onclick="editZiel(\''+z.id+'\')" style="font-size:12px;padding:6px 10px;border-radius:8px;background:var(--gray-bg);color:var(--t2);border:1px solid var(--bd);font-family:inherit;cursor:pointer">✎</button>';
+      out+='<button onclick="ablehnZiel(\''+z.id+'\')" style="font-size:12px;padding:6px 10px;border-radius:8px;background:#fee2e2;color:#dc2626;border:none;font-family:inherit;cursor:pointer">✗</button>';
+      out+='</div>';
+    });
+    out+='</div>';
+  }
+  if(!isGF()&&meineVorschlaege.length){
+    out+='<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:12px;padding:12px 14px;margin-bottom:16px">';
+    out+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#c2410c;margin-bottom:8px">Meine Vorschläge</div>';
+    meineVorschlaege.forEach(z=>{
+      out+='<div style="display:flex;align-items:center;gap:10px;padding:6px 0">';
+      out+='<div style="flex:1;font-size:13px;font-weight:500">'+z.name+'</div>';
+      out+='<span style="font-size:10px;background:#fef3c7;color:#c2410c;border:1px solid #fde68a;padding:2px 8px;border-radius:99px;font-weight:600">Ausstehend</span>';
+      out+='</div>';
+    });
+    out+='</div>';
+  }
+  const alleZiele=S.ziele.filter(z=>(!z.vertraulich||isGF())&&z.status!=='vorschlag');
   const istMeinZiel=z=>isGF()||z.verantwortlichId===aP||(z.teilziele||[]).some(tz=>tz.verantwortlichId===aP);
   const meineZiele=alleZiele.filter(istMeinZiel).sort((a,b)=>(a.verantwortlichId===aP?0:1)-(b.verantwortlichId===aP?0:1));
   const andereZiele=alleZiele.filter(z=>!istMeinZiel(z));
@@ -1719,6 +1748,36 @@ async function delZiel(zid){
   await dbDelete('ziele',zid);cm();rZiele();
 }
 
+function vorschlagenZiel(){
+  document.getElementById('mb').innerHTML='<div class="mt">Ziel vorschlagen</div>'
+    +'<div style="font-size:12px;color:var(--t2);margin-bottom:14px;line-height:1.5">Wird zur Freigabe an die Geschäftsführung gesendet.</div>'
+    +'<div class="fl"><label>Zielname</label><input id="vzn" placeholder="z.B. Kundenzufriedenheit bis Q3 steigern" autofocus></div>'
+    +'<div class="fl"><label>Farbe</label><div style="display:flex;gap:8px;margin-top:4px">'+FARBEN.map((f,i)=>'<div onclick="selZF('+i+')" id="zfc'+i+'" style="width:24px;height:24px;border-radius:50%;background:'+f.tc+';cursor:pointer;border:'+(i===0?'3px':'2px')+' solid '+(i===0?'var(--text)':'transparent')+'"></div>').join('')+'</div></div>'
+    +'<input type="hidden" id="zfarbe" value="0">'
+    +'<div class="mf"><button class="btn btn-gr" onclick="cm()">Abbrechen</button><button class="btn btn-dk" onclick="saveVorschlagZiel()">Vorschlagen ›</button></div>';
+  document.getElementById('ovl').classList.add('open');
+}
+async function saveVorschlagZiel(){
+  const name=document.getElementById('vzn').value.trim();if(!name)return;
+  const farbe=parseInt(document.getElementById('zfarbe').value)||0;
+  const id=nid('z');
+  const rec={id,name,farbe,pct:0,verantwortlich_id:String(aP),vertraulich:false,status:'vorschlag',vorgeschlagen_von:String(aP)};
+  S.ziele.push({...rec,verantwortlichId:aP,kpis:[],teilziele:[]});
+  await dbInsert('ziele',rec);
+  cm();rZiele();
+}
+async function freigebenZiel(id){
+  const z=S.ziele.find(x=>x.id===id);if(!z)return;
+  z.status='aktiv';
+  await dbPatch('ziele',id,{status:'aktiv'});
+  rZiele();
+}
+async function ablehnZiel(id){
+  if(!confirm('Vorschlag ablehnen und löschen?'))return;
+  S.ziele=S.ziele.filter(x=>x.id!==id);
+  await dbDelete('ziele',id);
+  rZiele();
+}
 async function addKpi(zid){
   const z=zielObj(zid);if(!z)return;
   const id=nid('k'),rec={id,ziel_id:zid,label:'Neuer KPI',ist:0,ziel:10,unit:'',freq:'täglich',pid:S.personen[0]?.id||'',inv:false,sonder:false};
