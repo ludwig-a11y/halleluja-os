@@ -1,0 +1,95 @@
+{
+  "name": "HubSpot → Kontext pro Verkäufer (Halleluja OS)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "cronExpression", "expression": "5 6 * * *" }]
+        }
+      },
+      "id": "schedule",
+      "name": "Jeden Morgen 6:05",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Verkäufer mit HubSpot Owner IDs und Halleluja-OS Person IDs\n// ⚠️ ANPASSEN: pid muss mit euren Supabase personen.id übereinstimmen!\nconst VERKÄUFER = [\n  { name: 'Dominik', ownerId: '30037585', pid: 'DOMINIK_PID_HIER' },\n  { name: 'Gülser', ownerId: '30074150', pid: 'GÜLSER_PID_HIER' },\n  { name: 'Dominic W.', ownerId: '30463715', pid: 'DOMINIC_PID_HIER' },\n];\n\nreturn VERKÄUFER.map(v => ({ json: v }));"
+      },
+      "id": "verkäufer-list",
+      "name": "Verkäufer-Liste",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [250, 0],
+      "notes": "⚠️ PIDs anpassen an eure Supabase personen-Tabelle!"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.hubapi.com/crm/v3/objects/deals/search",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "hubspotOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ filterGroups: [{ filters: [{ propertyName: 'hubspot_owner_id', operator: 'EQ', value: $json.ownerId }, { propertyName: 'pipeline', operator: 'EQ', value: '1079008463' }, { propertyName: 'hs_is_closed_lost', operator: 'EQ', value: 'false' }, { propertyName: 'hs_is_closed_won', operator: 'EQ', value: 'false' }] }], properties: ['dealstage','notes_last_contacted','dealname','createdate'], limit: 200 }) }}",
+        "options": {}
+      },
+      "id": "hubspot-per-owner",
+      "name": "Deals pro Verkäufer",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [500, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const STAGES = {\n  '874823135': 'Lead',\n  '1810218174': 'Setting FollowUp',\n  '1810218175': 'Call vereinbart',\n  '140299275': 'Goldstandard',\n  '16380590': 'Closing FollowUp',\n  '874823137': 'Closing Call 1',\n  '70811040': 'Closing Call 2',\n  '2622716091': 'Closing Call 3',\n  '5055646918': 'Rechnungsentwurf',\n  '1761746124': 'Rechnung'\n};\n\nconst verkäufer = $('Verkäufer-Liste').first().json;\nconst deals = $json.results || [];\nconst total = $json.total || 0;\nconst today = new Date().toISOString().slice(0, 10);\nconst sevenDaysAgo = new Date(Date.now() - 7 * 86400000).toISOString();\n\nconst stageCounts = {};\nlet todayNew = 0;\nlet overdue = 0;\n\ndeals.forEach(d => {\n  const stage = d.properties.dealstage;\n  stageCounts[stage] = (stageCounts[stage] || 0) + 1;\n  if ((d.properties.createdate || '').slice(0, 10) === today) todayNew++;\n  const lc = d.properties.notes_last_contacted;\n  if (!lc || lc < sevenDaysAgo) overdue++;\n});\n\nconst pipeStr = Object.entries(STAGES)\n  .filter(([id]) => stageCounts[id])\n  .map(([id, label]) => `${label}: ${stageCounts[id]}`)\n  .join(', ');\n\nconst zusammenfassung = `${verkäufer.name}: ${total} offene Deals (${pipeStr}). ` +\n  `Heute neu: ${todayNew}. Überfällig (>7d): ${overdue}.`;\n\nreturn [{\n  json: {\n    id: 'kf-hubspot-' + verkäufer.pid + '-' + today,\n    pid: verkäufer.pid,\n    quelle: 'hubspot',\n    typ: 'pipeline-person',\n    zusammenfassung,\n    rohdaten: { stageCounts, total, todayNew, overdue },\n    relevanz: overdue > 10 ? 'hoch' : 'mittel',\n    created_at: new Date().toISOString(),\n    gueltig_bis: today\n  }\n}];"
+      },
+      "id": "code-per-person",
+      "name": "Pro Person zusammenfassen",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [750, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/kontext_feed",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "resolution=merge-duplicates,return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "supabase-upsert",
+      "name": "Upsert kontext_feed",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1000, 0]
+    }
+  ],
+  "connections": {
+    "Jeden Morgen 6:05": {
+      "main": [[ { "node": "Verkäufer-Liste", "type": "main", "index": 0 } ]]
+    },
+    "Verkäufer-Liste": {
+      "main": [[ { "node": "Deals pro Verkäufer", "type": "main", "index": 0 } ]]
+    },
+    "Deals pro Verkäufer": {
+      "main": [[ { "node": "Pro Person zusammenfassen", "type": "main", "index": 0 } ]]
+    },
+    "Pro Person zusammenfassen": {
+      "main": [[ { "node": "Upsert kontext_feed", "type": "main", "index": 0 } ]]
+    }
+  },
+  "settings": { "executionOrder": "v1" }
+}

@@ -1,0 +1,129 @@
+{
+  "name": "HubSpot → Kontext-Feed (Halleluja OS)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "cronExpression", "expression": "0 6 * * *" }]
+        }
+      },
+      "id": "schedule",
+      "name": "Jeden Morgen 6:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.hubapi.com/crm/v3/objects/deals/search",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "hubspotOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ filterGroups: [{ filters: [{ propertyName: 'pipeline', operator: 'EQ', value: '1079008463' }, { propertyName: 'hs_is_closed_lost', operator: 'EQ', value: 'false' }, { propertyName: 'hs_is_closed_won', operator: 'EQ', value: 'false' }] }], properties: ['dealstage','hubspot_owner_id','notes_last_contacted','amount','createdate'], limit: 200 }) }}",
+        "options": {}
+      },
+      "id": "hubspot-deals",
+      "name": "HubSpot: Offene Deals",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [250, 0],
+      "notes": "Holt alle offenen Deals aus der Neukunden-Pipeline. Bei >200 Deals: Pagination nötig. Alternativ: mehrere Requests pro Stage."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.hubapi.com/crm/v3/objects/deals/search",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "hubspotOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ filterGroups: [{ filters: [{ propertyName: 'pipeline', operator: 'EQ', value: '1079008463' }, { propertyName: 'dealstage', operator: 'EQ', value: '874823138' }] }], limit: 1 }) }}",
+        "options": {}
+      },
+      "id": "hubspot-won",
+      "name": "HubSpot: Verkauft (Total)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [250, 250]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Stage-Mapping\nconst STAGES = {\n  '874823135': '👤 Lead eingegangen',\n  '1810218174': '📞 Setting FollowUp',\n  '1810218175': '📅 Setting Call vereinbart',\n  '140299275': '🥇 Goldstandard',\n  '16380590': '📞 Closing FollowUp',\n  '874823137': '🔥 Closing Call 1',\n  '70811040': '🔥 Closing Call 2',\n  '2622716091': '🔥 Closing Call 3',\n  '5055646918': '📧 Rechnungsentwurf',\n  '1761746124': '💸 Rechnung',\n  '874823138': '💶 Verkauft'\n};\n\nconst OWNERS = {\n  '30037585': 'Dominik',\n  '30074150': 'Gülser',\n  '30463715': 'Dominic W.',\n  '33497731': 'Team'\n};\n\nconst deals = $('HubSpot: Offene Deals').first().json.results || [];\nconst wonTotal = $('HubSpot: Verkauft (Total)').first().json.total || 0;\n\n// Stage counts\nconst stageCounts = {};\nconst ownerCounts = {};\nlet todayNew = 0;\nlet overdueFollowups = 0;\nconst today = new Date().toISOString().slice(0, 10);\nconst sevenDaysAgo = new Date(Date.now() - 7 * 86400000).toISOString();\n\ndeals.forEach(d => {\n  const stage = d.properties.dealstage;\n  const owner = d.properties.hubspot_owner_id;\n  \n  stageCounts[stage] = (stageCounts[stage] || 0) + 1;\n  \n  const ownerName = OWNERS[owner] || 'Andere';\n  ownerCounts[ownerName] = (ownerCounts[ownerName] || 0) + 1;\n  \n  if ((d.properties.createdate || '').slice(0, 10) === today) todayNew++;\n  \n  const lastContact = d.properties.notes_last_contacted;\n  if (lastContact && lastContact < sevenDaysAgo) overdueFollowups++;\n  if (!lastContact) overdueFollowups++;\n});\n\n// Pipeline-Summary\nconst pipelineLines = Object.entries(STAGES)\n  .filter(([id]) => id !== '874823138') // Verkauft separat\n  .map(([id, label]) => `${label}: ${stageCounts[id] || 0}`)\n  .join(', ');\n\n// Owner-Summary  \nconst ownerLines = Object.entries(ownerCounts)\n  .sort((a, b) => b[1] - a[1])\n  .map(([name, count]) => `${name}: ${count}`)\n  .join(', ');\n\n// Zusammenfassung\nconst zusammenfassung = `Pipeline: ${pipelineLines}. ` +\n  `Verkauft gesamt: ${wonTotal}. ` +\n  `Heute neu: ${todayNew} Leads. ` +\n  `Überfällige Follow-ups (>7 Tage): ${overdueFollowups}. ` +\n  `Pro Verkäufer: ${ownerLines}.`;\n\n// Output für Supabase\nconst id = 'kf-hubspot-' + today;\n\nreturn [{\n  json: {\n    id,\n    pid: null,\n    quelle: 'hubspot',\n    typ: 'pipeline',\n    zusammenfassung,\n    rohdaten: { stageCounts, ownerCounts, todayNew, overdueFollowups, wonTotal },\n    relevanz: 'hoch',\n    created_at: new Date().toISOString(),\n    gueltig_bis: today\n  }\n}];"
+      },
+      "id": "code-aggregate",
+      "name": "Zusammenfassen",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [550, 100]
+    },
+    {
+      "parameters": {
+        "method": "DELETE",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/kontext_feed?quelle=eq.hubspot",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_KEY }}" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "supabase-delete",
+      "name": "Alte HubSpot-Einträge löschen",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [800, 100]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/kontext_feed",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "supabase-insert",
+      "name": "In kontext_feed schreiben",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1050, 100]
+    }
+  ],
+  "connections": {
+    "Jeden Morgen 6:00": {
+      "main": [[
+        { "node": "HubSpot: Offene Deals", "type": "main", "index": 0 },
+        { "node": "HubSpot: Verkauft (Total)", "type": "main", "index": 0 }
+      ]]
+    },
+    "HubSpot: Offene Deals": {
+      "main": [[ { "node": "Zusammenfassen", "type": "main", "index": 0 } ]]
+    },
+    "HubSpot: Verkauft (Total)": {
+      "main": [[ { "node": "Zusammenfassen", "type": "main", "index": 0 } ]]
+    },
+    "Zusammenfassen": {
+      "main": [[ { "node": "Alte HubSpot-Einträge löschen", "type": "main", "index": 0 } ]]
+    },
+    "Alte HubSpot-Einträge löschen": {
+      "main": [[ { "node": "In kontext_feed schreiben", "type": "main", "index": 0 } ]]
+    }
+  },
+  "settings": { "executionOrder": "v1" }
+}
