@@ -2459,19 +2459,15 @@ WERTSCHÖPFUNGSKETTE (jede Stufe ist gleich wichtig!):
 8. 📋 LEGAL/CE/COMPLIANCE → Zertifizierungen, Zulassungen, Normen, Rechtliches
 9. ⚙️ INFRASTRUKTUR → Prozesse, Tools, Hiring, Schulung, Systeme
 
-ROLLEN-SPEZIFISCHE BEWERTUNG:
-Die Aufgabe wird von ${p?p.name+' ('+p.rolle+')':'jemandem'} angelegt.
-Bewerte den Hebel AUS DER PERSPEKTIVE DIESER PERSON UND IHRER ROLLE:
-- Ein Setter hat seinen größten Hebel in Stufe 2 (Setting) — dort ist SEIN Bottleneck
-- Ein Saunabauer hat seinen größten Hebel in Stufe 4 (Fertigung) und 7 (Innovation/Prototyp)
-- Ein Closer hat seinen größten Hebel in Stufe 3 (Sales)
-- Marketing hat seinen größten Hebel in Stufe 1 (Lead-Gen) und 6 (Empfehlungen)
-- GF hat Hebel überall, aber vor allem beim Bottleneck der FIRMA (nicht einzelner Personen)
-- Finance/Backoffice hat Hebel in Stufe 9 (Infrastruktur) und 8 (Legal)
+PERSONEN-PROFIL (von der Führung gepflegt):
+${p?.profil||'Kein Profil hinterlegt. Bewerte basierend auf der Rolle: '+( p?.rolle||'unbekannt')}
 
-Frage dich: "Ist diese Aufgabe der HÖCHSTE HEBEL den DIESE Person in IHRER Rolle heute haben kann?"
-Wenn jemand eine Aufgabe AUSSERHALB seiner Kernkette anlegt, weise darauf hin:
-z.B. "Du bist Setter — ist Setting-Calls machen nicht ein höherer Hebel als Landingpage bauen?"
+Bewerte den Hebel AUS DER PERSPEKTIVE DIESER PERSON:
+- Nutze das Profil um zu verstehen WO in der Kette diese Person arbeitet
+- Ihr größter Hebel liegt in IHREM Bereich der Kette — nicht überall
+- Frage dich: "Ist diese Aufgabe der HÖCHSTE HEBEL den DIESE Person in IHRER Rolle heute haben kann?"
+- Wenn die Aufgabe AUSSERHALB ihrer Kernkette liegt, weise darauf hin
+- Berücksichtige Entwicklungspotenzial und Automatisierungspotenzial aus dem Profil
 
 HEBEL-FRAMEWORK (bewerte jede Dimension 1-3):
 • Rollen-Fit: Liegt die Aufgabe in DEINER Kernkette? (1=nicht dein Bereich, 2=unterstützend, 3=genau dein Hebel)
@@ -2610,6 +2606,7 @@ Heute ist ${TODAY} (${['So','Mo','Di','Mi','Do','Fr','Sa'][new Date().getDay()]}
 
 ═══════════════════════════════════════
 PERSON: ${p?p.name+' — '+p.rolle:'Unbekannt'}
+${p?.profil?'PROFIL: '+p.profil:''}
 ${big3?'BIG 3 DIESE WOCHE: '+big3:'Kein Wochenplan gesetzt.'}
 ${aktiv.length?'GERADE AKTIV: '+aktiv.map(a=>a.titel).join(', '):'Nichts aktiv.'}
 
@@ -3117,6 +3114,8 @@ function editPerson(pid){
     +'<div class="f2"><div class="fl"><label>Name</label><input id="en" value="'+p.name+'" autofocus></div><div class="fl"><label>Kürzel</label><input id="ek" value="'+p.k+'" maxlength="3"></div></div>'
     +'<div class="fl"><label>Rolle</label><input id="er" value="'+p.rolle+'"></div>'
     +'<div class="fl"><label>Stufe</label><select id="es">'+[['team','Teammitglied'],['lead','Team-Lead'],['gf','Geschäftsführung']].map(x=>'<option value="'+x[0]+'"'+(p.stufe===x[0]?' selected':'')+'>'+x[1]+'</option>').join('')+'</select></div>'
+    +'<div class="fl"><label>KI-Profil <span style="font-weight:400;color:var(--t2)">(Die KI nutzt das für Hebel-Analyse & Coaching)</span></label>'
+    +'<textarea id="eprofil" rows="6" style="resize:vertical;font-size:11px" placeholder="Beschreibe diese Person für die KI:\n\n• Hauptverantwortung & Tätigkeitsfeld\n• Position in der Wertschöpfungskette (z.B. Fertigung, Setting, Closing)\n• Stärken & Entwicklungspotenzial\n• Automatisierungspotenzial\n• Was ist ihr größter Hebel?\n• Wohin entwickelt sich die Rolle?">'+(p.profil||'')+'</textarea></div>'
     +'<div class="fl"><label>Fokuszeit</label><div style="display:flex;gap:8px"><input type="time" id="epfs" value="'+(p.fokus_start||'09:00')+'" style="flex:1"><span style="line-height:36px">–</span><input type="time" id="epfe" value="'+(p.fokus_end||'11:00')+'" style="flex:1"></div></div>'
     +'<div class="fl"><label>PIN</label><input id="ep" type="password" value="'+p.pin+'" maxlength="4"></div>'
     +'<div class="mf">'+(pid!==realMe?'<button class="btn btn-red" onclick="deletePerson(\''+pid+'\')">Löschen</button>':'')+'<button class="btn btn-gr" onclick="openSettings()">Zurück</button><button class="btn btn-dk" onclick="savePerson(\''+pid+'\')">Speichern</button></div>';
@@ -3130,9 +3129,10 @@ async function savePerson(pid){
   p.stufe=document.getElementById('es').value;
   p.fokus_start=document.getElementById('epfs').value||'09:00';
   p.fokus_end=document.getElementById('epfe').value||'11:00';
+  p.profil=document.getElementById('eprofil')?.value||'';
   const np=document.getElementById('ep').value.trim();
   if(np.length===4&&/^\d{4}$/.test(np))p.pin=np;
-  await dbPatch('personen',pid,{name:p.name,k:p.k,rolle:p.rolle,stufe:p.stufe,pin:p.pin,fokus_start:p.fokus_start,fokus_end:p.fokus_end});
+  await dbPatch('personen',pid,{name:p.name,k:p.k,rolle:p.rolle,stufe:p.stufe,pin:p.pin,fokus_start:p.fokus_start,fokus_end:p.fokus_end,profil:p.profil});
   openSettings();render();
 }
 async function deletePerson(pid){
