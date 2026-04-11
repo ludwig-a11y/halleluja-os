@@ -176,6 +176,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;font-size:1
   <div class="bar">
     <div class="logo">Halleluja OS</div>
     <button class="nt on" onclick="nav('tag',this)">Mein Tag</button>
+    <button class="nt" id="nav-woche" onclick="nav('woche',this)">Woche</button>
     <button class="nt" id="nav-ziele" onclick="nav('ziele',this)">Ziele</button>
     <button class="nt" id="nav-team" onclick="nav('team',this)">Team</button>
     <div style="flex:1"></div>
@@ -197,6 +198,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;font-size:1
     <button class="mob-tab on" id="mobt-tag" onclick="nav('tag',null);updMobTabs('tag')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
       Mein Tag
+    </button>
+    <button class="mob-tab" id="mobt-woche" onclick="nav('woche',null);updMobTabs('woche')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      Woche
     </button>
     <button class="mob-tab" id="mobt-ziele" onclick="nav('ziele',null);updMobTabs('ziele')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1" fill="currentColor"/></svg>
@@ -258,6 +263,11 @@ function zieleOptgroups(pid,selId=''){
   if(meine.length)out+='<optgroup label="Meine Ziele">'+meine.map(opt).join('')+'</optgroup>';
   if(andere.length)out+='<optgroup label="Andere Ziele">'+andere.map(opt).join('')+'</optgroup>';
   return out;
+}
+function wochenTage(){
+  const today=new Date(),dow=today.getDay(),diff=dow===0?-6:1-dow;
+  const mo=new Date(today);mo.setDate(today.getDate()+diff);mo.setHours(0,0,0,0);
+  return Array.from({length:5},(_,i)=>{const d=new Date(mo);d.setDate(mo.getDate()+i);return d.toISOString().slice(0,10);});
 }
 function getKW(d){
   const date=new Date(d||Date.now());
@@ -1104,7 +1114,7 @@ function showBackBtn(){
 function removeBackBtn(){document.getElementById('back-to-me')?.remove();}
 
 function updMobTabs(v){
-  ['tag','ziele','team'].forEach(t=>{
+  ['tag','woche','ziele','team'].forEach(t=>{
     const el=document.getElementById('mobt-'+t);
     if(el)el.className='mob-tab'+(t===v?' on':'');
   });
@@ -1120,6 +1130,7 @@ function render(){
   updateKapPill();
   rSB();
   if(aV==='tag')rTag();
+  else if(aV==='woche')rWoche();
   else if(aV==='ziele')rZiele();
   else if(aV==='team')rTeam();
 }
@@ -1174,6 +1185,96 @@ function stepsHtml(a,ed){
   }
   if(ed)out+='<div style="display:flex;gap:6px;margin-top:6px"><input class="asi" id="si-'+a.id+'" placeholder="+ Schritt…" onkeydown="if(event.key===\'Enter\')addStep(\''+a.id+'\')"><button onclick="addStep(\''+a.id+'\')" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);cursor:pointer">+</button></div>';
   return out;
+}
+
+async function toggleBig3(wrId,field){
+  const wr=S.wochenresets.find(r=>r.id===wrId);if(!wr)return;
+  wr[field]=!wr[field];
+  await dbPatch('wochenresets',wrId,{[field]:wr[field]});
+  rWoche();
+}
+
+function rWoche(){
+  const{kw}=getKW();
+  const wr=dieseWocheReset(aP);
+  const tage=wochenTage();
+  const tagN=['Mo','Di','Mi','Do','Fr'];
+  const myA=S.aufgaben.filter(a=>String(a.pid)===String(aP)&&canSee(a));
+  let out='<div style="font-size:16px;font-weight:700;margin-bottom:20px">Meine Woche · KW '+kw+'</div>';
+
+  // ── Big 3 ──
+  if(wr&&(wr.big3_1||wr.big3_2)){
+    const fz=S.ziele.find(z=>z.id===wr.focus_ziel_id);
+    const f=fz?FARBEN[fz.farbe||0]:FARBEN[0];
+    out+='<div style="background:#fff;border:1px solid '+f.bd+';border-left:3px solid '+f.tc+';border-radius:0 12px 12px 0;padding:14px 16px;margin-bottom:14px">';
+    out+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">';
+    out+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:'+f.tc+'">Big 3 · KW '+kw+'</div>';
+    if(fz)out+='<span style="font-size:11px;color:var(--t2)">→ '+fz.name+'</span>';
+    out+='</div>';
+    [['big3_1','big3_1_done'],['big3_2','big3_2_done'],['big3_3','big3_3_done']].forEach(([txtF,doneF],i)=>{
+      const txt=wr[txtF];if(!txt)return;
+      const done=wr[doneF];
+      out+='<div onclick="toggleBig3(\''+wr.id+'\',\''+doneF+'\')" style="display:flex;align-items:center;gap:10px;padding:9px 0;cursor:pointer;'+(i>0?'border-top:1px solid '+f.bd+';':'')+'">';
+      out+='<div style="width:18px;height:18px;border-radius:5px;flex-shrink:0;'+(done?'background:'+f.tc+';border:1.5px solid '+f.tc+';display:flex;align-items:center;justify-content:center':'border:1.5px solid '+f.bd)+'">'+(done?'<span style="color:#fff;font-size:10px;font-weight:800">✓</span>':'')+'</div>';
+      out+='<span style="font-size:13px;font-weight:500;flex:1;'+(done?'color:var(--t2);text-decoration:line-through':'color:var(--text)')+'">'+txt+'</span>';
+      out+='</div>';
+    });
+    out+='<button onclick="openWochenreset()" style="font-size:11px;margin-top:10px;padding:5px 12px;border-radius:7px;border:1px solid var(--bd);background:var(--gray-bg);color:var(--t2);cursor:pointer;font-family:inherit">✎ Bearbeiten</button>';
+    out+='</div>';
+  }else{
+    out+='<div style="background:var(--gray-bg);border:1.5px dashed var(--bd);border-radius:12px;padding:20px;text-align:center;margin-bottom:14px">';
+    out+='<div style="font-size:13px;color:var(--t2);margin-bottom:10px">Noch keine Big 3 für KW '+kw+'</div>';
+    out+='<button onclick="openWochenreset()" style="font-size:13px;font-weight:600;padding:9px 18px;border-radius:9px;background:var(--text);color:#fff;border:none;cursor:pointer;font-family:inherit">Big 3 planen →</button>';
+    out+='</div>';
+  }
+
+  // ── Tagesübersicht ──
+  out+='<div style="background:#fff;border:1px solid var(--bd);border-radius:12px;overflow:hidden;margin-bottom:14px">';
+  tage.forEach((datum,i)=>{
+    const erlA=myA.filter(a=>a.status==='erledigt'&&(a.akt_seit||'').slice(0,10)===datum);
+    const aktivA=myA.filter(a=>a.status==='aktiv'&&datum===TODAY);
+    const isToday=datum===TODAY,isPast=datum<TODAY;
+    out+='<details'+(isToday?' open':'')+' style="'+(i>0?'border-top:1px solid var(--bd)':'')+'">';
+    out+='<summary style="list-style:none;cursor:pointer;padding:12px 14px;display:flex;align-items:center;gap:10px;'+(isToday?'background:var(--gray-bg)':'')+'">';
+    out+='<span style="font-size:12px;font-weight:700;width:22px;color:'+(isToday?'var(--text)':'var(--t2)')+'">'+tagN[i]+'</span>';
+    out+='<span style="font-size:11px;color:var(--t3)">'+datum.slice(8)+'.'+datum.slice(5,7)+'.</span>';
+    out+='<div style="flex:1"></div>';
+    if(aktivA.length)out+='<span style="font-size:11px;color:var(--blue);font-weight:600">● läuft</span>';
+    else if(erlA.length)out+='<span style="font-size:11px;color:var(--green);font-weight:600">✓ '+erlA.length+'</span>';
+    else out+='<span style="font-size:11px;color:var(--t3)">'+(isPast||isToday?'—':'')+'</span>';
+    out+='</summary>';
+    if(erlA.length||aktivA.length){
+      out+='<div style="padding:4px 14px 10px 14px">';
+      erlA.forEach(a=>{
+        out+='<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-top:1px solid var(--bd)">';
+        out+='<span style="font-size:10px;color:var(--green);flex-shrink:0">✓</span>';
+        out+='<span style="flex:1;font-size:12px;color:var(--t2);text-decoration:line-through">'+a.titel+'</span>';
+        if(a.gebucht)out+='<span style="font-size:10px;color:var(--t3)">'+fmtH(a.gebucht)+'</span>';
+        out+='</div>';
+      });
+      aktivA.forEach(a=>{
+        out+='<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-top:1px solid var(--bd)">';
+        out+='<span style="font-size:10px;color:var(--blue);flex-shrink:0">●</span>';
+        out+='<span style="flex:1;font-size:12px;color:var(--text)">'+a.titel+'</span>';
+        out+='</div>';
+      });
+      out+='</div>';
+    }
+    out+='</details>';
+  });
+  out+='</div>';
+
+  // ── Freitag Reset Banner ──
+  if(isResetZeit()&&!dieseWocheReset(aP)){
+    const{kw:kw2}=getKW();
+    out+='<div onclick="openWochenreset()" style="background:#15803d;color:#fff;border-radius:12px;padding:13px 15px;cursor:pointer;display:flex;align-items:center;gap:11px">'
+      +'<span style="font-size:20px">📋</span>'
+      +'<div style="flex:1"><div style="font-weight:700;font-size:13px">Wochenrückblick KW '+kw2+'</div>'
+      +'<div style="font-size:11px;opacity:.6;margin-top:1px">Big 3 auswerten · KW '+(kw2+1)+' planen</div></div>'
+      +'<span style="opacity:.4;font-size:16px">›</span></div>';
+  }
+
+  document.getElementById('main').innerHTML=out;
 }
 
 function rTag(){
