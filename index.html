@@ -1196,8 +1196,8 @@ function rTag(){
   let out='';
 
   // ── Tages P1 ──
-  const heuteP1=S.aufgaben.find(a=>String(a.pid)===String(aP)&&a.prio==='P1'&&a.status==='aktiv'&&a.dl===TODAY);
-  const p1Erledigt=S.aufgaben.find(a=>String(a.pid)===String(aP)&&a.prio==='P1'&&a.status==='erledigt'&&a.dl===TODAY);
+  const heuteP1=S.aufgaben.find(a=>String(a.pid)===String(aP)&&a.prio==='P1'&&a.status==='aktiv');
+  const p1Erledigt=S.aufgaben.find(a=>String(a.pid)===String(aP)&&a.prio==='P1'&&a.status==='erledigt'&&(a.dl===TODAY||(a.updated_at||'').slice(0,10)===TODAY));
   if(p1Erledigt){
     out+='<div style="background:#15803d;border-radius:12px;padding:13px 16px;margin-bottom:14px;display:flex;align-items:center;gap:12px">'
       +'<div style="flex:1"><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:rgba(255,255,255,.45);margin-bottom:3px">P1 heute — erledigt ✓</div>'
