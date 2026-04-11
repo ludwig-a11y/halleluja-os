@@ -1486,19 +1486,44 @@ function rTag(){
       tlTasks.sort((a,b)=>{const ai=savedOrder.indexOf(a.id),bi=savedOrder.indexOf(b.id);return(ai<0?999:ai)-(bi<0?999:bi);});
     }
     if(tlTasks.length){
+      const now=new Date();
+      const nowH=now.getHours()+now.getMinutes()/60;
       const erlH=erl.filter(a=>(a.akt_seit||'').slice(0,10)===TODAY).reduce((s,a)=>s+(a.gebucht||a.geplant||0.5),0);
       const offenH=tlTasks.reduce((s,a)=>s+(a.geplant||1),0);
-      const barH=erlH+offenH;
+      // dynamic day range — core 9-17, soft extend if needed
+      let dayStart=9,dayEnd=17;
+      if(nowH<9)dayStart=Math.floor(nowH);
+      const workEnd=nowH+offenH;
+      if(workEnd>dayEnd)dayEnd=Math.ceil(workEnd);
+      if(dayStart+erlH+offenH>dayEnd)dayEnd=Math.ceil(dayStart+erlH+offenH);
+      const barH=dayEnd-dayStart;
+      const erlPct=(erlH/barH*100);
+      const nowPct=Math.min(100,Math.max(0,(nowH-dayStart)/barH*100));
       out+='<div style="background:#fff;border:1px solid var(--bd);border-radius:14px;padding:12px 16px;margin-bottom:14px">';
-      out+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">';
+      out+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">';
       out+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t2)">Tagesplan</div>';
       out+='<div style="font-size:11px;color:var(--t3)">'+Math.round(erlH*10)/10+'h erledigt · '+Math.round(offenH*10)/10+'h offen</div>';
       out+='</div>';
-      // single-row bar — no clock times, pure task flow
-      out+='<div id="tagesplan-bar" style="position:relative;display:flex;height:32px;background:var(--gray-bg);border-radius:8px;overflow:hidden">';
+      // time markers — sparse, soft
+      out+='<div style="position:relative;height:12px;margin-bottom:2px">';
+      for(let h=dayStart;h<=dayEnd;h++){
+        const pct=((h-dayStart)/barH*100);
+        const isCore=h>=9&&h<=17;
+        const show=h===dayStart||h===dayEnd||h===12||(h%3===0&&isCore);
+        if(show&&h<dayEnd)out+='<div style="position:absolute;left:'+pct+'%;font-size:8px;color:'+(isCore?'var(--t3)':'rgba(0,0,0,.15)')+';transform:translateX(-50%)">'+h+'</div>';
+      }
+      out+='</div>';
+      // bar container
+      out+='<div style="position:relative">';
+      // single-row bar
+      out+='<div id="tagesplan-bar" style="position:relative;display:flex;height:32px;border-radius:8px;overflow:hidden;'
+        +'background:linear-gradient(90deg,'
+        +(dayStart<9?'rgba(0,0,0,.02) 0%,':'')
+        +'var(--gray-bg) '+((9-dayStart)/barH*100)+'%,'
+        +'var(--gray-bg) '+((17-dayStart)/barH*100)+'%'
+        +(dayEnd>17?',rgba(0,0,0,.02) 100%':'')+')">';
       // erledigt block
       if(erlH>0){
-        const erlPct=(erlH/barH*100);
         out+='<div style="width:'+erlPct+'%;background:#dcfce7;display:flex;align-items:center;justify-content:center;flex-shrink:0;border-right:1px solid #86efac">';
         out+='<span style="font-size:9px;color:#15803d;font-weight:700;white-space:nowrap">✓ '+Math.round(erlH*10)/10+'h</span>';
         out+='</div>';
@@ -1524,6 +1549,12 @@ function rTag(){
         out+='<span style="font-size:9px;color:'+tc+';opacity:.5;flex-shrink:0;margin-left:auto">'+fmtH(dur)+'</span>';
         out+='</div>';
       });
+      out+='</div>';
+      // now needle — red line overlaying the bar
+      if(nowH>=dayStart&&nowH<=dayEnd){
+        out+='<div style="position:absolute;left:'+nowPct+'%;top:-1px;bottom:-1px;width:2px;background:var(--red);border-radius:2px;z-index:10;pointer-events:none"></div>';
+        out+='<div style="position:absolute;left:'+nowPct+'%;bottom:-10px;transform:translateX(-50%);font-size:8px;font-weight:700;color:var(--red);pointer-events:none">'+now.getHours()+':'+(''+(now.getMinutes())).padStart(2,'0')+'</div>';
+      }
       out+='</div>';
       out+='</div>';
     }
