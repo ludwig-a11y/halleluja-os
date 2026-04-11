@@ -229,15 +229,19 @@ const SUPA_URL='https://zkxeuphsbufdvskkuahk.supabase.co';
 const SUPA_KEY='sb_publishable_41EMxtYZYsYL5KR1KS_RrA_1mV1SRAL';
 
 async function supa(path,opts={}){
+  const ctrl=new AbortController();
+  const tid=setTimeout(()=>ctrl.abort(),10000);
   try{
     const r=await fetch(SUPA_URL+'/rest/v1/'+path,{
+      signal:ctrl.signal,
       headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json','Prefer':opts.prefer||'return=representation',...(opts.headers||{})},
       method:opts.method||'GET',
       body:opts.body?JSON.stringify(opts.body):undefined
     });
+    clearTimeout(tid);
     if(!r.ok){console.error('Supabase',path,await r.text());return null;}
     const t=await r.text();return t?JSON.parse(t):null;
-  }catch(e){console.error('supa',e);return null;}
+  }catch(e){clearTimeout(tid);console.error('supa',e);return null;}
 }
 const dbGet=(t,q='')=>supa(t+(q?'?'+q:'?select=*'));
 const dbPatch=(t,id,b)=>supa(t+'?id=eq.'+id,{method:'PATCH',body:b,prefer:'return=minimal'});
@@ -2497,7 +2501,7 @@ window.addEventListener('keydown',e=>{
 
 (async()=>{
   try{await loadData();}catch(e){
-    document.getElementById('app-loading').innerHTML='<div style="text-align:center;padding:40px;color:#c2410c;font-size:13px">Verbindungsfehler — bitte Seite neu laden.<br><small style="color:#aaa">'+e.message+'</small></div>';
+    document.getElementById('login-screen').innerHTML='<div style="text-align:center;padding:40px;color:#c2410c;font-size:13px">Verbindungsfehler — bitte Seite neu laden.<br><small style="color:#aaa">'+e.message+'</small></div>';
     return;
   }
   document.getElementById('login-screen').innerHTML='<div class="login-box">'
