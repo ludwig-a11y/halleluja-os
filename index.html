@@ -257,7 +257,8 @@ const CL=[
   {bg:'#f0fdf4',tc:'#15803d'},{bg:'#eff6ff',tc:'#1d4ed8'},{bg:'#faf5ff',tc:'#7c3aed'},
   {bg:'#fff7ed',tc:'#c2410c'},{bg:'#f1f0ef',tc:'#44403c'},{bg:'#fdf2f8',tc:'#9d174d'}
 ];
-const TODAY=new Date().toISOString().slice(0,10);
+function localDate(d){const x=d||new Date();return x.getFullYear()+'-'+(''+(x.getMonth()+1)).padStart(2,'0')+'-'+(''+(x.getDate())).padStart(2,'0');}
+const TODAY=localDate();
 function zieleOptgroups(pid,selId=''){
   const sichtbar=S.ziele.filter(z=>!z.vertraulich||isGF());
   const meine=sichtbar.filter(z=>String(z.verantwortlichId)===String(pid)||(z.teilziele||[]).some(tz=>String(tz.verantwortlichId)===String(pid)));
@@ -271,7 +272,7 @@ function zieleOptgroups(pid,selId=''){
 function wochenTage(){
   const today=new Date(),dow=today.getDay(),diff=dow===0?-6:1-dow;
   const mo=new Date(today);mo.setDate(today.getDate()+diff);mo.setHours(0,0,0,0);
-  return Array.from({length:6},(_,i)=>{const d=new Date(mo);d.setDate(mo.getDate()+i);return d.toISOString().slice(0,10);});
+  return Array.from({length:6},(_,i)=>{const d=new Date(mo);d.setDate(mo.getDate()+i);return localDate(d);});
 }
 function getKW(d){
   const date=new Date(d||Date.now());
