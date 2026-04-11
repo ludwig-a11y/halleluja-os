@@ -230,7 +230,7 @@ const SUPA_KEY='sb_publishable_41EMxtYZYsYL5KR1KS_RrA_1mV1SRAL';
 
 async function supa(path,opts={}){
   const ctrl=new AbortController();
-  const tid=setTimeout(()=>ctrl.abort(),10000);
+  const tid=setTimeout(()=>ctrl.abort(),5000);
   try{
     const r=await fetch(SUPA_URL+'/rest/v1/'+path,{
       signal:ctrl.signal,
@@ -2500,8 +2500,14 @@ window.addEventListener('keydown',e=>{
 });
 
 (async()=>{
-  try{await loadData();}catch(e){
-    document.getElementById('login-screen').innerHTML='<div style="text-align:center;padding:40px;color:#c2410c;font-size:13px">Verbindungsfehler — bitte Seite neu laden.<br><small style="color:#aaa">'+e.message+'</small></div>';
+  try{
+    await Promise.race([
+      loadData(),
+      new Promise(r=>setTimeout(r,6000))
+    ]);
+  }catch(e){console.warn('loadData:',e);}
+  if(!S.personen.length){
+    document.getElementById('login-screen').innerHTML='<div style="text-align:center;padding:40px"><div style="font-size:13px;color:#c2410c;margin-bottom:12px">Keine Verbindung zu Supabase.</div><button onclick="location.reload()" style="font-size:13px;padding:8px 18px;border-radius:8px;border:1px solid var(--bd);background:var(--text);color:#fff;cursor:pointer;font-family:inherit">Neu laden</button></div>';
     return;
   }
   document.getElementById('login-screen').innerHTML='<div class="login-box">'
