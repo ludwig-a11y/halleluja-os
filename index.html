@@ -1787,9 +1787,40 @@ function rZiele(){
     out+='</div>';
   }
   const alleZiele=S.ziele.filter(z=>(!z.vertraulich||isGF())&&z.status!=='vorschlag');
+
+  // ── Monats-Pillen ──
+  const curMon=TODAY.slice(0,7);
+  const monNames=['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
+  const curYear=new Date().getFullYear();
+  if(!window._zielMonat)window._zielMonat=curMon;
+  out+='<div style="display:flex;gap:4px;margin-bottom:16px;overflow-x:auto;padding:2px 0">';
+  for(let m=0;m<12;m++){
+    const mon=curYear+'-'+(''+(m+1)).padStart(2,'0');
+    const isCur=mon===curMon;
+    const isActive=mon===window._zielMonat;
+    const isPast=mon<curMon;
+    let style='font-size:11px;font-weight:600;padding:5px 12px;border-radius:99px;cursor:pointer;white-space:nowrap;border:1.5px solid ';
+    if(isActive)style+='var(--text);background:var(--text);color:#fff';
+    else if(isPast)style+='#86efac;background:#f0fdf4;color:#15803d';
+    else style+='var(--bd);background:#fff;color:#888';
+    out+='<div onclick="window._zielMonat=\''+mon+'\';rZiele()" style="'+style+'">'+monNames[m]+'</div>';
+  }
+  out+='<div onclick="window._zielMonat=null;rZiele()" style="font-size:11px;font-weight:600;padding:5px 12px;border-radius:99px;cursor:pointer;white-space:nowrap;border:1.5px solid '+(window._zielMonat===null?'var(--text);background:var(--text);color:#fff':'var(--bd);background:#fff;color:#888')+'">Alle</div>';
+  out+='</div>';
+
+  const zielImMonat=z=>{
+    if(!window._zielMonat)return true;
+    const ms=z.monat_start||'';
+    const me=z.monat_ende||'';
+    if(!ms&&!me)return true;
+    if(ms&&me)return window._zielMonat>=ms&&window._zielMonat<=me;
+    if(ms)return window._zielMonat>=ms;
+    return window._zielMonat<=me;
+  };
+
   const istMeinZiel=z=>isGF()||z.verantwortlichId===aP||(z.teilziele||[]).some(tz=>tz.verantwortlichId===aP);
-  const meineZiele=alleZiele.filter(istMeinZiel).sort((a,b)=>(a.verantwortlichId===aP?0:1)-(b.verantwortlichId===aP?0:1));
-  const andereZiele=alleZiele.filter(z=>!istMeinZiel(z));
+  const meineZiele=alleZiele.filter(z=>istMeinZiel(z)&&zielImMonat(z)).sort((a,b)=>(a.verantwortlichId===aP?0:1)-(b.verantwortlichId===aP?0:1));
+  const andereZiele=alleZiele.filter(z=>!istMeinZiel(z)&&zielImMonat(z));
 
   meineZiele.forEach(z=>{
     const f=FARBEN[z.farbe]||FARBEN[0];
@@ -1975,6 +2006,8 @@ function editZiel(zid){
     +'<div class="fl"><label>Name</label><input id="zn" value="'+z.name+'" autofocus></div>'
     +'<div class="fl"><label>Verantwortlich</label><select id="zver"><option value="">— niemand —</option>'+S.personen.map(p=>'<option value="'+p.id+'"'+(z.verantwortlichId===p.id?' selected':'')+'>'+p.name+'</option>').join('')+'</select></div>'
     +'<div class="fl"><label style="display:flex;align-items:center;gap:8px;text-transform:none;font-size:13px;font-weight:400"><input type="checkbox" id="zvert" '+(z.vertraulich?'checked':'')+' style="width:auto"> Vertraulich — nur Geschäftsführung</label></div>'
+    +'<div class="f2"><div class="fl"><label>Von (Monat)</label><input type="month" id="zms" value="'+(z.monat_start||'')+'"></div>'
+    +'<div class="fl"><label>Bis (Monat)</label><input type="month" id="zme" value="'+(z.monat_ende||'')+'"></div></div>'
     +'<div class="fl"><label>Farbe</label><div style="display:flex;gap:8px;margin-top:4px">'+FARBEN.map((f,i)=>'<div onclick="selZF('+i+')" id="zfc'+i+'" style="width:24px;height:24px;border-radius:50%;background:'+f.tc+';cursor:pointer;border:'+((z.farbe||0)===i?'3px':'2px')+' solid '+((z.farbe||0)===i?'var(--text)':'transparent')+'"></div>').join('')+'</div></div>'
     +'<input type="hidden" id="zfarbe" value="'+(z.farbe||0)+'">'
     +'<div class="mf"><button class="btn btn-red" onclick="delZiel(\''+zid+'\')">Löschen</button><button class="btn btn-gr" onclick="cm()">Abbrechen</button><button class="btn btn-dk" onclick="saveZiel(\''+zid+'\')">Speichern</button></div>';
@@ -1990,8 +2023,10 @@ async function saveZiel(zid){
   const verantwortlichId=document.getElementById('zver').value||null;
   const farbe=parseInt(document.getElementById('zfarbe').value)||0;
   const vertraulich=document.getElementById('zvert')?.checked||false;
-  z.name=name;z.verantwortlichId=verantwortlichId;z.farbe=farbe;z.vertraulich=vertraulich;
-  await dbPatch('ziele',zid,{name,verantwortlich_id:verantwortlichId,farbe,vertraulich});
+  const monat_start=document.getElementById('zms').value||null;
+  const monat_ende=document.getElementById('zme').value||null;
+  z.name=name;z.verantwortlichId=verantwortlichId;z.farbe=farbe;z.vertraulich=vertraulich;z.monat_start=monat_start;z.monat_ende=monat_ende;
+  await dbPatch('ziele',zid,{name,verantwortlich_id:verantwortlichId,farbe,vertraulich,monat_start,monat_ende});
   cm();rZiele();
 }
 async function delZiel(zid){
