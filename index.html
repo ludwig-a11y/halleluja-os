@@ -813,6 +813,15 @@ async function saveP1Today(){
   else{await dbInsert('aufgaben',rec);}
   render();
 }
+function getTagesplan(){
+  try{const r=localStorage.getItem('tagesplan_'+TODAY);return r?JSON.parse(r):[];}catch(e){return[];}
+}
+function setTagesplan(ids){localStorage.setItem('tagesplan_'+TODAY,JSON.stringify(ids));}
+function saveTagesauswahl(){
+  const ids=[...document.querySelectorAll('.ta-check:checked')].map(x=>x.value);
+  if(!ids.length)return;
+  setTagesplan(ids);render();
+}
 
 function openWochenreset(){
   const{kw,jahr}=getKW();
@@ -1198,32 +1207,55 @@ function rTag(){
   const alleGeschafft=!aktiv.length&&!neu.length&&!bl.length;
   let out='';
 
-  // ── Tages P1 ──
-  const heuteP1=S.aufgaben.find(a=>String(a.pid)===String(aP)&&a.prio==='P1'&&(a.status==='aktiv'||(a.dl===TODAY&&['neu','backlog'].includes(a.status))));
-  const p1Erledigt=S.aufgaben.find(a=>String(a.pid)===String(aP)&&a.prio==='P1'&&a.status==='erledigt'&&(a.dl===TODAY||(a.updated_at||'').slice(0,10)===TODAY));
-  if(p1Erledigt){
-    out+='<div style="background:#15803d;border-radius:12px;padding:13px 16px;margin-bottom:14px;display:flex;align-items:center;gap:12px">'
-      +'<div style="flex:1"><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:rgba(255,255,255,.45);margin-bottom:3px">P1 heute — erledigt ✓</div>'
-      +'<div style="font-size:14px;font-weight:700;color:#fff">'+p1Erledigt.titel+'</div></div>'
-      +'<div style="width:28px;height:28px;border-radius:8px;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:16px;color:#fff">✓</div>'
-      +'</div>';
-  }else if(heuteP1){
-    out+='<div style="background:#1a1a1a;border-radius:12px;padding:13px 16px;margin-bottom:14px;display:flex;align-items:center;gap:12px">'
-      +'<div style="flex:1"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px"><span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:rgba(255,255,255,.35)">Mein P1 heute</span><span style="font-size:10px;color:rgba(255,255,255,.25)">'+['So','Mo','Di','Mi','Do','Fr','Sa'][new Date().getDay()]+', '+new Date().getDate()+'.'+(new Date().getMonth()+1)+'.</span></div>'
-      +'<div style="font-size:14px;font-weight:700;color:#fff">'+heuteP1.titel+'</div></div>'
-      +'<div style="width:28px;height:28px;border-radius:8px;border:2px solid rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.3);font-size:13px">○</div>'
-      +'</div>';
+  // ── Tagesauswahl ──
+  const tpIds=getTagesplan();
+  const validTp=tpIds.map(id=>S.aufgaben.find(a=>a.id===id&&String(a.pid)===String(aP)&&a.status!=='erledigt')).filter(Boolean);
+  const dayStr=['So','Mo','Di','Mi','Do','Fr','Sa'][new Date().getDay()]+', '+new Date().getDate()+'.'+(new Date().getMonth()+1)+'.';
+  if(validTp.length>0){
+    out+='<div style="background:#1a1a1a;border-radius:12px;padding:13px 16px;margin-bottom:14px">';
+    out+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">';
+    out+='<span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:rgba(255,255,255,.35)">Heute · '+dayStr+'</span>';
+    out+='<button onclick="setTagesplan([]);render()" style="font-size:10px;color:rgba(255,255,255,.35);background:none;border:none;cursor:pointer;font-family:inherit;padding:0">Umplanen</button>';
+    out+='</div>';
+    validTp.forEach((ta,i)=>{
+      const isAktiv=ta.status==='aktiv';
+      out+='<div style="display:flex;align-items:center;gap:10px'+(i>0?';margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,.07)':'')+'">';
+      out+='<div style="flex:1">';
+      if(ta.prio)out+='<span style="font-size:9px;font-weight:800;background:'+(ta.prio==='P1'?'#dc2626':ta.prio==='P2'?'#c2410c':'#6b7280')+';color:#fff;padding:1px 6px;border-radius:4px;margin-bottom:4px;display:inline-block">'+ta.prio+'</span> ';
+      out+='<span style="font-size:'+(i===0?14:12)+'px;font-weight:'+(i===0?700:500)+';color:'+(isAktiv?'rgba(255,255,255,.4)':'#fff')+'">'+ta.titel+'</span>';
+      out+='</div>';
+      if(isAktiv){out+='<span style="font-size:11px;color:rgba(255,255,255,.3)">läuft</span>';}
+      else{out+='<button onclick="startenA(\''+ta.id+'\')" style="font-size:12px;padding:7px 12px;border-radius:8px;background:rgba(255,255,255,.12);color:#fff;border:none;font-family:inherit;cursor:pointer;flex-shrink:0">▶</button>';}
+      out+='</div>';
+    });
+    out+='</div>';
   }else{
-    out+='<div style="background:#1a1a1a;border-radius:12px;padding:14px 16px;margin-bottom:14px">'
-      +'<div style="font-size:12px;color:rgba(255,255,255,.5);margin-bottom:8px;line-height:1.45;font-style:italic">'
-      +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">'
-      +'<span style="color:rgba(255,255,255,.9);font-style:normal;font-weight:600;font-size:12px">Was ist die eine Sache, die, wenn erledigt, alles andere einfacher oder überflüssig macht?</span>'
-      +'<span style="font-size:10px;color:rgba(255,255,255,.3);flex-shrink:0;margin-left:10px">'+['So','Mo','Di','Mi','Do','Fr','Sa'][new Date().getDay()]+', '+new Date().getDate()+'.'+(new Date().getMonth()+1)+'.</span>'
-      +'</div>'
-      +'<input id="p1-input" onkeydown="if(event.key===\'Enter\')saveP1Today()" type="text" placeholder="Dein P1 für heute…" '
-      +'style="width:100%;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:9px 12px;font-family:inherit;font-size:13px;color:#fff;outline:none">'
-      +'<div style="font-size:10px;color:rgba(255,255,255,.2);margin-top:6px">Enter zum Speichern</div>'
-      +'</div>';
+    const auswahlPool=[...myA.filter(a=>a.status!=='erledigt')].sort((a,b)=>{
+      const pd={'P1':0,'P2':1,'P3':2};
+      const ps=(pd[a.prio]??3)-(pd[b.prio]??3);
+      if(ps!==0)return ps;
+      const sd={'aktiv':0,'neu':1,'backlog':2};
+      return(sd[a.status]??3)-(sd[b.status]??3);
+    }).slice(0,5);
+    if(auswahlPool.length>0){
+      out+='<div style="background:#1a1a1a;border-radius:12px;padding:14px 16px;margin-bottom:14px">';
+      out+='<div style="margin-bottom:10px">';
+      out+='<div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:2px">Was machst du heute?</div>';
+      out+='<div style="font-size:11px;color:rgba(255,255,255,.35)">'+dayStr+' · Wähle 1–3 Aufgaben</div>';
+      out+='</div>';
+      out+='<div style="display:flex;flex-direction:column;gap:5px;margin-bottom:10px">';
+      auswahlPool.forEach(a=>{
+        out+='<label style="display:flex;align-items:center;gap:9px;cursor:pointer;padding:8px 10px;background:rgba(255,255,255,.05);border-radius:8px">';
+        out+='<input type="checkbox" class="ta-check" value="'+a.id+'" style="width:15px;height:15px;cursor:pointer;accent-color:#fff;flex-shrink:0">';
+        if(a.prio)out+='<span style="font-size:9px;font-weight:800;background:'+(a.prio==='P1'?'#dc2626':a.prio==='P2'?'#c2410c':'#6b7280')+';color:#fff;padding:1px 6px;border-radius:4px;flex-shrink:0">'+a.prio+'</span>';
+        out+='<span style="font-size:12px;font-weight:500;color:#fff;flex:1;line-height:1.3">'+a.titel+'</span>';
+        if(a.status==='aktiv')out+='<span style="font-size:10px;color:rgba(255,255,255,.4)">läuft</span>';
+        out+='</label>';
+      });
+      out+='</div>';
+      out+='<button onclick="saveTagesauswahl()" style="width:100%;padding:10px;border-radius:8px;background:#fff;color:#1a1a1a;border:none;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer">Heute starten →</button>';
+      out+='</div>';
+    }
   }
   // ── Big 3 Wochenkompass ──
   const{kw:kwAkt}=getKW();
@@ -1251,7 +1283,8 @@ function rTag(){
       +'<span style="opacity:.4;font-size:16px">›</span></div>';
   }
 
-  out+=rKpiBlock(aP);
+  const hasSonderKpi=S.ziele.flatMap(z=>z.kpis||[]).some(k=>String(k.pid)===String(aP)&&k.sonder);
+  if(hasSonderKpi)out+=rKpiBlock(aP);
 
   if(aktiv.length){
     const a=aktiv[0];
