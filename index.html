@@ -2317,8 +2317,11 @@ function openNeu(pf={}){
     +'<label style="display:flex;align-items:center;gap:6px;text-transform:none;font-size:12px;font-weight:400;color:var(--t3);cursor:pointer;margin:0"><select id="nrec" style="width:auto;padding:4px 8px;font-size:11px;border:1px solid var(--bd);border-radius:6px;color:var(--t2);background:var(--sf)"><option value="">Einmalig</option><option value="daily">🔄 Täglich</option><option value="weekly">🔄 Wöchentlich</option><option value="monthly">🔄 Monatlich</option></select></label>'
     +(isGF()?'<label style="display:flex;align-items:center;gap:6px;text-transform:none;font-size:12px;font-weight:400;color:var(--t3);cursor:pointer;margin:0"><input type="checkbox" id="nvert" style="width:auto"> Vertraulich</label>':'')
     +'</div>'
+    +'<div class="fl"><label>Schritte</label><div id="neu-steps"></div>'
+    +'<div style="display:flex;gap:6px"><input class="asi" id="neu-step-input" placeholder="+ Schritt…" onkeydown="if(event.key===\'Enter\'){event.preventDefault();addNeuStep()}" style="font-size:12px;padding:6px 10px"><button onclick="addNeuStep()" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);cursor:pointer">+</button></div></div>'
     +'<div class="fl"><label>Notiz</label><input id="nno" value="'+(pf.notiz||'')+'" placeholder="Optional…"></div>'
     +'<div class="mf"><button class="btn btn-gr" onclick="cm()">Abbrechen</button><button class="btn btn-dk" onclick="saveNeu()">Speichern</button></div>';
+  window._neuSteps=[];
   document.getElementById('ovl').classList.add('open');
   if(pf.zielId)setTimeout(()=>{const s=document.getElementById('nziel');if(s){s.value=pf.zielId;updateNeuTZ();}},50);
   if(pf.teilzielId)setTimeout(()=>{const s=document.getElementById('ntz');if(s)s.value=pf.teilzielId;},100);
@@ -2332,6 +2335,22 @@ function updateNeuTZ(){
   const tza=z?(z.teilziele||[]).filter(t=>!t.erledigt):[];
   tza.forEach(t=>{tzSel.innerHTML+='<option value="'+t.id+'">'+t.name+'</option>';});
   if(wrap)wrap.style.display=tza.length?'':'none';
+}
+function addNeuStep(){
+  const inp=document.getElementById('neu-step-input');if(!inp)return;
+  const t=inp.value.trim();if(!t)return;
+  window._neuSteps.push({t,d:false});inp.value='';renderNeuSteps();inp.focus();
+}
+function delNeuStep(i){window._neuSteps.splice(i,1);renderNeuSteps();}
+function renderNeuSteps(){
+  const wrap=document.getElementById('neu-steps');if(!wrap)return;
+  wrap.innerHTML=window._neuSteps.map((s,i)=>
+    '<div style="display:flex;align-items:center;gap:8px;padding:4px 0">'
+    +'<div style="width:13px;height:13px;border-radius:3px;border:1px solid var(--bd);flex-shrink:0"></div>'
+    +'<span style="font-size:11px;flex:1">'+s.t+'</span>'
+    +'<button onclick="delNeuStep('+i+')" style="font-size:10px;background:none;border:none;color:var(--t3);cursor:pointer">✕</button>'
+    +'</div>'
+  ).join('');
 }
 function selPrioBtn(btn,pr){
   _selPrio=(!pr||pr==='null')?null:pr;
@@ -2352,7 +2371,7 @@ async function saveNeu(){
     geplant:parseFloat(document.getElementById('nh').value)||1,
     gebucht:0,dl:document.getElementById('ndl').value||null,
     dl_type:document.getElementById('dltype-bis')?.style.background==='var(--text)'?'bis':'am',
-    ua:[],notiz:document.getElementById('nno').value.trim(),akt_seit:null,vertraulich:vert,
+    ua:window._neuSteps||[],notiz:document.getElementById('nno').value.trim(),akt_seit:null,vertraulich:vert,
     recurring:document.getElementById('nrec')?.value||null,
     erstellt_von:aP};
   S.aufgaben.push(normalizeAufgabe(rec));
