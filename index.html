@@ -355,7 +355,7 @@ const nid=p=>p+(++_kid);
 function normalizeAufgabe(a){
   return{...a,zielId:a.ziel_id||null,teilzielId:a.teilziel_id||null,
     aktSeit:a.akt_seit?new Date(a.akt_seit).getTime():null,
-    dl:a.dl||'',dl_type:a.dl_type||'bis',
+    dl:a.dl||'',dl_type:a.dl_type||'bis',recurring:a.recurring||null,
     ua:Array.isArray(a.ua)?a.ua:(typeof a.ua==='string'?JSON.parse(a.ua||'[]'):[]),
     erstelltVon:a.erstellt_von||null};
 }
@@ -459,7 +459,7 @@ function dli(d){
 }
 
 function av(p,size=24,fs=9){const c=cl(p);return`<div class="av" style="width:${size}px;height:${size}px;font-size:${fs}px;background:${c.tc};color:#fff">${p.k}</div>`;}
-function typTag(a){const t=typInfo(a);return`<span class="tag" style="background:${t.bg};color:${t.tc}">${t.label}</span>`;}
+function typTag(a){const t=typInfo(a);return`<span class="tag" style="background:${t.bg};color:${t.tc}">${t.label}</span>`+(a.recurring?`<span class="tag" style="background:var(--blue-bg);color:var(--blue)">🔄 ${a.recurring==='daily'?'Täglich':a.recurring==='weekly'?'Wöchentl.':'Monatl.'}</span>`:'');}
 
 function prioTag(p,aid,editable){
   if(!p)return'';
@@ -1787,9 +1787,27 @@ async function fertig(id){
   const pid=a.pid;
   a.gebucht=gebucht;a.aktSeit=null;a.status='erledigt';a.updated_at=new Date().toISOString();
   await dbPatch('aufgaben',id,{gebucht,akt_seit:null,status:'erledigt',updated_at:new Date().toISOString()});
+  // recurring: create next instance
+  if(a.recurring){
+    const nextDl=nextRecurringDate(a.dl||TODAY,a.recurring);
+    const rec={id:nid('a'),pid:a.pid,titel:a.titel,typ:a.typ,status:'neu',prio:a.prio,
+      ziel_id:a.zielId,teilziel_id:a.teilzielId,geplant:a.geplant,gebucht:0,
+      dl:nextDl,dl_type:a.dl_type,ua:a.ua?.length?a.ua.map(u=>({t:u.t,d:false})):[],
+      notiz:a.notiz,akt_seit:null,vertraulich:a.vertraulich,recurring:a.recurring,erstellt_von:a.erstelltVon||a.pid};
+    S.aufgaben.push(normalizeAufgabe(rec));
+    await dbInsert('aufgaben',rec);
+  }
   showPaddelCelebration(pid);
   checkP1Done(pid);
   render();
+}
+function nextRecurringDate(fromDate,freq){
+  const d=new Date(fromDate+'T12:00:00');
+  if(freq==='daily')d.setDate(d.getDate()+1);
+  else if(freq==='weekly')d.setDate(d.getDate()+7);
+  else if(freq==='monthly')d.setMonth(d.getMonth()+1);
+  else d.setDate(d.getDate()+1);
+  return localDate(d);
 }
 async function toggleStep(id,i){
   const a=S.aufgaben.find(x=>x.id===id);if(!a)return;
@@ -1837,6 +1855,7 @@ function openDetail(id){
     +'<div><label>Deadline</label><input type="date" id="det-dl" value="'+(a.dl||'')+'" onchange="saveDetailField(\''+id+'\',\'dl\',this.value)"></div>'
     +'<div><label>Geplant (h)</label><input type="number" id="det-geplant" value="'+(a.geplant||'')+'" min="0" step="0.5" placeholder="Std." onblur="saveDetailField(\''+id+'\',\'geplant\',parseFloat(this.value)||null)"></div>'
     +'</div>'
+    +'<div class="fl"><label>Wiederkehrend</label><select id="det-rec" onchange="saveDetailField(\''+id+'\',\'recurring\',this.value||null)" style="font-size:12px"><option value="">Einmalig</option><option value="daily"'+(a.recurring==='daily'?' selected':'')+'>🔄 Täglich</option><option value="weekly"'+(a.recurring==='weekly'?' selected':'')+'>🔄 Wöchentlich</option><option value="monthly"'+(a.recurring==='monthly'?' selected':'')+'>🔄 Monatlich</option></select></div>'
     +'<div class="fl"><label>Ziel</label><select id="det-ziel" onchange="saveDetailField(\''+id+'\',\'ziel_id\',this.value||null)"><option value="">— kein Ziel —</option>'+zielOpts+'</select></div>'
     +'<div class="fl"><label>Status</label><div style="display:flex;gap:5px;flex-wrap:wrap">'
     +[['neu','Neu','var(--red-bg)','var(--red)'],['backlog','Backlog','var(--gray-bg)','var(--t2)'],['aktiv','Aktiv','var(--blue-bg)','var(--blue)'],['erledigt','Erledigt','var(--green-bg)','var(--green)']].map(x=>
@@ -2267,6 +2286,12 @@ function openNeu(pf={}){
     +'<button id="dltype-bis" onclick="document.getElementById(\'dltype-bis\').style.fontWeight=\'700\';document.getElementById(\'dltype-am\').style.fontWeight=\'400\';document.getElementById(\'dltype-bis\').style.background=\'var(--text)\';document.getElementById(\'dltype-bis\').style.color=\'#fff\';document.getElementById(\'dltype-am\').style.background=\'var(--gray-bg)\';document.getElementById(\'dltype-am\').style.color=\'var(--t2)\';this.dataset.v=\'bis\'" style="font-size:11px;padding:5px 10px;border-radius:7px;border:1px solid var(--bd);background:var(--text);color:#fff;cursor:pointer;font-family:inherit;font-weight:700" data-v="bis">bis</button>'
     +'<button id="dltype-am" onclick="document.getElementById(\'dltype-am\').style.fontWeight=\'700\';document.getElementById(\'dltype-bis\').style.fontWeight=\'400\';document.getElementById(\'dltype-am\').style.background=\'var(--text)\';document.getElementById(\'dltype-am\').style.color=\'#fff\';document.getElementById(\'dltype-bis\').style.background=\'var(--gray-bg)\';document.getElementById(\'dltype-bis\').style.color=\'var(--t2)\';this.dataset.v=\'am\'" style="font-size:11px;padding:5px 10px;border-radius:7px;border:1px solid var(--bd);background:var(--gray-bg);color:var(--t2);cursor:pointer;font-family:inherit" data-v="am">am</button>'
     +'</div></div>'
+    +'<div class="fl"><label>Wiederkehrend</label><div style="display:flex;gap:6px;margin-top:2px">'
+    +[['','Einmalig'],['daily','Täglich'],['weekly','Wöchentlich'],['monthly','Monatlich']].map(([v,l])=>{
+      const sel=v==='';
+      return'<button id="rec-'+v+'" onclick="document.querySelectorAll(\'[id^=rec-]\').forEach(b=>{b.style.background=\'var(--gray-bg)\';b.style.color=\'var(--t2)\';b.style.fontWeight=\'400\'});this.style.background=\'var(--text)\';this.style.color=\'#fff\';this.style.fontWeight=\'700\';document.getElementById(\'nrec\').value=\''+v+'\'" style="font-size:11px;padding:5px 10px;border-radius:7px;border:1px solid var(--bd);background:'+(sel?'var(--text)':'var(--gray-bg)')+';color:'+(sel?'#fff':'var(--t2)')+';cursor:pointer;font-family:inherit;font-weight:'+(sel?'700':'400')+';transition:all .15s">'+l+'</button>';
+    }).join('')
+    +'<input type="hidden" id="nrec" value=""></div></div>'
     +(isGF()?'<div class="fl"><label style="display:flex;align-items:center;gap:8px;text-transform:none;font-size:13px;font-weight:400"><input type="checkbox" id="nvert" style="width:auto"> Vertraulich</label></div>':'')
     +'<div class="fl"><label>Notiz</label><input id="nno" value="'+(pf.notiz||'')+'" placeholder="Optional…"></div>'
     +'<div class="mf"><button class="btn btn-gr" onclick="cm()">Abbrechen</button><button class="btn btn-dk" onclick="saveNeu()">Speichern</button></div>';
@@ -2304,6 +2329,7 @@ async function saveNeu(){
     gebucht:0,dl:document.getElementById('ndl').value||null,
     dl_type:document.getElementById('dltype-bis')?.style.background==='var(--text)'?'bis':'am',
     ua:[],notiz:document.getElementById('nno').value.trim(),akt_seit:null,vertraulich:vert,
+    recurring:document.getElementById('nrec')?.value||null,
     erstellt_von:aP};
   S.aufgaben.push(normalizeAufgabe(rec));
   await dbInsert('aufgaben',rec);cm();render();
@@ -2538,6 +2564,31 @@ function rTeam(){
       out+='</div>';
     });
     out+='</div>';
+  }
+
+  // ── Wiederkehrende Aufgaben — GF Optimierungs-Insight ──
+  if(isGF()){
+    const recTasks=S.aufgaben.filter(a=>a.recurring&&a.status!=='erledigt');
+    if(recTasks.length){
+      const FREQ={daily:'Täglich',weekly:'Wöchentlich',monthly:'Monatlich'};
+      const totalH=recTasks.reduce((s,a)=>s+(a.geplant||1),0);
+      out+='<div style="margin-top:24px">';
+      out+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">';
+      out+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t2)">🔄 Wiederkehrende Aufgaben</div>';
+      out+='<div style="font-size:11px;color:var(--t3)">'+recTasks.length+' aktiv · ~'+Math.round(totalH*10)/10+'h/Zyklus</div>';
+      out+='</div>';
+      recTasks.forEach(a=>{
+        const p=person(a.pid);
+        out+='<div onclick="openDetail(\''+a.id+'\')" style="display:flex;align-items:center;gap:10px;padding:9px 12px;border:1px solid var(--bd);border-radius:10px;margin-bottom:6px;cursor:pointer;background:var(--sf);transition:border-color .15s" onmouseenter="this.style.borderColor=\'#bbb\'" onmouseleave="this.style.borderColor=\'var(--bd)\'">';
+        out+='<span style="font-size:11px;color:var(--blue);font-weight:600;flex-shrink:0">'+FREQ[a.recurring]+'</span>';
+        out+='<span style="font-size:12px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+a.titel+'</span>';
+        if(p)out+='<span style="font-size:10px;color:var(--t3)">'+p.name+'</span>';
+        out+='<span style="font-size:10px;color:var(--t3)">'+fmtH(a.geplant)+'</span>';
+        out+='</div>';
+      });
+      out+='<div style="font-size:10px;color:var(--t3);font-style:italic;margin-top:6px;padding:0 4px">Können diese Aufgaben automatisiert oder optimiert werden?</div>';
+      out+='</div>';
+    }
   }
 
   // ── Sales Insights Feed (GF) ──
