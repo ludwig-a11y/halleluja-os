@@ -800,29 +800,6 @@ async function delSignal(id){
   await dbDelete('signale',id);render();
 }
 
-async function saveP1Today(){
-  const txt=document.getElementById('p1-input')?.value.trim();
-  if(!txt)return;
-  const id='p1-'+String(aP)+'-'+TODAY;
-  const exists=S.aufgaben.find(a=>a.id===id);
-  const rec={id,titel:txt,pid:aP,typ:'strategisch',
-    status:'aktiv',prio:'P1',dl:TODAY,geplant:0,gebucht:0,ua:[],notiz:'',erstellt_von:aP,akt_seit:new Date().toISOString()};
-  S.aufgaben=S.aufgaben.filter(a=>a.id!==id);
-  S.aufgaben.push(normalizeAufgabe(rec));
-  if(exists){await dbPatch('aufgaben',id,{titel:txt,status:'aktiv',prio:'P1'});}
-  else{await dbInsert('aufgaben',rec);}
-  render();
-}
-function getTagesplan(){
-  try{const r=localStorage.getItem('tagesplan_'+TODAY);return r?JSON.parse(r):[];}catch(e){return[];}
-}
-function setTagesplan(ids){localStorage.setItem('tagesplan_'+TODAY,JSON.stringify(ids));}
-function saveTagesauswahl(){
-  const ids=[...document.querySelectorAll('.ta-check:checked')].map(x=>x.value);
-  if(!ids.length)return;
-  setTagesplan(ids);render();
-}
-
 function openWochenreset(){
   const{kw,jahr}=getKW();
   const nextKw=kw===52?1:kw+1;
