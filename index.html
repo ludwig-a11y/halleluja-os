@@ -866,6 +866,7 @@ function wrItemName(wr,n){
 function openWochenreset(){
   const{kw,jahr}=getKW();
   const nextKw=kw===52?1:kw+1;
+  const wr=dieseWocheReset(aP);
   const lw=letzteWocheReset(aP);
   let rueckblickHtml='';
   if(lw){
@@ -878,25 +879,43 @@ function openWochenreset(){
   const aktZiele=S.ziele.filter(z=>z.status!=='vorschlag');
   const meineZ=aktZiele.filter(z=>String(z.verantwortlichId)===String(aP)||(z.teilziele||[]).some(tz=>String(tz.verantwortlichId)===String(aP)));
   const andereZ=aktZiele.filter(z=>!meineZ.find(m=>m.id===z.id));
-  const zBtn=z=>{const f=FARBEN[z.farbe||0];return '<div onclick="[...document.querySelectorAll(\'.zw-opt\')].forEach(x=>{x.style.borderColor=\'#e5e5e3\';x.style.color=\'#888\';x.style.background=\'#fff\'});this.style.borderColor=\''+f.tc+'\';this.style.color=\''+f.tc+'\';this.style.background=\''+f.bg+'\';document.getElementById(\'wr-ziel\').value=\''+z.id+'\';updateWRTZSection()" class="zw-opt" style="cursor:pointer;border:1.5px solid #e5e5e3;border-radius:8px;padding:8px 11px;font-size:12px;font-weight:600;color:#888;background:#fff;margin-bottom:5px">'+z.name+'</div>';};
+  const selZielId=wr?.focus_ziel_id||'';
+  const zBtn=z=>{const f=FARBEN[z.farbe||0];const sel=z.id===selZielId;return '<div onclick="[...document.querySelectorAll(\'.zw-opt\')].forEach(x=>{x.style.borderColor=\'#e5e5e3\';x.style.color=\'#888\';x.style.background=\'#fff\'});this.style.borderColor=\''+f.tc+'\';this.style.color=\''+f.tc+'\';this.style.background=\''+f.bg+'\';document.getElementById(\'wr-ziel\').value=\''+z.id+'\';updateWRTZSection()" class="zw-opt" style="cursor:pointer;border:1.5px solid '+(sel?f.tc:'#e5e5e3')+';border-radius:8px;padding:8px 11px;font-size:12px;font-weight:600;color:'+(sel?f.tc:'#888')+';background:'+(sel?f.bg:'#fff')+';margin-bottom:5px">'+z.name+'</div>';};
   let zieleOpts='';
   if(meineZ.length){zieleOpts+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);margin-bottom:5px;margin-top:4px">Meine Ziele</div>';zieleOpts+=meineZ.map(zBtn).join('');}
   if(andereZ.length){zieleOpts+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);margin-bottom:5px;margin-top:8px">Andere Ziele</div>';zieleOpts+=andereZ.map(zBtn).join('');}
 
   document.getElementById('mb').innerHTML=
-    '<div class="mt">Wochenrückblick KW '+kw+'</div>'
-    +(rueckblickHtml?'<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px">'+rueckblickHtml+'</div>':'')
-    +'<div class="fl"><label>Warum die Lücke? <span style="font-weight:400;color:var(--t2)">(optional)</span></label>'
+    '<div class="mt">'+(wr?'Big 3 bearbeiten — KW '+kw:'Wochenrückblick KW '+kw)+'</div>'
+    +(rueckblickHtml&&!wr?'<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px">'+rueckblickHtml+'</div>':'')
+    +(!wr?'<div class="fl"><label>Warum die Lücke? <span style="font-weight:400;color:var(--t2)">(optional)</span></label>'
     +'<textarea id="wr-blockiert" rows="2" style="width:100%;padding:8px;border:1px solid var(--bd);border-radius:8px;font-family:inherit;font-size:13px;resize:vertical" placeholder="z.B. Leads brauchten mehr Entscheidungszeit…"></textarea></div>'
-    +'<div style="border-top:1px solid var(--bd);margin:13px 0"></div>'
-    +'<div style="font-size:13px;font-weight:700;color:#111;margin-bottom:4px">Big 3 — KW '+nextKw+'</div>'
+    +'<div style="border-top:1px solid var(--bd);margin:13px 0"></div>':'')
+    +'<div style="font-size:13px;font-weight:700;color:#111;margin-bottom:4px">'+(wr?'Fokus-Ziel wählen':'Big 3 — KW '+nextKw)+'</div>'
     +'<div style="font-size:12px;color:var(--t2);margin-bottom:10px;font-style:italic">Welche Meilensteine treibst du diese Woche voran?</div>'
-    +'<input type="hidden" id="wr-ziel">'
+    +'<input type="hidden" id="wr-ziel" value="'+selZielId+'">'
+    +(wr?'<textarea id="wr-blockiert" style="display:none">'+(wr.blockiert||'')+'</textarea>':'')
     +zieleOpts
     +'<div id="wr-tz-section" style="margin-top:10px"></div>'
     +'<div class="mf"><button onclick="cm()">Später</button>'
     +'<button onclick="saveWochenreset()" style="background:#15803d;color:#fff;border:none;font-weight:600">Speichern ✓</button></div>';
   document.getElementById('ovl').classList.add('open');
+  if(selZielId){
+    updateWRTZSection();
+    setTimeout(()=>{
+      if(wr){
+        const tzIds=[wr.big3_1_tz_id,wr.big3_2_tz_id,wr.big3_3_tz_id].filter(Boolean);
+        document.querySelectorAll('.wr-tz-check').forEach(cb=>{if(tzIds.includes(cb.value))cb.checked=true;});
+        let fi=1;
+        [1,2,3].forEach(n=>{
+          if(!wr['big3_'+n+'_tz_id']&&wr['big3_'+n]){
+            const inp=document.getElementById('wr-b'+fi);
+            if(inp){inp.value=wr['big3_'+n];fi++;}
+          }
+        });
+      }
+    },50);
+  }
 }
 function updateWRTZSection(){
   const zielId=document.getElementById('wr-ziel')?.value;
@@ -923,6 +942,7 @@ function updateWRTZSection(){
 }
 async function saveWochenreset(){
   const{kw,jahr}=getKW();
+  const wr=dieseWocheReset(aP);
   const zielId=document.getElementById('wr-ziel').value||null;
   const selTzIds=[...document.querySelectorAll('.wr-tz-check:checked')].map(x=>x.value);
   const newTzTexts=[1,2,3].map(n=>document.getElementById('wr-b'+n)?.value.trim()||'');
@@ -949,7 +969,9 @@ async function saveWochenreset(){
     focus_ziel_id:zielId,
     big3_1_tz_id:allIds[0],big3_2_tz_id:allIds[1],big3_3_tz_id:allIds[2],
     big3_1:tzName(allIds[0]),big3_2:tzName(allIds[1]),big3_3:tzName(allIds[2]),
-    big3_1_done:false,big3_2_done:false,big3_3_done:false
+    big3_1_done:wr?.big3_1_tz_id===allIds[0]&&wr?.big3_1_done||false,
+    big3_2_done:wr?.big3_2_tz_id===allIds[1]&&wr?.big3_2_done||false,
+    big3_3_done:wr?.big3_3_tz_id===allIds[2]&&wr?.big3_3_done||false
   };
   S.wochenresets=S.wochenresets.filter(r=>r.id!==rec.id);
   S.wochenresets.push(rec);
