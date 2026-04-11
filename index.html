@@ -1277,6 +1277,18 @@ function rWoche(){
   document.getElementById('main').innerHTML=out;
 }
 
+function aufgabeKarte(a){
+  const zN=getZielName(a),editable=canChangePrio(a);
+  let r='<div style="background:var(--sf);border:1px solid var(--bd);border-radius:10px;padding:10px 14px;margin-bottom:6px;cursor:pointer" onclick="openDetail(\''+a.id+'\')" onmouseenter="this.style.background=\'var(--gray-bg)\'" onmouseleave="this.style.background=\'var(--sf)\'">';
+  r+='<div style="display:flex;align-items:center;gap:10px">';
+  r+='<div style="flex:1"><div style="font-size:12px;font-weight:500">'+a.titel+'</div>';
+  r+='<div style="display:flex;gap:5px;margin-top:3px;align-items:center;flex-wrap:wrap" onclick="event.stopPropagation()">'+prioTag(a.prio,a.id,editable);
+  r+=zN?'<span style="font-size:10px;color:var(--t3)">'+zN+'</span>':'<span onclick="event.stopPropagation();quickAssignZiel(\''+a.id+'\')" style="font-size:10px;color:var(--t3);border:1px dashed var(--bd);padding:1px 6px;border-radius:5px;cursor:pointer">+ Ziel?</span>';
+  r+=dlTag(a.dl)+'</div></div>';
+  r+='<button onclick="event.stopPropagation();startenA(\''+a.id+'\')" style="font-size:11px;padding:5px 10px;border-radius:8px;background:var(--text);color:#fff;border:none;font-family:inherit;cursor:pointer;flex-shrink:0">▶</button>';
+  r+='</div></div>';
+  return r;
+}
 function rTag(){
   const zugewiesenA=S.aufgaben.filter(a=>a.pid===aP&&a.status==='zugewiesen');
   const myA=S.aufgaben.filter(a=>a.pid===aP&&canSee(a)&&a.status!=='zugewiesen');
@@ -1301,7 +1313,8 @@ function rTag(){
   if(wrAktuell&&(wrAktuell.big3_1||wrAktuell.big3_2)){
     const fz=S.ziele.find(z=>z.id===wrAktuell.focus_ziel_id);
     const f=fz?FARBEN[fz.farbe||0]:FARBEN[0];
-    const alleDone=[wrAktuell.big3_1_done,wrAktuell.big3_2_done,wrAktuell.big3_3_done].filter((_,i)=>[[wrAktuell.big3_1],[wrAktuell.big3_2],[wrAktuell.big3_3]][i][0]).every(Boolean);
+    const b3items=[[wrAktuell.big3_1,wrAktuell.big3_1_done],[wrAktuell.big3_2,wrAktuell.big3_2_done],[wrAktuell.big3_3,wrAktuell.big3_3_done]].filter(([txt])=>!!txt);
+    const alleDone=b3items.length>0&&b3items.every(([,done])=>!!done);
     out+='<details '+(alleDone?'':'open')+' style="margin-bottom:14px">';
     out+='<summary style="list-style:none;cursor:pointer;background:#fff;border:1px solid '+f.bd+';border-left:3px solid '+f.tc+';border-radius:0 10px 10px 0;padding:9px 14px;display:flex;align-items:center;gap:8px">';
     out+='<span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:'+f.tc+';flex:1">Big 3 · KW '+kwAkt+(fz?' · '+fz.name:'')+'</span>';
@@ -1462,25 +1475,13 @@ function rTag(){
   const weitere=bl.filter(a=>a.id!==naechste?.id);
   const weitereSichtbar=weitere.slice(0,2);
   const weitereRest=weitere.slice(2);
-  function _aufgabeKarte(a){
-    const zN=getZielName(a),editable=canChangePrio(a);
-    let r='<div style="background:var(--sf);border:1px solid var(--bd);border-radius:10px;padding:10px 14px;margin-bottom:6px;cursor:pointer" onclick="openDetail(\''+a.id+'\')" onmouseenter="this.style.background=\'var(--gray-bg)\'" onmouseleave="this.style.background=\'var(--sf)\'">';
-    r+='<div style="display:flex;align-items:center;gap:10px">';
-    r+='<div style="flex:1"><div style="font-size:12px;font-weight:500">'+a.titel+'</div>';
-    r+='<div style="display:flex;gap:5px;margin-top:3px;align-items:center;flex-wrap:wrap" onclick="event.stopPropagation()">'+prioTag(a.prio,a.id,editable);
-    r+=zN?'<span style="font-size:10px;color:var(--t3)">'+zN+'</span>':'<span onclick="event.stopPropagation();quickAssignZiel(\''+a.id+'\')" style="font-size:10px;color:var(--t3);border:1px dashed var(--bd);padding:1px 6px;border-radius:5px;cursor:pointer">+ Ziel?</span>';
-    r+=dlTag(a.dl)+'</div></div>';
-    r+='<button onclick="event.stopPropagation();startenA(\''+a.id+'\')" style="font-size:11px;padding:5px 10px;border-radius:8px;background:var(--text);color:#fff;border:none;font-family:inherit;cursor:pointer;flex-shrink:0">▶</button>';
-    r+='</div></div>';
-    return r;
-  }
-  weitereSichtbar.forEach(a=>{out+=_aufgabeKarte(a);});
+  weitereSichtbar.forEach(a=>{out+=aufgabeKarte(a);});
   if(weitereRest.length){
     out+='<details style="margin-bottom:12px"><summary style="list-style:none;cursor:pointer;padding:12px 16px;background:var(--sf);border:1px solid var(--bd);border-radius:12px;display:flex;align-items:center;justify-content:space-between">';
     out+='<span style="font-size:13px;font-weight:600">Weitere Aufgaben</span>';
     out+='<span style="font-size:12px;color:var(--t3)">'+weitereRest.length+' · anzeigen</span></summary>';
     out+='<div style="margin-top:8px">';
-    weitereRest.forEach(a=>{out+=_aufgabeKarte(a);});
+    weitereRest.forEach(a=>{out+=aufgabeKarte(a);});
     out+='</div></details>';
   }
 
