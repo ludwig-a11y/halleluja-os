@@ -1191,7 +1191,7 @@ async function toggleBig3(wrId,field){
   const wr=S.wochenresets.find(r=>r.id===wrId);if(!wr)return;
   wr[field]=!wr[field];
   await dbPatch('wochenresets',wrId,{[field]:wr[field]});
-  rWoche();
+  if(aV==='woche')rWoche();else rTag();
 }
 
 function rWoche(){
@@ -1301,16 +1301,24 @@ function rTag(){
   if(wrAktuell&&(wrAktuell.big3_1||wrAktuell.big3_2)){
     const fz=S.ziele.find(z=>z.id===wrAktuell.focus_ziel_id);
     const f=fz?FARBEN[fz.farbe||0]:FARBEN[0];
-    out+='<div style="background:#fff;border:1px solid '+f.bd+';border-left:3px solid '+f.tc+';border-radius:0 10px 10px 0;padding:11px 14px;margin-bottom:14px">';
-    out+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:'+f.tc+';margin-bottom:6px">Big 3 · KW '+kwAkt+(fz?' · '+fz.name:'')+'</div>';
-    [[wrAktuell.big3_1,wrAktuell.big3_1_done],[wrAktuell.big3_2,wrAktuell.big3_2_done],[wrAktuell.big3_3,wrAktuell.big3_3_done]].forEach(([txt,done])=>{
-      if(!txt)return;
-      out+='<div style="display:flex;align-items:center;gap:8px;padding:3px 0">';
-      out+='<div style="width:16px;height:16px;border-radius:4px;flex-shrink:0;'+(done?'background:#15803d;border:1.5px solid #15803d;display:flex;align-items:center;justify-content:center':'border:1.5px solid #d4d0cb')+'">'+(done?'<span style="color:#fff;font-size:9px;font-weight:800">✓</span>':'')+'</div>';
+    const alleDone=[wrAktuell.big3_1_done,wrAktuell.big3_2_done,wrAktuell.big3_3_done].filter((_,i)=>[[wrAktuell.big3_1],[wrAktuell.big3_2],[wrAktuell.big3_3]][i][0]).every(Boolean);
+    out+='<details '+(alleDone?'':'open')+' style="margin-bottom:14px">';
+    out+='<summary style="list-style:none;cursor:pointer;background:#fff;border:1px solid '+f.bd+';border-left:3px solid '+f.tc+';border-radius:0 10px 10px 0;padding:9px 14px;display:flex;align-items:center;gap:8px">';
+    out+='<span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:'+f.tc+';flex:1">Big 3 · KW '+kwAkt+(fz?' · '+fz.name:'')+'</span>';
+    const doneCount=[wrAktuell.big3_1&&wrAktuell.big3_1_done,wrAktuell.big3_2&&wrAktuell.big3_2_done,wrAktuell.big3_3&&wrAktuell.big3_3_done].filter(Boolean).length;
+    const totalCount=[wrAktuell.big3_1,wrAktuell.big3_2,wrAktuell.big3_3].filter(Boolean).length;
+    out+='<span style="font-size:10px;color:'+(doneCount===totalCount?'#15803d':'var(--t3)')+'">'+doneCount+'/'+totalCount+'</span>';
+    out+='</summary>';
+    out+='<div style="background:#fff;border:1px solid '+f.bd+';border-top:none;border-left:3px solid '+f.tc+';border-radius:0 0 10px 0;padding:8px 14px 10px">';
+    [['big3_1','big3_1_done'],['big3_2','big3_2_done'],['big3_3','big3_3_done']].forEach(([txtF,doneF])=>{
+      const txt=wrAktuell[txtF];if(!txt)return;
+      const done=wrAktuell[doneF];
+      out+='<div onclick="toggleBig3(\''+wrAktuell.id+'\',\''+doneF+'\')" style="display:flex;align-items:center;gap:8px;padding:5px 0;cursor:pointer">';
+      out+='<div style="width:16px;height:16px;border-radius:4px;flex-shrink:0;'+(done?'background:'+f.tc+';border:1.5px solid '+f.tc+';display:flex;align-items:center;justify-content:center':'border:1.5px solid #d4d0cb')+'">'+(done?'<span style="color:#fff;font-size:9px;font-weight:800">✓</span>':'')+'</div>';
       out+='<span style="font-size:12px;'+(done?'color:#bbb;text-decoration:line-through':'color:#111')+'">'+txt+'</span>';
       out+='</div>';
     });
-    out+='</div>';
+    out+='</div></details>';
   }
   // ── Freitag Reset Banner ──
   if(isResetZeit()&&!dieseWocheReset(aP)){
