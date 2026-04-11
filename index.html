@@ -2357,13 +2357,14 @@ async function delKpi(zid,kid){
 
 function openNeu(pf={}){
   _selPrio=pf.prio||null;
+  window._aiDebounce=null;
   const defaultPid=pf.pid||aP;
   const zieleOpts=zieleOptgroups(defaultPid,pf.zielId||'');
+  const hasAI=!!localStorage.getItem('anthropic_key');
   document.getElementById('mb').innerHTML='<div class="mt">Neue Aufgabe</div>'
-    +'<div class="fl"><label>Was soll gemacht werden?</label><div style="display:flex;gap:6px"><input id="nt" value="'+(pf.titel||'')+'" placeholder="Konkret und aktiv formulieren…" autofocus style="flex:1" onkeydown="if(event.key===\'Enter\'){event.preventDefault();aiAnalyze()}">'
-    +(localStorage.getItem('anthropic_key')?'<button onclick="aiAnalyze()" id="ai-btn-analyze" style="padding:5px 10px;border-radius:8px;border:1px solid var(--purple-bd);background:var(--purple-bg);color:var(--purple);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;transition:all .15s">✨ Hebel?</button>':'')
-    +'</div></div>'
-    +'<div id="ai-suggestion" style="display:none"></div>'
+    +'<div class="fl"><label>Was soll gemacht werden?</label><input id="nt" value="'+(pf.titel||'')+'" placeholder="Beschreibe die Aufgabe — KI analysiert automatisch…" autofocus oninput="aiDebounce()" onkeydown="if(event.key===\'Enter\'){event.preventDefault();aiAnalyze()}">'
+    +'</div>'
+    +'<div id="ai-suggestion"'+(hasAI?'':' style="display:none"')+'>'+(hasAI?'<div style="background:var(--gray-bg);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;font-size:11px;color:var(--t3);text-align:center">✨ KI-Analyse startet automatisch beim Tippen</div>':'')+'</div>'
     +'<div class="f2"><div class="fl"><label>Wer?</label><select id="np">'+S.personen.map(p=>'<option value="'+p.id+'"'+(defaultPid===p.id?' selected':'')+'>'+p.name+'</option>').join('')+'</select></div>'
     +'<div class="fl"><label>Ziel <span style="font-weight:400;color:var(--t2)">(optional)</span></label><select id="nziel" onchange="updateNeuTZ()">'+zieleOpts+'</select></div></div>'
     +'<div id="neu-tz-wrap" class="fl" style="display:none"><label>Meilenstein <span style="font-weight:400;color:var(--t2)">(optional)</span></label><select id="ntz"><option value="">— kein Meilenstein —</option></select></div>'
@@ -2398,14 +2399,21 @@ function updateNeuTZ(){
   tza.forEach(t=>{tzSel.innerHTML+='<option value="'+t.id+'">'+t.name+'</option>';});
   if(wrap)wrap.style.display=tza.length?'':'none';
 }
+function aiDebounce(){
+  if(window._aiDebounce)clearTimeout(window._aiDebounce);
+  const titel=document.getElementById('nt')?.value.trim();
+  if(!titel||titel.length<5)return;
+  window._aiDebounce=setTimeout(()=>aiAnalyze(),1200);
+}
 async function aiAnalyze(){
   const titel=document.getElementById('nt')?.value.trim();
-  if(!titel){document.getElementById('ai-suggestion').style.display='none';return;}
+  if(!titel||titel.length<5){const b=document.getElementById('ai-suggestion');if(b)b.innerHTML='<div style="background:var(--gray-bg);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;font-size:11px;color:var(--t3);text-align:center">✨ KI-Analyse startet automatisch beim Tippen</div>';return;}
   const key=localStorage.getItem('anthropic_key');
   if(!key)return;
   const box=document.getElementById('ai-suggestion');
+  if(!box)return;
   box.style.display='block';
-  box.innerHTML='<div style="background:var(--purple-bg);border:1px solid var(--purple-bd);border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:12px;color:var(--purple)">✨ Analysiere...</div>';
+  box.innerHTML='<div style="background:var(--purple-bg);border:1px solid var(--purple-bd);border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:12px;color:var(--purple)"><span style="animation:pulse 1.5s infinite;display:inline-block">✨</span> Analysiere Hebel...</div>';
   const p=person(aP);
   const offeneA=S.aufgaben.filter(a=>a.pid===aP&&['neu','backlog','aktiv'].includes(a.status)).map(a=>a.titel).slice(0,15).join(', ');
   const erledigteHeute=S.aufgaben.filter(a=>a.pid===aP&&a.status==='erledigt'&&(a.updated_at||'').slice(0,10)===TODAY).map(a=>a.titel).join(', ');
@@ -2420,8 +2428,10 @@ async function aiAnalyze(){
   const big3=wr?[wr.big3_1,wr.big3_2,wr.big3_3].filter(Boolean).join(', '):'';
   const beob=S.beobachtungen.slice(0,5).map(b=>b.typ+': '+b.text).join('; ');
   const firmenKontext=localStorage.getItem('firmen_kontext')||'';
+  const liveDatenH=S.kontext.filter(k=>!k.pid||k.pid===aP).map(k=>k.quelle+': '+k.zusammenfassung).join('\n');
   const prompt=`Du bist ein Elite-Produktivitäts-Coach für Halleluja Sauna Austria (Premium-Saunen, B2B+B2C).
 Dein Job: Sicherstellen dass jede Aufgabe ein MAXIMALER HEBEL ist. Du bist brutal ehrlich.
+Hilf beim Formulieren, Einordnen und Priorisieren.
 
 KONTEXT:
 Person: ${p?p.name+' (Rolle: '+p.rolle+')':'Unbekannt'}
@@ -2435,6 +2445,7 @@ ${fokusZ?'🔥 FIRMEN-FOKUS: '+fokusZ.name:''}
 
 Offene Aufgaben: ${offeneA||'keine'}
 ${beob?'Letzte Sales-Beobachtungen: '+beob:''}
+${liveDatenH?'LIVE-DATEN:\n'+liveDatenH:''}
 ${firmenKontext?'FIRMEN-DATEN:\n'+firmenKontext:''}
 
 HEBEL-FRAMEWORK (bewerte jede Dimension 1-3):
@@ -2469,6 +2480,12 @@ DAUER: [Zahl in Stunden, z.B. 0.5 oder 2]`;
     const hebel=text.match(/HEBEL:\s*(.+)/)?.[1]||'';
     const ziel=text.match(/ZIEL:\s*(.+)/)?.[1]||'';
     const konkret=text.match(/KONKRET:\s*(.+)/)?.[1]||'';
+    // Ziel auto-match versuchen
+    window._aiZielMatch='';
+    if(ziel&&!ziel.includes('⚠')&&!ziel.toLowerCase().includes('operativ')){
+      const zm=S.ziele.find(z=>ziel.toLowerCase().includes(z.name.toLowerCase().split(' ')[0].toLowerCase()));
+      if(zm)window._aiZielMatch=zm.name;
+    }
     const prioMatch=text.match(/PRIO:\s*(P[123])/)?.[1]||'';
     const dauerMatch=parseFloat(text.match(/DAUER:\s*([\d.]+)/)?.[1])||0;
     const stepMatch=text.match(/SCHRITTE:\s*(\[.*?\])/s);
@@ -2485,16 +2502,24 @@ DAUER: [Zahl in Stunden, z.B. 0.5 oder 2]`;
     h+='<div style="font-size:10px;color:var(--t2)">Hebel-Score</div></div></div>';
     if(hebel)h+='<div style="margin-bottom:3px;font-size:11px"><span style="color:var(--t2)">'+hebel+'</span></div>';
     if(ziel)h+='<div style="margin-bottom:3px;font-size:11px"><strong>Ziel:</strong> <span style="color:var(--t2)">'+ziel+'</span></div>';
-    if(konkret)h+='<div style="margin-bottom:3px;font-size:11px"><strong>Besser:</strong> <span style="color:var(--t2)">'+konkret+'</span></div>';
+    if(konkret)h+='<div style="margin-bottom:3px;font-size:11px;cursor:pointer" onclick="document.getElementById(\'nt\').value=this.dataset.t" data-t="'+konkret.replace(/"/g,'&quot;').replace(/^Besser:\s*/i,'').replace(/^"|"$/g,'')+'"><strong>Besser:</strong> <span style="color:'+sc+';text-decoration:underline dotted">'+konkret+'</span> <span style="font-size:9px;opacity:.5">(klick = übernehmen)</span></div>';
+    // Auto-Apply: Alles auf einmal übernehmen
+    window._aiSteps=steps||[];
+    window._aiPrio=prioMatch;
+    window._aiDauer=dauerMatch;
     h+='<div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">';
-    if(steps.length){
-      h+='<button onclick="aiApplySteps()" style="font-size:10px;padding:4px 10px;border-radius:6px;background:'+sc+';color:#fff;border:none;cursor:pointer;font-family:inherit;font-weight:600">✓ Schritte übernehmen ('+steps.length+')</button>';
-      window._aiSteps=steps;
-    }
-    if(prioMatch)h+='<button onclick="aiApplyPrio(\''+prioMatch+'\')" style="font-size:10px;padding:4px 10px;border-radius:6px;background:var(--gray-bg);color:var(--t2);border:1px solid var(--bd);cursor:pointer;font-family:inherit">→ '+prioMatch+'</button>';
-    if(dauerMatch)h+='<button onclick="document.getElementById(\'nh\').value=\''+dauerMatch+'\'" style="font-size:10px;padding:4px 10px;border-radius:6px;background:var(--gray-bg);color:var(--t2);border:1px solid var(--bd);cursor:pointer;font-family:inherit">→ '+dauerMatch+'h</button>';
+    h+='<button onclick="aiApplyAll()" style="font-size:11px;padding:5px 14px;border-radius:8px;background:'+sc+';color:#fff;border:none;cursor:pointer;font-family:inherit;font-weight:700;transition:transform .1s" onmousedown="this.style.transform=\'scale(.96)\'" onmouseup="this.style.transform=\'scale(1)\'">✓ Alles übernehmen</button>';
+    const details=[];
+    if(prioMatch)details.push(prioMatch);
+    if(dauerMatch)details.push(dauerMatch+'h');
+    if(steps.length)details.push(steps.length+' Schritte');
+    if(details.length)h+='<span style="font-size:10px;color:var(--t3);align-self:center">'+details.join(' · ')+'</span>';
     h+='</div></div>';
     box.innerHTML=h;
+    // Auto-Apply sofort ausführen (Prio + Dauer setzen, Schritte vorbereiten)
+    if(prioMatch)aiApplyPrio(prioMatch);
+    if(dauerMatch){const sel=document.getElementById('nh');if(sel)sel.value=String(dauerMatch);}
+    if(steps.length){aiApplySteps();}
   }catch(e){
     box.innerHTML='<div style="background:var(--red-bg);border:1px solid var(--red-bd);border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:11px;color:var(--red)">Fehler: '+e.message+'</div>';
   }
@@ -2633,6 +2658,25 @@ VELOCITY: [X Aufgaben/Woche, Yh produktiv — Trend + Bewertung]`;
   }
 }
 
+function aiApplyAll(){
+  if(window._aiPrio)aiApplyPrio(window._aiPrio);
+  if(window._aiDauer){const sel=document.getElementById('nh');if(sel)sel.value=String(window._aiDauer);}
+  if(window._aiSteps&&window._aiSteps.length)aiApplySteps();
+  // Ziel auto-matchen: wenn AI ein Ziel erkannt hat, versuche es im Dropdown zu setzen
+  if(window._aiZielMatch){
+    const sel=document.getElementById('nziel');
+    if(sel){
+      const match=S.ziele.find(z=>z.name.toLowerCase().includes(window._aiZielMatch.toLowerCase()));
+      if(match){sel.value=match.id;updateNeuTZ();}
+    }
+  }
+  // Visual feedback
+  const box=document.getElementById('ai-suggestion');
+  if(box){
+    const btn=box.querySelector('button');
+    if(btn){btn.textContent='✓ Übernommen';btn.style.background='var(--green)';}
+  }
+}
 function aiApplyPrio(pr){
   _selPrio=pr;
   document.querySelectorAll('[id^="pbp-"]').forEach(b=>b.style.outline='none');
