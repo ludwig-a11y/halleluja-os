@@ -320,7 +320,7 @@ function checkP1Done(pid){
   if(p1.length>0&&p1.every(a=>a.status==='erledigt'))setTimeout(showQuote,400);
 }
 
-let S={personen:[],teams:[],ziele:[],aufgaben:[],kpiVals:{},checkins:{},kpiToday:{},signale:[],wochenresets:[]};
+let S={personen:[],teams:[],ziele:[],aufgaben:[],kpiVals:{},checkins:{},kpiToday:{},signale:[],wochenresets:[],beobachtungen:[]};
 let aP=null,realMe=null,aV='tag',timIv=null,_selPrio=null;
 let _kid=Date.now();
 const nid=p=>p+(++_kid);
@@ -332,13 +332,14 @@ function normalizeAufgabe(a){
     erstelltVon:a.erstellt_von||null};
 }
 async function loadData(){
-  const [personen,teams,ziele,kpis,teilziele,aufgaben,kpiVals,checkins,signale,wochenresets]=await Promise.all([
+  const [personen,teams,ziele,kpis,teilziele,aufgaben,kpiVals,checkins,signale,wochenresets,beobachtungen]=await Promise.all([
     dbGet('personen','select=*&order=ci'),dbGet('teams','select=*'),
     dbGet('ziele','select=*&order=created_at'),dbGet('kpis','select=*'),
     dbGet('teilziele','select=*&order=created_at'),dbGet('aufgaben','select=*&order=created_at'),
     dbGet('kpi_vals','select=*'),dbGet('checkins','select=*'),
     dbGet('signale','select=*&order=created_at.desc'),
     dbGet('wochenresets','select=*&order=created_at.desc'),
+    dbGet('beobachtungen','select=*&order=created_at.desc'),
   ]);
   S.personen=personen||[];
   S.teams=(teams||[]).map(t=>({...t,members:t.members||[]}));
@@ -354,6 +355,7 @@ async function loadData(){
   (checkins||[]).forEach(c=>{if(!S.checkins[c.pid]||c.datum>S.checkins[c.pid].date)S.checkins[c.pid]={date:c.datum,morgen:c.morgen,abend:c.abend};});
   S.signale=(signale||[]);
   S.wochenresets=(wochenresets||[]);
+  S.beobachtungen=(beobachtungen||[]);
   try{S.kpiToday=JSON.parse(localStorage.getItem('kpiToday_'+TODAY)||'{}');}catch(e){S.kpiToday={};}
 }
 
@@ -523,11 +525,12 @@ function startDataPoller(){
   _dataHash=_aufgabenHash(S.aufgaben);
   _kpiHash=_kpiHashFn(S.ziele.flatMap(z=>z.kpis||[]));
   _dataPoll=setInterval(async()=>{
-    const [aufgaben,signale,kpis,wochenresets]=await Promise.all([
+    const [aufgaben,signale,kpis,wochenresets,beobachtungen]=await Promise.all([
       dbGet('aufgaben','select=*&order=created_at'),
       dbGet('signale','select=*&order=created_at.desc'),
       dbGet('kpis','select=*'),
-      dbGet('wochenresets','select=*&order=created_at.desc')
+      dbGet('wochenresets','select=*&order=created_at.desc'),
+      dbGet('beobachtungen','select=*&order=created_at.desc')
     ]);
     let changed=false;
     if(aufgaben){
@@ -548,6 +551,7 @@ function startDataPoller(){
       }
     }
     if(wochenresets)S.wochenresets=wochenresets;
+    if(beobachtungen)S.beobachtungen=beobachtungen;
     if(!changed)return;
     const modalOpen=document.getElementById('ovl')?.classList.contains('open');
     if(modalOpen){_dataPending=true;}
@@ -818,6 +822,34 @@ async function saveSignal(){
 async function delSignal(id){
   S.signale=S.signale.filter(s=>s.id!==id);
   await dbDelete('signale',id);render();
+}
+async function toggleFokusZiel(id){
+  for(const z of S.ziele.filter(z=>z.focus&&z.id!==id)){z.focus=false;await dbPatch('ziele',z.id,{focus:false});}
+  const z=S.ziele.find(x=>x.id===id);if(!z)return;
+  z.focus=!z.focus;
+  await dbPatch('ziele',id,{focus:z.focus});
+  render();
+}
+function openBeobachtung(){
+  document.getElementById('mb').innerHTML=
+    '<div class="mt">Beobachtung erfassen</div>'
+    +'<div class="fl"><label>Typ</label>'
+    +'<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:4px">'
+    +[['einwand','⚡ Einwand'],['frage','❓ Kundenfrage'],['insight','💡 Insight'],['lob','⭐ Lob']].map(([v,l])=>'<label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:12px"><input type="radio" name="beob-typ" value="'+v+'" '+(v==='einwand'?'checked':'')+' style="cursor:pointer">'+l+'</label>').join('')
+    +'</div></div>'
+    +'<div class="fl"><label>Was hast du beobachtet?</label>'
+    +'<textarea id="beob-text" rows="3" style="width:100%;padding:8px;border:1px solid var(--bd);border-radius:8px;font-family:inherit;font-size:13px;resize:vertical" placeholder="z.B. Kunde fragte: Kann die Sauna auch außen aufgestellt werden?"></textarea></div>'
+    +'<div class="mf"><button onclick="cm()">Abbrechen</button>'
+    +'<button onclick="saveBeobachtung()" style="background:var(--text);color:#fff;border:none;font-weight:600">Speichern</button></div>';
+  document.getElementById('ovl').classList.add('open');
+}
+async function saveBeobachtung(){
+  const text=document.getElementById('beob-text').value.trim();if(!text)return;
+  const typ=document.querySelector('input[name="beob-typ"]:checked')?.value||'einwand';
+  const rec={id:nid('beob'),pid:aP,typ,text,created_at:new Date().toISOString()};
+  S.beobachtungen.unshift(rec);
+  await dbInsert('beobachtungen',rec);
+  cm();
 }
 
 function wrItemName(wr,n){
@@ -1356,6 +1388,17 @@ function rTag(){
   const alleGeschafft=!aktiv.length&&!neu.length&&!bl.length;
   let out='';
 
+  // ── Firmen-Fokus Banner ──
+  const fokusZ=S.ziele.find(z=>z.focus);
+  if(fokusZ){
+    const f=FARBEN[fokusZ.farbe||0];
+    out+='<div style="background:'+f.tc+';color:#fff;border-radius:10px;padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;gap:10px">';
+    out+='<span style="font-size:18px">🔥</span>';
+    out+='<div><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;opacity:.7">Firmen-Fokus</div>';
+    out+='<div style="font-size:13px;font-weight:700">'+fokusZ.name+'</div></div>';
+    out+='</div>';
+  }
+
   // ── Big 3 Wochenkompass ──
   const{kw:kwAkt}=getKW();
   const wrAktuell=dieseWocheReset(aP);
@@ -1550,6 +1593,9 @@ function rTag(){
 
   out+=rDelegBlock(aP);
   out+=rSignalBlock(aP);
+  out+='<div style="text-align:center;padding:8px 0 4px">';
+  out+='<button onclick="openBeobachtung()" style="font-size:12px;padding:7px 16px;border-radius:8px;border:1px solid var(--bd);background:var(--gray-bg);color:var(--t2);cursor:pointer;font-family:inherit">💬 Beobachtung erfassen</button>';
+  out+='</div>';
 
   document.getElementById('main').innerHTML=out;
   startTimers();
@@ -1714,7 +1760,12 @@ function rZiele(){
     if(verantw)out+='<span>'+verantw.name+'</span>';
     if(z.vertraulich)out+='<span class="lock">vertraulich</span>';
     out+='</div></div>';
-    if(isGF())out+='<button onclick="editZiel(\''+z.id+'\')" style="font-size:11px;padding:3px 9px;border-radius:7px;border:1px solid var(--bd);background:var(--gray-bg);color:var(--t2);cursor:pointer;font-family:inherit;flex-shrink:0">···</button>';
+    if(isGF()){
+      out+='<div style="display:flex;gap:6px;flex-shrink:0">';
+      out+='<button onclick="toggleFokusZiel(\''+z.id+'\')" style="font-size:11px;padding:3px 9px;border-radius:7px;border:1px solid '+(z.focus?'#c2410c':'var(--bd)')+';background:'+(z.focus?'#fff7ed':'var(--gray-bg)')+';color:'+(z.focus?'#c2410c':'var(--t2)')+';cursor:pointer;font-family:inherit">'+(z.focus?'🔥 Fokus':'☆ Fokus')+'</button>';
+      out+='<button onclick="editZiel(\''+z.id+'\')" style="font-size:11px;padding:3px 9px;border-radius:7px;border:1px solid var(--bd);background:var(--gray-bg);color:var(--t2);cursor:pointer;font-family:inherit">···</button>';
+      out+='</div>';
+    }
     out+='</div>';
 
     // KPI grid (compact, always visible)
@@ -2271,6 +2322,23 @@ function rTeam(){
     });
     out+='</div>';
   }
+
+  // ── Sales Insights Feed (GF) ──
+  if(isGF()&&S.beobachtungen.length){
+    const TYPEN={einwand:{icon:'⚡',color:'#c2410c'},frage:{icon:'❓',color:'#1d4ed8'},insight:{icon:'💡',color:'#15803d'},lob:{icon:'⭐',color:'#b45309'}};
+    out+='<div style="margin-top:24px">';
+    out+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t2);margin-bottom:10px">Sales Insights</div>';
+    S.beobachtungen.slice(0,25).forEach(b=>{
+      const p=person(b.pid),t=TYPEN[b.typ]||TYPEN.insight;
+      out+='<div style="display:flex;gap:10px;padding:9px 0;border-bottom:1px solid var(--bd)">';
+      out+='<span style="font-size:15px;flex-shrink:0">'+t.icon+'</span>';
+      out+='<div style="flex:1"><div style="font-size:12px;color:var(--text)">'+b.text+'</div>';
+      out+='<div style="font-size:10px;color:var(--t3);margin-top:2px">'+(p?p.name+' · ':'')+b.created_at.slice(0,10)+'</div></div>';
+      out+='</div>';
+    });
+    out+='</div>';
+  }
+
   document.getElementById('main').innerHTML=out;
 }
 
@@ -2428,7 +2496,10 @@ window.addEventListener('keydown',e=>{
 });
 
 (async()=>{
-  await loadData();
+  try{await loadData();}catch(e){
+    document.getElementById('app-loading').innerHTML='<div style="text-align:center;padding:40px;color:#c2410c;font-size:13px">Verbindungsfehler — bitte Seite neu laden.<br><small style="color:#aaa">'+e.message+'</small></div>';
+    return;
+  }
   document.getElementById('login-screen').innerHTML='<div class="login-box">'
     +'<div class="login-title">Halleluja OS</div>'
     +'<div class="login-sub">Wer bist du heute?</div>'
