@@ -249,6 +249,16 @@ const CL=[
   {bg:'#fff7ed',tc:'#c2410c'},{bg:'#f1f0ef',tc:'#44403c'},{bg:'#fdf2f8',tc:'#9d174d'}
 ];
 const TODAY=new Date().toISOString().slice(0,10);
+function zieleOptgroups(pid,selId=''){
+  const sichtbar=S.ziele.filter(z=>!z.vertraulich||isGF());
+  const meine=sichtbar.filter(z=>String(z.verantwortlichId)===String(pid)||(z.teilziele||[]).some(tz=>String(tz.verantwortlichId)===String(pid)));
+  const andere=sichtbar.filter(z=>!meine.find(m=>m.id===z.id));
+  const opt=z=>'<option value="'+z.id+'"'+(selId===z.id?' selected':'')+'>'+z.name+'</option>';
+  let out='<option value="">— kein Ziel —</option>';
+  if(meine.length)out+='<optgroup label="Meine Ziele">'+meine.map(opt).join('')+'</optgroup>';
+  if(andere.length)out+='<optgroup label="Andere Ziele">'+andere.map(opt).join('')+'</optgroup>';
+  return out;
+}
 function getKW(d){
   const date=new Date(d||Date.now());
   date.setHours(0,0,0,0);
@@ -1760,7 +1770,7 @@ async function delKpi(zid,kid){
 function openNeu(pf={}){
   _selPrio=pf.prio||null;
   const defaultPid=pf.pid||aP;
-  const zieleOpts='<option value="">— kein Ziel —</option>'+S.ziele.filter(z=>!z.vertraulich||isGF()).map(z=>'<option value="'+z.id+'"'+(pf.zielId===z.id?' selected':'')+'>'+z.name+'</option>').join('');
+  const zieleOpts=zieleOptgroups(defaultPid,pf.zielId||'');
   document.getElementById('mb').innerHTML='<div class="mt">Neue Aufgabe</div>'
     +'<div class="fl"><label>Was soll gemacht werden?</label><input id="nt" value="'+(pf.titel||'')+'" placeholder="Konkret und aktiv formulieren…" autofocus></div>'
     +'<div class="f2"><div class="fl"><label>Wer?</label><select id="np">'+S.personen.map(p=>'<option value="'+p.id+'"'+(defaultPid===p.id?' selected':'')+'>'+p.name+'</option>').join('')+'</select></div>'
@@ -1814,7 +1824,7 @@ async function saveNeu(){
 
 function quickAssignZiel(id){
   const a=S.aufgaben.find(x=>x.id===id);if(!a)return;
-  const opts='<option value="">— kein Ziel —</option>'+S.ziele.filter(z=>!z.vertraulich||isGF()).map(z=>'<option value="'+z.id+'"'+(a.ziel_id===z.id?' selected':'')+'>'+z.name+'</option>').join('');
+  const opts=zieleOptgroups(a.pid,a.ziel_id||'');
   document.getElementById('mb').innerHTML=
     '<div class="mt">Ziel verknüpfen</div>'
     +'<div style="font-size:13px;font-weight:500;color:var(--t2);margin-bottom:14px;line-height:1.4">'+a.titel+'</div>'
