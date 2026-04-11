@@ -1478,7 +1478,6 @@ function rTag(){
 
   // ── Tages-Zeitstrahl (einzeilig, drag-to-reorder) ──
   {
-    const FOKUS_START=9,FOKUS_END=17;
     const tlTasks=[...aktiv,...offene].slice(0,10);
     // apply saved order from localStorage
     const orderKey='tagesplan-order-'+aP+'-'+TODAY;
@@ -1487,25 +1486,15 @@ function rTag(){
       tlTasks.sort((a,b)=>{const ai=savedOrder.indexOf(a.id),bi=savedOrder.indexOf(b.id);return(ai<0?999:ai)-(bi<0?999:bi);});
     }
     if(tlTasks.length){
-      const now=new Date();
-      const nowH=now.getHours()+now.getMinutes()/60;
-      const totalH=FOKUS_END-FOKUS_START;
       const erlH=erl.filter(a=>(a.akt_seit||'').slice(0,10)===TODAY).reduce((s,a)=>s+(a.gebucht||a.geplant||0.5),0);
-      let totalTaskH=erlH+tlTasks.reduce((s,a)=>s+(a.geplant||1),0);
-      const barH=Math.max(totalH,totalTaskH);
-      out+='<div style="background:#fff;border:1px solid var(--bd);border-radius:14px;padding:14px 16px;margin-bottom:14px">';
+      const offenH=tlTasks.reduce((s,a)=>s+(a.geplant||1),0);
+      const barH=erlH+offenH;
+      out+='<div style="background:#fff;border:1px solid var(--bd);border-radius:14px;padding:12px 16px;margin-bottom:14px">';
       out+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">';
       out+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t2)">Tagesplan</div>';
-      out+='<div style="font-size:11px;color:var(--t3)">'+Math.round(erlH*10)/10+'h erledigt · '+Math.round((totalTaskH-erlH)*10)/10+'h geplant</div>';
+      out+='<div style="font-size:11px;color:var(--t3)">'+Math.round(erlH*10)/10+'h erledigt · '+Math.round(offenH*10)/10+'h offen</div>';
       out+='</div>';
-      // time labels
-      out+='<div style="position:relative;height:14px;margin-bottom:2px">';
-      for(let h=FOKUS_START;h<=FOKUS_END;h++){
-        const left=((h-FOKUS_START)/barH*100);
-        if(h<FOKUS_END||barH===totalH)out+='<div style="position:absolute;left:'+left+'%;font-size:9px;color:var(--t3);transform:translateX(-50%)">'+h+':00</div>';
-      }
-      out+='</div>';
-      // single-row bar
+      // single-row bar — no clock times, pure task flow
       out+='<div id="tagesplan-bar" style="position:relative;display:flex;height:32px;background:var(--gray-bg);border-radius:8px;overflow:hidden">';
       // erledigt block
       if(erlH>0){
@@ -1536,14 +1525,6 @@ function rTag(){
         out+='</div>';
       });
       out+='</div>';
-      // now indicator below bar
-      if(nowH>=FOKUS_START&&nowH<=FOKUS_START+barH){
-        const nowPct=((nowH-FOKUS_START)/barH*100);
-        out+='<div style="position:relative;height:8px">';
-        out+='<div style="position:absolute;left:'+nowPct+'%;top:0;width:2px;height:6px;background:var(--red);border-radius:0 0 2px 2px"></div>';
-        out+='<div style="position:absolute;left:'+nowPct+'%;top:6px;transform:translateX(-50%);font-size:8px;font-weight:700;color:var(--red)">jetzt</div>';
-        out+='</div>';
-      }
       out+='</div>';
     }
   }
