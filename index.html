@@ -1476,65 +1476,75 @@ function rTag(){
   const hasSonderKpi=S.ziele.flatMap(z=>z.kpis||[]).some(k=>String(k.pid)===String(aP)&&k.sonder);
   if(hasSonderKpi)out+=rKpiBlock(aP);
 
-  // ── Tages-Zeitstrahl ──
+  // ── Tages-Zeitstrahl (einzeilig, drag-to-reorder) ──
   {
     const FOKUS_START=9,FOKUS_END=17;
     const tlTasks=[...aktiv,...offene].slice(0,10);
+    // apply saved order from localStorage
+    const orderKey='tagesplan-order-'+aP+'-'+TODAY;
+    const savedOrder=JSON.parse(localStorage.getItem(orderKey)||'[]');
+    if(savedOrder.length){
+      tlTasks.sort((a,b)=>{const ai=savedOrder.indexOf(a.id),bi=savedOrder.indexOf(b.id);return(ai<0?999:ai)-(bi<0?999:bi);});
+    }
     if(tlTasks.length){
       const now=new Date();
       const nowH=now.getHours()+now.getMinutes()/60;
       const totalH=FOKUS_END-FOKUS_START;
-      let curH=FOKUS_START;
-      const slots=[];
       const erlH=erl.filter(a=>(a.akt_seit||'').slice(0,10)===TODAY).reduce((s,a)=>s+(a.gebucht||a.geplant||0.5),0);
-      curH+=erlH;
-      tlTasks.forEach(a=>{
-        const dur=a.geplant||1;
-        slots.push({a,start:curH,dur,end:curH+dur});
-        curH+=dur;
-      });
-      const endH=Math.max(curH,FOKUS_END);
-      const scale=totalH/(endH-FOKUS_START)*100;
+      let totalTaskH=erlH+tlTasks.reduce((s,a)=>s+(a.geplant||1),0);
+      const barH=Math.max(totalH,totalTaskH);
       out+='<div style="background:#fff;border:1px solid var(--bd);border-radius:14px;padding:14px 16px;margin-bottom:14px">';
-      out+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">';
+      out+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">';
       out+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t2)">Tagesplan</div>';
-      out+='<div style="font-size:11px;color:var(--t3)">'+Math.round(erlH*10)/10+'h erledigt · '+Math.round((curH-FOKUS_START-erlH)*10)/10+'h offen</div>';
+      out+='<div style="font-size:11px;color:var(--t3)">'+Math.round(erlH*10)/10+'h erledigt · '+Math.round((totalTaskH-erlH)*10)/10+'h geplant</div>';
       out+='</div>';
-      out+='<div style="position:relative;min-height:'+(slots.length*44+8)+'px">';
-      // time grid
+      // time labels
+      out+='<div style="position:relative;height:14px;margin-bottom:2px">';
       for(let h=FOKUS_START;h<=FOKUS_END;h++){
-        const left=((h-FOKUS_START)/totalH*100);
-        out+='<div style="position:absolute;left:'+left+'%;top:0;bottom:0;border-left:1px solid '+(h===FOKUS_START||h===FOKUS_END?'transparent':'#f0f0ee')+';z-index:0"></div>';
-        if(h<FOKUS_END)out+='<div style="position:absolute;left:'+left+'%;top:-14px;font-size:9px;color:var(--t3);transform:translateX(-50%)">'+h+':00</div>';
+        const left=((h-FOKUS_START)/barH*100);
+        if(h<FOKUS_END||barH===totalH)out+='<div style="position:absolute;left:'+left+'%;font-size:9px;color:var(--t3);transform:translateX(-50%)">'+h+':00</div>';
       }
-      // now line
-      if(nowH>=FOKUS_START&&nowH<=endH){
-        const nowPct=((nowH-FOKUS_START)/totalH*100);
-        out+='<div style="position:absolute;left:'+nowPct+'%;top:-2px;bottom:-2px;width:2px;background:var(--red);z-index:10;border-radius:2px"></div>';
-        out+='<div style="position:absolute;left:'+nowPct+'%;top:-16px;transform:translateX(-50%);font-size:9px;font-weight:700;color:var(--red)">'+now.getHours()+':'+(''+(now.getMinutes())).padStart(2,'0')+'</div>';
+      out+='</div>';
+      // single-row bar
+      out+='<div id="tagesplan-bar" style="position:relative;display:flex;height:32px;background:var(--gray-bg);border-radius:8px;overflow:hidden">';
+      // erledigt block
+      if(erlH>0){
+        const erlPct=(erlH/barH*100);
+        out+='<div style="width:'+erlPct+'%;background:#dcfce7;display:flex;align-items:center;justify-content:center;flex-shrink:0;border-right:1px solid #86efac">';
+        out+='<span style="font-size:9px;color:#15803d;font-weight:700;white-space:nowrap">✓ '+Math.round(erlH*10)/10+'h</span>';
+        out+='</div>';
       }
-      // task blocks
-      slots.forEach((sl,i)=>{
-        const leftPct=((sl.start-FOKUS_START)/totalH*100);
-        const widthPct=(sl.dur/totalH*100);
-        const isAktiv=sl.a.status==='aktiv';
-        const pc=sl.a.prio==='P1'?'var(--red)':sl.a.prio==='P2'?'#c2410c':sl.a.prio==='P3'?'var(--t2)':'var(--blue)';
-        const bg=isAktiv?'var(--text)':sl.a.prio==='P1'?'var(--red-bg)':sl.a.prio==='P2'?'#fff7ed':'var(--gray-bg)';
+      // task segments
+      tlTasks.forEach((a,i)=>{
+        const dur=a.geplant||1;
+        const wPct=(dur/barH*100);
+        const isAktiv=a.status==='aktiv';
+        const pc=a.prio==='P1'?'#dc2626':a.prio==='P2'?'#c2410c':'#6b7280';
+        const bg=isAktiv?'#1a1a1a':a.prio==='P1'?'#fef2f2':a.prio==='P2'?'#fff7ed':'#f9fafb';
         const tc=isAktiv?'#fff':pc;
-        out+='<div onclick="openDetail(\''+sl.a.id+'\')" style="position:absolute;left:'+leftPct+'%;width:'+widthPct+'%;top:'+(i*44+20)+'px;height:36px;background:'+bg+';border:1.5px solid '+(isAktiv?'var(--text)':pc)+';border-radius:8px;display:flex;align-items:center;padding:0 8px;gap:6px;cursor:pointer;overflow:hidden;z-index:5" onmouseenter="this.style.opacity=\'.85\'" onmouseleave="this.style.opacity=\'1\'">';
-        if(isAktiv)out+='<span style="font-size:9px">🔥</span>';
-        out+='<span style="font-size:10px;font-weight:600;color:'+tc+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+sl.a.titel+'</span>';
-        out+='<span style="font-size:9px;color:'+tc+';opacity:.6;flex-shrink:0;margin-left:auto">'+fmtH(sl.dur)+'</span>';
+        const bd=i<tlTasks.length-1?'border-right:1px solid rgba(0,0,0,.08);':'';
+        out+='<div draggable="true" data-tpid="'+a.id+'" data-tpi="'+i+'" onclick="openDetail(\''+a.id+'\')" '
+          +'ondragstart="window._tpDrag='+i+';this.style.opacity=\'.5\'" '
+          +'ondragend="this.style.opacity=\'1\'" '
+          +'ondragover="event.preventDefault();this.style.outline=\'2px solid #1a1a1a\'" '
+          +'ondragleave="this.style.outline=\'none\'" '
+          +'ondrop="event.preventDefault();this.style.outline=\'none\';tpReorder(window._tpDrag,'+i+')" '
+          +'style="width:'+wPct+'%;background:'+bg+';display:flex;align-items:center;padding:0 6px;gap:4px;cursor:grab;overflow:hidden;flex-shrink:0;'+bd+'">';
+        if(isAktiv)out+='<span style="font-size:8px;flex-shrink:0">🔥</span>';
+        out+='<span style="font-size:10px;font-weight:600;color:'+tc+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+a.titel+'</span>';
+        out+='<span style="font-size:9px;color:'+tc+';opacity:.5;flex-shrink:0;margin-left:auto">'+fmtH(dur)+'</span>';
         out+='</div>';
       });
-      // completed block at start
-      if(erlH>0){
-        const erlPct=(erlH/totalH*100);
-        out+='<div style="position:absolute;left:0;width:'+erlPct+'%;top:4px;bottom:4px;background:#f0fdf4;border:1px solid #86efac;border-radius:8px;display:flex;align-items:center;justify-content:center;z-index:1">';
-        out+='<span style="font-size:10px;color:#15803d;font-weight:600">✓ '+Math.round(erlH*10)/10+'h erledigt</span>';
+      out+='</div>';
+      // now indicator below bar
+      if(nowH>=FOKUS_START&&nowH<=FOKUS_START+barH){
+        const nowPct=((nowH-FOKUS_START)/barH*100);
+        out+='<div style="position:relative;height:8px">';
+        out+='<div style="position:absolute;left:'+nowPct+'%;top:0;width:2px;height:6px;background:var(--red);border-radius:0 0 2px 2px"></div>';
+        out+='<div style="position:absolute;left:'+nowPct+'%;top:6px;transform:translateX(-50%);font-size:8px;font-weight:700;color:var(--red)">jetzt</div>';
         out+='</div>';
       }
-      out+='</div></div>';
+      out+='</div>';
     }
   }
 
@@ -1756,6 +1766,20 @@ async function delStep(id,i){
   await dbPatch('aufgaben',id,{ua:a.ua});render();
 }
 
+function tpReorder(fromIdx,toIdx){
+  if(fromIdx===toIdx)return;
+  const myA=S.aufgaben.filter(a=>String(a.pid)===String(aP)&&['aktiv','neu','backlog'].includes(a.status));
+  const aktiv=myA.filter(a=>a.status==='aktiv');
+  const offene=myA.filter(a=>['neu','backlog'].includes(a.status)).sort((a,b)=>{const po={P1:0,P2:1,P3:2};return(po[a.prio]??3)-(po[b.prio]??3)||(a.aktSeit||0)-(b.aktSeit||0);});
+  const arr=[...aktiv,...offene].slice(0,10);
+  const orderKey='tagesplan-order-'+aP+'-'+TODAY;
+  const saved=JSON.parse(localStorage.getItem(orderKey)||'[]');
+  if(saved.length)arr.sort((a,b)=>{const ai=saved.indexOf(a.id),bi=saved.indexOf(b.id);return(ai<0?999:ai)-(bi<0?999:bi);});
+  const [item]=arr.splice(fromIdx,1);
+  arr.splice(toIdx,0,item);
+  localStorage.setItem(orderKey,JSON.stringify(arr.map(a=>a.id)));
+  render();
+}
 function openDetail(id){
   const a=S.aufgaben.find(x=>x.id===id);if(!a)return;
   const d=dli(a.dl),tzN=getTZName(a),zN=getZielName(a);
