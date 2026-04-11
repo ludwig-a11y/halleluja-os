@@ -1476,6 +1476,68 @@ function rTag(){
   const hasSonderKpi=S.ziele.flatMap(z=>z.kpis||[]).some(k=>String(k.pid)===String(aP)&&k.sonder);
   if(hasSonderKpi)out+=rKpiBlock(aP);
 
+  // ── Tages-Zeitstrahl ──
+  {
+    const FOKUS_START=9,FOKUS_END=17;
+    const tlTasks=[...aktiv,...offene].slice(0,10);
+    if(tlTasks.length){
+      const now=new Date();
+      const nowH=now.getHours()+now.getMinutes()/60;
+      const totalH=FOKUS_END-FOKUS_START;
+      let curH=FOKUS_START;
+      const slots=[];
+      const erlH=erl.filter(a=>(a.akt_seit||'').slice(0,10)===TODAY).reduce((s,a)=>s+(a.gebucht||a.geplant||0.5),0);
+      curH+=erlH;
+      tlTasks.forEach(a=>{
+        const dur=a.geplant||1;
+        slots.push({a,start:curH,dur,end:curH+dur});
+        curH+=dur;
+      });
+      const endH=Math.max(curH,FOKUS_END);
+      const scale=totalH/(endH-FOKUS_START)*100;
+      out+='<div style="background:#fff;border:1px solid var(--bd);border-radius:14px;padding:14px 16px;margin-bottom:14px">';
+      out+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">';
+      out+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t2)">Tagesplan</div>';
+      out+='<div style="font-size:11px;color:var(--t3)">'+Math.round(erlH*10)/10+'h erledigt · '+Math.round((curH-FOKUS_START-erlH)*10)/10+'h offen</div>';
+      out+='</div>';
+      out+='<div style="position:relative;min-height:'+(slots.length*44+8)+'px">';
+      // time grid
+      for(let h=FOKUS_START;h<=FOKUS_END;h++){
+        const left=((h-FOKUS_START)/totalH*100);
+        out+='<div style="position:absolute;left:'+left+'%;top:0;bottom:0;border-left:1px solid '+(h===FOKUS_START||h===FOKUS_END?'transparent':'#f0f0ee')+';z-index:0"></div>';
+        if(h<FOKUS_END)out+='<div style="position:absolute;left:'+left+'%;top:-14px;font-size:9px;color:var(--t3);transform:translateX(-50%)">'+h+':00</div>';
+      }
+      // now line
+      if(nowH>=FOKUS_START&&nowH<=endH){
+        const nowPct=((nowH-FOKUS_START)/totalH*100);
+        out+='<div style="position:absolute;left:'+nowPct+'%;top:-2px;bottom:-2px;width:2px;background:var(--red);z-index:10;border-radius:2px"></div>';
+        out+='<div style="position:absolute;left:'+nowPct+'%;top:-16px;transform:translateX(-50%);font-size:9px;font-weight:700;color:var(--red)">'+now.getHours()+':'+(''+(now.getMinutes())).padStart(2,'0')+'</div>';
+      }
+      // task blocks
+      slots.forEach((sl,i)=>{
+        const leftPct=((sl.start-FOKUS_START)/totalH*100);
+        const widthPct=(sl.dur/totalH*100);
+        const isAktiv=sl.a.status==='aktiv';
+        const pc=sl.a.prio==='P1'?'var(--red)':sl.a.prio==='P2'?'#c2410c':sl.a.prio==='P3'?'var(--t2)':'var(--blue)';
+        const bg=isAktiv?'var(--text)':sl.a.prio==='P1'?'var(--red-bg)':sl.a.prio==='P2'?'#fff7ed':'var(--gray-bg)';
+        const tc=isAktiv?'#fff':pc;
+        out+='<div onclick="openDetail(\''+sl.a.id+'\')" style="position:absolute;left:'+leftPct+'%;width:'+widthPct+'%;top:'+(i*44+20)+'px;height:36px;background:'+bg+';border:1.5px solid '+(isAktiv?'var(--text)':pc)+';border-radius:8px;display:flex;align-items:center;padding:0 8px;gap:6px;cursor:pointer;overflow:hidden;z-index:5" onmouseenter="this.style.opacity=\'.85\'" onmouseleave="this.style.opacity=\'1\'">';
+        if(isAktiv)out+='<span style="font-size:9px">🔥</span>';
+        out+='<span style="font-size:10px;font-weight:600;color:'+tc+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+sl.a.titel+'</span>';
+        out+='<span style="font-size:9px;color:'+tc+';opacity:.6;flex-shrink:0;margin-left:auto">'+fmtH(sl.dur)+'</span>';
+        out+='</div>';
+      });
+      // completed block at start
+      if(erlH>0){
+        const erlPct=(erlH/totalH*100);
+        out+='<div style="position:absolute;left:0;width:'+erlPct+'%;top:4px;bottom:4px;background:#f0fdf4;border:1px solid #86efac;border-radius:8px;display:flex;align-items:center;justify-content:center;z-index:1">';
+        out+='<span style="font-size:10px;color:#15803d;font-weight:600">✓ '+Math.round(erlH*10)/10+'h erledigt</span>';
+        out+='</div>';
+      }
+      out+='</div></div>';
+    }
+  }
+
   if(aktiv.length){
     const a=aktiv[0];
     const s=elapsedSec(a),pct=Math.min(100,Math.round(s/((a.geplant||1)*3600)*100));
