@@ -347,7 +347,7 @@ function checkP1Done(pid){
   if(p1.length>0&&p1.every(a=>a.status==='erledigt'))setTimeout(showQuote,400);
 }
 
-let S={personen:[],teams:[],ziele:[],aufgaben:[],kpiVals:{},checkins:{},kpiToday:{},signale:[],wochenresets:[],beobachtungen:[]};
+let S={personen:[],teams:[],ziele:[],aufgaben:[],kpiVals:{},checkins:{},kpiToday:{},signale:[],wochenresets:[],beobachtungen:[],kontext:[]};
 let aP=null,realMe=null,aV='tag',timIv=null,_selPrio=null;
 let _kid=Date.now();
 const nid=p=>p+(++_kid);
@@ -360,7 +360,7 @@ function normalizeAufgabe(a){
     erstelltVon:a.erstellt_von||null};
 }
 async function loadData(){
-  const [personen,teams,ziele,kpis,teilziele,aufgaben,kpiVals,checkins,signale,wochenresets,beobachtungen]=await Promise.all([
+  const [personen,teams,ziele,kpis,teilziele,aufgaben,kpiVals,checkins,signale,wochenresets,beobachtungen,kontextFeed]=await Promise.all([
     dbGet('personen','select=*&order=ci'),dbGet('teams','select=*'),
     dbGet('ziele','select=*&order=created_at'),dbGet('kpis','select=*'),
     dbGet('teilziele','select=*&order=created_at'),dbGet('aufgaben','select=*&order=created_at'),
@@ -368,6 +368,7 @@ async function loadData(){
     dbGet('signale','select=*&order=created_at.desc'),
     dbGet('wochenresets','select=*&order=created_at.desc'),
     dbGet('beobachtungen','select=*&order=created_at.desc'),
+    dbGet('kontext_feed','select=*&order=created_at.desc&limit=50'),
   ]);
   S.personen=personen||[];
   S.teams=(teams||[]).map(t=>({...t,members:t.members||[]}));
@@ -384,6 +385,7 @@ async function loadData(){
   S.signale=(signale||[]);
   S.wochenresets=(wochenresets||[]);
   S.beobachtungen=(beobachtungen||[]);
+  S.kontext=(kontextFeed||[]);
   try{S.kpiToday=JSON.parse(localStorage.getItem('kpiToday_'+TODAY)||'{}');}catch(e){S.kpiToday={};}
 }
 
@@ -553,13 +555,15 @@ function startDataPoller(){
   _dataHash=_aufgabenHash(S.aufgaben);
   _kpiHash=_kpiHashFn(S.ziele.flatMap(z=>z.kpis||[]));
   _dataPoll=setInterval(async()=>{
-    const [aufgaben,signale,kpis,wochenresets,beobachtungen]=await Promise.all([
+    const [aufgaben,signale,kpis,wochenresets,beobachtungen,kontextFeed]=await Promise.all([
       dbGet('aufgaben','select=*&order=created_at'),
       dbGet('signale','select=*&order=created_at.desc'),
       dbGet('kpis','select=*'),
       dbGet('wochenresets','select=*&order=created_at.desc'),
-      dbGet('beobachtungen','select=*&order=created_at.desc')
+      dbGet('beobachtungen','select=*&order=created_at.desc'),
+      dbGet('kontext_feed','select=*&order=created_at.desc&limit=50')
     ]);
+    if(kontextFeed)S.kontext=kontextFeed;
     let changed=false;
     if(aufgaben){
       const newHash=_aufgabenHash(aufgaben);
@@ -1518,6 +1522,44 @@ function rTag(){
   const hasSonderKpi=S.ziele.flatMap(z=>z.kpis||[]).some(k=>String(k.pid)===String(aP)&&k.sonder);
   if(hasSonderKpi)out+=rKpiBlock(aP);
 
+  // ── Tages-Briefing (Claude Coach) ──
+  {
+    const bKey='briefing-'+aP+'-'+TODAY;
+    const cached=localStorage.getItem(bKey);
+    const hasKey=!!localStorage.getItem('anthropic_key');
+    if(cached){
+      try{
+        const b=JSON.parse(cached);
+        out+='<div style="background:linear-gradient(135deg,#1a1a1a,#2d2d2d);border-radius:14px;padding:14px 16px;margin-bottom:14px;color:#fff">';
+        out+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">';
+        out+='<span style="font-size:16px">🧠</span>';
+        out+='<span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;opacity:.5">Tages-Briefing</span>';
+        out+='<span style="margin-left:auto;font-size:9px;opacity:.3">'+b.time+'</span>';
+        out+='<button onclick="localStorage.removeItem(\''+bKey+'\');aiDailyBriefing()" style="font-size:9px;padding:2px 8px;border-radius:5px;background:rgba(255,255,255,.1);color:rgba(255,255,255,.5);border:none;cursor:pointer;font-family:inherit">↻</button>';
+        out+='</div>';
+        if(b.p1)out+='<div style="background:rgba(255,255,255,.08);border-radius:10px;padding:10px 12px;margin-bottom:8px"><div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;opacity:.4;margin-bottom:4px">Dein #1 heute</div><div style="font-size:13px;font-weight:700">'+b.p1+'</div>'+(b.p1why?'<div style="font-size:11px;opacity:.5;margin-top:2px">'+b.p1why+'</div>':'')+'</div>';
+        if(b.gap)out+='<div style="font-size:11px;opacity:.7;margin-bottom:4px;line-height:1.5">📊 '+b.gap+'</div>';
+        if(b.blocker)out+='<div style="font-size:11px;color:#fbbf24;margin-bottom:4px;line-height:1.5">⚠️ '+b.blocker+'</div>';
+        if(b.velocity)out+='<div style="font-size:11px;opacity:.5;line-height:1.5">⚡ '+b.velocity+'</div>';
+        // Datenquellen-Badges
+        const quellen=[...new Set(S.kontext.map(k=>k.quelle))];
+        if(quellen.length){
+          const qIcons={gmail:'📧',hubspot:'🔗',meta:'📣',slack:'💬',gcal:'📅',meeting:'🎙️',crm:'🏢'};
+          out+='<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,.08)">';
+          quellen.forEach(q=>out+='<span style="font-size:9px;padding:2px 7px;border-radius:4px;background:rgba(255,255,255,.08);color:rgba(255,255,255,.4)">'+(qIcons[q]||'📌')+' '+q+'</span>');
+          out+='</div>';
+        }
+        out+='</div>';
+      }catch(e){}
+    }else if(hasKey){
+      out+='<div onclick="aiDailyBriefing()" style="background:linear-gradient(135deg,#1a1a1a,#2d2d2d);border-radius:14px;padding:14px 16px;margin-bottom:14px;cursor:pointer;display:flex;align-items:center;gap:12px;transition:opacity .15s" onmouseenter="this.style.opacity=\'.85\'" onmouseleave="this.style.opacity=\'1\'">';
+      out+='<span style="font-size:20px">🧠</span>';
+      out+='<div style="flex:1"><div style="font-size:13px;font-weight:700;color:#fff">Tages-Briefing abrufen</div>';
+      out+='<div style="font-size:11px;color:rgba(255,255,255,.4);margin-top:1px">Claude analysiert deinen Tag</div></div>';
+      out+='<span style="color:rgba(255,255,255,.3);font-size:16px">›</span></div>';
+    }
+  }
+
   // ── Tages-Zeitstrahl (einzeilig, drag-to-reorder) ──
   {
     const tlTasks=[...aktiv,...offene].slice(0,10);
@@ -2440,6 +2482,100 @@ DAUER: [Zahl in Stunden, z.B. 0.5 oder 2]`;
     box.innerHTML='<div style="background:var(--red-bg);border:1px solid var(--red-bd);border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:11px;color:var(--red)">Fehler: '+e.message+'</div>';
   }
 }
+async function aiDailyBriefing(){
+  const key=localStorage.getItem('anthropic_key');
+  if(!key){alert('Bitte zuerst API Key in Einstellungen hinterlegen.');return;}
+  const bKey='briefing-'+aP+'-'+TODAY;
+  // show loading state
+  const main=document.getElementById('main');
+  if(main){
+    const old=main.innerHTML;
+    const ldiv=document.createElement('div');
+    ldiv.id='briefing-loading';
+    ldiv.style.cssText='background:linear-gradient(135deg,#1a1a1a,#2d2d2d);border-radius:14px;padding:20px 16px;margin-bottom:14px;color:#fff;text-align:center';
+    ldiv.innerHTML='<div style="font-size:20px;margin-bottom:8px;animation:pulse 1.5s infinite">🧠</div><div style="font-size:12px;opacity:.5">Claude analysiert deinen Tag...</div>';
+    const firstChild=main.firstChild;
+    if(firstChild)main.insertBefore(ldiv,firstChild);else main.appendChild(ldiv);
+  }
+  const p=person(aP);
+  const myA=S.aufgaben.filter(a=>a.pid===aP&&canSee(a));
+  const aktiv=myA.filter(a=>a.status==='aktiv');
+  const offene=myA.filter(a=>['neu','backlog'].includes(a.status)&&!(a.dl_type==='am'&&a.dl>TODAY));
+  const erlHeute=myA.filter(a=>a.status==='erledigt'&&(a.akt_seit||a.updated_at||'').slice(0,10)===TODAY);
+  const erlGestern=myA.filter(a=>a.status==='erledigt'&&(a.akt_seit||a.updated_at||'').slice(0,10)===localDate(new Date(Date.now()-86400000)));
+  const erlWoche=myA.filter(a=>a.status==='erledigt'&&(a.akt_seit||a.updated_at||'').slice(0,10)>=localDate(new Date(Date.now()-7*86400000)));
+  const fokusZ=S.ziele.find(z=>z.focus);
+  const zieleDetail=S.ziele.map(z=>{
+    const kpis=(z.kpis||[]).map(k=>k.label+': '+k.ist+'/'+k.ziel+(k.unit?' '+k.unit:'')).join(', ');
+    const tzs=(z.teilziele||[]).filter(t=>!t.erledigt).map(t=>t.name).join(', ');
+    return'- '+z.name+(z.focus?' [FIRMEN-FOKUS]':'')+(kpis?' | KPIs: '+kpis:'')+(tzs?' | Offene Meilensteine: '+tzs:'');
+  }).join('\n');
+  const wr=dieseWocheReset(aP);
+  const big3=wr?[wr.big3_1,wr.big3_2,wr.big3_3].filter(Boolean).map((t,i)=>t+(wr['big3_'+(i+1)+'_done']?' ✓':' ○')).join(', '):'';
+  const beob=S.beobachtungen.slice(0,8).map(b=>b.typ+': '+b.text).join('; ');
+  const firmenKontext=localStorage.getItem('firmen_kontext')||'';
+  const offeneList=offene.sort((a,b)=>{const po={'P1':0,'P2':1,'P3':2};return(po[a.prio]??3)-(po[b.prio]??3);}).slice(0,20).map(a=>'- ['+a.prio+'] '+a.titel+(a.dl?' (fällig: '+a.dl+')':'')).join('\n');
+  // Live-Daten aus kontext_feed (n8n-befüllt)
+  const liveDaten=S.kontext.filter(k=>!k.pid||k.pid===aP).map(k=>{
+    const icon={gmail:'📧',hubspot:'🔗',meta:'📣',slack:'💬',gcal:'📅',meeting:'🎙️',crm:'🏢'}[k.quelle]||'📌';
+    return icon+' '+k.quelle+': '+k.zusammenfassung;
+  }).join('\n');
+  const quellenCount=[...new Set(S.kontext.map(k=>k.quelle))].length;
+  const prompt=`Du bist der tägliche Coach für ${p?p.name:'diese Person'} bei Halleluja Sauna Austria (Premium-Saunen).
+Heute ist ${TODAY} (${['So','Mo','Di','Mi','Do','Fr','Sa'][new Date().getDay()]}).
+
+PERSON: ${p?p.name+' — '+p.rolle:'Unbekannt'}
+${big3?'BIG 3 DIESE WOCHE: '+big3:'Kein Wochenplan gesetzt.'}
+${aktiv.length?'GERADE AKTIV: '+aktiv.map(a=>a.titel).join(', '):'Nichts aktiv.'}
+
+FIRMENZIELE:
+${zieleDetail||'keine definiert'}
+${fokusZ?'🔥 FIRMEN-FOKUS: '+fokusZ.name:''}
+
+OFFENE AUFGABEN:
+${offeneList||'keine'}
+
+HEUTE ERLEDIGT: ${erlHeute.map(a=>a.titel).join(', ')||'noch nichts'}
+GESTERN ERLEDIGT: ${erlGestern.map(a=>a.titel).join(', ')||'nichts'}
+DIESE WOCHE ERLEDIGT: ${erlWoche.length} Aufgaben (${Math.round(erlWoche.reduce((s,a)=>s+(a.gebucht||a.geplant||0.5),0)*10)/10}h)
+${beob?'SALES-BEOBACHTUNGEN: '+beob:''}
+${liveDaten?'LIVE-DATEN (von n8n aggregiert):\n'+liveDaten:''}
+${firmenKontext?'FIRMEN-KONTEXT:\n'+firmenKontext:''}
+
+Analysiere und antworte EXAKT in diesem Format (deutsch, knapp, max 1-2 Sätze pro Feld):
+P1: [Die wichtigste Aufgabe heute — aus den offenen Aufgaben ODER eine neue Empfehlung. Beziehe LIVE-DATEN ein wenn vorhanden (z.B. überfällige Leads, offene Anfragen)]
+P1_WHY: [Warum genau diese? 1 Satz]
+GAP: [Ziel-Projektion: "Bei aktuellem Tempo erreichst du X bis Datum Y" — basierend auf KPIs, Velocity UND Live-Daten]
+BLOCKER: [Erkennst du Blocker oder Risiken aus allen Datenquellen? Wenn nicht: "Keine Blocker erkannt"]
+VELOCITY: [Trend: "X Aufgaben/Woche, Yh produktiv — Trend: steigend/stabil/sinkend"]`;
+
+  try{
+    const res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:350,messages:[{role:'user',content:prompt}]})
+    });
+    const el=document.getElementById('briefing-loading');if(el)el.remove();
+    if(!res.ok){alert('API Fehler: '+res.status);return;}
+    const data=await res.json();
+    const text=data.content?.[0]?.text||'';
+    const b={
+      p1:(text.match(/P1:\s*(.+)/)||[])[1]||'',
+      p1why:(text.match(/P1_WHY:\s*(.+)/)||[])[1]||'',
+      gap:(text.match(/GAP:\s*(.+)/)||[])[1]||'',
+      blocker:(text.match(/BLOCKER:\s*(.+)/)||[])[1]||'',
+      velocity:(text.match(/VELOCITY:\s*(.+)/)||[])[1]||'',
+      time:new Date().getHours()+':'+(''+(new Date().getMinutes())).padStart(2,'0')
+    };
+    if(b.blocker&&b.blocker.match(/keine blocker/i))b.blocker='';
+    localStorage.setItem(bKey,JSON.stringify(b));
+    render();
+  }catch(e){
+    const el=document.getElementById('briefing-loading');if(el)el.remove();
+    alert('Briefing Fehler: '+e.message);
+  }
+}
+
 function aiApplyPrio(pr){
   _selPrio=pr;
   document.querySelectorAll('[id^="pbp-"]').forEach(b=>b.style.outline='none');
