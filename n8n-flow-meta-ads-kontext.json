@@ -1,0 +1,169 @@
+{
+  "name": "Meta Ads → Kontext-Feed (Halleluja OS)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "cronExpression", "expression": "10 6 * * *" }]
+        }
+      },
+      "id": "schedule",
+      "name": "Jeden Morgen 6:10",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://graph.facebook.com/v19.0/act_{{ $env.META_AD_ACCOUNT_ID }}/insights",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpQueryAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "fields", "value": "campaign_name,spend,impressions,clicks,actions,cost_per_action_type,cpc,cpm,ctr" },
+            { "name": "date_preset", "value": "last_7d" },
+            { "name": "level", "value": "campaign" },
+            { "name": "filtering", "value": "[{\"field\":\"campaign.delivery_info\",\"operator\":\"IN\",\"value\":[\"active\",\"recently_completed\"]}]" },
+            { "name": "limit", "value": "50" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "meta-7d",
+      "name": "Meta: Kampagnen letzte 7 Tage",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [250, -100],
+      "notes": "Auth: Query Auth mit access_token als Key und deinem Meta Token als Value. ENV: META_AD_ACCOUNT_ID (ohne 'act_' prefix)."
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://graph.facebook.com/v19.0/act_{{ $env.META_AD_ACCOUNT_ID }}/insights",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpQueryAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "fields", "value": "spend,impressions,clicks,actions,cost_per_action_type" },
+            { "name": "date_preset", "value": "today" },
+            { "name": "level", "value": "account" },
+            { "name": "limit", "value": "1" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "meta-today",
+      "name": "Meta: Heute (Account-Level)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [250, 150]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://graph.facebook.com/v19.0/act_{{ $env.META_AD_ACCOUNT_ID }}/insights",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpQueryAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "fields", "value": "spend,impressions,clicks,actions,cost_per_action_type" },
+            { "name": "date_preset", "value": "this_month" },
+            { "name": "level", "value": "account" },
+            { "name": "limit", "value": "1" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "meta-month",
+      "name": "Meta: Dieser Monat",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [250, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Helper: Leads aus actions-Array extrahieren\nfunction getLeads(actions) {\n  if (!actions) return 0;\n  const lead = actions.find(a => a.action_type === 'lead' || a.action_type === 'offsite_conversion.fb_pixel_lead');\n  return lead ? parseInt(lead.value) : 0;\n}\nfunction getCPL(costPerAction) {\n  if (!costPerAction) return null;\n  const lead = costPerAction.find(a => a.action_type === 'lead' || a.action_type === 'offsite_conversion.fb_pixel_lead');\n  return lead ? parseFloat(lead.value) : null;\n}\n\n// ── Kampagnen (7 Tage) ──\nconst campaigns = ($('Meta: Kampagnen letzte 7 Tage').first().json.data || []);\nconst campSummaries = campaigns.map(c => {\n  const leads = getLeads(c.actions);\n  const cpl = getCPL(c.cost_per_action_type);\n  const spend = parseFloat(c.spend || 0);\n  return {\n    name: c.campaign_name,\n    spend,\n    clicks: parseInt(c.clicks || 0),\n    impressions: parseInt(c.impressions || 0),\n    leads,\n    cpl,\n    ctr: parseFloat(c.ctr || 0)\n  };\n}).sort((a, b) => b.spend - a.spend);\n\nconst totalSpend7d = campSummaries.reduce((s, c) => s + c.spend, 0);\nconst totalLeads7d = campSummaries.reduce((s, c) => s + c.leads, 0);\nconst avgCPL7d = totalLeads7d > 0 ? (totalSpend7d / totalLeads7d).toFixed(2) : 'n/a';\n\n// Top 3 Kampagnen\nconst topCamps = campSummaries.slice(0, 3).map(c => \n  `${c.name} (€${c.spend.toFixed(0)}, ${c.leads} Leads${c.cpl ? ', CPL: €' + c.cpl.toFixed(2) : ''})`\n).join(' | ');\n\n// Schlechteste CPL (wenn Leads > 0)\nconst worstCPL = campSummaries\n  .filter(c => c.leads > 0 && c.cpl)\n  .sort((a, b) => b.cpl - a.cpl)[0];\n\n// ── Heute ──\nconst todayData = ($('Meta: Heute (Account-Level)').first().json.data || [])[0];\nconst todaySpend = todayData ? parseFloat(todayData.spend || 0) : 0;\nconst todayLeads = todayData ? getLeads(todayData.actions) : 0;\nconst todayClicks = todayData ? parseInt(todayData.clicks || 0) : 0;\n\n// ── Dieser Monat ──\nconst monthData = ($('Meta: Dieser Monat').first().json.data || [])[0];\nconst monthSpend = monthData ? parseFloat(monthData.spend || 0) : 0;\nconst monthLeads = monthData ? getLeads(monthData.actions) : 0;\n\nconst monthCPL = monthLeads > 0 ? (monthSpend / monthLeads).toFixed(2) : 'n/a';\n\n// ── Zusammenfassung ──\nconst today = new Date().toISOString().slice(0, 10);\n\nconst zusammenfassung = \n  `Heute: €${todaySpend.toFixed(0)} ausgegeben, ${todayLeads} Leads, ${todayClicks} Klicks. ` +\n  `Letzte 7 Tage: €${totalSpend7d.toFixed(0)} Spend, ${totalLeads7d} Leads, Ø CPL: €${avgCPL7d}. ` +\n  `Monat April: €${monthSpend.toFixed(0)} Spend, ${monthLeads} Leads, CPL: €${monthCPL}. ` +\n  `Top-Kampagnen: ${topCamps || 'keine aktiven'}.` +\n  (worstCPL ? ` ⚠️ Teuerste CPL: ${worstCPL.name} (€${worstCPL.cpl.toFixed(2)}).` : '');\n\nreturn [{\n  json: {\n    id: 'kf-meta-' + today,\n    pid: null,\n    quelle: 'meta',\n    typ: 'kampagnen',\n    zusammenfassung,\n    rohdaten: {\n      today: { spend: todaySpend, leads: todayLeads, clicks: todayClicks },\n      week: { spend: totalSpend7d, leads: totalLeads7d, cpl: avgCPL7d },\n      month: { spend: monthSpend, leads: monthLeads, cpl: monthCPL },\n      campaigns: campSummaries.slice(0, 5)\n    },\n    relevanz: 'hoch',\n    created_at: new Date().toISOString(),\n    gueltig_bis: today\n  }\n}];"
+      },
+      "id": "code-aggregate",
+      "name": "Zusammenfassen",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [550, 150]
+    },
+    {
+      "parameters": {
+        "method": "DELETE",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/kontext_feed?quelle=eq.meta",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_KEY }}" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "supabase-delete",
+      "name": "Alte Meta-Einträge löschen",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [800, 150]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/kontext_feed",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "supabase-insert",
+      "name": "In kontext_feed schreiben",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1050, 150]
+    }
+  ],
+  "connections": {
+    "Jeden Morgen 6:10": {
+      "main": [[
+        { "node": "Meta: Kampagnen letzte 7 Tage", "type": "main", "index": 0 },
+        { "node": "Meta: Heute (Account-Level)", "type": "main", "index": 0 },
+        { "node": "Meta: Dieser Monat", "type": "main", "index": 0 }
+      ]]
+    },
+    "Meta: Kampagnen letzte 7 Tage": {
+      "main": [[ { "node": "Zusammenfassen", "type": "main", "index": 0 } ]]
+    },
+    "Meta: Heute (Account-Level)": {
+      "main": [[ { "node": "Zusammenfassen", "type": "main", "index": 0 } ]]
+    },
+    "Meta: Dieser Monat": {
+      "main": [[ { "node": "Zusammenfassen", "type": "main", "index": 0 } ]]
+    },
+    "Zusammenfassen": {
+      "main": [[ { "node": "Alte Meta-Einträge löschen", "type": "main", "index": 0 } ]]
+    },
+    "Alte Meta-Einträge löschen": {
+      "main": [[ { "node": "In kontext_feed schreiben", "type": "main", "index": 0 } ]]
+    }
+  },
+  "settings": { "executionOrder": "v1" }
+}
