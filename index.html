@@ -2350,25 +2350,33 @@ async function aiAnalyze(){
   const p=person(aP);
   const ziele=S.ziele.map(z=>z.name).join(', ');
   const offeneA=S.aufgaben.filter(a=>a.pid===aP&&['neu','backlog','aktiv'].includes(a.status)).map(a=>a.titel).slice(0,15).join(', ');
-  const prompt=`Du bist ein knallharter Produktivitäts-Coach für ein Sauna-Unternehmen (Halleluja Sauna Austria).
+  const fokusZ=S.ziele.find(z=>z.focus);
+  const zieleDetail=S.ziele.map(z=>'- '+z.name+(z.focus?' [FIRMEN-FOKUS]':'')).join('\n');
+  const prompt=`Du bist ein Elite-Produktivitäts-Coach für Halleluja Sauna Austria (Premium-Saunen, B2B+B2C).
+Dein Job: Sicherstellen dass jede Aufgabe ein MAXIMALER HEBEL ist. Du bist brutal ehrlich.
 
-Person: ${p?p.name+' ('+p.rolle+')':'Unbekannt'}
-Aktuelle Firmenziele: ${ziele||'keine'}
-Offene Aufgaben dieser Person: ${offeneA||'keine'}
+KONTEXT:
+Person: ${p?p.name+' (Rolle: '+p.rolle+')':'Unbekannt'}
+Firmenziele:\n${zieleDetail||'keine definiert'}
+${fokusZ?'🔥 FIRMEN-FOKUS: '+fokusZ.name:''}
+Offene Aufgaben: ${offeneA||'keine'}
 
-Die Person will diese Aufgabe anlegen: "${titel}"
+HEBEL-FRAMEWORK (bewerte jede Dimension 1-3):
+• Umsatz-Direkt: Generiert das direkt Umsatz? (1=nein, 2=indirekt, 3=direkt)
+• Multiplikator: Multipliziert das die Leistung anderer? (1=nur mich, 2=mein Team, 3=ganze Firma)
+• Halbwertszeit: Wie lange wirkt das? (1=einmalig/heute, 2=Wochen, 3=Monate/permanent)
+• Bottleneck: Entblockiert das andere? (1=nein, 2=teilweise, 3=kritischer Blocker)
 
-Analysiere in MAX 4 kurzen Zeilen:
-1. HEBEL: Ist das ein hoher Hebel oder Zeitverschwendung? (1 Satz)
-2. ZIEL: Auf welches Ziel zahlt das ein? Oder ist es operativ nötig? (1 Satz)
-3. KONKRET: Ist die Formulierung konkret genug? Wenn nein, besserer Vorschlag. (1 Satz)
-4. SCHRITTE: 2-4 konkrete nächste Schritte als JSON Array: ["schritt1","schritt2"]
+AUFGABE DIE ANGELEGT WERDEN SOLL: "${titel}"
 
-Antworte auf Deutsch. Sei direkt, kein Blabla. Format:
-HEBEL: ...
-ZIEL: ...
-KONKRET: ...
-SCHRITTE: ["...", "..."]`;
+Antworte EXAKT in diesem Format (deutsch, knapp, direkt):
+SCORE: [Zahl 1-10] — [1 Wort: "Zeitfresser" / "Pflicht" / "Solider Hebel" / "Starker Hebel" / "Game Changer"]
+HEBEL: [1 Satz Bewertung mit den 4 Dimensionen]
+ZIEL: [Welches Ziel? Oder: "Operativ nötig weil..." oder "⚠ Zahlt auf kein Ziel ein"]
+KONKRET: [Ist es konkret? Wenn nein: bessere Formulierung vorschlagen]
+SCHRITTE: ["schritt1","schritt2","schritt3"]
+PRIO: [P1/P2/P3]
+DAUER: [Zahl in Stunden, z.B. 0.5 oder 2]`;
   try{
     const res=await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
@@ -2379,28 +2387,46 @@ SCHRITTE: ["...", "..."]`;
     const data=await res.json();
     const text=data.content?.[0]?.text||'';
     // parse response
+    const scoreMatch=text.match(/SCORE:\s*(\d+)\s*[—–-]\s*(.+)/);
+    const score=parseInt(scoreMatch?.[1])||0;
+    const scoreLabel=scoreMatch?.[2]?.trim()||'';
     const hebel=text.match(/HEBEL:\s*(.+)/)?.[1]||'';
     const ziel=text.match(/ZIEL:\s*(.+)/)?.[1]||'';
     const konkret=text.match(/KONKRET:\s*(.+)/)?.[1]||'';
+    const prioMatch=text.match(/PRIO:\s*(P[123])/)?.[1]||'';
+    const dauerMatch=parseFloat(text.match(/DAUER:\s*([\d.]+)/)?.[1])||0;
     const stepMatch=text.match(/SCHRITTE:\s*(\[.*?\])/s);
     let steps=[];
     try{steps=JSON.parse(stepMatch?.[1]||'[]');}catch(e){}
-    let h='<div style="background:var(--purple-bg);border:1px solid var(--purple-bd);border-radius:10px;padding:12px;margin-bottom:10px;font-size:12px;line-height:1.6">';
-    h+='<div style="font-size:10px;font-weight:700;color:var(--purple);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">✨ KI-Analyse</div>';
-    if(hebel)h+='<div style="margin-bottom:4px"><strong style="color:var(--text)">Hebel:</strong> <span style="color:var(--t2)">'+hebel+'</span></div>';
-    if(ziel)h+='<div style="margin-bottom:4px"><strong style="color:var(--text)">Ziel:</strong> <span style="color:var(--t2)">'+ziel+'</span></div>';
-    if(konkret)h+='<div style="margin-bottom:4px"><strong style="color:var(--text)">Konkret:</strong> <span style="color:var(--t2)">'+konkret+'</span></div>';
+    // score color
+    const sc=score>=8?'var(--green)':score>=5?'var(--amber)':'var(--red)';
+    const scBg=score>=8?'var(--green-bg)':score>=5?'var(--amber-bg)':'var(--red-bg)';
+    const scBd=score>=8?'var(--green-bd)':score>=5?'var(--amber-bd)':'var(--red-bd)';
+    let h='<div style="background:'+scBg+';border:1px solid '+scBd+';border-radius:10px;padding:12px;margin-bottom:10px;font-size:12px;line-height:1.6">';
+    h+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">';
+    h+='<div style="width:32px;height:32px;border-radius:8px;background:'+sc+';color:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;flex-shrink:0">'+score+'</div>';
+    h+='<div><div style="font-size:13px;font-weight:700;color:'+sc+'">'+scoreLabel+'</div>';
+    h+='<div style="font-size:10px;color:var(--t2)">Hebel-Score</div></div></div>';
+    if(hebel)h+='<div style="margin-bottom:3px;font-size:11px"><span style="color:var(--t2)">'+hebel+'</span></div>';
+    if(ziel)h+='<div style="margin-bottom:3px;font-size:11px"><strong>Ziel:</strong> <span style="color:var(--t2)">'+ziel+'</span></div>';
+    if(konkret)h+='<div style="margin-bottom:3px;font-size:11px"><strong>Besser:</strong> <span style="color:var(--t2)">'+konkret+'</span></div>';
+    h+='<div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">';
     if(steps.length){
-      h+='<div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">';
-      h+='<button onclick="aiApplySteps()" style="font-size:10px;padding:4px 10px;border-radius:6px;background:var(--purple);color:#fff;border:none;cursor:pointer;font-family:inherit;font-weight:600">Schritte übernehmen ('+steps.length+')</button>';
-      h+='</div>';
+      h+='<button onclick="aiApplySteps()" style="font-size:10px;padding:4px 10px;border-radius:6px;background:'+sc+';color:#fff;border:none;cursor:pointer;font-family:inherit;font-weight:600">✓ Schritte übernehmen ('+steps.length+')</button>';
       window._aiSteps=steps;
     }
-    h+='</div>';
+    if(prioMatch)h+='<button onclick="aiApplyPrio(\''+prioMatch+'\')" style="font-size:10px;padding:4px 10px;border-radius:6px;background:var(--gray-bg);color:var(--t2);border:1px solid var(--bd);cursor:pointer;font-family:inherit">→ '+prioMatch+'</button>';
+    if(dauerMatch)h+='<button onclick="document.getElementById(\'nh\').value=\''+dauerMatch+'\'" style="font-size:10px;padding:4px 10px;border-radius:6px;background:var(--gray-bg);color:var(--t2);border:1px solid var(--bd);cursor:pointer;font-family:inherit">→ '+dauerMatch+'h</button>';
+    h+='</div></div>';
     box.innerHTML=h;
   }catch(e){
     box.innerHTML='<div style="background:var(--red-bg);border:1px solid var(--red-bd);border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:11px;color:var(--red)">Fehler: '+e.message+'</div>';
   }
+}
+function aiApplyPrio(pr){
+  _selPrio=pr;
+  document.querySelectorAll('[id^="pbp-"]').forEach(b=>b.style.outline='none');
+  const btn=document.getElementById('pbp-'+pr);if(btn)btn.style.outline='2px solid var(--text)';
 }
 function aiApplySteps(){
   if(!window._aiSteps)return;
