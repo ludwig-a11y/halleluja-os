@@ -1712,7 +1712,7 @@ function openDetail(id){
     +[['neu','Neu','var(--red-bg)','var(--red)'],['backlog','Backlog','var(--gray-bg)','var(--t2)'],['aktiv','Aktiv','var(--blue-bg)','var(--blue)'],['erledigt','Erledigt','var(--green-bg)','var(--green)']].map(x=>
       '<button onclick="setStatusModal(\''+id+'\',\''+x[0]+'\')" style="font-size:11px;padding:4px 10px;border-radius:8px;border:'+(a.status===x[0]?'2px':'1px')+' solid '+(a.status===x[0]?'var(--text)':'var(--bd)')+';background:'+(a.status===x[0]?x[2]:'var(--sf)')+';color:'+(a.status===x[0]?x[3]:'var(--t2)')+';cursor:pointer;font-family:inherit;font-weight:'+(a.status===x[0]?600:400)+'">'+x[1]+'</button>'
     ).join('')+'</div></div>'
-    +'<div class="fl"><label>Teilziel</label><select id="det-tz" onchange="setTeilziel(\''+id+'\',this.value)"><option value="">— kein Teilziel —</option>'+(a.zielId?(zielObj(a.zielId)?.teilziele||[]).map(tz=>'<option value="'+tz.id+'"'+(a.teilzielId===tz.id?' selected':'')+'>'+tz.name+'</option>').join(''):'')+'</select></div>'
+    +'<div class="fl"><label>Teilziel</label><select id="det-tz" onchange="setTeilziel(\''+id+'\',this.value)"><option value="">— kein Meilenstein —</option>'+(a.zielId?(zielObj(a.zielId)?.teilziele||[]).map(tz=>'<option value="'+tz.id+'"'+(a.teilzielId===tz.id?' selected':'')+'>'+tz.name+'</option>').join(''):'')+'</select></div>'
     +(isGF()?'<div class="fl"><label style="display:flex;align-items:center;gap:8px;text-transform:none;font-size:13px;font-weight:400;cursor:pointer"><input type="checkbox" id="det-vert"'+(a.vertraulich?' checked':'')+' style="width:auto" onchange="saveDetailField(\''+id+'\',\'vertraulich\',this.checked)"> Vertraulich</label></div>':'')
     +'<div class="fl"><label>Schritte</label>'+stepsHtml(a,true)+'</div>'
     +'<div style="font-size:11px;color:var(--t2);padding:10px 0;border-top:1px solid var(--bd)">Zeit: <strong>'+fmt(elapsedSec(a))+'</strong> von '+fmtH(a.geplant)+' geplant</div>'
@@ -1832,11 +1832,11 @@ function rZiele(){
       out+='</div>';
     }
 
-    // Teilziele
+    // Meilensteine
     const myTZ=(z.teilziele||[]).filter(tz=>isGF()||tz.verantwortlichId===aP);
     if(myTZ.length||isGF()){
       out+='<div style="border-top:1px solid '+f.bd+';padding-top:12px">';
-      out+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:'+f.tc+';margin-bottom:8px">Teilziele</div>';
+      out+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:'+f.tc+';margin-bottom:8px">Meilensteine</div>';
       myTZ.forEach(tz=>{
         const tzV=person(tz.verantwortlichId),tzA=zA.filter(a=>a.teilzielId===tz.id);
         // Each Teilziel = mini-card (Option B: weiß + Zielfarbe-Border)
@@ -1893,7 +1893,7 @@ function rZiele(){
 
     // Footer buttons
     out+='<div style="display:flex;align-items:center;gap:8px;margin-top:12px">';
-    if(canManageTZ(z.id))out+='<button onclick="openAddTZ(\''+z.id+'\')" style="font-size:13px;font-weight:600;padding:8px 18px;border-radius:8px;border:none;background:'+f.tc+';color:#fff;cursor:pointer;font-family:inherit">+ Teilziel</button>';
+    if(canManageTZ(z.id))out+='<button onclick="openAddTZ(\''+z.id+'\')" style="font-size:13px;font-weight:600;padding:8px 18px;border-radius:8px;border:none;background:'+f.tc+';color:#fff;cursor:pointer;font-family:inherit">+ Meilenstein</button>';
     out+='<button onclick="openNeu({zielId:\''+z.id+'\'})" style="font-size:11px;padding:8px 14px;border-radius:8px;border:1px solid '+f.bd+';background:transparent;color:'+f.tc+';cursor:pointer;font-family:inherit">+ Aufgabe</button>';
     out+='</div>';
 
@@ -1924,7 +1924,7 @@ async function toggleTZ(zid,tzid){
   await dbPatch('teilziele',tzid,{erledigt:tz.erledigt});rZiele();
 }
 function openAddTZ(zid){
-  document.getElementById('mb').innerHTML='<div class="mt">Teilziel hinzufügen</div>'
+  document.getElementById('mb').innerHTML='<div class="mt">Meilenstein hinzufügen</div>'
     +'<div class="fl"><label>Name</label><input id="tzn" placeholder="z.B. Messe München vorbereitet" autofocus></div>'
     +'<div class="f2"><div class="fl"><label>Verantwortlich</label><select id="tzv">'+S.personen.map(p=>'<option value="'+p.id+'">'+p.name+'</option>').join('')+'</select></div>'
     +'<div class="fl"><label>Bis wann</label><input type="date" id="tzd"></div></div>'
@@ -1934,7 +1934,7 @@ function openAddTZ(zid){
 function editTZ(zid,tzid){
   const z=zielObj(zid);if(!z)return;
   const tz=(z.teilziele||[]).find(t=>t.id===tzid);if(!tz)return;
-  document.getElementById('mb').innerHTML='<div class="mt">Teilziel bearbeiten</div>'
+  document.getElementById('mb').innerHTML='<div class="mt">Meilenstein bearbeiten</div>'
     +'<div class="fl"><label>Name</label><input id="tzn" value="'+tz.name+'" autofocus></div>'
     +'<div class="f2"><div class="fl"><label>Verantwortlich</label><select id="tzv">'+S.personen.map(p=>'<option value="'+p.id+'"'+(tz.verantwortlichId===p.id?' selected':'')+'>'+p.name+'</option>').join('')+'</select></div>'
     +'<div class="fl"><label>Bis wann</label><input type="date" id="tzd" value="'+(tz.datum||'')+'"></div></div>'
@@ -1957,7 +1957,7 @@ async function saveTZ(zid,tzid){
   cm();rZiele();
 }
 async function delTZ(zid,tzid){
-  if(!confirm('Teilziel löschen?'))return;
+  if(!confirm('Meilenstein löschen?'))return;
   const z=zielObj(zid);if(!z)return;
   z.teilziele=(z.teilziele||[]).filter(t=>t.id!==tzid);
   S.aufgaben.forEach(a=>{if(a.teilzielId===tzid)a.teilzielId=null;});
@@ -2093,7 +2093,7 @@ function openNeu(pf={}){
     +'<div class="fl"><label>Was soll gemacht werden?</label><input id="nt" value="'+(pf.titel||'')+'" placeholder="Konkret und aktiv formulieren…" autofocus></div>'
     +'<div class="f2"><div class="fl"><label>Wer?</label><select id="np">'+S.personen.map(p=>'<option value="'+p.id+'"'+(defaultPid===p.id?' selected':'')+'>'+p.name+'</option>').join('')+'</select></div>'
     +'<div class="fl"><label>Ziel <span style="font-weight:400;color:var(--t2)">(optional)</span></label><select id="nziel" onchange="updateNeuTZ()">'+zieleOpts+'</select></div></div>'
-    +'<div id="neu-tz-wrap" class="fl" style="display:none"><label>Teilziel <span style="font-weight:400;color:var(--t2)">(optional)</span></label><select id="ntz"><option value="">— kein Teilziel —</option></select></div>'
+    +'<div id="neu-tz-wrap" class="fl" style="display:none"><label>Meilenstein <span style="font-weight:400;color:var(--t2)">(optional)</span></label><select id="ntz"><option value="">— kein Meilenstein —</option></select></div>'
     +'<div class="fl"><label>Priorität</label><div style="display:flex;gap:6px;margin-top:2px">'
     +[null,'P1','P2','P3'].map(pr=>{const bg=pr==='P1'?'var(--red-bg)':pr==='P2'?'#fff7ed':'var(--gray-bg)';const tc=pr==='P1'?'var(--red)':pr==='P2'?'#c2410c':'var(--t2)';return'<button id="pbp-'+(pr||'k')+'" onclick="selPrioBtn(this,\''+pr+'\')" style="font-size:12px;padding:4px 11px;border-radius:8px;border:1px solid '+(pr?tc:'var(--bd)')+';background:'+bg+';color:'+tc+';cursor:pointer;font-family:inherit">'+(pr||'kein')+'</button>';}).join('')
     +'</div></div>'
@@ -2114,7 +2114,7 @@ function updateNeuTZ(){
   const z=zielObj(zSel.value),tzSel=document.getElementById('ntz');
   const wrap=document.getElementById('neu-tz-wrap');
   if(!tzSel)return;
-  tzSel.innerHTML='<option value="">— kein Teilziel —</option>';
+  tzSel.innerHTML='<option value="">— kein Meilenstein —</option>';
   const tza=z?(z.teilziele||[]).filter(t=>!t.erledigt):[];
   tza.forEach(t=>{tzSel.innerHTML+='<option value="'+t.id+'">'+t.name+'</option>';});
   if(wrap)wrap.style.display=tza.length?'':'none';
@@ -2151,7 +2151,7 @@ function quickAssignZiel(id){
     '<div class="mt">Ziel verknüpfen</div>'
     +'<div style="font-size:13px;font-weight:500;color:var(--t2);margin-bottom:14px;line-height:1.4">'+a.titel+'</div>'
     +'<div class="f2"><div class="fl"><label>Ziel <span style="font-weight:400;color:var(--t2)">(optional)</span></label><select id="qz-sel" onchange="updateQZTZ(\''+id+'\')">'+opts+'</select></div></div>'
-    +'<div id="qz-tz-wrap" class="fl" style="display:none"><label>Teilziel <span style="font-weight:400;color:var(--t2)">(optional)</span></label><select id="qz-ntz"><option value="">— kein Teilziel —</option></select></div>'
+    +'<div id="qz-tz-wrap" class="fl" style="display:none"><label>Meilenstein <span style="font-weight:400;color:var(--t2)">(optional)</span></label><select id="qz-ntz"><option value="">— kein Meilenstein —</option></select></div>'
     +'<div class="mf"><button onclick="cm()">Abbrechen</button><button onclick="saveQuickZiel(\''+id+'\')" style="background:var(--text);color:#fff;border:none;font-family:inherit;font-weight:600;padding:10px 18px;border-radius:8px;cursor:pointer">Speichern</button></div>';
   document.getElementById('ovl').classList.add('open');
   updateQZTZ(id);
@@ -2163,7 +2163,7 @@ function updateQZTZ(aid){
   if(!wrap||!sel)return;
   const z=zielId?S.ziele.find(x=>x.id===zielId):null;
   const tza=z?(z.teilziele||[]).filter(t=>!t.erledigt):[];
-  sel.innerHTML='<option value="">— kein Teilziel —</option>'+tza.map(t=>'<option value="'+t.id+'">'+t.name+'</option>').join('');
+  sel.innerHTML='<option value="">— kein Meilenstein —</option>'+tza.map(t=>'<option value="'+t.id+'">'+t.name+'</option>').join('');
   wrap.style.display=tza.length?'':'none';
 }
 async function saveQuickZiel(id){
