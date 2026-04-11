@@ -2301,7 +2301,10 @@ function openNeu(pf={}){
   const defaultPid=pf.pid||aP;
   const zieleOpts=zieleOptgroups(defaultPid,pf.zielId||'');
   document.getElementById('mb').innerHTML='<div class="mt">Neue Aufgabe</div>'
-    +'<div class="fl"><label>Was soll gemacht werden?</label><input id="nt" value="'+(pf.titel||'')+'" placeholder="Konkret und aktiv formulieren…" autofocus></div>'
+    +'<div class="fl"><label>Was soll gemacht werden?</label><div style="display:flex;gap:6px"><input id="nt" value="'+(pf.titel||'')+'" placeholder="Konkret und aktiv formulieren…" autofocus style="flex:1" onkeydown="if(event.key===\'Enter\'){event.preventDefault();aiAnalyze()}">'
+    +(localStorage.getItem('anthropic_key')?'<button onclick="aiAnalyze()" id="ai-btn-analyze" style="padding:5px 10px;border-radius:8px;border:1px solid var(--purple-bd);background:var(--purple-bg);color:var(--purple);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;transition:all .15s">✨ Hebel?</button>':'')
+    +'</div></div>'
+    +'<div id="ai-suggestion" style="display:none"></div>'
     +'<div class="f2"><div class="fl"><label>Wer?</label><select id="np">'+S.personen.map(p=>'<option value="'+p.id+'"'+(defaultPid===p.id?' selected':'')+'>'+p.name+'</option>').join('')+'</select></div>'
     +'<div class="fl"><label>Ziel <span style="font-weight:400;color:var(--t2)">(optional)</span></label><select id="nziel" onchange="updateNeuTZ()">'+zieleOpts+'</select></div></div>'
     +'<div id="neu-tz-wrap" class="fl" style="display:none"><label>Meilenstein <span style="font-weight:400;color:var(--t2)">(optional)</span></label><select id="ntz"><option value="">— kein Meilenstein —</option></select></div>'
@@ -2335,6 +2338,76 @@ function updateNeuTZ(){
   const tza=z?(z.teilziele||[]).filter(t=>!t.erledigt):[];
   tza.forEach(t=>{tzSel.innerHTML+='<option value="'+t.id+'">'+t.name+'</option>';});
   if(wrap)wrap.style.display=tza.length?'':'none';
+}
+async function aiAnalyze(){
+  const titel=document.getElementById('nt')?.value.trim();
+  if(!titel){document.getElementById('ai-suggestion').style.display='none';return;}
+  const key=localStorage.getItem('anthropic_key');
+  if(!key)return;
+  const box=document.getElementById('ai-suggestion');
+  box.style.display='block';
+  box.innerHTML='<div style="background:var(--purple-bg);border:1px solid var(--purple-bd);border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:12px;color:var(--purple)">✨ Analysiere...</div>';
+  const p=person(aP);
+  const ziele=S.ziele.map(z=>z.name).join(', ');
+  const offeneA=S.aufgaben.filter(a=>a.pid===aP&&['neu','backlog','aktiv'].includes(a.status)).map(a=>a.titel).slice(0,15).join(', ');
+  const prompt=`Du bist ein knallharter Produktivitäts-Coach für ein Sauna-Unternehmen (Halleluja Sauna Austria).
+
+Person: ${p?p.name+' ('+p.rolle+')':'Unbekannt'}
+Aktuelle Firmenziele: ${ziele||'keine'}
+Offene Aufgaben dieser Person: ${offeneA||'keine'}
+
+Die Person will diese Aufgabe anlegen: "${titel}"
+
+Analysiere in MAX 4 kurzen Zeilen:
+1. HEBEL: Ist das ein hoher Hebel oder Zeitverschwendung? (1 Satz)
+2. ZIEL: Auf welches Ziel zahlt das ein? Oder ist es operativ nötig? (1 Satz)
+3. KONKRET: Ist die Formulierung konkret genug? Wenn nein, besserer Vorschlag. (1 Satz)
+4. SCHRITTE: 2-4 konkrete nächste Schritte als JSON Array: ["schritt1","schritt2"]
+
+Antworte auf Deutsch. Sei direkt, kein Blabla. Format:
+HEBEL: ...
+ZIEL: ...
+KONKRET: ...
+SCHRITTE: ["...", "..."]`;
+  try{
+    const res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:400,messages:[{role:'user',content:prompt}]})
+    });
+    if(!res.ok){box.innerHTML='<div style="background:var(--red-bg);border:1px solid var(--red-bd);border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:11px;color:var(--red)">API Fehler: '+res.status+'</div>';return;}
+    const data=await res.json();
+    const text=data.content?.[0]?.text||'';
+    // parse response
+    const hebel=text.match(/HEBEL:\s*(.+)/)?.[1]||'';
+    const ziel=text.match(/ZIEL:\s*(.+)/)?.[1]||'';
+    const konkret=text.match(/KONKRET:\s*(.+)/)?.[1]||'';
+    const stepMatch=text.match(/SCHRITTE:\s*(\[.*?\])/s);
+    let steps=[];
+    try{steps=JSON.parse(stepMatch?.[1]||'[]');}catch(e){}
+    let h='<div style="background:var(--purple-bg);border:1px solid var(--purple-bd);border-radius:10px;padding:12px;margin-bottom:10px;font-size:12px;line-height:1.6">';
+    h+='<div style="font-size:10px;font-weight:700;color:var(--purple);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">✨ KI-Analyse</div>';
+    if(hebel)h+='<div style="margin-bottom:4px"><strong style="color:var(--text)">Hebel:</strong> <span style="color:var(--t2)">'+hebel+'</span></div>';
+    if(ziel)h+='<div style="margin-bottom:4px"><strong style="color:var(--text)">Ziel:</strong> <span style="color:var(--t2)">'+ziel+'</span></div>';
+    if(konkret)h+='<div style="margin-bottom:4px"><strong style="color:var(--text)">Konkret:</strong> <span style="color:var(--t2)">'+konkret+'</span></div>';
+    if(steps.length){
+      h+='<div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">';
+      h+='<button onclick="aiApplySteps()" style="font-size:10px;padding:4px 10px;border-radius:6px;background:var(--purple);color:#fff;border:none;cursor:pointer;font-family:inherit;font-weight:600">Schritte übernehmen ('+steps.length+')</button>';
+      h+='</div>';
+      window._aiSteps=steps;
+    }
+    h+='</div>';
+    box.innerHTML=h;
+  }catch(e){
+    box.innerHTML='<div style="background:var(--red-bg);border:1px solid var(--red-bd);border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:11px;color:var(--red)">Fehler: '+e.message+'</div>';
+  }
+}
+function aiApplySteps(){
+  if(!window._aiSteps)return;
+  window._neuSteps=window._aiSteps.map(t=>({t,d:false}));
+  renderNeuSteps();
+  const box=document.getElementById('ai-suggestion');
+  if(box){const btn=box.querySelector('button');if(btn){btn.textContent='✓ Übernommen';btn.style.background='var(--green)';}}
 }
 function addNeuStep(){
   const inp=document.getElementById('neu-step-input');if(!inp)return;
@@ -2667,6 +2740,10 @@ function openSettings(){
     h+='<div class="settings-row"><div style="flex:1"><div style="font-size:12px;font-weight:500">'+t.name+'</div><div style="font-size:10px;color:var(--t3)">'+(members||'Keine Mitglieder')+'</div></div><button onclick="editTeam(\''+t.id+'\')" class="btn btn-gr" style="font-size:10px;padding:3px 9px">bearbeiten</button></div>';
   });
   h+='<button onclick="addTeam()" class="btn btn-gr" style="margin-top:8px;width:100%">+ Team hinzufügen</button>';
+  h+='<div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin:20px 0 10px">KI-Assistent</div>';
+  h+='<div class="fl"><label>Anthropic API Key</label><input type="password" id="set-aikey" value="'+(localStorage.getItem('anthropic_key')||'')+'" placeholder="sk-ant-..." style="font-family:monospace;font-size:11px"></div>';
+  h+='<button onclick="localStorage.setItem(\'anthropic_key\',document.getElementById(\'set-aikey\').value.trim());this.textContent=\'✓ Gespeichert\';this.style.color=\'var(--green)\'" class="btn btn-gr" style="margin-bottom:8px">API Key speichern</button>';
+  h+='<div style="font-size:10px;color:var(--t3);margin-bottom:8px">Der Key wird lokal im Browser gespeichert. Nie an Server gesendet ausser an Anthropic direkt.</div>';
   h+='<div class="mf"><button class="btn btn-gr" onclick="cm()">Schließen</button></div>';
   document.getElementById('mb').innerHTML=h;document.getElementById('ovl').classList.add('open');
 }
