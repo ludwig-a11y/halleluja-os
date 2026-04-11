@@ -1318,6 +1318,7 @@ function rWoche(){
   tage.forEach((datum,i)=>{
     const erlA=myA.filter(a=>a.status==='erledigt'&&(a.akt_seit||'').slice(0,10)===datum);
     const aktivA=myA.filter(a=>a.status==='aktiv'&&datum===TODAY);
+    const geplantA=myA.filter(a=>['neu','backlog'].includes(a.status)&&a.dl===datum);
     const isToday=datum===TODAY,isPast=datum<TODAY;
     out+='<details'+(isToday?' open':'')+' style="'+(i>0?'border-top:1px solid var(--bd)':'')+'">';
     out+='<summary style="list-style:none;cursor:pointer;padding:12px 14px;display:flex;align-items:center;gap:10px;'+(isToday?'background:var(--gray-bg)':'')+'">';
@@ -1326,10 +1327,18 @@ function rWoche(){
     out+='<div style="flex:1"></div>';
     if(aktivA.length)out+='<span style="font-size:11px;color:var(--blue);font-weight:600">● läuft</span>';
     else if(erlA.length)out+='<span style="font-size:11px;color:var(--green);font-weight:600">✓ '+erlA.length+'</span>';
+    else if(geplantA.length)out+='<span style="font-size:11px;color:var(--t2);font-weight:600">'+geplantA.length+' geplant</span>';
     else out+='<span style="font-size:11px;color:var(--t3)">'+(isPast||isToday?'—':'')+'</span>';
     out+='</summary>';
-    if(erlA.length||aktivA.length){
+    if(erlA.length||aktivA.length||geplantA.length){
       out+='<div style="padding:4px 14px 10px 14px">';
+      geplantA.forEach(a=>{
+        out+='<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-top:1px solid var(--bd)">';
+        out+='<span style="font-size:10px;color:var(--t3);flex-shrink:0">○</span>';
+        out+='<span style="flex:1;font-size:12px;color:var(--text)">'+a.titel+'</span>';
+        if(a.prio)out+='<span style="font-size:10px;font-weight:700;color:var(--t2)">'+a.prio+'</span>';
+        out+='</div>';
+      });
       erlA.forEach(a=>{
         out+='<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-top:1px solid var(--bd)">';
         out+='<span style="font-size:10px;color:var(--green);flex-shrink:0">✓</span>';
