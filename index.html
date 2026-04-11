@@ -2448,19 +2448,35 @@ ${beob?'Letzte Sales-Beobachtungen: '+beob:''}
 ${liveDatenH?'LIVE-DATEN:\n'+liveDatenH:''}
 ${firmenKontext?'FIRMEN-DATEN:\n'+firmenKontext:''}
 
+WERTSCHÖPFUNGSKETTE (jede Stufe ist gleich wichtig!):
+1. 📣 MARKETING/LEAD-GEN → Sichtbarkeit, Leads generieren, CPL optimieren
+2. 📞 SETTING/QUALIFIKATION → Leads kontaktieren, Termine vereinbaren, Bedarf klären
+3. 🔥 CLOSING/SALES → Beratungsgespräch, Angebot, Abschluss
+4. 📦 FULFILLMENT/LIEFERUNG → Produktion, Lieferung, Installation, Qualität sichern
+5. ⭐ KUNDENBINDUNG/SERVICE → Support, Zufriedenheit, Reklamationen lösen, Beziehung pflegen
+6. 🔄 UPSELL/EMPFEHLUNG → Bestandskunden reaktivieren, Empfehlungen generieren, Bewertungen
+7. ⚙️ INFRASTRUKTUR → Prozesse, Tools, Hiring, Schulung — enablet andere Stufen
+
 HEBEL-FRAMEWORK (bewerte jede Dimension 1-3):
-• Umsatz-Direkt: Generiert das direkt Umsatz? (1=nein, 2=indirekt, 3=direkt)
-• Multiplikator: Multipliziert das die Leistung anderer? (1=nur mich, 2=mein Team, 3=ganze Firma)
+• Wertschöpfung: Wo in der Kette? Stärkt es eine schwache Stufe? (1=Randthema, 2=unterstützend, 3=direkt auf kritischer Stufe)
+• Multiplikator: Multipliziert das die Leistung anderer? (1=nur mich, 2=mein Team, 3=ganze Firma/Kunden)
 • Halbwertszeit: Wie lange wirkt das? (1=einmalig/heute, 2=Wochen, 3=Monate/permanent)
-• Bottleneck: Entblockiert das andere? (1=nein, 2=teilweise, 3=kritischer Blocker)
+• Bottleneck: Entblockiert das andere oder verhindert Verlust? (1=nein, 2=teilweise, 3=kritischer Blocker oder Churn-Risiko)
+
+WICHTIG: Fulfillment/Kundenbindung ist genauso wertvoll wie Sales!
+- Schlechte Lieferung = Empfehlungen sterben = langfristig teurer als kein Lead
+- 1 begeisterter Kunde = 3-5 Empfehlungen = kostenlose Leads
+- Reklamation lösen = Churn verhindern = CLV sichern
+Bewerte NICHT nur nach "generiert das direkt Umsatz" — bewerte nach Wertschöpfungskette-Impact.
 
 AUFGABE DIE ANGELEGT WERDEN SOLL: "${titel}"
 
 Antworte EXAKT in diesem Format (deutsch, knapp, direkt):
 SCORE: [Zahl 1-10] — [1 Wort: "Zeitfresser" / "Pflicht" / "Solider Hebel" / "Starker Hebel" / "Game Changer"]
-HEBEL: [1 Satz Bewertung mit den 4 Dimensionen]
-ZIEL: [Welches Ziel? Oder: "Operativ nötig weil..." oder "⚠ Zahlt auf kein Ziel ein"]
-KONKRET: [Ist es konkret? Wenn nein: bessere Formulierung vorschlagen]
+KETTE: [Welche Stufe? z.B. "📦 Fulfillment" oder "⭐ Kundenbindung" oder "📞 Setting"]
+HEBEL: [1 Satz Bewertung mit den 4 Dimensionen — erkläre den Wertschöpfungs-Impact]
+ZIEL: [Welches Firmenziel? Oder: "Operativ nötig weil..." oder "⚠ Zahlt auf kein Ziel ein"]
+KONKRET: [Ist es konkret genug? Wenn nein: bessere Formulierung vorschlagen]
 SCHRITTE: ["schritt1","schritt2","schritt3"]
 PRIO: [P1/P2/P3]
 DAUER: [Zahl in Stunden, z.B. 0.5 oder 2]`;
@@ -2477,6 +2493,7 @@ DAUER: [Zahl in Stunden, z.B. 0.5 oder 2]`;
     const scoreMatch=text.match(/SCORE:\s*(\d+)\s*[—–-]\s*(.+)/);
     const score=parseInt(scoreMatch?.[1])||0;
     const scoreLabel=scoreMatch?.[2]?.trim()||'';
+    const kette=text.match(/KETTE:\s*(.+)/)?.[1]||'';
     const hebel=text.match(/HEBEL:\s*(.+)/)?.[1]||'';
     const ziel=text.match(/ZIEL:\s*(.+)/)?.[1]||'';
     const konkret=text.match(/KONKRET:\s*(.+)/)?.[1]||'';
@@ -2499,7 +2516,9 @@ DAUER: [Zahl in Stunden, z.B. 0.5 oder 2]`;
     h+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">';
     h+='<div style="width:32px;height:32px;border-radius:8px;background:'+sc+';color:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;flex-shrink:0">'+score+'</div>';
     h+='<div><div style="font-size:13px;font-weight:700;color:'+sc+'">'+scoreLabel+'</div>';
-    h+='<div style="font-size:10px;color:var(--t2)">Hebel-Score</div></div></div>';
+    h+='<div style="font-size:10px;color:var(--t2)">Hebel-Score</div></div>';
+    if(kette)h+='<span style="margin-left:auto;font-size:10px;padding:3px 9px;border-radius:6px;background:rgba(0,0,0,.06);color:var(--t2);font-weight:600;white-space:nowrap">'+kette+'</span>';
+    h+='</div>';
     if(hebel)h+='<div style="margin-bottom:3px;font-size:11px"><span style="color:var(--t2)">'+hebel+'</span></div>';
     if(ziel)h+='<div style="margin-bottom:3px;font-size:11px"><strong>Ziel:</strong> <span style="color:var(--t2)">'+ziel+'</span></div>';
     if(konkret)h+='<div style="margin-bottom:3px;font-size:11px;cursor:pointer" onclick="document.getElementById(\'nt\').value=this.dataset.t" data-t="'+konkret.replace(/"/g,'&quot;').replace(/^Besser:\s*/i,'').replace(/^"|"$/g,'')+'"><strong>Besser:</strong> <span style="color:'+sc+';text-decoration:underline dotted">'+konkret+'</span> <span style="font-size:9px;opacity:.5">(klick = übernehmen)</span></div>';
