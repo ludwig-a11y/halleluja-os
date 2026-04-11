@@ -267,7 +267,7 @@ function zieleOptgroups(pid,selId=''){
 function wochenTage(){
   const today=new Date(),dow=today.getDay(),diff=dow===0?-6:1-dow;
   const mo=new Date(today);mo.setDate(today.getDate()+diff);mo.setHours(0,0,0,0);
-  return Array.from({length:5},(_,i)=>{const d=new Date(mo);d.setDate(mo.getDate()+i);return d.toISOString().slice(0,10);});
+  return Array.from({length:6},(_,i)=>{const d=new Date(mo);d.setDate(mo.getDate()+i);return d.toISOString().slice(0,10);});
 }
 function getKW(d){
   const date=new Date(d||Date.now());
@@ -820,21 +820,31 @@ async function delSignal(id){
   await dbDelete('signale',id);render();
 }
 
+function wrItemName(wr,n){
+  const tzId=wr['big3_'+n+'_tz_id'];
+  if(tzId){const tz=S.ziele.flatMap(z=>z.teilziele||[]).find(t=>t.id===tzId);if(tz)return tz.name;}
+  return wr['big3_'+n]||null;
+}
 function openWochenreset(){
   const{kw,jahr}=getKW();
   const nextKw=kw===52?1:kw+1;
   const lw=letzteWocheReset(aP);
   let rueckblickHtml='';
   if(lw){
-    [[lw.big3_1,lw.big3_1_done],[lw.big3_2,lw.big3_2_done],[lw.big3_3,lw.big3_3_done]].forEach(([txt,done])=>{
+    [1,2,3].forEach(n=>{
+      const txt=wrItemName(lw,n),done=lw['big3_'+n+'_done'];
       if(!txt)return;
       rueckblickHtml+='<span style="font-size:11px;'+(done?'background:#f0fdf4;border:1px solid #86efac;color:#15803d':'background:#fff7ed;border:1px solid #fed7aa;color:#c2410c')+';padding:2px 8px;border-radius:99px;font-weight:600">'+(done?'✓ ':'✗ ')+txt+'</span>';
     });
   }
-  const zieleOpts=S.ziele.map(z=>{
-    const f=FARBEN[z.farbe||0];
-    return '<div onclick="[...document.querySelectorAll(\'.zw-opt\')].forEach(x=>{x.style.borderColor=\'#e5e5e3\';x.style.color=\'#888\';x.style.background=\'#fff\'});this.style.borderColor=\''+f.tc+'\';this.style.color=\''+f.tc+'\';this.style.background=\''+f.bg+'\';document.getElementById(\'wr-ziel\').value=\''+z.id+'\'" class="zw-opt" style="cursor:pointer;border:1.5px solid #e5e5e3;border-radius:8px;padding:8px 11px;font-size:12px;font-weight:600;color:#888;background:#fff;margin-bottom:5px">'+z.name+'</div>';
-  }).join('');
+  const aktZiele=S.ziele.filter(z=>z.status!=='vorschlag');
+  const meineZ=aktZiele.filter(z=>String(z.verantwortlichId)===String(aP)||(z.teilziele||[]).some(tz=>String(tz.verantwortlichId)===String(aP)));
+  const andereZ=aktZiele.filter(z=>!meineZ.find(m=>m.id===z.id));
+  const zBtn=z=>{const f=FARBEN[z.farbe||0];return '<div onclick="[...document.querySelectorAll(\'.zw-opt\')].forEach(x=>{x.style.borderColor=\'#e5e5e3\';x.style.color=\'#888\';x.style.background=\'#fff\'});this.style.borderColor=\''+f.tc+'\';this.style.color=\''+f.tc+'\';this.style.background=\''+f.bg+'\';document.getElementById(\'wr-ziel\').value=\''+z.id+'\';updateWRTZSection()" class="zw-opt" style="cursor:pointer;border:1.5px solid #e5e5e3;border-radius:8px;padding:8px 11px;font-size:12px;font-weight:600;color:#888;background:#fff;margin-bottom:5px">'+z.name+'</div>';};
+  let zieleOpts='';
+  if(meineZ.length){zieleOpts+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);margin-bottom:5px;margin-top:4px">Meine Ziele</div>';zieleOpts+=meineZ.map(zBtn).join('');}
+  if(andereZ.length){zieleOpts+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);margin-bottom:5px;margin-top:8px">Andere Ziele</div>';zieleOpts+=andereZ.map(zBtn).join('');}
+
   document.getElementById('mb').innerHTML=
     '<div class="mt">Wochenrückblick KW '+kw+'</div>'
     +(rueckblickHtml?'<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px">'+rueckblickHtml+'</div>':'')
@@ -842,30 +852,65 @@ function openWochenreset(){
     +'<textarea id="wr-blockiert" rows="2" style="width:100%;padding:8px;border:1px solid var(--bd);border-radius:8px;font-family:inherit;font-size:13px;resize:vertical" placeholder="z.B. Leads brauchten mehr Entscheidungszeit…"></textarea></div>'
     +'<div style="border-top:1px solid var(--bd);margin:13px 0"></div>'
     +'<div style="font-size:13px;font-weight:700;color:#111;margin-bottom:4px">Big 3 — KW '+nextKw+'</div>'
-    +'<div style="font-size:12px;color:var(--t2);margin-bottom:10px;font-style:italic">Was sind die 3 Dinge, die du diese Woche erreichen willst, die alles andere einfacher oder überflüssig machen?</div>'
+    +'<div style="font-size:12px;color:var(--t2);margin-bottom:10px;font-style:italic">Welche Meilensteine treibst du diese Woche voran?</div>'
     +'<input type="hidden" id="wr-ziel">'
     +zieleOpts
-    +'<div style="display:grid;gap:7px;margin:10px 0">'
-    +[1,2,3].map(n=>'<div style="display:flex;align-items:center;gap:9px;background:#fafafa;border:1px solid var(--bd);border-radius:9px;padding:9px 11px">'
-      +'<span style="font-size:13px;font-weight:800;color:#15803d;width:14px;flex-shrink:0">'+n+'</span>'
-      +'<input id="wr-b'+n+'" type="text" placeholder="'+(n<3?'Outcome '+n+' diese Woche…':'Optional…')+'" style="border:none;background:transparent;font-family:inherit;font-size:13px;color:#111;outline:none;flex:1">'
-      +'</div>').join('')
-    +'</div>'
+    +'<div id="wr-tz-section" style="margin-top:10px"></div>'
     +'<div class="mf"><button onclick="cm()">Später</button>'
     +'<button onclick="saveWochenreset()" style="background:#15803d;color:#fff;border:none;font-weight:600">Speichern ✓</button></div>';
   document.getElementById('ovl').classList.add('open');
 }
-
+function updateWRTZSection(){
+  const zielId=document.getElementById('wr-ziel')?.value;
+  const div=document.getElementById('wr-tz-section');if(!div)return;
+  const z=zielId?S.ziele.find(x=>x.id===zielId):null;
+  const tzArr=z?(z.teilziele||[]).filter(t=>!t.erledigt):[];
+  let html='';
+  if(tzArr.length){
+    html+='<div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:7px">Bestehende Meilensteine</div>';
+    html+='<div style="display:flex;flex-direction:column;gap:5px;margin-bottom:12px">';
+    tzArr.forEach(tz=>{
+      html+='<label style="display:flex;align-items:center;gap:9px;padding:8px 10px;background:var(--gray-bg);border-radius:8px;cursor:pointer">'
+        +'<input type="checkbox" class="wr-tz-check" value="'+tz.id+'" style="width:15px;height:15px;cursor:pointer;flex-shrink:0">'
+        +'<span style="font-size:12px;font-weight:500;color:var(--text)">'+tz.name+'</span>'
+        +'</label>';
+    });
+    html+='</div>';
+  }
+  html+='<div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:7px">'+(tzArr.length?'Neu anlegen (wird automatisch Meilenstein)':'Meilensteine eingeben')+'</div>';
+  html+='<div style="display:grid;gap:7px">';
+  [1,2,3].forEach(n=>{html+='<div style="display:flex;align-items:center;gap:9px;background:#fafafa;border:1px solid var(--bd);border-radius:9px;padding:9px 11px"><span style="font-size:13px;font-weight:800;color:#15803d;width:14px;flex-shrink:0">'+n+'</span><input id="wr-b'+n+'" type="text" placeholder="'+(n<3?'Meilenstein '+n+'…':'Optional…')+'" style="border:none;background:transparent;font-family:inherit;font-size:13px;color:#111;outline:none;flex:1"></div>';});
+  html+='</div>';
+  div.innerHTML=html;
+}
 async function saveWochenreset(){
   const{kw,jahr}=getKW();
+  const zielId=document.getElementById('wr-ziel').value||null;
+  const selTzIds=[...document.querySelectorAll('.wr-tz-check:checked')].map(x=>x.value);
+  const newTzTexts=[1,2,3].map(n=>document.getElementById('wr-b'+n)?.value.trim()||'');
+  const newTzIds=[];
+  for(const txt of newTzTexts){
+    if(!txt){newTzIds.push(null);continue;}
+    const tzId=nid('tz');
+    const tzRec={id:tzId,ziel_id:zielId||null,name:txt,verantwortlich_id:String(aP),datum:'',erledigt:false};
+    if(zielId){
+      const z=S.ziele.find(x=>x.id===zielId);
+      if(z){z.teilziele=z.teilziele||[];z.teilziele.push({...tzRec,zielId,verantwortlichId:aP});}
+      await dbInsert('teilziele',tzRec);
+    }
+    newTzIds.push(tzId);
+  }
+  const allIds=[...selTzIds,...newTzIds.filter(Boolean)].slice(0,3);
+  while(allIds.length<3)allIds.push(null);
+  const allTZ=S.ziele.flatMap(z=>z.teilziele||[]);
+  const tzName=id=>id?(allTZ.find(t=>t.id===id)?.name||null):null;
   const rec={
     id:'wr-'+String(aP)+'-'+kw+'-'+jahr,
     pid:aP,kw,jahr,
     blockiert:document.getElementById('wr-blockiert').value.trim(),
-    focus_ziel_id:document.getElementById('wr-ziel').value||null,
-    big3_1:document.getElementById('wr-b1').value.trim()||null,
-    big3_2:document.getElementById('wr-b2').value.trim()||null,
-    big3_3:document.getElementById('wr-b3').value.trim()||null,
+    focus_ziel_id:zielId,
+    big3_1_tz_id:allIds[0],big3_2_tz_id:allIds[1],big3_3_tz_id:allIds[2],
+    big3_1:tzName(allIds[0]),big3_2:tzName(allIds[1]),big3_3:tzName(allIds[2]),
     big3_1_done:false,big3_2_done:false,big3_3_done:false
   };
   S.wochenresets=S.wochenresets.filter(r=>r.id!==rec.id);
@@ -1198,7 +1243,7 @@ function rWoche(){
   const{kw}=getKW();
   const wr=dieseWocheReset(aP);
   const tage=wochenTage();
-  const tagN=['Mo','Di','Mi','Do','Fr'];
+  const tagN=['Mo','Di','Mi','Do','Fr','Sa'];
   const myA=S.aufgaben.filter(a=>String(a.pid)===String(aP)&&canSee(a));
   let out='<div style="font-size:16px;font-weight:700;margin-bottom:20px">Meine Woche · KW '+kw+'</div>';
 
@@ -1211,12 +1256,16 @@ function rWoche(){
     out+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:'+f.tc+'">Big 3 · KW '+kw+'</div>';
     if(fz)out+='<span style="font-size:11px;color:var(--t2)">→ '+fz.name+'</span>';
     out+='</div>';
-    [['big3_1','big3_1_done'],['big3_2','big3_2_done'],['big3_3','big3_3_done']].forEach(([txtF,doneF],i)=>{
-      const txt=wr[txtF];if(!txt)return;
+    [[1,'big3_1_done'],[2,'big3_2_done'],[3,'big3_3_done']].forEach(([n,doneF],i)=>{
+      const txt=wrItemName(wr,n);if(!txt)return;
       const done=wr[doneF];
-      out+='<div onclick="toggleBig3(\''+wr.id+'\',\''+doneF+'\')" style="display:flex;align-items:center;gap:10px;padding:9px 0;cursor:pointer;'+(i>0?'border-top:1px solid '+f.bd+';':'')+'">';
+      const tzId=wr['big3_'+n+'_tz_id'];
+      out+='<div style="'+(i>0?'border-top:1px solid '+f.bd+';':'')+'">';
+      out+='<div onclick="toggleBig3(\''+wr.id+'\',\''+doneF+'\')" style="display:flex;align-items:center;gap:10px;padding:9px 0;cursor:pointer">';
       out+='<div style="width:18px;height:18px;border-radius:5px;flex-shrink:0;'+(done?'background:'+f.tc+';border:1.5px solid '+f.tc+';display:flex;align-items:center;justify-content:center':'border:1.5px solid '+f.bd)+'">'+(done?'<span style="color:#fff;font-size:10px;font-weight:800">✓</span>':'')+'</div>';
       out+='<span style="font-size:13px;font-weight:500;flex:1;'+(done?'color:var(--t2);text-decoration:line-through':'color:var(--text)')+'">'+txt+'</span>';
+      out+='</div>';
+      if(tzId)out+='<div style="padding-left:28px;padding-bottom:7px"><button onclick="openNeu({zielId:\''+wr.focus_ziel_id+'\',teilzielId:\''+tzId+'\'})" style="font-size:11px;padding:3px 10px;border-radius:6px;border:1px dashed var(--bd);background:transparent;color:'+f.tc+';cursor:pointer;font-family:inherit">+ Aufgabe</button></div>';
       out+='</div>';
     });
     out+='<button onclick="openWochenreset()" style="font-size:11px;margin-top:10px;padding:5px 12px;border-radius:7px;border:1px solid var(--bd);background:var(--gray-bg);color:var(--t2);cursor:pointer;font-family:inherit">✎ Bearbeiten</button>';
@@ -1323,8 +1372,8 @@ function rTag(){
     out+='<span style="font-size:10px;color:'+(doneCount===totalCount?'#15803d':'var(--t3)')+'">'+doneCount+'/'+totalCount+'</span>';
     out+='</summary>';
     out+='<div style="background:#fff;border:1px solid '+f.bd+';border-top:none;border-left:3px solid '+f.tc+';border-radius:0 0 10px 0;padding:8px 14px 10px">';
-    [['big3_1','big3_1_done'],['big3_2','big3_2_done'],['big3_3','big3_3_done']].forEach(([txtF,doneF])=>{
-      const txt=wrAktuell[txtF];if(!txt)return;
+    [[1,'big3_1_done'],[2,'big3_2_done'],[3,'big3_3_done']].forEach(([n,doneF])=>{
+      const txt=wrItemName(wrAktuell,n);if(!txt)return;
       const done=wrAktuell[doneF];
       out+='<div onclick="toggleBig3(\''+wrAktuell.id+'\',\''+doneF+'\')" style="display:flex;align-items:center;gap:8px;padding:5px 0;cursor:pointer">';
       out+='<div style="width:16px;height:16px;border-radius:4px;flex-shrink:0;'+(done?'background:'+f.tc+';border:1.5px solid '+f.tc+';display:flex;align-items:center;justify-content:center':'border:1.5px solid #d4d0cb')+'">'+(done?'<span style="color:#fff;font-size:9px;font-weight:800">✓</span>':'')+'</div>';
@@ -1698,7 +1747,8 @@ function rZiele(){
         if(canManageTZ(z.id))out+='<input type="checkbox" '+(tz.erledigt?'checked':'')+' onclick="toggleTZ(\''+z.id+'\',\''+tz.id+'\')" style="flex-shrink:0;margin:0;width:15px;height:15px;accent-color:'+f.tc+'">';
         out+='<div style="flex:1;min-width:0">';
         out+='<div style="font-size:13px;font-weight:600;color:#111;'+(tz.erledigt?'text-decoration:line-through;':'')+'white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+tz.name+'</div>';
-        if(tzV||tz.datum)out+='<div style="font-size:10px;color:var(--t2);margin-top:1px">'+(tzV?tzV.name:'')+(tz.datum?' · '+tz.datum.slice(8)+'.'+tz.datum.slice(5,7)+'.':'')+'</div>';
+        const _wrT=dieseWocheReset(aP),_inB3=_wrT&&[_wrT.big3_1_tz_id,_wrT.big3_2_tz_id,_wrT.big3_3_tz_id].some(x=>x===tz.id);
+        if(tzV||tz.datum||_inB3)out+='<div style="font-size:10px;color:var(--t2);margin-top:1px;display:flex;gap:5px;align-items:center">'+(_inB3?'<span style="font-size:9px;font-weight:700;color:'+f.tc+';background:'+f.bg+';border:1px solid '+f.bd+';padding:0 6px;border-radius:99px">● KW '+getKW().kw+'</span>':'')+(tzV?tzV.name:'')+(tz.datum?' · '+tz.datum.slice(8)+'.'+tz.datum.slice(5,7)+'.':'')+'</div>';
         out+='</div>';
         if(tzA.length)out+='<span style="font-size:10px;color:'+f.tc+';background:'+f.bg+';border:1px solid '+f.bd+';padding:1px 7px;border-radius:99px;flex-shrink:0;font-weight:600">'+tzA.length+'</span>';
         if(canManageTZ(z.id))out+='<button onclick="editTZ(\''+z.id+'\',\''+tz.id+'\')" style="font-size:11px;padding:3px 7px;border-radius:6px;border:1px solid '+f.bd+';background:'+f.bg+';color:'+f.tc+';cursor:pointer;font-family:inherit;flex-shrink:0">···</button>';
