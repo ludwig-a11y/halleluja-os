@@ -3306,7 +3306,7 @@ function openNeueIdee(typ,preselPid){
   const fuerOpts=[
     '<option value="">— für alle —</option>',
     ...S.teams.map(t=>'<option value="Team '+esc(t.name)+'">Team '+esc(t.name)+'</option>'),
-    ...S.personen.filter(p=>p.id!==aP).map(p=>'<option value="'+esc(p.name)+'"'+(p.name===preselName?' selected':'')+'>'+esc(p.name)+'</option>')
+    ...S.personen.map(p=>'<option value="'+esc(p.name)+'"'+(p.name===preselName?' selected':'')+'>'+esc(p.name)+'</option>')
   ].join('');
   const isIdee=typ==='idee';
   document.getElementById('mb').innerHTML=''
