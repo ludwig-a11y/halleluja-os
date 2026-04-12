@@ -1390,11 +1390,25 @@ function rSB(){
     vis.forEach(id=>{shownIds.add(id);h+=renderPerson(id,false);});
   });
 
-  // 2) Goal partners (shared goals, different team)
+  // 2) Goal partners (shared goals, different team) — click opens shared goals view
   const goalPartners=[...myGoalPartnerIds].filter(id=>!shownIds.has(id)&&person(id));
   if(goalPartners.length){
     h+='<div class="gl" style="margin-top:14px">Gemeinsame Ziele</div>';
-    goalPartners.forEach(id=>{shownIds.add(id);h+=renderPerson(id,false);});
+    goalPartners.forEach(id=>{
+      shownIds.add(id);
+      const p=person(id);if(!p)return;
+      const c=cl(p);
+      const ct=counts[id]||{neu:0,aktiv:0};
+      const paddel=getPaddelCount(id);
+      h+='<button class="sbn" onclick="openSharedGoals(\''+id+'\')">'
+        +av(p,22,8)
+        +'<span style="flex:1;font-size:11px;font-weight:400;color:var(--text)">'+esc(p.name)+'</span>'
+        +'<div style="display:flex;gap:3px;align-items:center">'
+        +(paddel?'<span style="font-size:9px;color:var(--amber)">🏅'+paddel+'</span>':'')
+        +(ct.neu?'<span style="font-size:8px;background:var(--red-bg);color:var(--red);border-radius:99px;padding:1px 4px;font-weight:700">'+ct.neu+'</span>':'')
+        +(ct.aktiv?'<span style="font-size:8px;background:'+c.bg+';color:'+c.tc+';border-radius:99px;padding:1px 4px;font-weight:700">'+ct.aktiv+'</span>':'')
+        +'</div></button>';
+    });
   }
 
   // 3) Other teams (dimmed) — only if not GF (GF already sees all)
@@ -3458,6 +3472,80 @@ function startTimers(){
       }
     }
   },1000);
+}
+
+// ===== SHARED GOALS =====
+function openSharedGoals(partnerId){
+  const partner=person(partnerId);if(!partner)return;
+  const mich=me();if(!mich)return;
+  // Find goals where both me and partner have tasks or are responsible
+  const myGoalIds=new Set();
+  const partnerGoalIds=new Set();
+  S.aufgaben.forEach(a=>{if(a.zielId){if(a.pid===aP)myGoalIds.add(a.zielId);if(a.pid===partnerId)partnerGoalIds.add(a.zielId);}});
+  S.ziele.forEach(z=>{if(z.verantwortlich_id===aP)myGoalIds.add(z.id);if(z.verantwortlich_id===partnerId)partnerGoalIds.add(z.id);});
+  const sharedIds=[...myGoalIds].filter(id=>partnerGoalIds.has(id));
+  const sharedZiele=sharedIds.map(id=>zielObj(id)).filter(Boolean);
+
+  let h='<div class="mt" style="display:flex;align-items:center;gap:10px">'+av(partner,28,10)+'<div>Zusammenarbeit mit '+esc(partner.name)+'</div></div>';
+
+  if(!sharedZiele.length){
+    h+='<div style="padding:20px;text-align:center;color:var(--t3);font-size:13px">Keine gemeinsamen Ziele gefunden.</div>';
+  } else {
+    sharedZiele.forEach(z=>{
+      const f=FARBEN[z.farbe]||FARBEN[0];
+      const myTasks=S.aufgaben.filter(a=>a.zielId===z.id&&a.pid===aP&&a.status!=='erledigt'&&canSee(a));
+      const partnerTasks=S.aufgaben.filter(a=>a.zielId===z.id&&a.pid===partnerId&&a.status!=='erledigt'&&canSee(a));
+      const allTasks=S.aufgaben.filter(a=>a.zielId===z.id&&canSee(a));
+      const done=allTasks.filter(a=>a.status==='erledigt').length;
+      const total=allTasks.length;
+      const pct=total?Math.round(done/total*100):0;
+
+      h+='<div style="background:'+f.bg+';border:1px solid '+f.bd+';border-left:3px solid '+f.tc+';border-radius:0 10px 10px 0;padding:14px 16px;margin-bottom:12px">';
+
+      // Goal header
+      h+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">';
+      h+='<div style="flex:1"><div style="font-size:14px;font-weight:700;color:'+f.tc+'">'+esc(z.name)+'</div></div>';
+      h+='<div style="font-size:11px;font-weight:700;color:'+f.tc+'">'+pct+'%</div>';
+      h+='</div>';
+
+      // Progress bar
+      h+='<div style="height:4px;background:rgba(0,0,0,.06);border-radius:99px;margin-bottom:12px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:'+f.tc+';border-radius:99px;transition:width .3s"></div></div>';
+
+      // My tasks
+      h+='<div style="margin-bottom:8px">';
+      h+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);margin-bottom:4px">Meine Aufgaben ('+myTasks.length+')</div>';
+      if(!myTasks.length)h+='<div style="font-size:12px;color:var(--t3);font-style:italic;padding:4px 0">Keine offenen</div>';
+      myTasks.slice(0,5).forEach(a=>{
+        h+='<div style="display:flex;align-items:center;gap:6px;padding:4px 0;font-size:12px;cursor:pointer" onclick="openDetail(\''+a.id+'\')">';
+        if(a.prio)h+='<span style="font-size:9px;font-weight:700;color:'+(a.prio==='P1'?'var(--red)':a.prio==='P2'?'var(--amber)':'var(--green)')+'">'+a.prio+'</span>';
+        h+='<span style="flex:1;color:var(--text)">'+esc(a.titel)+'</span>';
+        h+='<span style="font-size:10px;color:var(--t3)">'+a.status+'</span>';
+        h+='</div>';
+      });
+      if(myTasks.length>5)h+='<div style="font-size:10px;color:var(--t3);padding:2px 0">+'+(myTasks.length-5)+' weitere</div>';
+      h+='</div>';
+
+      // Partner tasks
+      h+='<div style="margin-bottom:6px">';
+      h+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);margin-bottom:4px">'+esc(partner.name)+'s Aufgaben ('+partnerTasks.length+')</div>';
+      if(!partnerTasks.length)h+='<div style="font-size:12px;color:var(--t3);font-style:italic;padding:4px 0">Keine offenen</div>';
+      partnerTasks.slice(0,5).forEach(a=>{
+        h+='<div style="display:flex;align-items:center;gap:6px;padding:4px 0;font-size:12px">';
+        if(a.prio)h+='<span style="font-size:9px;font-weight:700;color:'+(a.prio==='P1'?'var(--red)':a.prio==='P2'?'var(--amber)':'var(--green)')+'">'+a.prio+'</span>';
+        h+='<span style="flex:1;color:var(--t2)">'+esc(a.titel)+'</span>';
+        h+='<span style="font-size:10px;color:var(--t3)">'+a.status+'</span>';
+        h+='</div>';
+      });
+      if(partnerTasks.length>5)h+='<div style="font-size:10px;color:var(--t3);padding:2px 0">+'+(partnerTasks.length-5)+' weitere</div>';
+      h+='</div>';
+
+      h+='</div>';
+    });
+  }
+
+  h+='<div class="mf" style="gap:8px"><button class="btn btn-gr" onclick="cm()">Schließen</button><button class="btn btn-dk" onclick="cm();openNeu({pid:\''+partnerId+'\'})">+ Aufgabe für '+esc(partner.name)+'</button></div>';
+  document.getElementById('mb').innerHTML=h;
+  document.getElementById('ovl').classList.add('open');
 }
 
 // ===== MEETING DUMP =====
