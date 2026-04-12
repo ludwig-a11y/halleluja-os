@@ -16,6 +16,7 @@
   --purple:#7c3aed;--purple-bg:#f5f3ff;--purple-bd:#ddd6fe;
   --gray-bg:#f8f8f7;
   --orange:#c2410c;--orange-bg:#fff7ed;--orange-bd:#fed7aa;
+  --pink:#9d174d;--pink-bg:#fdf2f8;--pink-bd:#fbcfe8;
   --inv:#1a1a1a;--inv-t:#fff;--hero:#1a1a1a;--hero-t:#fff;
   --r-sm:6px;--r-md:10px;--r-lg:14px;--r-xl:18px;--r-full:99px;
 }
@@ -29,6 +30,7 @@ html.dark{
   --purple:#a98ee0;--purple-bg:#221a32;--purple-bd:#382a56;
   --gray-bg:#1a1918;
   --orange:#d49262;--orange-bg:#2a1f14;--orange-bd:#4a351e;
+  --pink:#f472b6;--pink-bg:#2d1425;--pink-bd:#5a2845;
   --inv:#f0efed;--inv-t:#1a1a1a;--hero:#2c2b29;--hero-t:#f0efed;
 }
 body{font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;font-size:13px;color:var(--text);background:var(--bg);height:100vh;overflow:hidden;display:flex;flex-direction:column}
@@ -95,7 +97,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;font-size:1
 .av{border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0}
 .card{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r-lg);padding:14px 16px;margin-bottom:8px;transition:border-color .15s,box-shadow .15s}
 .card:hover{border-color:#d0d0ce}
-.card[onclick]:hover,.card[style*="cursor:pointer"]:hover{border-color:#bbb;box-shadow:0 1px 4px rgba(0,0,0,.04)}
+.card[onclick]:hover,.card[style*="cursor:pointer"]:hover{border-color:var(--t3);box-shadow:0 1px 4px rgba(0,0,0,.04)}
 .tag{font-size:10px;padding:2px 8px;border-radius:var(--r-full);font-weight:500;white-space:nowrap;display:inline-block;transition:opacity .15s}
 .btn{font-size:11px;padding:5px 12px;border-radius:8px;border:none;cursor:pointer;font-family:inherit;font-weight:500;transition:all .15s ease}
 .btn:hover{opacity:.85;transform:translateY(-0.5px)}
@@ -312,13 +314,13 @@ const dbInsert=(t,b)=>supa(t,{method:'POST',body:b});
 const dbDelete=(t,id)=>supa(t+'?id=eq.'+id,{method:'DELETE',prefer:'return=minimal'});
 
 const FARBEN=[
-  {bg:'#f0fdf4',tc:'#15803d',bd:'var(--green-bd)'},{bg:'#eff6ff',tc:'#1d4ed8',bd:'#93c5fd'},
-  {bg:'#fff7ed',tc:'#c2410c',bd:'var(--orange-bd)'},{bg:'#faf5ff',tc:'#7c3aed',bd:'#ddd6fe'},
-  {bg:'#f1f0ef',tc:'#44403c',bd:'var(--bd)'},{bg:'#fdf2f8',tc:'#9d174d',bd:'#fbcfe8'}
+  {bg:'var(--green-bg)',tc:'var(--green)',bd:'var(--green-bd)'},{bg:'var(--blue-bg)',tc:'var(--blue)',bd:'var(--blue-bd)'},
+  {bg:'var(--orange-bg)',tc:'var(--orange)',bd:'var(--orange-bd)'},{bg:'var(--purple-bg)',tc:'var(--purple)',bd:'var(--purple-bd)'},
+  {bg:'var(--gray-bg)',tc:'var(--t2)',bd:'var(--bd)'},{bg:'var(--pink-bg)',tc:'var(--pink)',bd:'var(--pink-bd)'}
 ];
 const CL=[
-  {bg:'#f0fdf4',tc:'#15803d'},{bg:'#eff6ff',tc:'#1d4ed8'},{bg:'#faf5ff',tc:'#7c3aed'},
-  {bg:'#fff7ed',tc:'#c2410c'},{bg:'#f1f0ef',tc:'#44403c'},{bg:'#fdf2f8',tc:'#9d174d'}
+  {bg:'var(--green-bg)',tc:'var(--green)'},{bg:'var(--blue-bg)',tc:'var(--blue)'},{bg:'var(--purple-bg)',tc:'var(--purple)'},
+  {bg:'var(--orange-bg)',tc:'var(--orange)'},{bg:'var(--gray-bg)',tc:'var(--t2)'},{bg:'var(--pink-bg)',tc:'var(--pink)'}
 ];
 function localDate(d){const x=d||new Date();return x.getFullYear()+'-'+(''+(x.getMonth()+1)).padStart(2,'0')+'-'+(''+(x.getDate())).padStart(2,'0');}
 const TODAY=localDate();
@@ -1767,6 +1769,19 @@ function rTag(){
   const alleGeschafft=!aktiv.length&&!neu.length&&!bl.length;
   let out='';
 
+  // ── Datum-Header ──
+  {
+    const d=new Date(TODAY+'T12:00:00');
+    const wt=['Sonntag','Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag'][d.getDay()];
+    const tag=d.getDate();
+    const mon=['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'][d.getMonth()];
+    out+='<div style="display:flex;align-items:center;gap:14px;margin-bottom:16px">';
+    out+='<div style="width:48px;height:48px;border-radius:14px;background:var(--inv);color:var(--inv-t);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;flex-shrink:0">'+tag+'</div>';
+    out+='<div><div style="font-size:15px;font-weight:700;color:var(--text)">'+wt+'</div>';
+    out+='<div style="font-size:12px;color:var(--t2)">'+tag+'. '+mon+'</div></div>';
+    out+='</div>';
+  }
+
   // ── Big 3 Wochenkompass ──
   const{kw:kwAkt}=getKW();
   const wrAktuell=dieseWocheReset(aP);
@@ -1788,7 +1803,7 @@ function rTag(){
       const done=wrAktuell[doneF];
       out+='<div onclick="toggleBig3(\''+wrAktuell.id+'\',\''+doneF+'\')" style="display:flex;align-items:center;gap:8px;padding:5px 0;cursor:pointer">';
       out+='<div style="width:16px;height:16px;border-radius:4px;flex-shrink:0;'+(done?'background:'+f.tc+';border:1.5px solid '+f.tc+';display:flex;align-items:center;justify-content:center':'border:1.5px solid var(--bd)')+'">'+(done?'<span style="color:#fff;font-size:9px;font-weight:800">✓</span>':'')+'</div>';
-      out+='<span style="font-size:12px;'+(done?'color:#bbb;text-decoration:line-through':'color:var(--text)')+'">'+txt+'</span>';
+      out+='<span style="font-size:12px;'+(done?'color:var(--t3);text-decoration:line-through':'color:var(--text)')+'">'+txt+'</span>';
       out+='</div>';
     });
     out+='</div></details>';
@@ -1857,7 +1872,7 @@ function rTag(){
       // erledigt block
       if(erlH>0){
         const earlyBonus=dayStart<anchor&&erlH>0;
-        out+='<div style="width:'+erlPct+'%;background:'+(earlyBonus?'linear-gradient(90deg,#bbf7d0,#dcfce7)':'#dcfce7')+';display:flex;align-items:center;justify-content:center;flex-shrink:0;border-right:1px solid var(--green-bd)">';
+        out+='<div style="width:'+erlPct+'%;background:var(--green-bg);display:flex;align-items:center;justify-content:center;flex-shrink:0;border-right:1px solid var(--green-bd)">';
         out+='<span style="font-size:9px;color:var(--green);font-weight:700;white-space:nowrap">'+(earlyBonus?'⚡ ':'✓ ')+Math.round(erlH*10)/10+'h</span>';
         out+='</div>';
       }
@@ -1872,14 +1887,14 @@ function rTag(){
         const dur=a.geplant||1;
         const wPct=(dur/barH*100);
         const isAktiv=a.status==='aktiv';
-        const pc=a.prio==='P1'?'#dc2626':a.prio==='P2'?'#c2410c':'#6b7280';
-        const bg=isAktiv?'#1a1a1a':a.prio==='P1'?'#fef2f2':a.prio==='P2'?'#fff7ed':'#f9fafb';
-        const tc=isAktiv?'#fff':pc;
+        const pc=a.prio==='P1'?'var(--red)':a.prio==='P2'?'var(--orange)':'var(--t3)';
+        const bg=isAktiv?'var(--inv)':a.prio==='P1'?'var(--red-bg)':a.prio==='P2'?'var(--orange-bg)':'var(--gray-bg)';
+        const tc=isAktiv?'var(--inv-t)':pc;
         const bd=i<tlTasks.length-1?'border-right:1px solid rgba(0,0,0,.08);':'';
         out+='<div draggable="true" data-tpid="'+a.id+'" data-tpi="'+i+'" onclick="openDetail(\''+a.id+'\')" '
           +'ondragstart="window._tpDrag='+i+';this.style.opacity=\'.5\'" '
           +'ondragend="this.style.opacity=\'1\'" '
-          +'ondragover="event.preventDefault();this.style.outline=\'2px solid #1a1a1a\'" '
+          +'ondragover="event.preventDefault();this.style.outline=\'2px solid var(--inv)\'" '
           +'ondragleave="this.style.outline=\'none\'" '
           +'ondrop="event.preventDefault();this.style.outline=\'none\';tpReorder(window._tpDrag,'+i+')" '
           +'style="width:'+wPct+'%;background:'+bg+';display:flex;align-items:center;padding:0 6px;gap:4px;cursor:grab;overflow:hidden;flex-shrink:0;'+bd+'">';
@@ -2335,7 +2350,7 @@ function rZiele(){
     out+='</div></div>';
     if(isGF()){
       out+='<div style="display:flex;gap:6px;flex-shrink:0">';
-      out+='<button onclick="toggleFokusZiel(\''+z.id+'\')" style="font-size:11px;padding:3px 9px;border-radius:7px;border:1px solid '+(z.focus?'#c2410c':'var(--bd)')+';background:'+(z.focus?'#fff7ed':'var(--gray-bg)')+';color:'+(z.focus?'#c2410c':'var(--t2)')+';cursor:pointer;font-family:inherit">'+(z.focus?'🔥 Fokus':'☆ Fokus')+'</button>';
+      out+='<button onclick="toggleFokusZiel(\''+z.id+'\')" style="font-size:11px;padding:3px 9px;border-radius:7px;border:1px solid '+(z.focus?'var(--orange-bd)':'var(--bd)')+';background:'+(z.focus?'var(--orange-bg)':'var(--gray-bg)')+';color:'+(z.focus?'var(--orange)':'var(--t2)')+';cursor:pointer;font-family:inherit">'+(z.focus?'🔥 Fokus':'☆ Fokus')+'</button>';
       out+='<button onclick="editZiel(\''+z.id+'\')" style="font-size:11px;padding:3px 9px;border-radius:7px;border:1px solid var(--bd);background:var(--gray-bg);color:var(--t2);cursor:pointer;font-family:inherit">···</button>';
       out+='</div>';
     }
@@ -2346,7 +2361,7 @@ function rZiele(){
       out+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:6px;margin-bottom:16px">';
       visKpis.forEach(k=>{
         const val=kpiVal(k),ok=kpiOk(k),p2=person(k.pid),isMe=String(k.pid)===String(aP);
-        out+='<div '+(isGF()?'onclick="editKpiDef(\''+z.id+'\',\''+k.id+'\')" style="cursor:pointer"':'')+' style="background:rgba(255,255,255,.75);border:'+(isMe?'1.5px solid '+f.tc:'1px solid '+f.bd)+';border-radius:9px;padding:9px 11px">';
+        out+='<div '+(isGF()?'onclick="editKpiDef(\''+z.id+'\',\''+k.id+'\')" style="cursor:pointer"':'')+' style="background:var(--sf);border:'+(isMe?'1.5px solid '+f.tc:'1px solid '+f.bd)+';border-radius:9px;padding:9px 11px">';
         out+='<div style="font-size:9px;color:var(--t3);margin-bottom:3px">'+(p2?p2.name:'–')+'</div>';
         out+='<div style="font-size:19px;font-weight:800;color:'+(ok?f.tc:'var(--red)')+';line-height:1;margin-bottom:1px">'+val+(k.unit||'')+'</div>';
         out+='<div style="font-size:11px;font-weight:600;color:var(--t2)">'+k.label+'</div>';
@@ -3272,7 +3287,7 @@ function rTeam(){
           if(!txt)return;
           out+='<div style="display:flex;align-items:center;gap:8px;padding:6px 14px;font-size:12px;border-top:1px solid var(--bd)">';
           out+='<div style="width:14px;height:14px;border-radius:3px;flex-shrink:0;'+(done?'background:var(--green);display:flex;align-items:center;justify-content:center':'border:1.5px solid var(--bd)')+'">'+(done?'<span style="color:#fff;font-size:8px;font-weight:800">✓</span>':'')+'</div>';
-          out+='<span style="'+(done?'color:#bbb;text-decoration:line-through':'color:var(--text)')+'">'+txt+'</span>';
+          out+='<span style="'+(done?'color:var(--t3);text-decoration:line-through':'color:var(--text)')+'">'+txt+'</span>';
           out+='</div>';
         });
       }
