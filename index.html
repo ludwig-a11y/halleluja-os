@@ -1761,7 +1761,7 @@ function rTag(){
     if(a.dl&&b.dl)return a.dl.localeCompare(b.dl);
     return a.dl?-1:b.dl?1:0;
   });
-  const erl=myA.filter(a=>a.status==='erledigt');
+  const erl=myA.filter(a=>a.status==='erledigt'&&a.updated_at&&a.updated_at.startsWith(TODAY));
   const offene=[...neu,...bl].sort((a,b)=>{const po={'P1':0,'P2':1,'P3':2};return(po[a.prio]??3)-(po[b.prio]??3);});
   const naechste=aktiv.length?null:(offene[0]||null);
   const alleGeschafft=!aktiv.length&&!neu.length&&!bl.length;
