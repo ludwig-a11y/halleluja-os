@@ -819,7 +819,7 @@ function getKapazitaet(pid){
   const rh=Math.max(0,sw-fh);
   const now=new Date();
   const daysToSun=now.getDay()===0?0:7-now.getDay();
-  const weekEndStr=new Date(now.getFullYear(),now.getMonth(),now.getDate()+daysToSun).toISOString().slice(0,10);
+  const weekEndStr=localDate(new Date(now.getFullYear(),now.getMonth(),now.getDate()+daysToSun));
   let p1h=0,p23h=0,rnd=0;
   S.aufgaben.forEach(a=>{
     if(a.pid!==pid||a.status==='erledigt'||a.status==='idee')return;
@@ -1413,7 +1413,7 @@ function rSB(){
     let streak=0,d=new Date(TODAY+'T12:00:00');
     // If nothing done today, check if yesterday still counts (streak not broken yet today)
     if(!doneByDay[TODAY]){d.setDate(d.getDate()-1);}
-    while(true){const ds=d.toISOString().slice(0,10);if(!doneByDay[ds])break;streak++;d.setDate(d.getDate()-1);}
+    while(true){const ds=localDate(d);if(!doneByDay[ds])break;streak++;d.setDate(d.getDate()-1);}
     streaks[p.id]=streak;
   });
 
@@ -1856,7 +1856,7 @@ function rTag(){
     S.aufgaben.forEach(a=>{if(a.pid===aP&&a.status==='erledigt'&&a.updated_at){_dbd[localDate(new Date(a.updated_at))]=true;}});
     let _stk=0,_sd=new Date(TODAY+'T12:00:00');
     if(!_dbd[TODAY])_sd.setDate(_sd.getDate()-1);
-    while(_dbd[_sd.toISOString().slice(0,10)]){_stk++;_sd.setDate(_sd.getDate()-1);}
+    while(_dbd[localDate(_sd)]){_stk++;_sd.setDate(_sd.getDate()-1);}
     out+='<div style="display:flex;align-items:center;gap:14px;margin-bottom:16px">';
     out+='<div style="width:48px;height:48px;border-radius:14px;background:var(--inv);color:var(--inv-t);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;flex-shrink:0">'+tag+'</div>';
     out+='<div style="flex:1"><div style="font-size:15px;font-weight:700;color:var(--text)">'+wt+'</div>';
@@ -1946,7 +1946,7 @@ function rTag(){
     if(tlTasks.length){
       const now=new Date();
       const nowH=now.getHours()+now.getMinutes()/60;
-      const erlH=erl.filter(a=>(a.akt_seit||'').slice(0,10)===TODAY).reduce((s,a)=>s+(a.gebucht||a.geplant||0.5),0);
+      const erlH=erl.reduce((s,a)=>s+(a.gebucht||a.geplant||0.5),0);
       const offenH=tlTasks.reduce((s,a)=>s+(a.geplant||1),0);
       // 9:00 is the anchor — always. Early = bonus, late = visible gap
       const anchor=9;
