@@ -397,8 +397,9 @@ function notify(evt,data){
   const url=localStorage.getItem('n8n_webhook');
   if(!url)return;
   const p=person(aP);
+  const appUrl=localStorage.getItem('app_url')||location.origin+location.pathname;
   fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({event:evt,actor:p?{id:p.id,name:p.name,rolle:p.rolle}:null,...data,ts:new Date().toISOString()})
+    body:JSON.stringify({event:evt,actor:p?{id:p.id,name:p.name,rolle:p.rolle}:null,app_url:appUrl,...data,ts:new Date().toISOString()})
   }).catch(()=>{});
 }
 const cl=p=>p?CL[p.ci%CL.length]:CL[0];
