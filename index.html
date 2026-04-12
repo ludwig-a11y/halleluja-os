@@ -3495,21 +3495,10 @@ function openSharedGoals(partnerId){
       const f=FARBEN[z.farbe]||FARBEN[0];
       const myTasks=S.aufgaben.filter(a=>a.zielId===z.id&&a.pid===aP&&a.status!=='erledigt'&&canSee(a));
       const partnerTasks=S.aufgaben.filter(a=>a.zielId===z.id&&a.pid===partnerId&&a.status!=='erledigt'&&canSee(a));
-      const allTasks=S.aufgaben.filter(a=>a.zielId===z.id&&canSee(a));
-      const done=allTasks.filter(a=>a.status==='erledigt').length;
-      const total=allTasks.length;
-      const pct=total?Math.round(done/total*100):0;
-
       h+='<div style="background:'+f.bg+';border:1px solid '+f.bd+';border-left:3px solid '+f.tc+';border-radius:0 10px 10px 0;padding:14px 16px;margin-bottom:12px">';
 
       // Goal header
-      h+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">';
-      h+='<div style="flex:1"><div style="font-size:14px;font-weight:700;color:'+f.tc+'">'+esc(z.name)+'</div></div>';
-      h+='<div style="font-size:11px;font-weight:700;color:'+f.tc+'">'+pct+'%</div>';
-      h+='</div>';
-
-      // Progress bar
-      h+='<div style="height:4px;background:rgba(0,0,0,.06);border-radius:99px;margin-bottom:12px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:'+f.tc+';border-radius:99px;transition:width .3s"></div></div>';
+      h+='<div style="margin-bottom:10px"><div style="font-size:14px;font-weight:700;color:'+f.tc+'">'+esc(z.name)+'</div></div>';
 
       // My tasks
       h+='<div style="margin-bottom:8px">';
