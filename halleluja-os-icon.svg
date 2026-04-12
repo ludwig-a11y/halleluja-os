@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a1a1a"/>
+      <stop offset="100%" style="stop-color:#2d1f1a"/>
+    </linearGradient>
+    <linearGradient id="glow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f59e0b"/>
+      <stop offset="100%" style="stop-color:#ef4444"/>
+    </linearGradient>
+  </defs>
+  <!-- Background -->
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <!-- H Letter - modern, bold -->
+  <path d="M152 140 L152 372 L192 372 L192 276 L320 276 L320 372 L360 372 L360 140 L320 140 L320 240 L192 240 L192 140 Z" fill="url(#glow)"/>
+  <!-- OS dots - three small circles -->
+  <circle cx="210" cy="400" r="12" fill="#f59e0b" opacity="0.8"/>
+  <circle cx="256" cy="400" r="12" fill="#ef4444" opacity="0.8"/>
+  <circle cx="302" cy="400" r="12" fill="#fb923c" opacity="0.8"/>
+  <!-- Subtle glow effect -->
+  <rect width="512" height="512" rx="112" fill="none" stroke="#f59e0b" stroke-width="2" opacity="0.15"/>
+</svg>

@@ -1,0 +1,281 @@
+{
+  "name": "Halleluja OS → Slack Notifications",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "halleluja-notify",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond-aufgabe",
+              "leftValue": "={{ $json.event }}",
+              "rightValue": "aufgabe_zugewiesen",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-aufgabe",
+      "name": "Aufgabe zugewiesen?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [480, 200]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond-blocker",
+              "leftValue": "={{ $json.event }}",
+              "rightValue": "blocker",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-blocker",
+      "name": "Blocker?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [480, 500]
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $json.fuer.slack_id }}"
+        },
+        "text": "={{ \"📋 *Neue Aufgabe von \" + $json.actor.name + \"*\\n\\n*\" + $json.aufgabe + \"*\" + ($json.prio ? \"\\nPriorität: \" + $json.prio : \"\") + ($json.dl ? \"\\nDeadline: \" + $json.dl : \"\") + \"\\n\\n\" + $json.app_url }}",
+        "otherOptions": {}
+      },
+      "id": "slack-aufgabe",
+      "name": "Slack: Aufgabe DM",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [720, 100],
+      "credentials": {
+        "slackApi": {
+          "id": "SLACK_CREDENTIAL_ID",
+          "name": "Halleluja Slack"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "gf_slack_ids",
+        "options": {}
+      },
+      "id": "split-gfs",
+      "name": "Split GF IDs",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [720, 400]
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $json.gf_slack_ids }}"
+        },
+        "text": "={{ \"⚠️ *Blocker gemeldet von \" + $json.actor.name + \"*\\n\\n\" + $json.blocker + \"\\n\\n\" + $json.app_url }}",
+        "otherOptions": {}
+      },
+      "id": "slack-blocker",
+      "name": "Slack: Blocker DM",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [960, 400],
+      "credentials": {
+        "slackApi": {
+          "id": "SLACK_CREDENTIAL_ID",
+          "name": "Halleluja Slack"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond-big3",
+              "leftValue": "={{ $json.event }}",
+              "rightValue": "big3_erledigt",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-big3",
+      "name": "Big 3 erledigt?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [480, 750]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond-meilenstein",
+              "leftValue": "={{ $json.event }}",
+              "rightValue": "meilenstein_erledigt",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-meilenstein",
+      "name": "Meilenstein?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [480, 1000]
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "halleluja-updates"
+        },
+        "text": "={{ \"✅ *\" + $json.actor.name + \"* hat Big 3 erledigt (KW \" + $json.kw + \"):\\n\" + $json.big3 }}",
+        "otherOptions": {}
+      },
+      "id": "slack-big3",
+      "name": "Slack: Big 3 Channel",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [720, 650],
+      "credentials": {
+        "slackApi": {
+          "id": "SLACK_CREDENTIAL_ID",
+          "name": "Halleluja Slack"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "halleluja-updates"
+        },
+        "text": "={{ \"🎯 *Meilenstein erreicht!*\\n\" + $json.meilenstein + \" → \" + $json.ziel + \"\\n(von \" + $json.actor.name + \")\" }}",
+        "otherOptions": {}
+      },
+      "id": "slack-meilenstein",
+      "name": "Slack: Meilenstein Channel",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [720, 900],
+      "credentials": {
+        "slackApi": {
+          "id": "SLACK_CREDENTIAL_ID",
+          "name": "Halleluja Slack"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          { "node": "Aufgabe zugewiesen?", "type": "main", "index": 0 },
+          { "node": "Blocker?", "type": "main", "index": 0 },
+          { "node": "Big 3 erledigt?", "type": "main", "index": 0 },
+          { "node": "Meilenstein?", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Aufgabe zugewiesen?": {
+      "main": [
+        [{ "node": "Slack: Aufgabe DM", "type": "main", "index": 0 }],
+        []
+      ]
+    },
+    "Blocker?": {
+      "main": [
+        [{ "node": "Split GF IDs", "type": "main", "index": 0 }],
+        []
+      ]
+    },
+    "Split GF IDs": {
+      "main": [
+        [{ "node": "Slack: Blocker DM", "type": "main", "index": 0 }]
+      ]
+    },
+    "Big 3 erledigt?": {
+      "main": [
+        [{ "node": "Slack: Big 3 Channel", "type": "main", "index": 0 }],
+        []
+      ]
+    },
+    "Meilenstein?": {
+      "main": [
+        [{ "node": "Slack: Meilenstein Channel", "type": "main", "index": 0 }],
+        []
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

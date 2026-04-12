@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Halleluja OS + Slack — Team-Briefing</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif;background:#f5f4f2;color:#1a1a1a;line-height:1.6;-webkit-font-smoothing:antialiased}
+
+.wrap{max-width:720px;margin:0 auto;padding:32px 20px 80px}
+
+/* Hero */
+.hero{background:linear-gradient(135deg,#1a1a1a 0%,#2d1f1a 100%);border-radius:24px;padding:48px 36px;margin-bottom:40px;color:#fff;text-align:center;position:relative;overflow:hidden}
+.hero::after{content:'';position:absolute;top:-60%;right:-30%;width:400px;height:400px;background:radial-gradient(circle,rgba(245,158,11,.12) 0%,transparent 70%);pointer-events:none}
+.hero h1{font-size:32px;font-weight:800;margin-bottom:8px;letter-spacing:-.5px}
+.hero p{font-size:15px;opacity:.6;font-weight:400}
+
+/* Section */
+.section{background:#fff;border-radius:18px;padding:32px;margin-bottom:20px;border:1px solid #e8e7e5}
+.section h2{font-size:20px;font-weight:700;margin-bottom:16px;display:flex;align-items:center;gap:10px}
+.section h2 .icon{width:32px;height:32px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.section h3{font-size:15px;font-weight:700;margin:20px 0 8px;color:#1a1a1a}
+.section p,.section li{font-size:14px;color:#444;line-height:1.7}
+.section ul{padding-left:20px;margin:8px 0}
+.section li{margin-bottom:6px}
+
+/* Two-col overview */
+.overview{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:16px 0}
+@media(max-width:600px){.overview{grid-template-columns:1fr}}
+.ov-card{border-radius:14px;padding:20px;text-align:center}
+.ov-card .emoji{font-size:36px;margin-bottom:8px}
+.ov-card h4{font-size:15px;font-weight:700;margin-bottom:4px}
+.ov-card p{font-size:13px;color:#666}
+.ov-slack{background:#f0f0ff;border:1px solid #d0d0f0}
+.ov-os{background:#fef9ee;border:1px solid #f0e0b0}
+
+/* Arrow between overview cards */
+.arrow-row{display:flex;justify-content:center;margin:-6px 0;font-size:22px;color:#aaa}
+
+/* Command example boxes */
+.cmd{background:#1a1a1a;border-radius:12px;padding:16px 20px;margin:12px 0;font-family:'SF Mono','Fira Code',monospace;font-size:14px;color:#f5f5f5;position:relative;line-height:1.8}
+.cmd .label{display:block;font-size:10px;font-weight:700;color:#f59e0b;letter-spacing:.8px;text-transform:uppercase;margin-bottom:4px;font-family:-apple-system,sans-serif}
+.cmd .dim{color:#888}
+.cmd .hl{color:#f59e0b;font-weight:600}
+.cmd .green{color:#4ade80}
+
+/* Result box */
+.result{background:#f0fdf4;border-radius:12px;padding:14px 18px;margin:8px 0;font-size:13px;color:#15803d;border:1px solid #bbf7d0;display:flex;align-items:flex-start;gap:8px}
+.result .ico{font-size:16px;flex-shrink:0;margin-top:1px}
+
+/* Info box */
+.info{background:#eff6ff;border-radius:12px;padding:14px 18px;margin:12px 0;font-size:13px;color:#1d4ed8;border:1px solid #bfdbfe;display:flex;align-items:flex-start;gap:8px}
+.info .ico{font-size:16px;flex-shrink:0;margin-top:1px}
+
+/* Warning box */
+.warn{background:#fefce8;border-radius:12px;padding:14px 18px;margin:12px 0;font-size:13px;color:#a16207;border:1px solid #fde68a;display:flex;align-items:flex-start;gap:8px}
+.warn .ico{font-size:16px;flex-shrink:0;margin-top:1px}
+
+/* Step list */
+.steps{counter-reset:s;margin:16px 0;list-style:none;padding:0}
+.steps li{counter-increment:s;display:flex;gap:12px;margin-bottom:14px;font-size:14px;color:#444;align-items:flex-start}
+.steps li::before{content:counter(s);background:linear-gradient(135deg,#f59e0b,#ef4444);color:#fff;font-weight:700;font-size:12px;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.steps li strong{color:#1a1a1a}
+
+/* Table */
+.tbl{width:100%;border-collapse:collapse;margin:12px 0;font-size:13px}
+.tbl th{text-align:left;padding:8px 12px;background:#f8f8f7;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#888;border-bottom:2px solid #e5e5e3}
+.tbl td{padding:8px 12px;border-bottom:1px solid #eee;vertical-align:top}
+.tbl .mono{font-family:'SF Mono',monospace;font-size:12px;color:#c2410c;background:#fff7ed;padding:2px 6px;border-radius:4px}
+.tbl tr:last-child td{border-bottom:none}
+
+/* Badge */
+.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:99px;font-size:11px;font-weight:700}
+.badge-p1{background:#fef2f2;color:#b91c1c;border:1px solid #fecaca}
+.badge-p2{background:#fefce8;color:#a16207;border:1px solid #fde68a}
+.badge-p3{background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0}
+
+/* Flow diagram */
+.flow{display:flex;align-items:center;justify-content:center;gap:8px;margin:20px 0;flex-wrap:wrap}
+.flow-box{padding:10px 16px;border-radius:10px;font-size:12px;font-weight:700;text-align:center;min-width:100px}
+.flow-arrow{font-size:18px;color:#ccc}
+.flow-slack{background:#f0f0ff;color:#4a154b;border:1px solid #d0d0f0}
+.flow-n8n{background:#fff7ed;color:#c2410c;border:1px solid #fed7aa}
+.flow-os{background:#fef9ee;color:#a16207;border:1px solid #f0e0b0}
+.flow-supa{background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0}
+
+/* Footer */
+.footer{text-align:center;font-size:12px;color:#aaa;padding:20px 0}
+
+/* Notification examples */
+.notif{background:#fff;border-radius:10px;padding:12px 16px;margin:8px 0;border:1px solid #e5e5e3;font-size:13px;display:flex;gap:10px;align-items:flex-start}
+.notif .av{width:28px;height:28px;border-radius:6px;background:linear-gradient(135deg,#1a1a1a,#2d1f1a);display:flex;align-items:center;justify-content:center;color:#f59e0b;font-weight:700;font-size:12px;flex-shrink:0}
+.notif .body{flex:1}
+.notif .body .name{font-weight:700;font-size:12px;margin-bottom:2px}
+.notif .body .msg{color:#444;line-height:1.5}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- HERO -->
+<div class="hero">
+  <h1>Halleluja OS + Slack</h1>
+  <p>Team-Briefing &mdash; So arbeiten wir jetzt zusammen</p>
+</div>
+
+<!-- SECTION 1: Was ist was? -->
+<div class="section">
+  <h2><span class="icon" style="background:#fef9ee">🧭</span> Was ist was?</h2>
+  <p>Wir nutzen ab jetzt zwei Tools zusammen. Jedes hat seine Aufgabe:</p>
+
+  <div class="overview">
+    <div class="ov-card ov-slack">
+      <div class="emoji">💬</div>
+      <h4>Slack</h4>
+      <p>Schnelle Kommunikation, kurze Abstimmungen, Aufgaben per Chat anlegen</p>
+    </div>
+    <div class="ov-card ov-os">
+      <div class="emoji">📋</div>
+      <h4>Halleluja OS</h4>
+      <p>Aufgaben verwalten, Ziele setzen, Fortschritt tracken, Woche planen</p>
+    </div>
+  </div>
+
+  <div class="info">
+    <span class="ico">💡</span>
+    <span><strong>Kurzfassung:</strong> Slack = reden. Halleluja OS = arbeiten. Beides ist verbunden &mdash; Aufgaben und Updates fließen automatisch hin und her.</span>
+  </div>
+</div>
+
+<!-- SECTION 2: Was passiert automatisch? -->
+<div class="section">
+  <h2><span class="icon" style="background:#f0f0ff">🔔</span> Was passiert automatisch?</h2>
+  <p>Wenn in Halleluja OS bestimmte Dinge passieren, bekommst du automatisch eine Slack-Nachricht:</p>
+
+  <table class="tbl">
+    <thead>
+      <tr><th>Aktion in Halleluja OS</th><th>Slack-Nachricht</th><th>Wohin?</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Jemand weist dir eine Aufgabe zu</td>
+        <td>Direktnachricht mit Aufgaben-Details</td>
+        <td>DM an dich</td>
+      </tr>
+      <tr>
+        <td>Ein Blocker wird gemeldet</td>
+        <td>Direktnachricht an alle Geschäftsführer</td>
+        <td>DM</td>
+      </tr>
+      <tr>
+        <td>Big 3 der Woche erledigt</td>
+        <td>Kurze Info im Team-Channel</td>
+        <td>#halleluja-updates</td>
+      </tr>
+      <tr>
+        <td>Meilenstein erreicht</td>
+        <td>Kurze Info im Team-Channel</td>
+        <td>#halleluja-updates</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>So sehen die Nachrichten aus</h3>
+
+  <div class="notif">
+    <div class="av">H</div>
+    <div class="body">
+      <div class="name">Halleluja OS</div>
+      <div class="msg">📋 <strong>Neue Aufgabe von Thomas</strong><br>
+      <strong>Website updaten</strong><br>Priorität: P1<br>Deadline: 15.04.2026</div>
+    </div>
+  </div>
+
+  <div class="notif">
+    <div class="av">H</div>
+    <div class="body">
+      <div class="name">Halleluja OS</div>
+      <div class="msg">✅ Update: Big 3 der Woche erledigt</div>
+    </div>
+  </div>
+
+  <div class="warn">
+    <span class="ico">🔒</span>
+    <span><strong>Datenschutz:</strong> Im Channel #halleluja-updates stehen keine Details &mdash; nur dass etwas passiert ist. Inhalte kommen nur in deiner persönlichen Direktnachricht.</span>
+  </div>
+</div>
+
+<!-- SECTION 3: /aufgabe Command -->
+<div class="section">
+  <h2><span class="icon" style="background:#fef2f2">⚡</span> Aufgaben direkt aus Slack anlegen</h2>
+  <p>Statt in die App zu wechseln, kannst du Aufgaben direkt im Slack-Chat anlegen &mdash; mit dem Befehl <strong>/aufgabe</strong>.</p>
+
+  <h3>So funktioniert's</h3>
+
+  <div class="cmd">
+    <span class="label">Grundformat</span>
+    <span class="hl">/aufgabe</span> <span class="dim">[Titel]</span> <span class="dim">[@Person]</span> <span class="dim">[P1/P2/P3]</span> <span class="dim">[bis TT.MM]</span>
+  </div>
+
+  <div class="info">
+    <span class="ico">ℹ️</span>
+    <span>Nur der <strong>Titel</strong> ist Pflicht. Alles andere ist optional. Die Reihenfolge ist egal!</span>
+  </div>
+
+  <h3>Beispiele</h3>
+
+  <div class="cmd">
+    <span class="label">Einfache Aufgabe (für mich selbst)</span>
+    <span class="hl">/aufgabe</span> Website-Texte aktualisieren
+  </div>
+  <div class="result"><span class="ico">✅</span> Aufgabe angelegt: Website-Texte aktualisieren &middot; für dich</div>
+
+  <div class="cmd">
+    <span class="label">Aufgabe für jemand anderen</span>
+    <span class="hl">/aufgabe</span> Social Media Plan erstellen <span class="green">@Christina</span>
+  </div>
+  <div class="result"><span class="ico">✅</span> Aufgabe angelegt: Social Media Plan erstellen &middot; für Christina</div>
+
+  <div class="cmd">
+    <span class="label">Mit Priorität</span>
+    <span class="hl">/aufgabe</span> Angebot an Firma XY schicken <span class="green">@Thomas</span> <span class="hl">P1</span>
+  </div>
+  <div class="result"><span class="ico">✅</span> Aufgabe angelegt: Angebot an Firma XY schicken &middot; P1 &middot; für Thomas</div>
+
+  <div class="cmd">
+    <span class="label">Alles zusammen</span>
+    <span class="hl">/aufgabe</span> Newsletter versenden <span class="green">@Christina</span> <span class="hl">P2</span> <span class="hl">bis 20.04</span>
+  </div>
+  <div class="result"><span class="ico">✅</span> Aufgabe angelegt: Newsletter versenden &middot; P2 &middot; bis 2026-04-20 &middot; für Christina</div>
+
+  <h3>Die Bausteine</h3>
+  <table class="tbl">
+    <thead><tr><th>Was</th><th>Format</th><th>Pflicht?</th><th>Beispiel</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Titel</strong></td><td>Einfach eintippen</td><td>Ja</td><td>Website updaten</td></tr>
+      <tr><td><strong>Person</strong></td><td><span class="mono">@Name</span></td><td>Nein *</td><td>@Christina</td></tr>
+      <tr><td><strong>Priorität</strong></td><td><span class="mono">P1</span> <span class="mono">P2</span> <span class="mono">P3</span></td><td>Nein</td><td>P1</td></tr>
+      <tr><td><strong>Deadline</strong></td><td><span class="mono">bis TT.MM</span></td><td>Nein</td><td>bis 20.04</td></tr>
+    </tbody>
+  </table>
+  <p style="font-size:12px;color:#888;margin-top:4px">* Ohne @Person wird die Aufgabe für dich selbst angelegt.</p>
+
+  <h3>Prioritäten</h3>
+  <div style="display:flex;gap:10px;margin:8px 0;flex-wrap:wrap">
+    <span class="badge badge-p1">P1 &mdash; Dringend</span>
+    <span class="badge badge-p2">P2 &mdash; Wichtig</span>
+    <span class="badge badge-p3">P3 &mdash; Kann warten</span>
+  </div>
+
+  <div class="warn">
+    <span class="ico">⚠️</span>
+    <span><strong>Wichtig:</strong> <code>/aufgabe</code> muss am <strong>Anfang</strong> der Nachricht stehen &mdash; so funktionieren Slash-Commands in Slack. Also nicht mitten im Satz eintippen.</span>
+  </div>
+</div>
+
+<!-- SECTION 4: Halleluja OS kurz erklärt -->
+<div class="section">
+  <h2><span class="icon" style="background:#fef9ee">📋</span> Halleluja OS &mdash; kurz erklärt</h2>
+  <p>Halleluja OS ist unsere zentrale Plattform für Aufgaben, Ziele und Wochenplanung. Hier eine Übersicht der wichtigsten Bereiche:</p>
+
+  <h3>Tag-Ansicht</h3>
+  <p>Dein Tagesüberblick. Du siehst:</p>
+  <ul>
+    <li><strong>Nächste Aufgabe</strong> &mdash; Dein wichtigster nächster Schritt, groß dargestellt. Direkt starten mit einem Klick.</li>
+    <li><strong>Dein Tageszeitbudget</strong> &mdash; Wie viel Zeit du geplant hast vs. was noch offen ist.</li>
+    <li><strong>Big 3 der Woche</strong> &mdash; Deine drei wichtigsten Aufgaben für diese Woche (aufklappbar).</li>
+    <li><strong>Alle offenen Aufgaben</strong> &mdash; Sortiert nach Priorität.</li>
+  </ul>
+
+  <h3>Woche-Ansicht</h3>
+  <p>Planung und Überblick für die ganze Woche:</p>
+  <ul>
+    <li><strong>Big 3 festlegen</strong> &mdash; Die drei wichtigsten Aufgaben der Woche auswählen.</li>
+    <li><strong>Kapazität planen</strong> &mdash; Stunden pro Aufgabe einplanen.</li>
+    <li><strong>Strategie-Briefing</strong> &mdash; Aktuelle Ziele und Fokus auf einen Blick (für Geschäftsführer).</li>
+  </ul>
+
+  <h3>Ziele</h3>
+  <p>Langfristige Ziele und Meilensteine:</p>
+  <ul>
+    <li>Jedes Ziel hat <strong>Meilensteine</strong> (Teilschritte).</li>
+    <li>Aufgaben können einem Ziel zugeordnet werden &mdash; so siehst du, wie deine Arbeit zum großen Ganzen beiträgt.</li>
+    <li>Fortschritt wird automatisch getrackt.</li>
+  </ul>
+
+  <h3>Aufgaben</h3>
+  <p>Jede Aufgabe hat:</p>
+  <table class="tbl">
+    <tbody>
+      <tr><td><strong>Titel</strong></td><td>Was gemacht werden muss</td></tr>
+      <tr><td><strong>Status</strong></td><td>Neu → Aktiv → Erledigt</td></tr>
+      <tr><td><strong>Priorität</strong></td><td>P1 (dringend), P2 (wichtig), P3 (kann warten)</td></tr>
+      <tr><td><strong>Deadline</strong></td><td>Bis wann erledigt</td></tr>
+      <tr><td><strong>Zeitbudget</strong></td><td>Geplante Stunden für die Aufgabe</td></tr>
+      <tr><td><strong>Unteraufgaben</strong></td><td>Einzelne Schritte zum Abhaken</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- SECTION 5: So hängt alles zusammen -->
+<div class="section">
+  <h2><span class="icon" style="background:#f0fdf4">🔗</span> So hängt alles zusammen</h2>
+
+  <h3>Aufgabe aus Slack anlegen</h3>
+  <div class="flow">
+    <div class="flow-box flow-slack">Slack<br><small>/aufgabe ...</small></div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-box flow-n8n">n8n<br><small>Automation</small></div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-box flow-supa">Datenbank<br><small>gespeichert</small></div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-box flow-os">Halleluja OS<br><small>sichtbar</small></div>
+  </div>
+  <p style="text-align:center;font-size:13px;color:#888">Du tippst in Slack &mdash; die Aufgabe erscheint sofort in Halleluja OS.</p>
+
+  <h3 style="margin-top:28px">Benachrichtigungen aus der App</h3>
+  <div class="flow">
+    <div class="flow-box flow-os">Halleluja OS<br><small>Aktion ausgeführt</small></div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-box flow-n8n">n8n<br><small>Automation</small></div>
+    <span class="flow-arrow">→</span>
+    <div class="flow-box flow-slack">Slack<br><small>Nachricht</small></div>
+  </div>
+  <p style="text-align:center;font-size:13px;color:#888">Aufgabe zugewiesen, Blocker, Big 3 erledigt &mdash; du wirst automatisch informiert.</p>
+</div>
+
+<!-- SECTION 6: Quick Reference -->
+<div class="section">
+  <h2><span class="icon" style="background:#fef2f2">🗂️</span> Quick Reference</h2>
+
+  <div class="cmd">
+    <span class="label">Aufgabe für mich</span>
+    <span class="hl">/aufgabe</span> Buchhaltung vorbereiten
+  </div>
+
+  <div class="cmd">
+    <span class="label">Aufgabe für jemanden</span>
+    <span class="hl">/aufgabe</span> Logo-Entwurf finalisieren <span class="green">@Christina</span>
+  </div>
+
+  <div class="cmd">
+    <span class="label">Mit Priorität &amp; Deadline</span>
+    <span class="hl">/aufgabe</span> Pitch Deck fertig machen <span class="green">@Thomas</span> <span class="hl">P1</span> <span class="hl">bis 18.04</span>
+  </div>
+
+  <div class="cmd">
+    <span class="label">Reihenfolge egal &mdash; beides geht</span>
+    <span class="hl">/aufgabe</span> P2 <span class="green">@Christina</span> bis 25.04 Flyer drucken<br>
+    <span class="hl">/aufgabe</span> Flyer drucken <span class="green">@Christina</span> P2 bis 25.04
+  </div>
+
+  <div class="info">
+    <span class="ico">💡</span>
+    <span><strong>Ziele zuordnen</strong> kannst du direkt in Halleluja OS &mdash; Aufgabe öffnen und Ziel auswählen. Das geht nicht über Slack, weil man im Chat nicht durch die Ziel-Liste scrollen kann.</span>
+  </div>
+</div>
+
+<!-- SECTION 7: Voraussetzungen -->
+<div class="section">
+  <h2><span class="icon" style="background:#f0f0ff">⚙️</span> Damit alles funktioniert</h2>
+
+  <ol class="steps">
+    <li><strong>Slack-Workspace beitreten</strong> &mdash; Du musst im Halleluja-Slack-Workspace sein.</li>
+    <li><strong>Slack-ID in Halleluja OS hinterlegen</strong> &mdash; Dein Slack-Profil muss mit deinem OS-Profil verknüpft sein. Wenn /aufgabe mit @Name nicht funktioniert, fehlt die Verknüpfung. Melde dich bei Ludwig.</li>
+    <li><strong>Channel #halleluja-updates beitreten</strong> &mdash; Dort kommen Team-Updates zu Big 3 und Meilensteinen.</li>
+    <li><strong>Webhook-URL eintragen</strong> &mdash; In Halleluja OS unter Einstellungen (⚙️) die n8n Webhook-URL eintragen, damit Benachrichtigungen rausgehen. Melde dich bei Ludwig falls nicht vorhanden.</li>
+  </ol>
+</div>
+
+<!-- FOOTER -->
+<div class="footer">
+  Halleluja OS &middot; Team-Briefing &middot; April 2026
+</div>
+
+</div>
+</body>
+</html>

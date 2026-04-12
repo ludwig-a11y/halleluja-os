@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<body style="background:#333;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;gap:20px;font-family:system-ui">
+<canvas id="c" width="512" height="512" style="border-radius:24px"></canvas>
+<a id="dl" download="halleluja-os-icon.png" style="padding:12px 24px;background:#f59e0b;color:#000;font-weight:700;border-radius:8px;text-decoration:none;cursor:pointer">Download PNG</a>
+<script>
+const c=document.getElementById('c'),x=c.getContext('2d');
+
+// Background gradient
+const bg=x.createLinearGradient(0,0,512,512);
+bg.addColorStop(0,'#1a1a1a');
+bg.addColorStop(1,'#2d1f1a');
+x.beginPath();
+x.roundRect(0,0,512,512,112);
+x.fillStyle=bg;
+x.fill();
+
+// H letter gradient
+const hg=x.createLinearGradient(140,120,370,380);
+hg.addColorStop(0,'#f59e0b');
+hg.addColorStop(1,'#ef4444');
+
+// H - left bar
+x.fillStyle=hg;
+x.beginPath();
+x.roundRect(142,128,48,252,8);
+x.fill();
+
+// H - right bar
+x.beginPath();
+x.roundRect(322,128,48,252,8);
+x.fill();
+
+// H - middle bar
+x.beginPath();
+x.roundRect(142,232,228,44,6);
+x.fill();
+
+// Three OS dots
+const dots=[
+  {cx:206,color:'#f59e0b'},
+  {cx:256,color:'#ef4444'},
+  {cx:306,color:'#fb923c'}
+];
+dots.forEach(d=>{
+  x.beginPath();
+  x.arc(d.cx,410,11,0,Math.PI*2);
+  x.fillStyle=d.color;
+  x.globalAlpha=0.85;
+  x.fill();
+  x.globalAlpha=1;
+});
+
+// Subtle border glow
+x.beginPath();
+x.roundRect(1,1,510,510,112);
+x.strokeStyle='rgba(245,158,11,0.12)';
+x.lineWidth=2;
+x.stroke();
+
+// Download link
+document.getElementById('dl').href=c.toDataURL('image/png');
+</script>
+</body>
+</html>

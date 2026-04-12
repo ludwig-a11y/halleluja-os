@@ -69,6 +69,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;font-size:1
 .nt.on{color:var(--text);font-weight:600;border-bottom-color:var(--text)}
 .nt.ai-btn{color:var(--purple);font-weight:600;border:1px solid var(--purple-bd);background:var(--purple-bg);border-radius:8px;height:30px;margin-left:4px;padding:0 10px}
 .nt.new-btn{color:var(--blue);font-weight:600;border:1px solid var(--blue-bd);background:var(--blue-bg);border-radius:8px;height:30px;padding:0 10px}
+.nt.meet-btn{color:var(--amber);font-weight:600;border:1px solid var(--amber-bd);background:var(--amber-bg);border-radius:8px;height:30px;padding:0 10px;margin-left:4px}
 .shell{display:flex;flex:1;overflow:hidden}
 .sb{width:168px;flex-shrink:0;background:var(--sf);border-right:1px solid var(--bd);overflow-y:auto;padding:10px 8px}
 .main{flex:1;overflow-y:auto;padding:20px 24px}
@@ -212,6 +213,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;font-size:1
     <div style="flex:1"></div>
     <div id="fokus-banner" style="display:none;align-items:center;gap:6px;padding:4px 12px;background:var(--red-bg);border:1px solid var(--red-bd);border-radius:8px;font-size:11px;font-weight:600;color:var(--red)">🎯 <span id="fokus-label"></span></div>
     <div id="live-clock" style="font-size:12px;font-weight:600;color:var(--t2);font-family:monospace;padding:0 8px"></div>
+    <button class="nt meet-btn" onclick="openMeeting()">📝 Meeting</button>
     <button class="nt ai-btn" onclick="openAI()">✦ mit KI</button>
     <button class="nt new-btn" onclick="openNeu()">+ Aufgabe</button>
     <div style="margin-left:8px;display:flex;align-items:center;gap:6px">
@@ -3184,6 +3186,10 @@ function openSettings(){
   h+='<div class="fl"><label>n8n Webhook URL <span style="font-weight:400;color:var(--t2)">(für Slack-Notifications)</span></label><input type="url" id="set-webhook" value="'+(localStorage.getItem('n8n_webhook')||'')+'" placeholder="https://dein-n8n.app/webhook/halleluja-notify" style="font-family:monospace;font-size:11px"></div>';
   h+='<button onclick="localStorage.setItem(\'n8n_webhook\',document.getElementById(\'set-webhook\').value.trim());this.textContent=\'✓ Gespeichert\';this.style.color=\'var(--green)\'" class="btn btn-gr" style="margin-bottom:4px">Webhook speichern</button>';
   h+='<div style="font-size:10px;color:var(--t3);margin-bottom:8px">Events: Aufgabe zugewiesen, Meilenstein erledigt, Big 3 erledigt, Blocker gemeldet</div>';
+  h+='<div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin:20px 0 10px">Meeting Dump (Whisper)</div>';
+  h+='<div class="fl"><label>n8n Whisper URL <span style="font-weight:400;color:var(--t2)">(Audio → Transkription)</span></label><input type="url" id="set-whisper" value="'+(localStorage.getItem('n8n_whisper')||'')+'" placeholder="https://dein-n8n.app/webhook/halleluja-whisper" style="font-family:monospace;font-size:11px"></div>';
+  h+='<button onclick="localStorage.setItem(\'n8n_whisper\',document.getElementById(\'set-whisper\').value.trim());this.textContent=\'✓ Gespeichert\';this.style.color=\'var(--green)\'" class="btn btn-gr" style="margin-bottom:4px">Whisper URL speichern</button>';
+  h+='<div style="font-size:10px;color:var(--t3);margin-bottom:8px">Optional: Für Audio-Upload im Meeting Dump. Braucht den Whisper-Workflow in n8n + OpenAI API Key.</div>';
   h+='<div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin:20px 0 10px">KI-Assistent</div>';
   h+='<div class="fl"><label>Anthropic API Key</label><input type="password" id="set-aikey" value="'+(localStorage.getItem('anthropic_key')||'')+'" placeholder="sk-ant-..." style="font-family:monospace;font-size:11px"></div>';
   h+='<button onclick="localStorage.setItem(\'anthropic_key\',document.getElementById(\'set-aikey\').value.trim());this.textContent=\'✓ Gespeichert\';this.style.color=\'var(--green)\'" class="btn btn-gr" style="margin-bottom:12px">API Key speichern</button>';
@@ -3386,6 +3392,197 @@ function startTimers(){
     }
   },1000);
 }
+
+// ===== MEETING DUMP =====
+let _mdTasks=[];
+
+function openMeeting(){
+  _mdTasks=[];
+  const m=document.getElementById('mb');
+  m.innerHTML='<div class="mt">📝 Meeting Dump</div>'
+    +'<div style="font-size:12px;color:var(--t3);margin-bottom:14px">Füge ein Meeting-Transkript ein — die KI extrahiert automatisch alle Aufgaben mit Zuständigkeit, Priorität und Deadline.</div>'
+    +'<div class="fl"><label>Transkript</label><textarea id="md-text" rows="10" placeholder="Meeting-Transkript hier einfügen…&#10;&#10;Beispiel:&#10;Thomas: Christina, kannst du bis Freitag den Newsletter rausschicken? Das ist dringend.&#10;Christina: Ja klar. Fabian, wir brauchen auch die Website-Texte bis Ende April.&#10;Fabian: Mach ich, P2." style="resize:vertical;font-size:13px;line-height:1.6"></textarea></div>'
+    +'<div style="margin-bottom:12px">'
+    +'<label style="display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;border:2px dashed var(--bd);border-radius:10px;cursor:pointer;font-size:12px;color:var(--t3);transition:border-color .15s" onmouseover="this.style.borderColor=\'var(--amber)\'" onmouseout="this.style.borderColor=\'var(--bd)\'">'
+    +'<input type="file" id="md-audio" accept="audio/*,.m4a,.mp3,.wav,.webm,.ogg,.mp4" style="display:none" onchange="mdUploadAudio(this)">'
+    +'🎙 Audio-Datei hochladen → automatisch transkribieren (Whisper)'
+    +'</label>'
+    +'</div>'
+    +'<div id="md-status"></div>'
+    +'<div class="mf"><button class="btn btn-gr" onclick="cm()">Abbrechen</button><button class="btn btn-dk" id="md-extract-btn" onclick="mdExtract()">✦ Aufgaben extrahieren</button></div>';
+  document.getElementById('ovl').classList.add('open');
+  document.getElementById('md-text').focus();
+}
+
+async function mdUploadAudio(input){
+  const file=input.files[0];if(!file)return;
+  const status=document.getElementById('md-status');
+  const sizeMB=(file.size/1024/1024).toFixed(1);
+  status.innerHTML='<div style="padding:10px;color:var(--amber);font-size:12px;display:flex;align-items:center;gap:6px"><span style="display:inline-block;animation:spin 1s linear infinite">⟳</span> Transkribiere Audio mit Whisper… ('+sizeMB+' MB)</div>';
+  const whisperUrl=localStorage.getItem('n8n_whisper');
+  if(!whisperUrl){
+    status.innerHTML='<div style="padding:10px;color:var(--red);font-size:12px">⚠️ Whisper-URL nicht konfiguriert. Bitte in Einstellungen (⚙) unter „n8n Whisper URL" eintragen.</div>';
+    return;
+  }
+  try{
+    const fd=new FormData();fd.append('file',file);
+    const resp=await fetch(whisperUrl,{method:'POST',body:fd});
+    const data=await resp.json();
+    const transcript=data.transcript||data.text||data.result||'';
+    if(transcript){
+      document.getElementById('md-text').value=transcript;
+      status.innerHTML='<div style="padding:10px;color:var(--green);font-size:12px">✅ Transkription fertig — '+transcript.split(/\s+/).length+' Wörter. Jetzt „Aufgaben extrahieren" klicken.</div>';
+    }else{
+      status.innerHTML='<div style="padding:10px;color:var(--red);font-size:12px">⚠️ Keine Transkription erhalten. Prüfe den Whisper-Workflow in n8n.</div>';
+    }
+  }catch(e){
+    status.innerHTML='<div style="padding:10px;color:var(--red);font-size:12px">⚠️ Fehler bei Transkription: '+esc(e.message)+'</div>';
+  }
+}
+
+async function mdExtract(){
+  const text=document.getElementById('md-text').value.trim();
+  if(!text){document.getElementById('md-status').innerHTML='<div style="padding:8px;color:var(--red);font-size:12px">Bitte zuerst ein Transkript einfügen.</div>';return;}
+  const btn=document.getElementById('md-extract-btn');
+  btn.disabled=true;btn.textContent='⟳ KI analysiert…';
+  document.getElementById('md-status').innerHTML='<div style="padding:12px;text-align:center"><div style="color:var(--purple);font-size:13px;font-weight:600;margin-bottom:4px">⟳ Claude analysiert das Transkript…</div><div style="font-size:11px;color:var(--t3)">Extrahiere Aufgaben, Zuständigkeiten und Deadlines</div></div>';
+  const personList=S.personen.map(p=>p.id+'='+p.name).join(', ');
+  const zielList=S.ziele.map(z=>z.id+'='+z.name).join(', ');
+  const sys='Du bist ein Assistent für Halleluja OS (Team-Management-Tool für Halleluja Sauna Austria).\n\n'
+    +'Analysiere das folgende Meeting-Transkript und extrahiere ALLE konkreten Aufgaben und To-Dos.\n\n'
+    +'Team-Mitglieder (id=Name): '+personList+'\n'
+    +(zielList?'Aktive Ziele (id=Name): '+zielList+'\n':'')
+    +'Heute: '+TODAY+'\n\n'
+    +'Für jede Aufgabe extrahiere:\n'
+    +'- titel: Klare, aktionsorientierte Beschreibung (z.B. "Newsletter an Kundenliste versenden", nicht nur "Newsletter")\n'
+    +'- pid: Die person_id der zuständigen Person (MUSS exakt eine ID aus der Team-Liste sein). Wenn unklar wer zuständig ist → null\n'
+    +'- prio: "P1" (dringend/kritisch), "P2" (wichtig/bald), "P3" (nice-to-have/irgendwann) oder null wenn nicht erkennbar\n'
+    +'- dl: Deadline als "YYYY-MM-DD" wenn im Gespräch genannt. Relative Angaben ("bis Freitag", "nächste Woche", "Ende April") in echtes Datum umrechnen basierend auf heute='+TODAY+'. Wenn keine Deadline → null\n'
+    +'- kontext: Ein kurzer Satz, warum diese Aufgabe entstanden ist (Kontext aus dem Meeting)\n'
+    +'- ziel_id: Falls die Aufgabe klar zu einem der aktiven Ziele passt, die ziel_id. Sonst null\n\n'
+    +'WICHTIG:\n'
+    +'- Extrahiere NUR echte Aufgaben (Dinge die jemand TUN muss), keine Diskussionspunkte oder Fragen\n'
+    +'- Antworte NUR mit einem JSON-Array, keine Erklärungen, kein Markdown-Codeblock\n'
+    +'- Beispiel: [{"titel":"Newsletter versenden","pid":"abc123","prio":"P1","dl":"2026-04-18","kontext":"Thomas hat Christina gebeten","ziel_id":null}]';
+  try{
+    const resp=await fetch('https://halleluja-app.germanywestcentral.cloudapp.azure.com/n8n/webhook/ki-proxy',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:4000,system:sys,messages:[{role:'user',content:text}]})
+    });
+    const data=await resp.json();
+    const raw=data.content?.map(c=>c.text||'').join('')||'';
+    let tasks;
+    try{tasks=JSON.parse(raw.replace(/```json|```/g,'').trim());}
+    catch(e){
+      document.getElementById('md-status').innerHTML='<div style="padding:12px;color:var(--red);font-size:12px">⚠️ KI-Antwort konnte nicht verarbeitet werden. Bitte nochmal versuchen.</div>';
+      btn.disabled=false;btn.textContent='✦ Aufgaben extrahieren';return;
+    }
+    if(!Array.isArray(tasks)||!tasks.length){
+      document.getElementById('md-status').innerHTML='<div style="padding:12px;color:var(--amber);font-size:12px">Keine konkreten Aufgaben gefunden. Ist das Transkript lang genug?</div>';
+      btn.disabled=false;btn.textContent='✦ Aufgaben extrahieren';return;
+    }
+    _mdTasks=tasks;
+    mdRenderPreview();
+  }catch(e){
+    document.getElementById('md-status').innerHTML='<div style="padding:12px;color:var(--red);font-size:12px">⚠️ Fehler: '+esc(e.message)+'</div>';
+    btn.disabled=false;btn.textContent='✦ Aufgaben extrahieren';
+  }
+}
+
+function mdRenderPreview(){
+  const m=document.getElementById('mb');
+  let html='<div class="mt">📝 Meeting Dump — '+_mdTasks.length+' Aufgaben gefunden</div>';
+  html+='<div style="font-size:12px;color:var(--t3);margin-bottom:14px">Prüfe und bearbeite die Aufgaben. Entferne was nicht passt, dann „Aufgaben anlegen".</div>';
+  const personOpts=S.personen.map(p=>'<option value="'+p.id+'">'+esc(p.name)+'</option>').join('');
+  _mdTasks.forEach((t,i)=>{
+    const p=t.pid?person(t.pid):null;
+    html+='<div id="md-row-'+i+'" style="background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:14px;margin-bottom:10px">';
+    html+='<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:8px">';
+    html+='<input type="checkbox" checked id="md-chk-'+i+'" style="margin-top:4px;accent-color:var(--blue);width:16px;height:16px" onchange="mdUpdateCount()">';
+    html+='<input type="text" id="md-titel-'+i+'" value="'+esc(t.titel)+'" style="flex:1;font-size:14px;font-weight:600;border:1px solid var(--bd);border-radius:8px;padding:6px 10px;font-family:inherit">';
+    html+='<button onclick="mdRemoveRow('+i+')" style="font-size:14px;border:none;background:none;cursor:pointer;padding:4px;color:var(--t3)" title="Entfernen">✕</button>';
+    html+='</div>';
+    html+='<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">';
+    html+='<select id="md-pid-'+i+'" style="font-size:12px;padding:5px 8px;border:1px solid var(--bd);border-radius:6px;font-family:inherit;background:#fff">';
+    html+='<option value="">— Zuständig —</option>'+personOpts+'</select>';
+    html+='<select id="md-prio-'+i+'" style="font-size:12px;padding:5px 8px;border:1px solid var(--bd);border-radius:6px;font-family:inherit;background:#fff">';
+    html+='<option value="">— Prio —</option>';
+    html+='<option value="P1"'+(t.prio==='P1'?' selected':'')+'>🔴 P1 Dringend</option>';
+    html+='<option value="P2"'+(t.prio==='P2'?' selected':'')+'>🟡 P2 Wichtig</option>';
+    html+='<option value="P3"'+(t.prio==='P3'?' selected':'')+'>🟢 P3 Kann warten</option>';
+    html+='</select>';
+    html+='<input type="date" id="md-dl-'+i+'" value="'+(t.dl||'')+'" style="font-size:12px;padding:5px 8px;border:1px solid var(--bd);border-radius:6px;font-family:inherit;background:#fff">';
+    html+='</div>';
+    if(t.kontext){html+='<div style="font-size:11px;color:var(--t3);margin-top:8px;font-style:italic;padding-left:26px">💬 '+esc(t.kontext)+'</div>';}
+    html+='</div>';
+  });
+  html+='<div style="display:flex;align-items:center;gap:10px;margin-top:16px;padding-top:14px;border-top:1px solid var(--bd)">';
+  html+='<button class="btn btn-gr" onclick="openMeeting()">← Zurück</button>';
+  html+='<div style="flex:1"></div>';
+  html+='<span style="font-size:12px;color:var(--t3)" id="md-count">'+_mdTasks.length+' ausgewählt</span>';
+  html+='<button class="btn btn-dk" onclick="mdConfirm()" style="padding:10px 24px;font-size:14px;font-weight:700">✓ Aufgaben anlegen</button>';
+  html+='</div>';
+  m.innerHTML=html;
+  _mdTasks.forEach((t,i)=>{const sel=document.getElementById('md-pid-'+i);if(sel&&t.pid)sel.value=t.pid;});
+}
+
+function mdRemoveRow(i){
+  const row=document.getElementById('md-row-'+i);if(row)row.style.display='none';
+  const chk=document.getElementById('md-chk-'+i);if(chk)chk.checked=false;
+  mdUpdateCount();
+}
+
+function mdUpdateCount(){
+  let c=0;_mdTasks.forEach((_,i)=>{const chk=document.getElementById('md-chk-'+i);if(chk&&chk.checked)c++;});
+  const el=document.getElementById('md-count');if(el)el.textContent=c+' ausgewählt';
+}
+
+async function mdConfirm(){
+  const toCreate=[];
+  _mdTasks.forEach((t,i)=>{
+    const chk=document.getElementById('md-chk-'+i);if(!chk||!chk.checked)return;
+    const titel=document.getElementById('md-titel-'+i).value.trim();if(!titel)return;
+    const pid=document.getElementById('md-pid-'+i).value||aP;
+    const prio=document.getElementById('md-prio-'+i).value||null;
+    const dl=document.getElementById('md-dl-'+i).value||null;
+    const ziel_id=t.ziel_id||null;
+    toCreate.push({titel,pid,prio,dl,ziel_id,kontext:t.kontext||''});
+  });
+  if(!toCreate.length)return;
+  const m=document.getElementById('mb');
+  m.innerHTML='<div class="mt">📝 Meeting Dump</div>'
+    +'<div style="text-align:center;padding:40px">'
+    +'<div style="font-size:14px;color:var(--purple);font-weight:600">⟳ Erstelle '+toCreate.length+' Aufgaben…</div>'
+    +'<div id="md-progress" style="margin-top:12px;font-size:12px;color:var(--t3)">0 / '+toCreate.length+'</div>'
+    +'</div>';
+  let created=0;
+  for(const t of toCreate){
+    const isOther=t.pid!==aP;
+    const id=nid('a');
+    const rec={id,pid:t.pid,titel:t.titel,typ:t.ziel_id?'strategisch':'operativ',
+      status:isOther?'zugewiesen':(t.prio?'backlog':'neu'),
+      prio:t.prio,ziel_id:t.ziel_id,teilziel_id:null,
+      geplant:1,gebucht:0,dl:t.dl,dl_type:t.dl?'bis':null,
+      ua:[],notiz:t.kontext?'Meeting: '+t.kontext:null,
+      akt_seit:null,vertraulich:false,erstellt_von:aP};
+    S.aufgaben.push(normalizeAufgabe(rec));
+    await dbInsert('aufgaben',rec);
+    if(isOther){
+      const tp=person(t.pid);
+      if(tp&&tp.slack_id)notify('aufgabe_zugewiesen',{aufgabe:t.titel,fuer:{id:t.pid,name:tp.name,slack_id:tp.slack_id},prio:t.prio,dl:t.dl});
+    }
+    created++;
+    const prog=document.getElementById('md-progress');if(prog)prog.textContent=created+' / '+toCreate.length;
+  }
+  m.innerHTML='<div class="mt">📝 Meeting Dump</div>'
+    +'<div style="text-align:center;padding:40px">'
+    +'<div style="font-size:48px;margin-bottom:12px">✅</div>'
+    +'<div style="font-size:20px;font-weight:700;margin-bottom:6px">'+created+' Aufgaben angelegt</div>'
+    +'<div style="font-size:13px;color:var(--t3);margin-bottom:20px">Zugewiesene Personen werden automatisch per Slack benachrichtigt.</div>'
+    +'<div style="display:flex;justify-content:center"><button class="btn btn-dk" onclick="cm();render()" style="padding:10px 24px;font-size:14px">Fertig</button></div>'
+    +'</div>';
+}
+// ===== /MEETING DUMP =====
 
 function cm(){
   const ovl=document.getElementById('ovl');
