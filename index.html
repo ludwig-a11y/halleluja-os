@@ -1409,7 +1409,7 @@ function rSB(){
   const streaks={};
   S.personen.forEach(p=>{
     const doneByDay={};
-    S.aufgaben.forEach(a=>{if(a.pid===p.id&&a.status==='erledigt'&&a.updated_at){const d=a.updated_at.slice(0,10);doneByDay[d]=true;}});
+    S.aufgaben.forEach(a=>{if(a.pid===p.id&&a.status==='erledigt'&&a.updated_at){const d=localDate(new Date(a.updated_at));doneByDay[d]=true;}});
     let streak=0,d=new Date(TODAY+'T12:00:00');
     // If nothing done today, check if yesterday still counts (streak not broken yet today)
     if(!doneByDay[TODAY]){d.setDate(d.getDate()-1);}
@@ -1718,10 +1718,44 @@ function rWoche(){
     }
   }// end isGF briefing
 
+  // ── Wochen-Bilanz ──
+  {
+    const erlWoche=myA.filter(a=>a.status==='erledigt'&&a.updated_at&&tage.includes(localDate(new Date(a.updated_at))));
+    if(erlWoche.length){
+      const stunden=erlWoche.reduce((s,a)=>s+(a.gebucht||0),0);
+      // Mini-Balken pro Tag
+      const perDay=tage.map(d=>erlWoche.filter(a=>localDate(new Date(a.updated_at))===d).length);
+      const maxDay=Math.max(...perDay,1);
+      out+='<div style="background:var(--green-bg);border:1px solid var(--green-bd);border-radius:12px;padding:12px 14px;margin-bottom:14px">';
+      out+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:'+(erlWoche.length>0?'10':'0')+'px">';
+      out+='<span style="font-size:16px">✅</span>';
+      out+='<div style="flex:1"><div style="font-size:13px;font-weight:700;color:var(--green)">'+erlWoche.length+' erledigt diese Woche</div>';
+      if(stunden>0)out+='<div style="font-size:11px;color:var(--t2)">'+fmtH(stunden)+' gebucht</div>';
+      out+='</div></div>';
+      // Tages-Sparkline
+      out+='<div style="display:flex;gap:4px;align-items:flex-end;height:24px">';
+      const tagN2=['Mo','Di','Mi','Do','Fr','Sa'];
+      perDay.forEach((c,i)=>{
+        const pct=Math.max(c?15:4,(c/maxDay)*100);
+        const isT=tage[i]===TODAY;
+        out+='<div style="flex:1;text-align:center">';
+        out+='<div style="height:'+pct+'%;min-height:'+(c?6:2)+'px;max-height:24px;background:'+(c?'var(--green)':'var(--bd)')+';border-radius:3px;margin:0 auto;width:80%;opacity:'+(isT?1:.6)+'"></div>';
+        out+='</div>';
+      });
+      out+='</div>';
+      out+='<div style="display:flex;gap:4px;margin-top:3px">';
+      perDay.forEach((c,i)=>{
+        out+='<div style="flex:1;text-align:center;font-size:9px;color:var(--t3)">'+tagN2[i]+'</div>';
+      });
+      out+='</div>';
+      out+='</div>';
+    }
+  }
+
   // ── Tagesübersicht ──
   out+='<div style="background:var(--sf);border:1px solid var(--bd);border-radius:12px;overflow:hidden;margin-bottom:14px">';
   tage.forEach((datum,i)=>{
-    const erlA=myA.filter(a=>a.status==='erledigt'&&(a.akt_seit||'').slice(0,10)===datum);
+    const erlA=myA.filter(a=>a.status==='erledigt'&&a.updated_at&&localDate(new Date(a.updated_at))===datum);
     const aktivA=myA.filter(a=>a.status==='aktiv'&&datum===TODAY);
     const geplantA=myA.filter(a=>['neu','backlog'].includes(a.status)&&a.dl===datum);
     const isToday=datum===TODAY,isPast=datum<TODAY;
@@ -1816,7 +1850,7 @@ function rTag(){
     const mon=['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'][d.getMonth()];
     // Streak berechnen
     const _dbd={};
-    S.aufgaben.forEach(a=>{if(a.pid===aP&&a.status==='erledigt'&&a.updated_at){_dbd[a.updated_at.slice(0,10)]=true;}});
+    S.aufgaben.forEach(a=>{if(a.pid===aP&&a.status==='erledigt'&&a.updated_at){_dbd[localDate(new Date(a.updated_at))]=true;}});
     let _stk=0,_sd=new Date(TODAY+'T12:00:00');
     if(!_dbd[TODAY])_sd.setDate(_sd.getDate()-1);
     while(_dbd[_sd.toISOString().slice(0,10)]){_stk++;_sd.setDate(_sd.getDate()-1);}
