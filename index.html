@@ -27,11 +27,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;font-size:1
   .nt.ai-btn,.nt.new-btn{display:none}
   .sb{display:none}
   .main{padding:14px 14px 90px}
-  .modal{border-radius:20px 20px 0 0;width:100%;max-width:100%;position:fixed;bottom:0;left:0;right:0;max-height:90vh;padding:20px 18px 32px}
+  .modal{border-radius:20px 20px 0 0;width:100%;max-width:100%;position:fixed;bottom:0;left:0;right:0;max-height:90vh;padding:20px 14px 32px}
   .ovl{align-items:flex-end;padding:0}
   .f2{grid-template-columns:1fr}
   #mob-tabs{display:flex}
   #mob-add{display:flex}
+  input,textarea,select{font-size:16px!important}
+  .btn{min-height:44px;font-size:13px!important}
+  .card{padding:12px 14px}
 }
 @media(min-width:769px){
   #mob-tabs{display:none}
@@ -148,7 +151,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;font-size:1
 
 #quote-overlay{position:fixed;inset:0;background:#0d0d0d;z-index:500;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px;opacity:0;pointer-events:none;transition:opacity .5s}
 #quote-overlay.show{opacity:1;pointer-events:all}
-#quote-text{color:#fff;font-size:20px;font-weight:400;line-height:1.7;max-width:580px;text-align:center;letter-spacing:.01em}
+#quote-text{color:#fff;font-size:20px;font-weight:400;line-height:1.7;max-width:min(580px,90vw);text-align:center;letter-spacing:.01em}
 #quote-author{color:#555;font-size:12px;margin-top:20px;letter-spacing:.1em;text-transform:uppercase}
 #quote-skip{margin-top:32px;background:transparent;border:1px solid #333;color:#444;padding:7px 18px;border-radius:8px;cursor:pointer;font-size:12px;font-family:inherit}
 #quote-skip:hover{border-color:#555;color:#666}
@@ -1818,9 +1821,9 @@ function rTag(){
   } else if(naechste){
     const zN=getZielName(naechste),tzN=getTZName(naechste);
     const from=naechste.erstelltVon&&naechste.erstelltVon!==aP?person(naechste.erstelltVon):null;
-    out+='<div style="background:linear-gradient(135deg,#1a1a1a 0%,#2d1f1a 100%);border-radius:18px;padding:24px;margin-bottom:16px;color:#fff">';
+    out+='<div style="background:linear-gradient(135deg,#1a1a1a 0%,#2d1f1a 100%);border-radius:18px;padding:clamp(16px,4vw,24px);margin-bottom:16px;color:#fff">';
     out+='<div style="font-size:10px;font-weight:700;opacity:.4;letter-spacing:.8px;text-transform:uppercase;margin-bottom:8px">Nächster Schritt</div>';
-    out+='<div style="font-size:22px;font-weight:700;margin-bottom:6px;line-height:1.3;cursor:pointer" onclick="openDetail(\''+naechste.id+'\')">'+esc(naechste.titel)+'</div>';
+    out+='<div style="font-size:clamp(17px,4.5vw,22px);font-weight:700;margin-bottom:6px;line-height:1.3;cursor:pointer" onclick="openDetail(\''+naechste.id+'\')">'+esc(naechste.titel)+'</div>';
     out+='<div style="display:flex;gap:8px;align-items:center;margin-bottom:16px;flex-wrap:wrap">';
     if(naechste.prio)out+='<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:6px;background:rgba(255,255,255,.12);color:'+(naechste.prio==='P1'?'#fca5a5':naechste.prio==='P2'?'#fed7aa':'rgba(255,255,255,.5)')+'">'+naechste.prio+'</span>';
     if(zN)out+='<span style="font-size:11px;opacity:.5">'+zN+'</span>';
@@ -1849,9 +1852,9 @@ function rTag(){
     out+='<button onclick="openDetail(\''+naechste.id+'\')" style="padding:14px 18px;border-radius:12px;background:rgba(255,255,255,.1);color:rgba(255,255,255,.5);border:none;font-family:inherit;font-size:13px;font-weight:500;cursor:pointer;transition:background .15s" onmouseenter="this.style.background=\'rgba(255,255,255,.2)\'" onmouseleave="this.style.background=\'rgba(255,255,255,.1)\'">···</button>';
     out+='</div></div>';
   } else if(alleGeschafft||!myA.length){
-    out+='<div style="background:var(--green);border-radius:18px;padding:32px 24px;margin-bottom:16px;color:#fff;text-align:center">';
+    out+='<div style="background:var(--green);border-radius:18px;padding:clamp(20px,5vw,32px) clamp(16px,4vw,24px);margin-bottom:16px;color:#fff;text-align:center">';
     out+='<div style="font-size:36px;margin-bottom:12px">🎉</div>';
-    out+='<div style="font-size:20px;font-weight:700;margin-bottom:6px">Alles erledigt!</div>';
+    out+='<div style="font-size:clamp(17px,4vw,20px);font-weight:700;margin-bottom:6px">Alles erledigt!</div>';
     out+='<div style="font-size:13px;opacity:.8;margin-bottom:20px">Keine offenen Aufgaben — gut gemacht.</div>';
     out+='<button onclick="openNeu()" style="padding:12px 24px;border-radius:12px;background:#fff;color:var(--green);border:none;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer">+ Neue Aufgabe</button>';
     out+='</div>';
@@ -3522,15 +3525,15 @@ function mdRenderPreview(){
     html+='<button onclick="mdRemoveRow('+i+')" style="font-size:14px;border:none;background:none;cursor:pointer;padding:4px;color:var(--t3)" title="Entfernen">✕</button>';
     html+='</div>';
     html+='<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">';
-    html+='<select id="md-pid-'+i+'" style="font-size:12px;padding:5px 8px;border:1px solid var(--bd);border-radius:6px;font-family:inherit;background:#fff">';
+    html+='<select id="md-pid-'+i+'" style="font-size:14px;padding:8px 10px;border:1px solid var(--bd);border-radius:8px;font-family:inherit;background:#fff;min-height:40px;flex:1;min-width:120px">';
     html+='<option value="">— Zuständig —</option>'+personOpts+'</select>';
-    html+='<select id="md-prio-'+i+'" style="font-size:12px;padding:5px 8px;border:1px solid var(--bd);border-radius:6px;font-family:inherit;background:#fff">';
+    html+='<select id="md-prio-'+i+'" style="font-size:14px;padding:8px 10px;border:1px solid var(--bd);border-radius:8px;font-family:inherit;background:#fff;min-height:40px">';
     html+='<option value="">— Prio —</option>';
-    html+='<option value="P1"'+(t.prio==='P1'?' selected':'')+'>🔴 P1 Dringend</option>';
-    html+='<option value="P2"'+(t.prio==='P2'?' selected':'')+'>🟡 P2 Wichtig</option>';
-    html+='<option value="P3"'+(t.prio==='P3'?' selected':'')+'>🟢 P3 Kann warten</option>';
+    html+='<option value="P1"'+(t.prio==='P1'?' selected':'')+'>🔴 P1</option>';
+    html+='<option value="P2"'+(t.prio==='P2'?' selected':'')+'>🟡 P2</option>';
+    html+='<option value="P3"'+(t.prio==='P3'?' selected':'')+'>🟢 P3</option>';
     html+='</select>';
-    html+='<input type="date" id="md-dl-'+i+'" value="'+(t.dl||'')+'" style="font-size:12px;padding:5px 8px;border:1px solid var(--bd);border-radius:6px;font-family:inherit;background:#fff">';
+    html+='<input type="date" id="md-dl-'+i+'" value="'+(t.dl||'')+'" style="font-size:14px;padding:8px 10px;border:1px solid var(--bd);border-radius:8px;font-family:inherit;background:#fff;min-height:40px">';
     html+='</div>';
     if(t.kontext){html+='<div style="font-size:11px;color:var(--t3);margin-top:8px;font-style:italic;padding-left:26px">💬 '+esc(t.kontext)+'</div>';}
     html+='</div>';
