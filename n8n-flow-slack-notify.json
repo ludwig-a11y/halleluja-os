@@ -15,17 +15,18 @@
       "typeVersion": 2,
       "position": [0, 0],
       "webhookId": "halleluja-notify",
-      "notes": "POST von der App bei: aufgabe_zugewiesen, meilenstein_erledigt, big3_erledigt, blocker"
+      "notes": "POST von der App. Events: aufgabe_zugewiesen, meilenstein_erledigt, big3_erledigt, blocker"
     },
     {
       "parameters": {
-        "jsCode": "const body = $json.body || $json;\nconst evt = body.event;\nconst actor = body.actor || {};\nconst actorName = actor.name || 'Jemand';\n\nlet emoji = '📋';\nlet text = '';\nlet channel = '{{ $env.SLACK_NOTIFY_CHANNEL || \"C0A7LTX603Z\" }}';\nlet priority = 'normal';\n\nswitch(evt) {\n  case 'aufgabe_zugewiesen':\n    emoji = '📋';\n    text = `*${actorName}* hat eine Aufgabe zugewiesen an *${body.fuer?.name || '?'}*:\\n> ${body.aufgabe || '?'}${body.prio ? ' (' + body.prio + ')' : ''}${body.dl ? ' — fällig: ' + body.dl : ''}`;\n    break;\n\n  case 'meilenstein_erledigt':\n    emoji = '🎯';\n    text = `*${actorName}* hat einen Meilenstein erreicht! 🎉\\n> ✅ *${body.meilenstein || '?'}*${body.ziel ? '\\n> Ziel: ' + body.ziel : ''}`;\n    priority = 'high';\n    break;\n\n  case 'big3_erledigt':\n    emoji = '✅';\n    text = `*${actorName}* hat ein Big-3-Ziel erledigt (KW ${body.kw || '?'}):\\n> ✅ ${body.big3 || '?'}`;\n    break;\n\n  case 'blocker':\n    emoji = '⚠️';\n    text = `*${actorName}* meldet einen Blocker:\\n> ⚠️ ${body.blocker || '?'}`;\n    priority = 'high';\n    break;\n\n  default:\n    text = `${actorName}: Unbekanntes Event (${evt})`;\n}\n\nreturn [{\n  json: {\n    channel,\n    text: `${emoji} ${text}`,\n    event: evt,\n    priority\n  }\n}];"
+        "jsCode": "const body = $json.body || $json;\nconst evt = body.event;\nconst actor = body.actor || {};\nconst actorName = actor.name || 'Jemand';\nconst teamChannel = $env.SLACK_NOTIFY_CHANNEL || 'C0A7LTX603Z';\n\nlet emoji = '📋';\nlet text = '';\nlet targets = []; // {channel, text} pairs\n\nswitch(evt) {\n  case 'aufgabe_zugewiesen': {\n    emoji = '📋';\n    const msg = `${emoji} *${actorName}* hat dir eine Aufgabe zugewiesen:\\n> ${body.aufgabe || '?'}${body.prio ? ' (' + body.prio + ')' : ''}${body.dl ? ' — fällig: ' + body.dl : ''}`;\n    // DM an die zugewiesene Person\n    if (body.fuer?.slack_id) {\n      targets.push({ channel: body.fuer.slack_id, text: msg });\n    } else {\n      // Fallback: Team-Channel\n      targets.push({ channel: teamChannel, text: `${emoji} *${actorName}* hat *${body.fuer?.name || '?'}* eine Aufgabe zugewiesen:\\n> ${body.aufgabe || '?'}${body.prio ? ' (' + body.prio + ')' : ''}${body.dl ? ' — fällig: ' + body.dl : ''}` });\n    }\n    break;\n  }\n  case 'meilenstein_erledigt': {\n    emoji = '🎯';\n    text = `${emoji} *${actorName}* hat einen Meilenstein erreicht! 🎉\\n> ✅ *${body.meilenstein || '?'}*${body.ziel ? '\\n> Ziel: ' + body.ziel : ''}`;\n    // Celebration → Team-Channel\n    targets.push({ channel: teamChannel, text });\n    break;\n  }\n  case 'big3_erledigt': {\n    emoji = '✅';\n    text = `${emoji} *${actorName}* hat ein Big-3-Ziel erledigt (KW ${body.kw || '?'}):\\n> ${body.big3 || '?'}`;\n    // → Team-Channel\n    targets.push({ channel: teamChannel, text });\n    break;\n  }\n  case 'blocker': {\n    emoji = '⚠️';\n    const msg = `${emoji} *${actorName}* meldet einen Blocker:\\n> ${body.blocker || '?'}`;\n    // DM an jeden GF\n    const gfIds = body.gf_slack_ids || [];\n    if (gfIds.length) {\n      gfIds.forEach(sid => targets.push({ channel: sid, text: msg }));\n    } else {\n      targets.push({ channel: teamChannel, text: msg });\n    }\n    break;\n  }\n  default:\n    targets.push({ channel: teamChannel, text: `${actorName}: Unbekanntes Event (${evt})` });\n}\n\nreturn targets.map(t => ({ json: t }));"
       },
       "id": "format",
-      "name": "Nachricht formatieren",
+      "name": "Nachricht formatieren + routen",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [250, 0]
+      "position": [250, 0],
+      "notes": "DMs: aufgabe → Person, blocker → GF(s). Channel: meilenstein + big3 → Team"
     },
     {
       "parameters": {
@@ -49,14 +50,14 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [500, 0],
-      "notes": "Nutzt Slack OAuth2 Credential. Channel-ID anpassen in ENV: SLACK_NOTIFY_CHANNEL"
+      "notes": "Sendet an DM (User-ID) oder Channel (Channel-ID) je nach Routing"
     }
   ],
   "connections": {
     "Webhook empfangen": {
-      "main": [[ { "node": "Nachricht formatieren", "type": "main", "index": 0 } ]]
+      "main": [[ { "node": "Nachricht formatieren + routen", "type": "main", "index": 0 } ]]
     },
-    "Nachricht formatieren": {
+    "Nachricht formatieren + routen": {
       "main": [[ { "node": "An Slack senden", "type": "main", "index": 0 } ]]
     }
   },

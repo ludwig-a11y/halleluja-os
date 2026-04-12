@@ -1021,7 +1021,7 @@ function openBlocker(wrId){
     '<div class="mt">⚠ Blocker melden</div>'
     +'<div style="font-size:12px;color:var(--t2);margin-bottom:10px">Was blockiert dich gerade? Das ist für deine Führung sichtbar.</div>'
     +'<div class="fl"><label>Blocker</label>'
-    +'<textarea id="blocker-text" rows="3" style="width:100%;padding:8px;border:1px solid var(--bd);border-radius:8px;font-family:inherit;font-size:13px;resize:vertical" placeholder="z.B. Warte auf CE-Zertifikat, Material nicht geliefert, Kunde antwortet nicht...">'+(wr.blockiert||'')+'</textarea></div>'
+    +'<textarea id="blocker-text" rows="3" style="width:100%;padding:8px;border:1px solid var(--bd);border-radius:8px;font-family:inherit;font-size:13px;resize:vertical" placeholder="z.B. Fabian wartet auf Rückmeldung vom Lieferanten, Freigabe ausstehend…">'+(wr.blockiert||'')+'</textarea></div>'
     +'<div class="mf"><button onclick="cm()">Abbrechen</button>'
     +'<button onclick="saveBlocker(\''+wrId+'\')" style="background:var(--red);color:#fff;border:none;font-weight:600">'+(wr.blockiert?'Aktualisieren':'Melden')+'</button></div>';
   document.getElementById('ovl').classList.add('open');
@@ -1031,7 +1031,7 @@ async function saveBlocker(wrId){
   const wr=S.wochenresets.find(r=>r.id===wrId);if(!wr)return;
   wr.blockiert=text;
   await dbPatch('wochenresets',wrId,{blockiert:text});
-  if(text)notify('blocker',{blocker:text});
+  if(text){const gfs=S.personen.filter(p=>p.stufe==='gf'&&p.slack_id).map(p=>p.slack_id);notify('blocker',{blocker:text,gf_slack_ids:gfs});}
   cm();render();
 }
 function rSignaleTeam(){
@@ -2827,7 +2827,7 @@ async function saveNeu(){
     erstellt_von:aP};
   S.aufgaben.push(normalizeAufgabe(rec));
   await dbInsert('aufgaben',rec);
-  if(pid!==aP){const tp=person(pid);notify('aufgabe_zugewiesen',{aufgabe:t,fuer:{id:pid,name:tp?tp.name:'?'},prio:rec.prio,dl:rec.dl});}
+  if(pid!==aP){const tp=person(pid);notify('aufgabe_zugewiesen',{aufgabe:t,fuer:{id:pid,name:tp?tp.name:'?',slack_id:tp?.slack_id||''},prio:rec.prio,dl:rec.dl});}
   cm();render();
 }
 
@@ -3249,6 +3249,7 @@ function editPerson(pid){
     +'<textarea id="ep-extras" rows="2" style="resize:vertical;font-size:11px" oninput="updateProfilPreview()" placeholder="z.B. Entwickelt sich Richtung Betriebsleiter, hat CE-Zertifizierung Erfahrung...">'+s.extras.replace(/</g,'&lt;')+'</textarea></div>'
     +'<div id="profil-preview" style="background:var(--gray-bg);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;font-size:11px;color:var(--t2);line-height:1.5;margin-bottom:10px"></div>'
     +'<div class="fl"><label>Fokuszeit</label><div style="display:flex;gap:8px"><input type="time" id="epfs" value="'+(p.fokus_start||'09:00')+'" style="flex:1"><span style="line-height:36px">–</span><input type="time" id="epfe" value="'+(p.fokus_end||'11:00')+'" style="flex:1"></div></div>'
+    +'<div class="fl"><label>Slack User-ID <span style="font-weight:400;color:var(--t2)">(für DM-Benachrichtigungen)</span></label><input id="ep-slack" value="'+esc(p.slack_id||'')+'" placeholder="z.B. U05A8BCDE12" style="font-family:monospace;font-size:11px"></div>'
     +'<div class="fl"><label>PIN</label><input id="ep" type="password" value="'+p.pin+'" maxlength="4"></div>'
     +'<div class="mf">'+(pid!==realMe?'<button class="btn btn-red" onclick="deletePerson(\''+pid+'\')">Löschen</button>':'')+'<button class="btn btn-gr" onclick="openSettings()">Zurück</button><button class="btn btn-dk" onclick="savePerson(\''+pid+'\')">Speichern</button></div>';
   document.getElementById('ovl').classList.add('open');
@@ -3266,9 +3267,10 @@ async function savePerson(pid){
   const struktur=readProfilForm();
   p._profilStruktur=struktur;
   p.profil=buildProfilText(struktur);
+  p.slack_id=document.getElementById('ep-slack')?.value.trim()||'';
   const np=document.getElementById('ep').value.trim();
   if(np.length===4&&/^\d{4}$/.test(np))p.pin=np;
-  await dbPatch('personen',pid,{name:p.name,k:p.k,rolle:p.rolle,stufe:p.stufe,pin:p.pin,fokus_start:p.fokus_start,fokus_end:p.fokus_end,profil:p.profil,_profilStruktur:p._profilStruktur});
+  await dbPatch('personen',pid,{name:p.name,k:p.k,rolle:p.rolle,stufe:p.stufe,pin:p.pin,fokus_start:p.fokus_start,fokus_end:p.fokus_end,profil:p.profil,_profilStruktur:p._profilStruktur,slack_id:p.slack_id});
   openSettings();render();
 }
 async function deletePerson(pid){
