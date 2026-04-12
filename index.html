@@ -1428,6 +1428,26 @@ function rWoche(){
       out+='<div style="width:18px;height:18px;border-radius:5px;flex-shrink:0;'+(done?'background:'+f.tc+';border:1.5px solid '+f.tc+';display:flex;align-items:center;justify-content:center':'border:1.5px solid '+f.bd)+'">'+(done?'<span style="color:#fff;font-size:10px;font-weight:800">✓</span>':'')+'</div>';
       out+='<span style="font-size:13px;font-weight:500;flex:1;'+(done?'color:var(--t2);text-decoration:line-through':'color:var(--text)')+'">'+txt+'</span>';
       out+='</div>';
+      // Aufgaben die zu diesem Big-3 Teilziel gehören
+      if(tzId){
+        const tzAufgaben=myA.filter(a=>a.teilzielId===tzId&&a.status!=='erledigt');
+        const tzErledigt=myA.filter(a=>a.teilzielId===tzId&&a.status==='erledigt');
+        if(tzAufgaben.length||tzErledigt.length){
+          out+='<div style="padding-left:28px;padding-bottom:4px">';
+          tzAufgaben.forEach(a=>{
+            const isAktiv=a.status==='aktiv';
+            out+='<div onclick="openDetail(\''+a.id+'\')" style="display:flex;align-items:center;gap:7px;padding:3px 0;cursor:pointer">';
+            out+='<div style="width:12px;height:12px;border-radius:3px;flex-shrink:0;border:1.5px solid '+(isAktiv?'var(--blue)':f.bd)+'"></div>';
+            out+='<span style="font-size:11px;color:'+(isAktiv?'var(--blue)':'var(--text)')+'">'+esc(a.titel)+'</span>';
+            if(a.prio)out+='<span style="font-size:9px;font-weight:700;color:'+(a.prio==='P1'?'var(--red)':'var(--t3)')+'">'+a.prio+'</span>';
+            out+='</div>';
+          });
+          if(tzErledigt.length){
+            out+='<div style="font-size:10px;color:var(--t3);padding:2px 0">✓ '+tzErledigt.length+' erledigt</div>';
+          }
+          out+='</div>';
+        }
+      }
       out+='<div style="padding-left:28px;padding-bottom:7px"><button onclick="openNeu({zielId:\''+wr.focus_ziel_id+'\''+(tzId?',teilzielId:\''+tzId+'\'':'')+',dl:\''+TODAY+'\'})" style="font-size:11px;padding:3px 10px;border-radius:6px;border:1px dashed var(--bd);background:transparent;color:'+f.tc+';cursor:pointer;font-family:inherit">+ Aufgabe</button></div>';
       out+='</div>';
     });
