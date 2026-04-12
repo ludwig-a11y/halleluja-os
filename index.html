@@ -1005,6 +1005,24 @@ async function saveWochenreset(){
   cm();render();
 }
 
+function openBlocker(wrId){
+  const wr=S.wochenresets.find(r=>r.id===wrId);if(!wr)return;
+  document.getElementById('mb').innerHTML=
+    '<div class="mt">⚠ Blocker melden</div>'
+    +'<div style="font-size:12px;color:var(--t2);margin-bottom:10px">Was blockiert dich gerade? Das ist für deine Führung sichtbar.</div>'
+    +'<div class="fl"><label>Blocker</label>'
+    +'<textarea id="blocker-text" rows="3" style="width:100%;padding:8px;border:1px solid var(--bd);border-radius:8px;font-family:inherit;font-size:13px;resize:vertical" placeholder="z.B. Warte auf CE-Zertifikat, Material nicht geliefert, Kunde antwortet nicht...">'+(wr.blockiert||'')+'</textarea></div>'
+    +'<div class="mf"><button onclick="cm()">Abbrechen</button>'
+    +'<button onclick="saveBlocker(\''+wrId+'\')" style="background:var(--red);color:#fff;border:none;font-weight:600">'+(wr.blockiert?'Aktualisieren':'Melden')+'</button></div>';
+  document.getElementById('ovl').classList.add('open');
+}
+async function saveBlocker(wrId){
+  const text=document.getElementById('blocker-text').value.trim();
+  const wr=S.wochenresets.find(r=>r.id===wrId);if(!wr)return;
+  wr.blockiert=text;
+  await dbPatch('wochenresets',wrId,{blockiert:text});
+  cm();render();
+}
 function rSignaleTeam(){
   if(!isGF()&&!isLead())return'';
   const visible=visiblePersonIds(aP);
@@ -1385,12 +1403,25 @@ function rWoche(){
       out+='<div style="padding-left:28px;padding-bottom:7px"><button onclick="openNeu({zielId:\''+wr.focus_ziel_id+'\''+(tzId?',teilzielId:\''+tzId+'\'':'')+',dl:\''+TODAY+'\'})" style="font-size:11px;padding:3px 10px;border-radius:6px;border:1px dashed var(--bd);background:transparent;color:'+f.tc+';cursor:pointer;font-family:inherit">+ Aufgabe</button></div>';
       out+='</div>';
     });
-    out+='<button onclick="openWochenreset()" style="font-size:11px;margin-top:10px;padding:5px 12px;border-radius:7px;border:1px solid var(--bd);background:var(--gray-bg);color:var(--t2);cursor:pointer;font-family:inherit">✎ Bearbeiten</button>';
+    out+='<div style="display:flex;gap:6px;margin-top:10px">';
+    out+='<button onclick="openWochenreset()" style="font-size:11px;padding:5px 12px;border-radius:7px;border:1px solid var(--bd);background:var(--gray-bg);color:var(--t2);cursor:pointer;font-family:inherit">✎ Bearbeiten</button>';
+    out+='<button onclick="openBlocker(\''+wr.id+'\')" style="font-size:11px;padding:5px 12px;border-radius:7px;border:1px solid var(--red-bd);background:var(--red-bg);color:var(--red);cursor:pointer;font-family:inherit">⚠ Blocker</button>';
+    out+='</div>';
     out+='</div>';
   }else{
     out+='<div style="background:var(--gray-bg);border:1.5px dashed var(--bd);border-radius:12px;padding:20px;text-align:center;margin-bottom:14px">';
     out+='<div style="font-size:13px;color:var(--t2);margin-bottom:10px">Noch keine Big 3 für KW '+kw+'</div>';
     out+='<button onclick="openWochenreset()" style="font-size:13px;font-weight:600;padding:9px 18px;border-radius:9px;background:var(--text);color:#fff;border:none;cursor:pointer;font-family:inherit">Big 3 planen →</button>';
+    out+='</div>';
+  }
+
+  // ── Aktiver Blocker ──
+  if(wr&&wr.blockiert){
+    out+='<div style="background:var(--red-bg);border:1px solid var(--red-bd);border-radius:10px;padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;gap:10px">';
+    out+='<span style="font-size:15px">⚠</span>';
+    out+='<div style="flex:1"><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--red);opacity:.7">Aktiver Blocker</div>';
+    out+='<div style="font-size:12px;color:var(--red)">'+wr.blockiert+'</div></div>';
+    out+='<button onclick="openBlocker(\''+wr.id+'\')" style="font-size:10px;padding:4px 10px;border-radius:6px;border:1px solid var(--red-bd);background:#fff;color:var(--red);cursor:pointer;font-family:inherit;flex-shrink:0">Ändern</button>';
     out+='</div>';
   }
 
