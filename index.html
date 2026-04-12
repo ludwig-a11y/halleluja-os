@@ -3129,18 +3129,80 @@ async function delTeam(tid){
   await Promise.all(S.personen.map(p=>dbPatch('personen',p.id,{teams:p.teams})));
   openSettings();render();
 }
+const KETTE_CHIPS=[
+  {k:'marketing',icon:'📣',label:'Marketing/Lead-Gen'},
+  {k:'setting',icon:'📞',label:'Setting/Qualifikation'},
+  {k:'closing',icon:'🔥',label:'Closing/Sales'},
+  {k:'fulfillment',icon:'📦',label:'Fulfillment/Fertigung'},
+  {k:'kundenbindung',icon:'⭐',label:'Kundenbindung/Service'},
+  {k:'upsell',icon:'🔄',label:'Upsell/Empfehlung'},
+  {k:'innovation',icon:'🚀',label:'Innovation/R&D'},
+  {k:'legal',icon:'📋',label:'Legal/CE/Compliance'},
+  {k:'infra',icon:'⚙️',label:'Infrastruktur'}
+];
+function parseProfilStruktur(p){
+  const s=p._profilStruktur||{};
+  return{ketten:s.ketten||[],teamSize:s.teamSize||0,kernaufgaben:s.kernaufgaben||'',hebel:s.hebel||'',extras:s.extras||''};
+}
+function buildProfilText(s){
+  let parts=[];
+  if(s.ketten.length){const labels=s.ketten.map(k=>{const c=KETTE_CHIPS.find(x=>x.k===k);return c?c.icon+' '+c.label:k;});parts.push('Position in der Wertschöpfungskette: '+labels.join(', '));}
+  if(s.teamSize>0)parts.push('Führt ein Team von '+s.teamSize+' Personen (Multiplikator-Effekt: Verbesserungen wirken '+s.teamSize+'x)');
+  if(s.kernaufgaben)parts.push('Kernaufgaben: '+s.kernaufgaben);
+  if(s.hebel)parts.push('Größter Hebel: '+s.hebel);
+  if(s.extras)parts.push(s.extras);
+  return parts.join('. ')+'.';
+}
+function updateProfilPreview(){
+  const s=readProfilForm();
+  const preview=document.getElementById('profil-preview');
+  if(!preview)return;
+  const text=buildProfilText(s);
+  if(!text||text==='.'){preview.innerHTML='<span style="color:var(--t3);font-style:italic">Noch nichts ausgefüllt — die KI hat keinen Kontext über diese Person.</span>';return;}
+  preview.innerHTML='<span style="font-weight:600;color:var(--text)">🤖 Die KI sieht:</span><br>'+text;
+}
+function readProfilForm(){
+  const ketten=[...document.querySelectorAll('.kette-chip.active')].map(el=>el.dataset.k);
+  return{ketten,teamSize:parseInt(document.getElementById('ep-team-size')?.value)||0,kernaufgaben:document.getElementById('ep-kern')?.value.trim()||'',hebel:document.getElementById('ep-hebel')?.value.trim()||'',extras:document.getElementById('ep-extras')?.value.trim()||''};
+}
+function toggleKetteChip(el){
+  const active=el.classList.toggle('active');
+  el.style.borderColor=active?'var(--blue-bd)':'var(--bd)';
+  el.style.background=active?'var(--blue-bg)':'#fff';
+  el.style.color=active?'var(--blue)':'var(--t2)';
+  el.style.fontWeight=active?'600':'400';
+  updateProfilPreview();
+}
 function editPerson(pid){
   const p=person(pid);if(!p)return;
+  const s=parseProfilStruktur(p);
+  const ketteHtml=KETTE_CHIPS.map(c=>{
+    const active=s.ketten.includes(c.k);
+    return '<div onclick="toggleKetteChip(this)" data-k="'+c.k+'" class="kette-chip'+(active?' active':'')+'" style="display:inline-flex;align-items:center;gap:4px;padding:5px 10px;border-radius:8px;font-size:11px;cursor:pointer;transition:all .15s;border:1.5px solid '+(active?'var(--blue-bd)':'var(--bd)')+';background:'+(active?'var(--blue-bg)':'#fff')+';color:'+(active?'var(--blue)':'var(--t2)')+';font-weight:'+(active?'600':'400')+'">'+c.icon+' '+c.label+'</div>';
+  }).join('');
   document.getElementById('mb').innerHTML='<div class="mt">Person bearbeiten</div>'
     +'<div class="f2"><div class="fl"><label>Name</label><input id="en" value="'+p.name+'" autofocus></div><div class="fl"><label>Kürzel</label><input id="ek" value="'+p.k+'" maxlength="3"></div></div>'
     +'<div class="fl"><label>Rolle</label><input id="er" value="'+p.rolle+'"></div>'
     +'<div class="fl"><label>Stufe</label><select id="es">'+[['team','Teammitglied'],['lead','Team-Lead'],['gf','Geschäftsführung']].map(x=>'<option value="'+x[0]+'"'+(p.stufe===x[0]?' selected':'')+'>'+x[1]+'</option>').join('')+'</select></div>'
-    +'<div class="fl"><label>KI-Profil <span style="font-weight:400;color:var(--t2)">(Die KI nutzt das für Hebel-Analyse & Coaching)</span></label>'
-    +'<textarea id="eprofil" rows="6" style="resize:vertical;font-size:11px" placeholder="Beschreibe diese Person für die KI:\n\n• Hauptverantwortung & Tätigkeitsfeld\n• Position in der Wertschöpfungskette (z.B. Fertigung, Setting, Closing)\n• Stärken & Entwicklungspotenzial\n• Automatisierungspotenzial\n• Was ist ihr größter Hebel?\n• Wohin entwickelt sich die Rolle?">'+(p.profil||'')+'</textarea></div>'
+    +'<div style="border-top:1px solid var(--bd);margin:10px 0"></div>'
+    +'<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px">🤖 KI-Profil</div>'
+    +'<div style="font-size:11px;color:var(--t2);margin-bottom:10px">Diese Infos nutzt die KI für personalisierte Hebel-Analyse & Coaching</div>'
+    +'<div class="fl"><label>Wertschöpfungskette <span style="font-weight:400;color:var(--t2)">(wo arbeitet diese Person?)</span></label>'
+    +'<div style="display:flex;flex-wrap:wrap;gap:6px">'+ketteHtml+'</div></div>'
+    +'<div class="f2"><div class="fl"><label>Team-Größe <span style="font-weight:400;color:var(--t2)">(Personen unter sich)</span></label>'
+    +'<input id="ep-team-size" type="number" min="0" value="'+(s.teamSize||'')+'" placeholder="z.B. 12" oninput="updateProfilPreview()" style="width:80px"></div>'
+    +'<div class="fl"><label>Größter Hebel</label>'
+    +'<input id="ep-hebel" value="'+s.hebel.replace(/"/g,'&quot;')+'" placeholder="z.B. Fertigungsqualität verdoppeln" oninput="updateProfilPreview()"></div></div>'
+    +'<div class="fl"><label>Kernaufgaben</label>'
+    +'<input id="ep-kern" value="'+s.kernaufgaben.replace(/"/g,'&quot;')+'" placeholder="z.B. Produktionsplanung, QS, Materialbestellung" oninput="updateProfilPreview()"></div>'
+    +'<div class="fl"><label>Zusätzlicher Kontext <span style="font-weight:400;color:var(--t2)">(optional)</span></label>'
+    +'<textarea id="ep-extras" rows="2" style="resize:vertical;font-size:11px" oninput="updateProfilPreview()" placeholder="z.B. Entwickelt sich Richtung Betriebsleiter, hat CE-Zertifizierung Erfahrung...">'+s.extras.replace(/</g,'&lt;')+'</textarea></div>'
+    +'<div id="profil-preview" style="background:var(--gray-bg);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;font-size:11px;color:var(--t2);line-height:1.5;margin-bottom:10px"></div>'
     +'<div class="fl"><label>Fokuszeit</label><div style="display:flex;gap:8px"><input type="time" id="epfs" value="'+(p.fokus_start||'09:00')+'" style="flex:1"><span style="line-height:36px">–</span><input type="time" id="epfe" value="'+(p.fokus_end||'11:00')+'" style="flex:1"></div></div>'
     +'<div class="fl"><label>PIN</label><input id="ep" type="password" value="'+p.pin+'" maxlength="4"></div>'
     +'<div class="mf">'+(pid!==realMe?'<button class="btn btn-red" onclick="deletePerson(\''+pid+'\')">Löschen</button>':'')+'<button class="btn btn-gr" onclick="openSettings()">Zurück</button><button class="btn btn-dk" onclick="savePerson(\''+pid+'\')">Speichern</button></div>';
   document.getElementById('ovl').classList.add('open');
+  setTimeout(updateProfilPreview,50);
 }
 async function savePerson(pid){
   const p=person(pid);if(!p)return;
@@ -3150,10 +3212,13 @@ async function savePerson(pid){
   p.stufe=document.getElementById('es').value;
   p.fokus_start=document.getElementById('epfs').value||'09:00';
   p.fokus_end=document.getElementById('epfe').value||'11:00';
-  p.profil=document.getElementById('eprofil')?.value||'';
+  // Strukturiertes Profil speichern
+  const struktur=readProfilForm();
+  p._profilStruktur=struktur;
+  p.profil=buildProfilText(struktur);
   const np=document.getElementById('ep').value.trim();
   if(np.length===4&&/^\d{4}$/.test(np))p.pin=np;
-  await dbPatch('personen',pid,{name:p.name,k:p.k,rolle:p.rolle,stufe:p.stufe,pin:p.pin,fokus_start:p.fokus_start,fokus_end:p.fokus_end,profil:p.profil});
+  await dbPatch('personen',pid,{name:p.name,k:p.k,rolle:p.rolle,stufe:p.stufe,pin:p.pin,fokus_start:p.fokus_start,fokus_end:p.fokus_end,profil:p.profil,_profilStruktur:p._profilStruktur});
   openSettings();render();
 }
 async function deletePerson(pid){
