@@ -391,6 +391,8 @@ async function loadData(){
 
 const person=id=>S.personen.find(p=>p.id===id);
 const me=()=>person(aP);
+function esc(s){return s==null?'':String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+function safeName(p){return p&&p.name?p.name:'?';}
 const cl=p=>p?CL[p.ci%CL.length]:CL[0];
 const isGF=()=>{const m=me();return m&&m.stufe==='gf';};
 const isLead=()=>{const m=me();return m&&(m.stufe==='lead'||m.stufe==='gf');};
@@ -551,7 +553,7 @@ let _dataPoll=null,_dataHash='',_kpiHash='',_dataPending=false;
 function _aufgabenHash(arr){return arr.map(a=>a.id+a.status+(a.updated_at||'')).join('|');}
 function _kpiHashFn(arr){return arr.map(k=>k.id+(k.sonder?'1':'0')+(k.pid||'')+k.label).join('|');}
 function startDataPoller(){
-  if(_dataPoll)return;
+  if(_dataPoll){clearInterval(_dataPoll);_dataPoll=null;}
   _dataHash=_aufgabenHash(S.aufgaben);
   _kpiHash=_kpiHashFn(S.ziele.flatMap(z=>z.kpis||[]));
   _dataPoll=setInterval(async()=>{
@@ -593,7 +595,7 @@ function startDataPoller(){
 
 let _sonderSeen={},_sonderPoll=null;
 function startSonderPoller(){
-  if(_sonderPoll)return;
+  if(_sonderPoll){clearInterval(_sonderPoll);_sonderPoll=null;}
   const sonderKpis=S.ziele.flatMap(z=>z.kpis||[]).filter(k=>k.sonder);
   // Baseline = max aller Personen heute, nicht nur aP
   sonderKpis.forEach(k=>{
@@ -1243,6 +1245,8 @@ async function saveMeinPin(){
 function logout(){
   aP=null;realMe=null;pinIn='';loginSel=null;
   try{localStorage.removeItem('h_session');}catch(e){}
+  if(_dataPoll){clearInterval(_dataPoll);_dataPoll=null;}
+  if(_sonderPoll){clearInterval(_sonderPoll);_sonderPoll=null;}
   removeBackBtn();
   document.getElementById('app').style.display='none';
   document.getElementById('login-screen').style.display='flex';
@@ -1333,10 +1337,10 @@ function stepsHtml(a,ed){
       if(ed){
         out+='<div onclick="event.stopPropagation();cycleStepPid(\''+a.id+'\','+i+')" style="margin-left:auto;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;cursor:pointer;flex-shrink:0;transition:all .15s;'
           +(isOwner?'background:var(--gray-bg);color:var(--t3);border:1px solid var(--bd)':'background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-bd)')
-          +'" title="'+(sp?sp.name:'')+'">'+( sp?sp.name[0].toUpperCase():'?')+'</div>';
+          +'" title="'+esc(safeName(sp))+'">'+( sp&&sp.name?sp.name[0].toUpperCase():'?')+'</div>';
         out+='<button onclick="event.stopPropagation();delStep(\''+a.id+'\','+i+')" style="font-size:10px;background:none;border:none;color:var(--t3);cursor:pointer;flex-shrink:0">✕</button>';
       } else if(!isOwner&&sp){
-        out+='<span style="margin-left:auto;font-size:9px;color:var(--blue);font-weight:600;flex-shrink:0">'+sp.name.split(' ')[0]+'</span>';
+        out+='<span style="margin-left:auto;font-size:9px;color:var(--blue);font-weight:600;flex-shrink:0">'+esc((safeName(sp)).split(' ')[0])+'</span>';
       }
       out+='</div>';
     });
@@ -1420,7 +1424,7 @@ function rWoche(){
     out+='<div style="background:var(--red-bg);border:1px solid var(--red-bd);border-radius:10px;padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;gap:10px">';
     out+='<span style="font-size:15px">⚠</span>';
     out+='<div style="flex:1"><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--red);opacity:.7">Aktiver Blocker</div>';
-    out+='<div style="font-size:12px;color:var(--red)">'+wr.blockiert+'</div></div>';
+    out+='<div style="font-size:12px;color:var(--red)">'+esc(wr.blockiert)+'</div></div>';
     out+='<button onclick="openBlocker(\''+wr.id+'\')" style="font-size:10px;padding:4px 10px;border-radius:6px;border:1px solid var(--red-bd);background:#fff;color:var(--red);cursor:pointer;font-family:inherit;flex-shrink:0">Ändern</button>';
     out+='</div>';
   }
@@ -1964,7 +1968,7 @@ function openDetail(id){
   const d=dli(a.dl),tzN=getTZName(a),zN=getZielName(a);
   const from=a.erstelltVon&&a.erstelltVon!==a.pid?person(a.erstelltVon):null;
   const zielOpts=S.ziele.map(z=>'<option value="'+z.id+'"'+(a.zielId===z.id?' selected':'')+'>'+z.name+'</option>').join('');
-  document.getElementById('mb').innerHTML='<div class="mt">'+a.titel+'</div>'
+  document.getElementById('mb').innerHTML='<div class="mt">'+esc(a.titel)+'</div>'
     +'<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:14px">'+typTag(a)+prioTag(a.prio,a.id,canChangePrio(a))+(zN?'<span class="tag" style="background:var(--gray-bg);color:var(--t2)">'+zN+'</span>':'')+(tzN?'<span class="tag" style="background:var(--purple-bg);color:var(--purple)">'+tzN+'</span>':'')+(d?'<span class="tag" style="background:'+d.bg+';color:'+d.c+'">'+d.l+'</span>':'')+(a.vertraulich?'<span class="lock">vertraulich</span>':'')+(from?'<span class="tag" style="background:var(--gray-bg);color:var(--t2)">von '+from.name+'</span>':'')+'</div>'
     +'<div class="fl"><label>Titel</label><div style="display:flex;gap:6px"><input id="det-titel" value="'+a.titel.replace(/"/g,'&quot;')+'" style="font-size:13px;font-weight:500;flex:1" onblur="saveDetailField(\''+id+'\',\'titel\',this.value)" onkeydown="if(event.key===\'Enter\'){event.preventDefault();saveDetailField(\''+id+'\',\'titel\',this.value);this.blur()}"><button onclick="saveDetailField(\''+id+'\',\'titel\',document.getElementById(\'det-titel\').value)" style="padding:4px 10px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);cursor:pointer;font-size:12px;font-family:inherit;flex-shrink:0">✓</button></div></div>'
     +'<div class="fl"><label>Notiz</label><textarea id="det-notiz" rows="2" placeholder="Notiz…" style="resize:none;font-size:12px" onblur="saveDetailField(\''+id+'\',\'notiz\',this.value)">'+( a.notiz||'')+'</textarea></div>'
@@ -2782,10 +2786,10 @@ function renderNeuSteps(){
     const f=FARBEN[sp?.ci||0];
     return '<div style="display:flex;align-items:center;gap:8px;padding:5px 0">'
     +'<div style="width:13px;height:13px;border-radius:3px;border:1px solid var(--bd);flex-shrink:0"></div>'
-    +'<span style="font-size:11px;flex:1">'+s.t+'</span>'
+    +'<span style="font-size:11px;flex:1">'+esc(s.t)+'</span>'
     +'<div onclick="cycleNeuStepPid('+i+')" style="width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;cursor:pointer;flex-shrink:0;transition:all .15s;'
       +(isOwner?'background:var(--gray-bg);color:var(--t3);border:1px solid var(--bd)':'background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-bd)')
-      +'" title="'+(sp?sp.name:'')+'">'+( sp?sp.name[0].toUpperCase():'?')+'</div>'
+      +'" title="'+esc(safeName(sp))+'">'+( sp&&sp.name?sp.name[0].toUpperCase():'?')+'</div>'
     +'<button onclick="delNeuStep('+i+')" style="font-size:10px;background:none;border:none;color:var(--t3);cursor:pointer">✕</button>'
     +'</div>';
   }).join('');
@@ -3081,8 +3085,8 @@ function rTeam(){
       const p=person(b.pid),t=TYPEN[b.typ]||TYPEN.insight;
       out+='<div style="display:flex;gap:10px;padding:9px 0;border-bottom:1px solid var(--bd)">';
       out+='<span style="font-size:15px;flex-shrink:0">'+t.icon+'</span>';
-      out+='<div style="flex:1"><div style="font-size:12px;color:var(--text)">'+b.text+'</div>';
-      out+='<div style="font-size:10px;color:var(--t3);margin-top:2px">'+(p?p.name+' · ':'')+b.created_at.slice(0,10)+'</div></div>';
+      out+='<div style="flex:1"><div style="font-size:12px;color:var(--text)">'+esc(b.text)+'</div>';
+      out+='<div style="font-size:10px;color:var(--t3);margin-top:2px">'+(p?esc(p.name)+' · ':'')+b.created_at.slice(0,10)+'</div></div>';
       out+='</div>';
     });
     out+='</div>';
@@ -3212,8 +3216,8 @@ function editPerson(pid){
     return '<div onclick="toggleKetteChip(this)" data-k="'+c.k+'" class="kette-chip'+(active?' active':'')+'" style="display:inline-flex;align-items:center;gap:4px;padding:5px 10px;border-radius:8px;font-size:11px;cursor:pointer;transition:all .15s;border:1.5px solid '+(active?'var(--blue-bd)':'var(--bd)')+';background:'+(active?'var(--blue-bg)':'#fff')+';color:'+(active?'var(--blue)':'var(--t2)')+';font-weight:'+(active?'600':'400')+'">'+c.icon+' '+c.label+'</div>';
   }).join('');
   document.getElementById('mb').innerHTML='<div class="mt">Person bearbeiten</div>'
-    +'<div class="f2"><div class="fl"><label>Name</label><input id="en" value="'+p.name+'" autofocus></div><div class="fl"><label>Kürzel</label><input id="ek" value="'+p.k+'" maxlength="3"></div></div>'
-    +'<div class="fl"><label>Rolle</label><input id="er" value="'+p.rolle+'"></div>'
+    +'<div class="f2"><div class="fl"><label>Name</label><input id="en" value="'+esc(p.name)+'" autofocus></div><div class="fl"><label>Kürzel</label><input id="ek" value="'+esc(p.k)+'" maxlength="3"></div></div>'
+    +'<div class="fl"><label>Rolle</label><input id="er" value="'+esc(p.rolle)+'"></div>'
     +'<div class="fl"><label>Stufe</label><select id="es">'+[['team','Teammitglied'],['lead','Team-Lead'],['gf','Geschäftsführung']].map(x=>'<option value="'+x[0]+'"'+(p.stufe===x[0]?' selected':'')+'>'+x[1]+'</option>').join('')+'</select></div>'
     +'<div style="border-top:1px solid var(--bd);margin:10px 0"></div>'
     +'<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px">🤖 KI-Profil</div>'
@@ -3345,17 +3349,18 @@ window.addEventListener('keydown',e=>{
     const raw=localStorage.getItem('h_session');
     if(raw){
       const s=JSON.parse(raw);
-      if(Date.now()-s.ts<8*60*60*1000&&person(s.pid)){
+      if(s&&s.ts&&Date.now()-s.ts<8*60*60*1000&&person(s.pid)){
         aP=s.pid;realMe=s.pid;
-        document.getElementById('login-screen').style.display='none';
-        document.getElementById('app').style.display='flex';
+        const ls=document.getElementById('login-screen'),ap=document.getElementById('app');
+        if(ls)ls.style.display='none';
+        if(ap)ap.style.display='flex';
         updateBadge();render();startSonderPoller();startDataPoller();
       } else localStorage.removeItem('h_session');
     }
-  }catch(e){}
+  }catch(e){console.warn('Session restore:',e);}
   setInterval(()=>{
     if(!aP)return;
-    try{const raw=localStorage.getItem('h_session');if(!raw){logout();return;}const s=JSON.parse(raw);if(Date.now()-s.ts>8*60*60*1000){logout();alert('Du wurdest nach 8 Stunden automatisch ausgeloggt.');}}catch(e){}
+    try{const raw=localStorage.getItem('h_session');if(!raw){logout();return;}const s=JSON.parse(raw);if(!s||!s.ts||Date.now()-s.ts>8*60*60*1000){logout();}}catch(e){logout();}
   },60000);
 })();
 </script>
