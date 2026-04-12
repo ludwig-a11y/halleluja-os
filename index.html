@@ -101,10 +101,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;font-size:1
 .hover-lift:hover{border-color:#bbb}
 .hover-dim{transition:opacity .15s}
 .hover-dim:hover{opacity:.85}
-.btn-done{width:30px;height:30px;border-radius:8px;background:var(--green-bg);color:var(--green);border:1px solid var(--green-bd);font-size:13px;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s}
-.btn-done:hover{background:var(--green);color:#fff}
-.btn-play{width:30px;height:30px;border-radius:8px;background:var(--text);color:#fff;border:none;font-size:11px;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s}
-.btn-play:hover{background:#333}
 .lock{font-size:9px;padding:1px 5px;border-radius:4px;background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-bd)}
 .dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
 .timer{background:var(--gray-bg);border-radius:9px;padding:7px 11px;text-align:center;flex-shrink:0;min-width:80px}
@@ -251,12 +247,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;font-size:1
       Ich
     </button>
   </div>
-  <button id="mob-add" onclick="showMobMenu()">+</button>
-  <div id="mob-menu" style="display:none;position:fixed;bottom:132px;right:18px;z-index:52;background:var(--sf);border:1px solid var(--bd);border-radius:14px;box-shadow:0 8px 32px rgba(0,0,0,.18);overflow:hidden;min-width:180px">
-    <button onclick="hideMobMenu();openNeu()" style="width:100%;padding:13px 16px;border:none;background:transparent;font-family:inherit;font-size:13px;font-weight:500;cursor:pointer;text-align:left;display:flex;align-items:center;gap:10px;color:var(--text)" onmouseenter="this.style.background='var(--gray-bg)'" onmouseleave="this.style.background='transparent'"><span style="font-size:16px">📋</span> Neue Aufgabe</button>
-    <div style="height:1px;background:var(--bd)"></div>
-    <button onclick="hideMobMenu();openNachtrag()" style="width:100%;padding:13px 16px;border:none;background:transparent;font-family:inherit;font-size:13px;font-weight:500;cursor:pointer;text-align:left;display:flex;align-items:center;gap:10px;color:var(--green)" onmouseenter="this.style.background='var(--gray-bg)'" onmouseleave="this.style.background='transparent'"><span style="font-size:16px">✓</span> Erledigt nachtragen</button>
-  </div>
+  <button id="mob-add" onclick="openNeu()">+</button>
 </div>
 
 <div class="ovl" id="ovl" onclick="if(event.target===this)cm()">
@@ -1318,20 +1309,6 @@ function updMobTabs(v){
     if(el)el.className='mob-tab'+(t===v?' on':'');
   });
 }
-function showMobMenu(){
-  const m=document.getElementById('mob-menu');
-  if(!m)return;
-  if(m.style.display==='none'){m.style.display='block';document.addEventListener('click',_mobMenuClose,true);}
-  else hideMobMenu();
-}
-function hideMobMenu(){
-  const m=document.getElementById('mob-menu');if(m)m.style.display='none';
-  document.removeEventListener('click',_mobMenuClose,true);
-}
-function _mobMenuClose(e){
-  const m=document.getElementById('mob-menu'),b=document.getElementById('mob-add');
-  if(m&&!m.contains(e.target)&&b&&!b.contains(e.target))hideMobMenu();
-}
 function nav(v,btn){
   aV=v;
   document.querySelectorAll('.nt:not(.ai-btn):not(.new-btn)').forEach(b=>b.classList.remove('on'));
@@ -1588,10 +1565,7 @@ function aufgabeKarte(a){
   r+='<div style="display:flex;gap:5px;margin-top:3px;align-items:center;flex-wrap:wrap" onclick="event.stopPropagation()">'+prioTag(a.prio,a.id,editable);
   r+=zN?'<span style="font-size:10px;color:var(--t3)">'+esc(zN)+'</span>':'<span onclick="event.stopPropagation();quickAssignZiel(\''+a.id+'\')" style="font-size:10px;color:var(--t3);border:1px dashed var(--bd);padding:1px 6px;border-radius:5px;cursor:pointer">+ Ziel?</span>';
   r+=dlTag(a.dl)+'</div></div>';
-  r+='<div style="display:flex;gap:4px" onclick="event.stopPropagation()">';
-  r+='<button onclick="fertig(\''+a.id+'\')" class="btn-done" title="Erledigt">✓</button>';
-  r+='<button onclick="startenA(\''+a.id+'\')" class="btn-play" title="Fokus starten">▶</button>';
-  r+='</div>';
+  r+='<button onclick="event.stopPropagation();startenA(\''+a.id+'\')" style="font-size:11px;padding:5px 10px;border-radius:8px;background:var(--text);color:#fff;border:none;font-family:inherit;cursor:pointer;flex-shrink:0">▶</button>';
   r+='</div></div>';
   return r;
 }
@@ -1868,7 +1842,6 @@ function rTag(){
       +'</div>';
     out+='<div style="display:flex;gap:10px">';
     out+='<button onclick="startenA(\''+naechste.id+'\')" style="flex:1;padding:14px;border-radius:12px;background:var(--text);color:#fff;border:none;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer;transition:background .15s,transform .1s" onmouseenter="this.style.background=\'#333\'" onmouseleave="this.style.background=\'var(--text)\'" onmousedown="this.style.transform=\'scale(.98)\'" onmouseup="this.style.transform=\'scale(1)\'">▶ Starten</button>';
-    out+='<button onclick="fertig(\''+naechste.id+'\')" style="padding:14px 18px;border-radius:12px;background:var(--green-bg);color:var(--green);border:1px solid var(--green-bd);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s" onmouseenter="this.style.background=\'var(--green)\';this.style.color=\'#fff\'" onmouseleave="this.style.background=\'var(--green-bg)\';this.style.color=\'var(--green)\'">✓</button>';
     out+='<button onclick="openDetail(\''+naechste.id+'\')" style="padding:14px 18px;border-radius:12px;background:var(--gray-bg);color:var(--t2);border:1px solid var(--bd);font-family:inherit;font-size:13px;font-weight:500;cursor:pointer;transition:background .15s,border-color .15s" onmouseenter="this.style.background=\'#f0efee\';this.style.borderColor=\'#ccc\'" onmouseleave="this.style.background=\'var(--gray-bg)\';this.style.borderColor=\'var(--bd)\'">···</button>';
     out+='</div></div>';
   } else if(alleGeschafft||!myA.length){
@@ -1876,10 +1849,8 @@ function rTag(){
     out+='<div style="font-size:36px;margin-bottom:12px">🎉</div>';
     out+='<div style="font-size:20px;font-weight:700;margin-bottom:6px">Alles erledigt!</div>';
     out+='<div style="font-size:13px;opacity:.8;margin-bottom:20px">Keine offenen Aufgaben — gut gemacht.</div>';
-    out+='<div style="display:flex;gap:8px;justify-content:center">';
     out+='<button onclick="openNeu()" style="padding:12px 24px;border-radius:12px;background:#fff;color:var(--green);border:none;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer">+ Neue Aufgabe</button>';
-    out+='<button onclick="openNachtrag()" style="padding:12px 24px;border-radius:12px;background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.3);font-family:inherit;font-size:13px;font-weight:500;cursor:pointer">✓ Nachtragen</button>';
-    out+='</div></div>';
+    out+='</div>';
   }
 
   if(neu.length){
@@ -1966,11 +1937,6 @@ function rTag(){
     out+='</div></details>';
   }
 
-  // ── Nachtrag Button ──
-  out+='<div style="text-align:center;padding:6px 0 10px">';
-  out+='<button onclick="openNachtrag()" style="font-size:12px;padding:8px 18px;border-radius:8px;border:1px solid var(--green-bd);background:var(--green-bg);color:var(--green);cursor:pointer;font-family:inherit;font-weight:500">✓ Erledigt nachtragen</button>';
-  out+='</div>';
-
   out+=rDelegBlock(aP);
   out+=rSignalBlock(aP);
   out+='<div style="text-align:center;padding:8px 0 4px">';
@@ -2016,30 +1982,6 @@ async function fertig(id){
   showPaddelCelebration(pid);
   checkP1Done(pid);
   render();
-}
-function openNachtrag(){
-  document.getElementById('mb').innerHTML=''
-    +'<div class="mt">✓ Erledigt nachtragen</div>'
-    +'<div style="font-size:12px;color:var(--t2);margin-bottom:12px">Was hast du erledigt? Wird direkt als abgeschlossen eingetragen.</div>'
-    +'<div class="fl"><label>Was wurde erledigt?</label><input id="nt-text" autofocus placeholder="z.B. Angebot an Müller verschickt, Meeting mit Fabian…"></div>'
-    +'<div class="f2"><div class="fl"><label>Dauer <span style="font-weight:400;color:var(--t3)">(ca.)</span></label><select id="nt-dauer"><option value="0.25">15 min</option><option value="0.5" selected>30 min</option><option value="1">1h</option><option value="1.5">1.5h</option><option value="2">2h</option><option value="3">3h</option><option value="4">4h+</option></select></div>'
-    +'<div class="fl"><label>Ziel <span style="font-weight:400;color:var(--t3)">(opt.)</span></label><select id="nt-ziel"><option value="">— kein Ziel —</option>'+S.ziele.filter(z=>z.status!=='vorschlag').map(z=>'<option value="'+z.id+'">'+esc(z.name)+'</option>').join('')+'</select></div></div>'
-    +'<div class="mf"><button class="btn btn-gr" onclick="cm()">Abbrechen</button><button class="btn btn-ok" onclick="saveNachtrag()">✓ Eintragen</button></div>';
-  document.getElementById('ovl').classList.add('open');
-}
-async function saveNachtrag(){
-  const t=document.getElementById('nt-text').value.trim();if(!t)return;
-  const gebucht=parseFloat(document.getElementById('nt-dauer').value)||0.5;
-  const zielId=document.getElementById('nt-ziel')?.value||null;
-  const id=nid('a');
-  const now=new Date().toISOString();
-  const rec={id,pid:aP,titel:t,typ:zielId?'strategisch':'operativ',status:'erledigt',prio:null,
-    ziel_id:zielId,teilziel_id:null,geplant:gebucht,gebucht,dl:null,dl_type:'bis',
-    ua:[],notiz:null,akt_seit:null,vertraulich:false,recurring:null,erstellt_von:aP,updated_at:now};
-  S.aufgaben.push(normalizeAufgabe(rec));
-  await dbInsert('aufgaben',rec);
-  showPaddelCelebration(aP);
-  cm();render();
 }
 function nextRecurringDate(fromDate,freq){
   const d=new Date(fromDate+'T12:00:00');
