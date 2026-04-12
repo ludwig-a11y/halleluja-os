@@ -1,22 +1,19 @@
 {
-  "name": "Morning Nudge → Slack DM mit Top-Priorität",
+  "name": "Morning Nudge → Slack DM mit Top-Aufgabe",
   "nodes": [
     {
       "parameters": {
         "rule": {
           "interval": [
             {
-              "triggerAtHour": 9,
-              "triggerAtMinute": 0,
-              "triggerAtDay": {
-                "value": ["1","2","3","4","5"]
-              }
+              "triggerAtHour": 8,
+              "triggerAtMinute": 0
             }
           ]
         }
       },
       "id": "schedule",
-      "name": "Mo-Fr 9:00",
+      "name": "Täglich 8:00",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
       "position": [0, 300]
@@ -41,7 +38,7 @@
     },
     {
       "parameters": {
-        "url": "={{ $env.SUPABASE_URL }}/rest/v1/aufgaben?status=in.(neu,backlog,zugewiesen)&prio=eq.P1&select=id,pid,titel,prio,dl",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/aufgaben?status=in.(neu,backlog,aktiv)&select=id,pid,titel,prio,dl,status",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -52,7 +49,7 @@
         "options": {}
       },
       "id": "load-aufgaben",
-      "name": "P1-Aufgaben laden",
+      "name": "Offene Aufgaben laden",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [250, 500]
@@ -74,7 +71,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Personen kommen als Array im ersten Input\n// Aufgaben kommen als Array im zweiten Input\nconst personen = $input.first().json;\nconst aufgaben = items.length > 1 ? $input.last().json : [];\n\n// Wenn die Inputs als Arrays kommen\nconst pList = Array.isArray(personen) ? personen : [personen];\nconst aList = Array.isArray(aufgaben) ? aufgaben : [aufgaben];\n\nconst APP_URL = $env.APP_URL || 'https://ludwig-a11y.github.io/halleluja-os/';\nconst today = new Date().toISOString().slice(0, 10);\n\nconst results = [];\n\nfor (const p of pList) {\n  if (!p.slack_id) continue;\n\n  // P1-Aufgaben dieser Person\n  const meineP1 = aList.filter(a => String(a.pid) === String(p.id));\n\n  if (meineP1.length === 0) {\n    // Kein P1 offen\n    results.push({\n      json: {\n        channel: p.slack_id,\n        text: `☀️ Guten Morgen, ${p.name}!\\n\\nKein P1 offen — schau kurz rein ob alles passt:\\n<${APP_URL}|Halleluja OS öffnen>`\n      }\n    });\n    continue;\n  }\n\n  // Sortiere nach Deadline (früheste zuerst), dann nach Erstellung\n  meineP1.sort((a, b) => {\n    if (a.dl && b.dl) return a.dl.localeCompare(b.dl);\n    if (a.dl) return -1;\n    if (b.dl) return 1;\n    return 0;\n  });\n\n  const top = meineP1[0];\n  let dlInfo = '';\n  if (top.dl) {\n    const dlDate = new Date(top.dl + 'T12:00:00');\n    const diff = Math.ceil((dlDate - new Date(today + 'T12:00:00')) / 86400000);\n    if (diff === 0) dlInfo = '⏰ Fällig: heute';\n    else if (diff === 1) dlInfo = '⏰ Fällig: morgen';\n    else if (diff < 0) dlInfo = '🔴 Überfällig seit ' + Math.abs(diff) + ' Tag' + (Math.abs(diff) > 1 ? 'en' : '');\n    else dlInfo = '📅 Fällig in ' + diff + ' Tagen';\n  }\n\n  const deepLink = `${APP_URL}#task=${top.id}`;\n  let msg = `☀️ Guten Morgen, ${p.name}!\\n\\n🎯 *Deine Top-Priorität heute:*\\n> *${top.titel}*`;\n  if (dlInfo) msg += `\\n> ${dlInfo}`;\n  msg += `\\n\\n<${deepLink}|Hier starten →>`;\n  if (meineP1.length > 1) msg += `\\n\\n_+ ${meineP1.length - 1} weitere P1-Aufgabe${meineP1.length > 2 ? 'n' : ''}_`;\n\n  results.push({ json: { channel: p.slack_id, text: msg } });\n}\n\nreturn results;"
+        "jsCode": "const personen = $input.first().json;\nconst aufgaben = items.length > 1 ? $input.last().json : [];\nconst pList = Array.isArray(personen) ? personen : [personen];\nconst aList = Array.isArray(aufgaben) ? aufgaben : [aufgaben];\n\nconst APP_URL = $env.APP_URL || 'https://ludwig-a11y.github.io/halleluja-os/';\nconst today = new Date().toISOString().slice(0, 10);\nconst prioRank = { P1: 0, P2: 1, P3: 2 };\n\nconst results = [];\n\nfor (const p of pList) {\n  if (!p.slack_id) continue;\n\n  const meine = aList.filter(a => String(a.pid) === String(p.id));\n\n  // Sortiere: aktive zuerst, dann Prio (P1>P2>P3), dann Deadline\n  meine.sort((a, b) => {\n    if (a.status === 'aktiv' && b.status !== 'aktiv') return -1;\n    if (b.status === 'aktiv' && a.status !== 'aktiv') return 1;\n    const pp = (prioRank[a.prio] ?? 3) - (prioRank[b.prio] ?? 3);\n    if (pp !== 0) return pp;\n    if (a.dl && b.dl) return a.dl.localeCompare(b.dl);\n    if (a.dl) return -1;\n    if (b.dl) return 1;\n    return 0;\n  });\n\n  if (meine.length === 0) {\n    results.push({\n      json: {\n        channel: p.slack_id,\n        text: `☀️ Guten Morgen, ${p.name}!\\n\\nKeine offenen Aufgaben — genieß den Tag! 🎉\\n<${APP_URL}|Halleluja OS öffnen>`\n      }\n    });\n    continue;\n  }\n\n  const top = meine[0];\n  const prioEmoji = top.prio === 'P1' ? '🔴' : top.prio === 'P2' ? '🟡' : top.prio === 'P3' ? '🔵' : '⚪';\n  const statusHint = top.status === 'aktiv' ? ' _(läuft bereits)_' : '';\n\n  let dlInfo = '';\n  if (top.dl) {\n    const dlDate = new Date(top.dl + 'T12:00:00');\n    const diff = Math.ceil((dlDate - new Date(today + 'T12:00:00')) / 86400000);\n    if (diff === 0) dlInfo = '⏰ Fällig: heute';\n    else if (diff === 1) dlInfo = '⏰ Fällig: morgen';\n    else if (diff < 0) dlInfo = '🔴 Überfällig seit ' + Math.abs(diff) + ' Tag' + (Math.abs(diff) > 1 ? 'en' : '');\n    else dlInfo = '📅 Fällig in ' + diff + ' Tagen';\n  }\n\n  const deepLink = `${APP_URL}#task=${top.id}`;\n  let msg = `☀️ Guten Morgen, ${p.name}!\\n\\n${prioEmoji} *Dein wichtigstes To-Do:*\\n> *${top.titel}*${statusHint}`;\n  if (dlInfo) msg += `\\n> ${dlInfo}`;\n  msg += `\\n\\n<${deepLink}|Hier starten →>`;\n\n  const p1Count = meine.filter(a => a.prio === 'P1').length;\n  const totalCount = meine.length;\n  const summary = [];\n  if (p1Count > 1) summary.push(p1Count + ' P1s offen');\n  if (totalCount > 1) summary.push(totalCount + ' Aufgaben gesamt');\n  if (summary.length) msg += `\\n\\n_${summary.join(' · ')}_`;\n\n  results.push({ json: { channel: p.slack_id, text: msg } });\n}\n\nreturn results;"
       },
       "id": "format-messages",
       "name": "Nachrichten pro Person",
@@ -82,7 +79,7 @@
       "typeVersion": 2,
       "position": [750, 400],
       "notesInFlow": true,
-      "notes": "Pro Person: Top P1 nach Deadline sortiert, Slack-Nachricht mit Deep Link formatieren. APP_URL aus Environment Variable oder Fallback."
+      "notes": "Pro Person: wichtigste Aufgabe (aktiv > P1 > P2 > P3 > Deadline). Immer eine Nachricht senden."
     },
     {
       "parameters": {
@@ -109,11 +106,11 @@
     }
   ],
   "connections": {
-    "Mo-Fr 9:00": {
+    "Täglich 8:00": {
       "main": [
         [
           { "node": "Personen mit Slack-ID laden", "type": "main", "index": 0 },
-          { "node": "P1-Aufgaben laden", "type": "main", "index": 0 }
+          { "node": "Offene Aufgaben laden", "type": "main", "index": 0 }
         ]
       ]
     },
@@ -122,7 +119,7 @@
         [{ "node": "Zusammenführen", "type": "main", "index": 0 }]
       ]
     },
-    "P1-Aufgaben laden": {
+    "Offene Aufgaben laden": {
       "main": [
         [{ "node": "Zusammenführen", "type": "main", "index": 1 }]
       ]
