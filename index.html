@@ -305,7 +305,7 @@ async function supa(path,opts={}){
     });
     clearTimeout(tid);
     if(!r.ok){console.error('Supabase',path,await r.text());return null;}
-    const t=await r.text();return t?JSON.parse(t):null;
+    const t=await r.text();return t?JSON.parse(t):true;
   }catch(e){clearTimeout(tid);console.error('supa',e);return null;}
 }
 const dbGet=(t,q='')=>supa(t+(q?'?'+q:'?select=*'));
@@ -558,12 +558,13 @@ document.addEventListener('click',()=>document.querySelectorAll('.prio-dd.open')
 async function changePrio(e,aid,newPrio){
   e.stopPropagation();
   const a=S.aufgaben.find(x=>x.id===aid);if(!a||a._busy)return;
-  const prev=a.prio;a._busy=true;a.prio=newPrio;
-  const ok=await dbPatch('aufgaben',aid,{prio:newPrio});
-  if(!ok){a.prio=prev;}
-  a._busy=false;
-  document.querySelectorAll('.prio-dd.open').forEach(d=>d.classList.remove('open'));
-  render();
+  const prev=a.prio;a._busy=true;
+  try{
+    a.prio=newPrio;try{render();}catch(e2){console.error('render@changePrio',e2);}
+    const ok=await dbPatch('aufgaben',aid,{prio:newPrio});
+    if(!ok){a.prio=prev;}
+  }catch(e2){console.error('changePrio',e2);a.prio=prev;}
+  finally{a._busy=false;document.querySelectorAll('.prio-dd.open').forEach(d=>d.classList.remove('open'));try{render();}catch(e2){console.error('render@changePrio2',e2);}}
 }
 function dlTag(dl){const d=dli(dl);if(!d)return'';return`<span class="tag" style="background:${d.bg};color:${d.c}">${d.l}</span>`;}
 function toggleDlType(v){
@@ -999,6 +1000,12 @@ function openWochenreset(){
     +(wr?'<textarea id="wr-blockiert" style="display:none">'+esc(wr.blockiert||'')+'</textarea>':'')
     +zieleOpts
     +'<div id="wr-tz-section" style="margin-top:10px"></div>'
+    +'<div style="border-top:1px solid var(--bd);margin:16px 0"></div>'
+    +'<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:2px">Wenn-Dann-Plan</div>'
+    +'<div style="font-size:11px;color:var(--t2);margin-bottom:8px;font-style:italic">Was könnte dich diese Woche aufhalten — und wie reagierst du?</div>'
+    +'<textarea id="wr-hindernis" rows="2" placeholder="Mein größtes Hindernis diese Woche…" style="width:100%;padding:8px;border:1px solid var(--bd);border-radius:8px;font-family:inherit;font-size:13px;resize:vertical;margin-bottom:6px;box-sizing:border-box">'+esc(wr?.blockiert||'')+'</textarea>'
+    +'<textarea id="wr-wenndann" rows="2" placeholder="Wenn [Hindernis], dann werde ich [Aktion]…" style="width:100%;padding:8px;border:1px solid var(--bd);border-radius:8px;font-family:inherit;font-size:13px;resize:vertical;box-sizing:border-box">'+esc(wr?.wenn_dann||'')+'</textarea>'
+    +'<div style="font-size:10px;color:var(--t3);margin-top:3px">Wenn-Dann-Pläne verdoppeln die Erfolgsrate (Gollwitzer, 1999)</div>'
     +'<div class="mf"><button class="btn btn-gr" onclick="cm()">Abbrechen</button>'
     +'<button class="btn btn-dk" onclick="saveWochenreset()">Speichern</button></div>';
   document.getElementById('ovl').classList.add('open');
@@ -1067,7 +1074,8 @@ async function saveWochenreset(){
   const rec={
     id:'wr-'+String(aP)+'-'+kw+'-'+jahr,
     pid:aP,kw,jahr,
-    blockiert:document.getElementById('wr-blockiert').value.trim(),
+    blockiert:(document.getElementById('wr-hindernis')?.value.trim()||document.getElementById('wr-blockiert')?.value.trim()||''),
+    wenn_dann:(document.getElementById('wr-wenndann')?.value.trim()||''),
     focus_ziel_id:zielId,
     big3_1_tz_id:allIds[0],big3_2_tz_id:allIds[1],big3_3_tz_id:allIds[2],
     big3_1:tzName(allIds[0]),big3_2:tzName(allIds[1]),big3_3:tzName(allIds[2]),
@@ -1624,6 +1632,15 @@ function rWoche(){
     out+='</div>';
   }
 
+  // ── Wenn-Dann-Plan (WOOP) ──
+  if(wr&&wr.wenn_dann){
+    out+='<div style="background:var(--green-bg);border:1px solid var(--green-bd);border-radius:10px;padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;gap:10px">';
+    out+='<span style="font-size:15px">💡</span>';
+    out+='<div style="flex:1"><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--green);opacity:.7">Dein Plan</div>';
+    out+='<div style="font-size:12px;color:var(--text)">'+esc(wr.wenn_dann).slice(0,120)+(wr.wenn_dann.length>120?'…':'')+'</div></div>';
+    out+='</div>';
+  }
+
   // ── Strategie-Briefing (nur GF) ──
   if(isGF()){
     const bKey='briefing-'+aP+'-'+TODAY;
@@ -1823,6 +1840,9 @@ function rTag(){
       out+='</div>';
     });
     out+='</div></details>';
+    if(wrAktuell?.wenn_dann){
+      out+='<div style="font-size:11px;color:var(--t3);margin-top:-8px;margin-bottom:10px;padding-left:4px">💡 '+esc(wrAktuell.wenn_dann).slice(0,80)+(wrAktuell.wenn_dann.length>80?'…':'')+'</div>';
+    }
   }
   // ── Freitag Reset Banner ──
   if(isResetZeit()&&!dieseWocheReset(aP)){
@@ -2125,50 +2145,57 @@ function rTag(){
 async function setPrio(id,pr){
   const a=S.aufgaben.find(x=>x.id===id);if(!a||a._busy)return;
   const prev={prio:a.prio,status:a.status};a._busy=true;
-  a.prio=pr;a.status='backlog';
-  const ok=await dbPatch('aufgaben',id,{prio:pr,status:'backlog'});
-  if(!ok){a.prio=prev.prio;a.status=prev.status;}
-  a._busy=false;render();
+  try{
+    a.prio=pr;a.status='backlog';try{render();}catch(e){console.error('render@setPrio',e);}
+    const ok=await dbPatch('aufgaben',id,{prio:pr,status:'backlog'});
+    if(!ok){a.prio=prev.prio;a.status=prev.status;}
+  }catch(e){console.error('setPrio',e);a.prio=prev.prio;a.status=prev.status;}
+  finally{a._busy=false;try{render();}catch(e){console.error('render@setPrio2',e);}}
 }
 async function startenA(id){
   const a=S.aufgaben.find(x=>x.id===id);if(!a||a._busy)return;
   const prev={status:a.status,aktSeit:a.aktSeit};a._busy=true;
-  a.status='aktiv';a.aktSeit=Date.now();
-  const ok=await dbPatch('aufgaben',id,{status:'aktiv',akt_seit:new Date().toISOString()});
-  if(!ok){a.status=prev.status;a.aktSeit=prev.aktSeit;}
-  a._busy=false;render();
+  try{
+    a.status='aktiv';a.aktSeit=Date.now();try{render();}catch(e){console.error('render@startenA',e);}
+    const ok=await dbPatch('aufgaben',id,{status:'aktiv',akt_seit:new Date().toISOString()});
+    if(!ok){a.status=prev.status;a.aktSeit=prev.aktSeit;}
+  }catch(e){console.error('startenA',e);a.status=prev.status;a.aktSeit=prev.aktSeit;}
+  finally{a._busy=false;try{render();}catch(e){console.error('render@startenA2',e);}}
 }
 async function pauseA(id){
   const a=S.aufgaben.find(x=>x.id===id);if(!a||a.status!=='aktiv'||a._busy)return;
   const prev={gebucht:a.gebucht,aktSeit:a.aktSeit,status:a.status};a._busy=true;
-  const gebucht=Math.round(((a.gebucht||0)+(Date.now()-(a.aktSeit||Date.now()))/3600000)*100)/100;
-  a.gebucht=gebucht;a.aktSeit=null;a.status='backlog';
-  const ok=await dbPatch('aufgaben',id,{gebucht,akt_seit:null,status:'backlog'});
-  if(!ok){a.gebucht=prev.gebucht;a.aktSeit=prev.aktSeit;a.status=prev.status;}
-  a._busy=false;render();
+  try{
+    const gebucht=Math.round(((a.gebucht||0)+(Date.now()-(a.aktSeit||Date.now()))/3600000)*100)/100;
+    a.gebucht=gebucht;a.aktSeit=null;a.status='backlog';try{render();}catch(e){console.error('render@pauseA',e);}
+    const ok=await dbPatch('aufgaben',id,{gebucht,akt_seit:null,status:'backlog'});
+    if(!ok){a.gebucht=prev.gebucht;a.aktSeit=prev.aktSeit;a.status=prev.status;}
+  }catch(e){console.error('pauseA',e);a.gebucht=prev.gebucht;a.aktSeit=prev.aktSeit;a.status=prev.status;}
+  finally{a._busy=false;try{render();}catch(e){console.error('render@pauseA2',e);}}
 }
 async function fertig(id){
   const a=S.aufgaben.find(x=>x.id===id);if(!a||a._busy)return;
   const prev={gebucht:a.gebucht,aktSeit:a.aktSeit,status:a.status,updated_at:a.updated_at};a._busy=true;
-  const gebucht=a.status==='aktiv'?Math.round(((a.gebucht||0)+(Date.now()-(a.aktSeit||Date.now()))/3600000)*100)/100:a.gebucht;
-  const pid=a.pid;
-  a.gebucht=gebucht;a.aktSeit=null;a.status='erledigt';a.updated_at=new Date().toISOString();
-  const ok=await dbPatch('aufgaben',id,{gebucht,akt_seit:null,status:'erledigt',updated_at:new Date().toISOString()});
-  if(!ok){a.gebucht=prev.gebucht;a.aktSeit=prev.aktSeit;a.status=prev.status;a.updated_at=prev.updated_at;a._busy=false;render();return;}
-  // recurring: create next instance
-  if(a.recurring){
-    const nextDl=nextRecurringDate(a.dl||TODAY,a.recurring);
-    const rec={id:nid('a'),pid:a.pid,titel:a.titel,typ:a.typ,status:'neu',prio:a.prio,
-      ziel_id:a.zielId,teilziel_id:a.teilzielId,geplant:a.geplant,gebucht:0,
-      dl:nextDl,dl_type:a.dl_type,ua:a.ua?.length?a.ua.map(u=>({t:u.t,d:false})):[],
-      notiz:a.notiz,akt_seit:null,vertraulich:a.vertraulich,recurring:a.recurring,erstellt_von:a.erstelltVon||a.pid};
-    S.aufgaben.push(normalizeAufgabe(rec));
-    await dbInsert('aufgaben',rec);
-  }
-  a._busy=false;
-  showPaddelCelebration(pid);
-  checkP1Done(pid);
-  render();
+  try{
+    const gebucht=a.status==='aktiv'?Math.round(((a.gebucht||0)+(Date.now()-(a.aktSeit||Date.now()))/3600000)*100)/100:a.gebucht;
+    const pid=a.pid;
+    a.gebucht=gebucht;a.aktSeit=null;a.status='erledigt';a.updated_at=new Date().toISOString();try{render();}catch(e){console.error('render@fertig',e);}
+    const ok=await dbPatch('aufgaben',id,{gebucht,akt_seit:null,status:'erledigt',updated_at:new Date().toISOString()});
+    if(!ok){a.gebucht=prev.gebucht;a.aktSeit=prev.aktSeit;a.status=prev.status;a.updated_at=prev.updated_at;return;}
+    // recurring: create next instance
+    if(a.recurring){
+      const nextDl=nextRecurringDate(a.dl||TODAY,a.recurring);
+      const rec={id:nid('a'),pid:a.pid,titel:a.titel,typ:a.typ,status:'neu',prio:a.prio,
+        ziel_id:a.zielId,teilziel_id:a.teilzielId,geplant:a.geplant,gebucht:0,
+        dl:nextDl,dl_type:a.dl_type,ua:a.ua?.length?a.ua.map(u=>({t:u.t,d:false})):[],
+        notiz:a.notiz,akt_seit:null,vertraulich:a.vertraulich,recurring:a.recurring,erstellt_von:a.erstelltVon||a.pid};
+      S.aufgaben.push(normalizeAufgabe(rec));
+      await dbInsert('aufgaben',rec);
+    }
+    showPaddelCelebration(pid);
+    checkP1Done(pid);
+  }catch(e){console.error('fertig',e);a.gebucht=prev.gebucht;a.aktSeit=prev.aktSeit;a.status=prev.status;a.updated_at=prev.updated_at;}
+  finally{a._busy=false;try{render();}catch(e){console.error('render@fertig2',e);}}
 }
 function nextRecurringDate(fromDate,freq){
   const d=new Date(fromDate+'T12:00:00');
