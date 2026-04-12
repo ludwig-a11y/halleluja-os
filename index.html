@@ -1656,7 +1656,10 @@ function rWoche(){
         if(s.notiz)out+='<div style="font-size:11px;color:var(--t2);font-style:italic;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">💬 '+esc(s.notiz)+'</div>';
         if(von)out+='<div style="font-size:10px;color:var(--t3)">von '+esc(von.name)+(s.created_at?' · '+s.created_at.slice(0,10):'')+'</div>';
         out+='</div>';
-        out+='<button onclick="ideenZuAufgabe(\''+s.id+'\')" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--text);cursor:pointer;font-family:inherit;flex-shrink:0;white-space:nowrap">→ Aufgabe</button>';
+        out+='<div style="display:flex;gap:4px;flex-shrink:0">';
+        out+='<button onclick="ideenZuAufgabe(\''+s.id+'\')" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--text);cursor:pointer;font-family:inherit;white-space:nowrap">→ Aufgabe</button>';
+        out+='<button onclick="delSignal(\''+s.id+'\')" style="font-size:10px;padding:3px 6px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--t3);cursor:pointer;font-family:inherit">✕</button>';
+        out+='</div>';
         out+='</div>';
       });
       out+='</div>';
@@ -1910,7 +1913,10 @@ function rTag(){
         out+='<div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(s.was)+'</div>';
         if(von)out+='<div style="font-size:10px;color:var(--t3)">von '+esc(von.name)+(s.created_at?' · '+s.created_at.slice(0,10):'')+'</div>';
         out+='</div>';
-        out+='<button onclick="ideenZuAufgabe(\''+s.id+'\')" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--text);cursor:pointer;font-family:inherit;flex-shrink:0;white-space:nowrap">→ Aufgabe</button>';
+        out+='<div style="display:flex;gap:4px;flex-shrink:0">';
+        out+='<button onclick="ideenZuAufgabe(\''+s.id+'\')" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--text);cursor:pointer;font-family:inherit;white-space:nowrap">→ Aufgabe</button>';
+        out+='<button onclick="delSignal(\''+s.id+'\')" style="font-size:10px;padding:3px 6px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--t3);cursor:pointer;font-family:inherit">✕</button>';
+        out+='</div>';
         out+='</div>';
       });
       out+='</div>';
