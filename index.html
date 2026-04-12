@@ -487,6 +487,7 @@ function fmtH(h){
 function dli(d){
   if(!d)return null;
   const df=Math.round((new Date(d)-new Date(TODAY))/86400000);
+  if(isNaN(df))return null;
   if(df<0)return{l:Math.abs(df)+'d überfällig',bg:'var(--red-bg)',c:'var(--red)'};
   if(df===0)return{l:'Heute fällig',bg:'var(--red-bg)',c:'var(--red)'};
   if(df===1)return{l:'Morgen',bg:'#fff7ed',c:'#c2410c'};
@@ -523,9 +524,11 @@ function togglePrioDD(e,aid){
 document.addEventListener('click',()=>document.querySelectorAll('.prio-dd.open').forEach(d=>d.classList.remove('open')));
 async function changePrio(e,aid,newPrio){
   e.stopPropagation();
-  const a=S.aufgaben.find(x=>x.id===aid);if(!a)return;
-  a.prio=newPrio;
-  await dbPatch('aufgaben',aid,{prio:newPrio});
+  const a=S.aufgaben.find(x=>x.id===aid);if(!a||a._busy)return;
+  const prev=a.prio;a._busy=true;a.prio=newPrio;
+  const ok=await dbPatch('aufgaben',aid,{prio:newPrio});
+  if(!ok){a.prio=prev;}
+  a._busy=false;
   document.querySelectorAll('.prio-dd.open').forEach(d=>d.classList.remove('open'));
   render();
 }
@@ -1286,6 +1289,7 @@ function logout(){
   try{localStorage.removeItem('h_session');}catch(e){}
   if(_dataPoll){clearInterval(_dataPoll);_dataPoll=null;}
   if(_sonderPoll){clearInterval(_sonderPoll);_sonderPoll=null;}
+  if(timIv){clearInterval(timIv);timIv=null;}
   removeBackBtn();
   document.getElementById('app').style.display='none';
   document.getElementById('login-screen').style.display='flex';
@@ -1948,27 +1952,38 @@ function rTag(){
 }
 
 async function setPrio(id,pr){
-  const a=S.aufgaben.find(x=>x.id===id);if(!a)return;
+  const a=S.aufgaben.find(x=>x.id===id);if(!a||a._busy)return;
+  const prev={prio:a.prio,status:a.status};a._busy=true;
   a.prio=pr;a.status='backlog';
-  await dbPatch('aufgaben',id,{prio:pr,status:'backlog'});render();
+  const ok=await dbPatch('aufgaben',id,{prio:pr,status:'backlog'});
+  if(!ok){a.prio=prev.prio;a.status=prev.status;}
+  a._busy=false;render();
 }
 async function startenA(id){
-  const a=S.aufgaben.find(x=>x.id===id);if(!a)return;
+  const a=S.aufgaben.find(x=>x.id===id);if(!a||a._busy)return;
+  const prev={status:a.status,aktSeit:a.aktSeit};a._busy=true;
   a.status='aktiv';a.aktSeit=Date.now();
-  await dbPatch('aufgaben',id,{status:'aktiv',akt_seit:new Date().toISOString()});render();
+  const ok=await dbPatch('aufgaben',id,{status:'aktiv',akt_seit:new Date().toISOString()});
+  if(!ok){a.status=prev.status;a.aktSeit=prev.aktSeit;}
+  a._busy=false;render();
 }
 async function pauseA(id){
-  const a=S.aufgaben.find(x=>x.id===id);if(!a||a.status!=='aktiv')return;
+  const a=S.aufgaben.find(x=>x.id===id);if(!a||a.status!=='aktiv'||a._busy)return;
+  const prev={gebucht:a.gebucht,aktSeit:a.aktSeit,status:a.status};a._busy=true;
   const gebucht=Math.round(((a.gebucht||0)+(Date.now()-(a.aktSeit||Date.now()))/3600000)*100)/100;
   a.gebucht=gebucht;a.aktSeit=null;a.status='backlog';
-  await dbPatch('aufgaben',id,{gebucht,akt_seit:null,status:'backlog'});render();
+  const ok=await dbPatch('aufgaben',id,{gebucht,akt_seit:null,status:'backlog'});
+  if(!ok){a.gebucht=prev.gebucht;a.aktSeit=prev.aktSeit;a.status=prev.status;}
+  a._busy=false;render();
 }
 async function fertig(id){
-  const a=S.aufgaben.find(x=>x.id===id);if(!a)return;
+  const a=S.aufgaben.find(x=>x.id===id);if(!a||a._busy)return;
+  const prev={gebucht:a.gebucht,aktSeit:a.aktSeit,status:a.status,updated_at:a.updated_at};a._busy=true;
   const gebucht=a.status==='aktiv'?Math.round(((a.gebucht||0)+(Date.now()-(a.aktSeit||Date.now()))/3600000)*100)/100:a.gebucht;
   const pid=a.pid;
   a.gebucht=gebucht;a.aktSeit=null;a.status='erledigt';a.updated_at=new Date().toISOString();
-  await dbPatch('aufgaben',id,{gebucht,akt_seit:null,status:'erledigt',updated_at:new Date().toISOString()});
+  const ok=await dbPatch('aufgaben',id,{gebucht,akt_seit:null,status:'erledigt',updated_at:new Date().toISOString()});
+  if(!ok){a.gebucht=prev.gebucht;a.aktSeit=prev.aktSeit;a.status=prev.status;a.updated_at=prev.updated_at;a._busy=false;render();return;}
   // recurring: create next instance
   if(a.recurring){
     const nextDl=nextRecurringDate(a.dl||TODAY,a.recurring);
@@ -1979,6 +1994,7 @@ async function fertig(id){
     S.aufgaben.push(normalizeAufgabe(rec));
     await dbInsert('aufgaben',rec);
   }
+  a._busy=false;
   showPaddelCelebration(pid);
   checkP1Done(pid);
   render();
@@ -1992,7 +2008,7 @@ function nextRecurringDate(fromDate,freq){
   return localDate(d);
 }
 async function toggleStep(id,i){
-  const a=S.aufgaben.find(x=>x.id===id);if(!a)return;
+  const a=S.aufgaben.find(x=>x.id===id);if(!a||!a.ua||!a.ua[i])return;
   a.ua[i].d=!a.ua[i].d;
   const allDone=a.ua.every(u=>u.d)&&a.ua.length;
   if(allDone){a.status='erledigt';a.aktSeit=null;showPaddelCelebration(a.pid);checkP1Done(a.pid);}
@@ -2011,7 +2027,7 @@ async function addStep(id){
   if(document.getElementById('ovl')?.classList.contains('open')){openDetail(id);}else{render();}
 }
 async function delStep(id,i){
-  const a=S.aufgaben.find(x=>x.id===id);if(!a)return;
+  const a=S.aufgaben.find(x=>x.id===id);if(!a||!a.ua||i<0||i>=a.ua.length)return;
   a.ua.splice(i,1);
   await dbPatch('aufgaben',id,{ua:a.ua});
   if(document.getElementById('ovl')?.classList.contains('open')){openDetail(id);}else{render();}
@@ -2638,14 +2654,14 @@ DAUER: [Zahl in Stunden, z.B. 0.5 oder 2]`;
     let h='<div style="background:'+scBg+';border:1px solid '+scBd+';border-radius:10px;padding:12px;margin-bottom:10px;font-size:12px;line-height:1.6">';
     h+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">';
     h+='<div style="width:32px;height:32px;border-radius:8px;background:'+sc+';color:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;flex-shrink:0">'+score+'</div>';
-    h+='<div><div style="font-size:13px;font-weight:700;color:'+sc+'">'+scoreLabel+'</div>';
+    h+='<div><div style="font-size:13px;font-weight:700;color:'+sc+'">'+esc(scoreLabel)+'</div>';
     h+='<div style="font-size:10px;color:var(--t2)">Hebel-Score</div></div>';
-    if(kette)h+='<span style="margin-left:auto;font-size:10px;padding:3px 9px;border-radius:6px;background:rgba(0,0,0,.06);color:var(--t2);font-weight:600;white-space:nowrap">'+kette+'</span>';
+    if(kette)h+='<span style="margin-left:auto;font-size:10px;padding:3px 9px;border-radius:6px;background:rgba(0,0,0,.06);color:var(--t2);font-weight:600;white-space:nowrap">'+esc(kette)+'</span>';
     h+='</div>';
-    if(hebel)h+='<div style="margin-bottom:3px;font-size:11px"><span style="color:var(--t2)">'+hebel+'</span></div>';
-    if(ziel)h+='<div style="margin-bottom:3px;font-size:11px"><strong>Ziel:</strong> <span style="color:var(--t2)">'+ziel+'</span></div>';
-    if(konkret){const cleanTitle=konkret.replace(/^Besser:\s*/i,'').replace(/^"|"$/g,'').replace(/"/g,'&quot;');
-    h+='<div onclick="document.getElementById(\'nt\').value=\''+cleanTitle+'\';this.innerHTML=\'<span style=color:#15803d;font-weight:700>✓ Übernommen!</span>\'" style="margin-bottom:6px;cursor:pointer;background:linear-gradient(135deg,'+sc+'08,'+sc+'12);border:1px solid '+sc+'30;border-radius:10px;padding:9px 12px;transition:all .15s" onmouseenter="this.style.transform=\'scale(1.01)\';this.style.borderColor=\''+sc+'\'" onmouseleave="this.style.transform=\'scale(1)\';this.style.borderColor=\''+sc+'30\'">'
+    if(hebel)h+='<div style="margin-bottom:3px;font-size:11px"><span style="color:var(--t2)">'+esc(hebel)+'</span></div>';
+    if(ziel)h+='<div style="margin-bottom:3px;font-size:11px"><strong>Ziel:</strong> <span style="color:var(--t2)">'+esc(ziel)+'</span></div>';
+    if(konkret){const cleanTitle=esc(konkret.replace(/^Besser:\s*/i,'').replace(/^"|"$/g,''));
+    h+='<div onclick="document.getElementById(\'nt\').value=\''+cleanTitle.replace(/'/g,"\\'")+'\';this.innerHTML=\'<span style=color:#15803d;font-weight:700>✓ Übernommen!</span>\'" style="margin-bottom:6px;cursor:pointer;background:linear-gradient(135deg,'+sc+'08,'+sc+'12);border:1px solid '+sc+'30;border-radius:10px;padding:9px 12px;transition:all .15s" onmouseenter="this.style.transform=\'scale(1.01)\';this.style.borderColor=\''+sc+'\'" onmouseleave="this.style.transform=\'scale(1)\';this.style.borderColor=\''+sc+'30\'">'
     +'<div style="font-size:10px;color:var(--t3);margin-bottom:3px">💡 Vorschlag für den Titel:</div>'
     +'<div style="font-size:13px;font-weight:600;color:'+sc+'">'+cleanTitle+'</div>'
     +'<div style="font-size:9px;color:var(--t3);margin-top:3px">Antippen zum Übernehmen</div>'
@@ -2664,7 +2680,7 @@ DAUER: [Zahl in Stunden, z.B. 0.5 oder 2]`;
     h+='</div></div>';
     box.innerHTML=h;
   }catch(e){
-    box.innerHTML='<div style="background:var(--red-bg);border:1px solid var(--red-bd);border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:11px;color:var(--red)">Fehler: '+e.message+'</div>';
+    box.innerHTML='<div style="background:var(--red-bg);border:1px solid var(--red-bd);border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:11px;color:var(--red)">Fehler: '+esc(e.message)+'</div>';
   }
 }
 async function aiDailyBriefing(){
@@ -2943,6 +2959,7 @@ async function runAI(){
   const sys='Du bist Assistent für Halleluja OS. Extrahiere eine Aufgabe und antworte NUR mit JSON:\n{"titel":"...","pid":"person_id","typ":"strategisch|operativ|random","zielId":"ziel_id|null","prio":"P1|P2|P3|null","dl":"YYYY-MM-DD|null","notiz":"..."}\nPersonen: '+personList+'\nZiele: '+zielList+'\nHeute: '+TODAY;
   try{
     const resp=await fetch('https://halleluja-app.germanywestcentral.cloudapp.azure.com/n8n/webhook/ki-proxy',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:500,system:sys,messages:[{role:'user',content:inp}]})});
+    if(!resp.ok){out.innerHTML='<div class="ai-result" style="background:var(--red-bg);border-color:var(--red-bd)">KI-Proxy Fehler (HTTP '+resp.status+'). Bitte nochmal versuchen.</div>';return;}
     const data=await resp.json();
     const text=data.content?.map(c=>c.text||'').join('')||'';
     let parsed;
@@ -2952,16 +2969,16 @@ async function runAI(){
     const ti=TYP_INFO[parsed.typ]||TYP_INFO.operativ;
     const safeJ=JSON.stringify(parsed).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
     out.innerHTML='<div class="ai-result">'
-      +'<div style="font-size:13px;font-weight:600;margin-bottom:8px">'+parsed.titel+'</div>'
+      +'<div style="font-size:13px;font-weight:600;margin-bottom:8px">'+esc(parsed.titel)+'</div>'
       +'<div style="display:flex;gap:5px;flex-wrap:wrap">'
-      +(p2?'<span class="tag" style="background:var(--blue-bg);color:var(--blue)">'+p2.name+'</span>':'')
-      +'<span class="tag" style="background:'+ti.bg+';color:'+ti.tc+'">'+ti.label+'</span>'
+      +(p2?'<span class="tag" style="background:var(--blue-bg);color:var(--blue)">'+esc(p2.name)+'</span>':'')
+      +'<span class="tag" style="background:'+ti.bg+';color:'+ti.tc+'">'+esc(ti.label)+'</span>'
       +(parsed.prio?prioTag(parsed.prio,null,false):'')
-      +(z2?'<span class="tag" style="background:var(--green-bg);color:var(--green)">'+z2.name+'</span>':'')
+      +(z2?'<span class="tag" style="background:var(--green-bg);color:var(--green)">'+esc(z2.name)+'</span>':'')
       +(parsed.dl?dlTag(parsed.dl):'')
       +'</div>'+(parsed.notiz?'<div style="font-size:11px;color:var(--t2);margin-top:6px;font-style:italic">'+esc(parsed.notiz)+'</div>':'')+'</div>'
       +'<div class="mf" style="margin-top:10px"><button class="btn btn-gr" onclick="openAI()">Nochmal</button><button class="btn btn-purple" onclick=\'confirmAI('+safeJ+')\'>✓ Aufgabe anlegen</button></div>';
-  }catch(e){out.innerHTML='<div class="ai-result" style="background:var(--red-bg);border-color:var(--red-bd)">Fehler: '+e.message+'</div>';}
+  }catch(e){out.innerHTML='<div class="ai-result" style="background:var(--red-bg);border-color:var(--red-bd)">Fehler: '+esc(e.message)+'</div>';}
 }
 async function confirmAI(p){
   if(typeof p==='string'){try{p=JSON.parse(p);}catch(e){return;}}
@@ -3427,6 +3444,7 @@ async function mdUploadAudio(input){
   try{
     const fd=new FormData();fd.append('file',file);
     const resp=await fetch(whisperUrl,{method:'POST',body:fd});
+    if(!resp.ok){status.innerHTML='<div style="padding:10px;color:var(--red);font-size:12px">⚠️ Whisper-Fehler (HTTP '+resp.status+'). Prüfe den Workflow in n8n.</div>';return;}
     const data=await resp.json();
     const transcript=data.transcript||data.text||data.result||'';
     if(transcript){
@@ -3469,6 +3487,7 @@ async function mdExtract(){
       method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:4000,system:sys,messages:[{role:'user',content:text}]})
     });
+    if(!resp.ok){document.getElementById('md-status').innerHTML='<div style="padding:12px;color:var(--red);font-size:12px">⚠️ KI-Proxy Fehler (HTTP '+resp.status+'). Bitte nochmal versuchen.</div>';btn.disabled=false;btn.textContent='✦ Aufgaben extrahieren';return;}
     const data=await resp.json();
     const raw=data.content?.map(c=>c.text||'').join('')||'';
     let tasks;
