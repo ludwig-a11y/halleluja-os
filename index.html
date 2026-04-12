@@ -74,7 +74,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;font-size:1
 .nt.new-btn{color:var(--blue);font-weight:600;border:1px solid var(--blue-bd);background:var(--blue-bg);border-radius:8px;height:30px;padding:0 10px}
 .nt.meet-btn{color:var(--amber);font-weight:600;border:1px solid var(--amber-bd);background:var(--amber-bg);border-radius:8px;height:30px;padding:0 10px;margin-left:4px}
 .shell{display:flex;flex:1;overflow:hidden}
-.sb{width:168px;flex-shrink:0;background:var(--sf);border-right:1px solid var(--bd);overflow-y:auto;padding:10px 8px}
+.sb{width:168px;flex-shrink:0;background:var(--sf);border-right:1px solid var(--bd);overflow-y:auto;padding:10px 8px;display:flex;flex-direction:column}
 .main{flex:1;overflow-y:auto;padding:20px 24px}
 .gl{font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.6px;padding:0 8px;margin:12px 0 5px}
 .sbn{width:100%;text-align:left;padding:7px 8px;border-radius:9px;border:none;cursor:pointer;background:transparent;font-family:inherit;margin-bottom:2px;display:flex;align-items:center;gap:8px;transition:background .12s}
@@ -1366,14 +1366,18 @@ function rSB(){
 
   let h='';
   // Helper to render a person row
-  const renderPerson=(id,dim)=>{
+  const renderPerson=(id,dim,clickOverride)=>{
     const p=person(id);if(!p)return'';
     const c=cl(p),isMe=id===aP;
     const ct=counts[id]||{neu:0,aktiv:0};
     const paddel=getPaddelCount(id);
     const opacity=dim?'opacity:.45;':'';
-    return '<button class="sbn'+(isMe?' on':'')+'" onclick="switchPerson(\''+id+'\')" style="'+opacity+'">'
-      +av(p,22,8)
+    const hasActive=ct.aktiv>0;
+    const onclick=clickOverride||('switchPerson(\''+id+'\')');
+    return '<button class="sbn'+(isMe?' on':'')+'" onclick="'+onclick+'" style="'+opacity+'position:relative;">'
+      +'<div style="position:relative">'+av(p,22,8)
+      +(hasActive?'<div style="position:absolute;bottom:-1px;right:-1px;width:7px;height:7px;border-radius:50%;background:var(--green);border:1.5px solid var(--sf)"></div>':'')
+      +'</div>'
       +'<span style="flex:1;font-size:11px;font-weight:'+(isMe?600:400)+';color:'+(isMe?c.tc:'var(--text)')+'">'+esc(p.name)+'</span>'
       +'<div style="display:flex;gap:3px;align-items:center">'
       +(paddel?'<span style="font-size:9px;color:var(--amber)">🏅'+paddel+'</span>':'')
@@ -1396,18 +1400,7 @@ function rSB(){
     h+='<div class="gl" style="margin-top:14px">Gemeinsame Ziele</div>';
     goalPartners.forEach(id=>{
       shownIds.add(id);
-      const p=person(id);if(!p)return;
-      const c=cl(p);
-      const ct=counts[id]||{neu:0,aktiv:0};
-      const paddel=getPaddelCount(id);
-      h+='<button class="sbn" onclick="openSharedGoals(\''+id+'\')">'
-        +av(p,22,8)
-        +'<span style="flex:1;font-size:11px;font-weight:400;color:var(--text)">'+esc(p.name)+'</span>'
-        +'<div style="display:flex;gap:3px;align-items:center">'
-        +(paddel?'<span style="font-size:9px;color:var(--amber)">🏅'+paddel+'</span>':'')
-        +(ct.neu?'<span style="font-size:8px;background:var(--red-bg);color:var(--red);border-radius:99px;padding:1px 4px;font-weight:700">'+ct.neu+'</span>':'')
-        +(ct.aktiv?'<span style="font-size:8px;background:'+c.bg+';color:'+c.tc+';border-radius:99px;padding:1px 4px;font-weight:700">'+ct.aktiv+'</span>':'')
-        +'</div></button>';
+      h+=renderPerson(id,false,'openSharedGoals(\''+id+'\')');
     });
   }
 
@@ -1426,6 +1419,26 @@ function rSB(){
       noTeam.forEach(p=>{h+=renderPerson(p.id,true);});
     }
   }
+
+  // 4) Firmen-Ticker: Heute-Überblick
+  const todayDone=S.aufgaben.filter(a=>a.status==='erledigt'&&a.updated_at&&a.updated_at.startsWith(TODAY));
+  const activeNow=S.aufgaben.filter(a=>a.status==='aktiv');
+  const todayByPerson={};
+  todayDone.forEach(a=>{const p=person(a.pid);if(p){if(!todayByPerson[a.pid])todayByPerson[a.pid]={name:p.name,count:0};todayByPerson[a.pid].count++;}});
+  const topToday=Object.values(todayByPerson).sort((a,b)=>b.count-a.count).slice(0,3);
+
+  h+='<div style="margin-top:auto;padding-top:14px;border-top:1px solid var(--bd)">';
+  h+='<div class="gl">Heute im Team</div>';
+  h+='<div style="display:flex;gap:12px;padding:6px 8px;margin-bottom:4px">';
+  h+='<div style="text-align:center"><div style="font-size:16px;font-weight:700;color:var(--green)">'+todayDone.length+'</div><div style="font-size:8px;color:var(--t3);text-transform:uppercase;letter-spacing:.3px">erledigt</div></div>';
+  h+='<div style="text-align:center"><div style="font-size:16px;font-weight:700;color:var(--blue)">'+activeNow.length+'</div><div style="font-size:8px;color:var(--t3);text-transform:uppercase;letter-spacing:.3px">aktiv</div></div>';
+  h+='</div>';
+  if(topToday.length){
+    topToday.forEach(t=>{
+      h+='<div style="font-size:10px;color:var(--t2);padding:1px 8px">'+esc(t.name)+' <span style="color:var(--green);font-weight:600">✓'+t.count+'</span></div>';
+    });
+  }
+  h+='</div>';
 
   const sb=document.getElementById('sb');
   if(sb)sb.innerHTML=h;
