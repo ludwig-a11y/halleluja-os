@@ -2534,7 +2534,12 @@ DAUER: [Zahl in Stunden, z.B. 0.5 oder 2]`;
     h+='</div>';
     if(hebel)h+='<div style="margin-bottom:3px;font-size:11px"><span style="color:var(--t2)">'+hebel+'</span></div>';
     if(ziel)h+='<div style="margin-bottom:3px;font-size:11px"><strong>Ziel:</strong> <span style="color:var(--t2)">'+ziel+'</span></div>';
-    if(konkret)h+='<div style="margin-bottom:3px;font-size:11px;cursor:pointer" onclick="document.getElementById(\'nt\').value=this.dataset.t" data-t="'+konkret.replace(/"/g,'&quot;').replace(/^Besser:\s*/i,'').replace(/^"|"$/g,'')+'"><strong>Besser:</strong> <span style="color:'+sc+';text-decoration:underline dotted">'+konkret+'</span> <span style="font-size:9px;opacity:.5">(klick = übernehmen)</span></div>';
+    if(konkret){const cleanTitle=konkret.replace(/^Besser:\s*/i,'').replace(/^"|"$/g,'').replace(/"/g,'&quot;');
+    h+='<div onclick="document.getElementById(\'nt\').value=\''+cleanTitle+'\';this.innerHTML=\'<span style=color:#15803d;font-weight:700>✓ Übernommen!</span>\'" style="margin-bottom:6px;cursor:pointer;background:linear-gradient(135deg,'+sc+'08,'+sc+'12);border:1px solid '+sc+'30;border-radius:10px;padding:9px 12px;transition:all .15s" onmouseenter="this.style.transform=\'scale(1.01)\';this.style.borderColor=\''+sc+'\'" onmouseleave="this.style.transform=\'scale(1)\';this.style.borderColor=\''+sc+'30\'">'
+    +'<div style="font-size:10px;color:var(--t3);margin-bottom:3px">💡 Vorschlag für den Titel:</div>'
+    +'<div style="font-size:13px;font-weight:600;color:'+sc+'">'+cleanTitle+'</div>'
+    +'<div style="font-size:9px;color:var(--t3);margin-top:3px">Antippen zum Übernehmen</div>'
+    +'</div>';}
     // Auto-Apply: Alles auf einmal übernehmen
     window._aiSteps=steps||[];
     window._aiPrio=prioMatch;
@@ -2728,15 +2733,31 @@ function addNeuStep(){
   window._neuSteps.push({t,d:false});inp.value='';renderNeuSteps();inp.focus();
 }
 function delNeuStep(i){window._neuSteps.splice(i,1);renderNeuSteps();}
+function cycleNeuStepPid(i){
+  const s=window._neuSteps[i];if(!s)return;
+  const pids=S.personen.map(p=>p.id);
+  const cur=s.pid||aP;
+  const idx=pids.indexOf(cur);
+  const next=pids[(idx+1)%pids.length];
+  s.pid=next===aP?null:next;
+  renderNeuSteps();
+}
 function renderNeuSteps(){
   const wrap=document.getElementById('neu-steps');if(!wrap)return;
-  wrap.innerHTML=window._neuSteps.map((s,i)=>
-    '<div style="display:flex;align-items:center;gap:8px;padding:4px 0">'
+  wrap.innerHTML=window._neuSteps.map((s,i)=>{
+    const sPid=s.pid||aP;
+    const sp=person(sPid);
+    const isOwner=!s.pid||s.pid===aP;
+    const f=FARBEN[sp?.ci||0];
+    return '<div style="display:flex;align-items:center;gap:8px;padding:5px 0">'
     +'<div style="width:13px;height:13px;border-radius:3px;border:1px solid var(--bd);flex-shrink:0"></div>'
     +'<span style="font-size:11px;flex:1">'+s.t+'</span>'
+    +'<div onclick="cycleNeuStepPid('+i+')" style="width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;cursor:pointer;flex-shrink:0;transition:all .15s;'
+      +(isOwner?'background:var(--gray-bg);color:var(--t3);border:1px solid var(--bd)':'background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-bd)')
+      +'" title="'+(sp?sp.name:'')+'">'+( sp?sp.name[0].toUpperCase():'?')+'</div>'
     +'<button onclick="delNeuStep('+i+')" style="font-size:10px;background:none;border:none;color:var(--t3);cursor:pointer">✕</button>'
-    +'</div>'
-  ).join('');
+    +'</div>';
+  }).join('');
 }
 function selPrioBtn(btn,pr){
   _selPrio=(!pr||pr==='null')?null:pr;
