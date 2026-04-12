@@ -1419,6 +1419,10 @@ function rSB(){
 function switchPerson(id){
   if(isGF()||visiblePersonIds(aP).includes(id)||id===aP){
     aP=id;updateBadge();render();showBackBtn();
+  } else {
+    // Can't view this person → open "assign task" modal for them
+    const p=person(id);if(!p)return;
+    openNeu({pid:id});
   }
 }
 
