@@ -21,17 +21,17 @@
   --r-sm:6px;--r-md:10px;--r-lg:14px;--r-xl:18px;--r-full:99px;
 }
 html.dark{
-  --text:#e8e6e3;--t2:#9a9894;--t3:#6b6966;
-  --bg:#161514;--sf:#1f1e1d;--bd:#302e2c;
-  --blue:#7da8e8;--blue-bg:#1c2636;--blue-bd:#2d4266;
-  --green:#6ec98b;--green-bg:#1a2e1e;--green-bd:#245234;
-  --red:#e88a8a;--red-bg:#2d1c1c;--red-bd:#4a2e2e;
-  --amber:#d4a94d;--amber-bg:#2a2212;--amber-bd:#4a3b1e;
-  --purple:#a98ee0;--purple-bg:#221a32;--purple-bd:#382a56;
-  --gray-bg:#1a1918;
-  --orange:#d49262;--orange-bg:#2a1f14;--orange-bd:#4a351e;
-  --pink:#f472b6;--pink-bg:#2d1425;--pink-bd:#5a2845;
-  --inv:#f0efed;--inv-t:#1a1a1a;--hero:#2c2b29;--hero-t:#f0efed;
+  --text:#e0ded9;--t2:#908d88;--t3:#605d58;
+  --bg:#131211;--sf:#1b1a18;--bd:#282624;
+  --blue:#7da8e8;--blue-bg:#161a21;--blue-bd:#253550;
+  --green:#6ec98b;--green-bg:#151c17;--green-bd:#1e3d28;
+  --red:#e88a8a;--red-bg:#1c1515;--red-bd:#3a2424;
+  --amber:#d4a94d;--amber-bg:#1b1912;--amber-bd:#3a3118;
+  --purple:#a98ee0;--purple-bg:#18151f;--purple-bd:#2e2445;
+  --gray-bg:#161514;
+  --orange:#d49262;--orange-bg:#1b1812;--orange-bd:#3a2d18;
+  --pink:#f472b6;--pink-bg:#1c1318;--pink-bd:#452035;
+  --inv:#f0efed;--inv-t:#1a1a1a;--hero:#252422;--hero-t:#f0efed;
 }
 body{font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;font-size:13px;color:var(--text);background:var(--bg);height:100vh;overflow:hidden;display:flex;flex-direction:column}
 
@@ -1118,7 +1118,7 @@ function rSignaleTeam(){
     wdh.forEach(s=>{
       const p2=person(s.pid);
       const hMap={täglich:'täglich',mehrmals:'mehrmals pro Woche',wöchentlich:'wöchentlich'};
-      out+='<div style="background:rgba(255,255,255,.6);border:1px solid var(--purple-bd);border-radius:8px;padding:9px 12px;margin-bottom:7px">';
+      out+='<div style="background:var(--sf);border:1px solid var(--purple-bd);border-radius:8px;padding:9px 12px;margin-bottom:7px">';
       out+='<div style="font-size:12px;font-weight:500;color:var(--text)">'+esc(s.was)+'</div>';
       out+='<div style="display:flex;align-items:center;gap:8px;margin-top:4px">';
       if(p2)out+='<span style="font-size:10px;color:var(--purple)">'+esc(p2.name)+'</span>';
