@@ -2397,9 +2397,10 @@ function openNeu(pf={}){
   const zieleOpts=zieleOptgroups(defaultPid,pf.zielId||'');
   const hasAI=!!localStorage.getItem('anthropic_key');
   document.getElementById('mb').innerHTML='<div class="mt">Neue Aufgabe</div>'
-    +'<div class="fl"><label>Was soll gemacht werden?</label><input id="nt" value="'+(pf.titel||'')+'" placeholder="Beschreibe die Aufgabe — KI analysiert automatisch…" autofocus oninput="aiDebounce()" onkeydown="if(event.key===\'Enter\'){event.preventDefault();aiAnalyze()}">'
-    +'</div>'
-    +'<div id="ai-suggestion"'+(hasAI?'':' style="display:none"')+'>'+(hasAI?'<div style="background:var(--gray-bg);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;font-size:11px;color:var(--t3);text-align:center">✨ KI-Analyse startet automatisch beim Tippen</div>':'')+'</div>'
+    +'<div class="fl"><label>Was soll gemacht werden?</label><div style="display:flex;gap:6px"><input id="nt" value="'+(pf.titel||'')+'" placeholder="Aufgabe, Todo, Meeting-Ergebnis…" autofocus style="flex:1">'
+    +(hasAI?'<button onclick="aiAnalyze()" style="font-size:11px;padding:5px 10px;border-radius:7px;border:1px solid var(--bd);background:var(--gray-bg);color:var(--t2);cursor:pointer;font-family:inherit;flex-shrink:0;white-space:nowrap" title="KI-Hebel-Analyse starten">✨ KI</button>':'')
+    +'</div></div>'
+    +'<div id="ai-suggestion" style="display:none"></div>'
     +'<div class="f2"><div class="fl"><label>Wer?</label><select id="np">'+S.personen.map(p=>'<option value="'+p.id+'"'+(defaultPid===p.id?' selected':'')+'>'+p.name+'</option>').join('')+'</select></div>'
     +'<div class="fl"><label>Ziel <span style="font-weight:400;color:var(--t2)">(optional)</span></label><select id="nziel" onchange="updateNeuTZ()">'+zieleOpts+'</select></div></div>'
     +'<div id="neu-tz-wrap" class="fl" style="display:none"><label>Meilenstein <span style="font-weight:400;color:var(--t2)">(optional)</span></label><select id="ntz"><option value="">— kein Meilenstein —</option></select></div>'
@@ -2442,7 +2443,7 @@ function aiDebounce(){
 }
 async function aiAnalyze(){
   const titel=document.getElementById('nt')?.value.trim();
-  if(!titel||titel.length<5){const b=document.getElementById('ai-suggestion');if(b)b.innerHTML='<div style="background:var(--gray-bg);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;font-size:11px;color:var(--t3);text-align:center">✨ KI-Analyse startet automatisch beim Tippen</div>';return;}
+  if(!titel||titel.length<3){const b=document.getElementById('ai-suggestion');if(b){b.style.display='none';}return;}
   const key=localStorage.getItem('anthropic_key');
   if(!key)return;
   const box=document.getElementById('ai-suggestion');
@@ -2588,10 +2589,6 @@ DAUER: [Zahl in Stunden, z.B. 0.5 oder 2]`;
     if(details.length)h+='<span style="font-size:10px;color:var(--t3);align-self:center">'+details.join(' · ')+'</span>';
     h+='</div></div>';
     box.innerHTML=h;
-    // Auto-Apply sofort ausführen (Prio + Dauer setzen, Schritte vorbereiten)
-    if(prioMatch)aiApplyPrio(prioMatch);
-    if(dauerMatch){const sel=document.getElementById('nh');if(sel)sel.value=String(dauerMatch);}
-    if(steps.length){aiApplySteps();}
   }catch(e){
     box.innerHTML='<div style="background:var(--red-bg);border:1px solid var(--red-bd);border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:11px;color:var(--red)">Fehler: '+e.message+'</div>';
   }
