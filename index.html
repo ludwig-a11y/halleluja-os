@@ -393,6 +393,19 @@ const person=id=>S.personen.find(p=>p.id===id);
 const me=()=>person(aP);
 function esc(s){return s==null?'':String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 function safeName(p){return p&&p.name?p.name:'?';}
+function copyTaskLink(id){
+  const url=location.origin+location.pathname+'#task='+id;
+  navigator.clipboard.writeText(url).then(()=>{
+    const btn=event?.target;if(btn){btn.textContent='✓ Kopiert';setTimeout(()=>{btn.textContent='🔗';},1500);}
+  }).catch(()=>{prompt('Link kopieren:',url);});
+}
+function handleDeepLink(){
+  const h=location.hash;
+  if(h.startsWith('#task=')){
+    const id=h.slice(6);
+    if(id&&aP){setTimeout(()=>openDetail(id),300);history.replaceState(null,'',location.pathname);}
+  }
+}
 function notify(evt,data){
   const url=localStorage.getItem('n8n_webhook');
   if(!url)return;
@@ -1183,7 +1196,7 @@ function tryLogin(){
     try{localStorage.setItem('h_session',JSON.stringify({pid:loginSel,ts:Date.now()}));}catch(e){}
     document.getElementById('login-screen').style.display='none';
     document.getElementById('app').style.display='flex';
-    updateBadge();render();startSonderPoller();startDataPoller();
+    updateBadge();render();startSonderPoller();startDataPoller();handleDeepLink();
   } else {
     document.getElementById('login-err').textContent='Falsche PIN.';pinIn='';updDots();
   }
@@ -1979,7 +1992,7 @@ function openDetail(id){
   const d=dli(a.dl),tzN=getTZName(a),zN=getZielName(a);
   const from=a.erstelltVon&&a.erstelltVon!==a.pid?person(a.erstelltVon):null;
   const zielOpts=S.ziele.map(z=>'<option value="'+z.id+'"'+(a.zielId===z.id?' selected':'')+'>'+z.name+'</option>').join('');
-  document.getElementById('mb').innerHTML='<div class="mt">'+esc(a.titel)+'</div>'
+  document.getElementById('mb').innerHTML='<div style="display:flex;align-items:flex-start;gap:8px"><div class="mt" style="flex:1">'+esc(a.titel)+'</div><button onclick="copyTaskLink(\''+id+'\')" style="flex-shrink:0;margin-top:2px;font-size:11px;padding:4px 9px;border-radius:6px;border:1px solid var(--bd);background:var(--gray-bg);color:var(--t2);cursor:pointer;font-family:inherit" title="Link kopieren">🔗</button></div>'
     +'<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:14px">'+typTag(a)+prioTag(a.prio,a.id,canChangePrio(a))+(zN?'<span class="tag" style="background:var(--gray-bg);color:var(--t2)">'+zN+'</span>':'')+(tzN?'<span class="tag" style="background:var(--purple-bg);color:var(--purple)">'+tzN+'</span>':'')+(d?'<span class="tag" style="background:'+d.bg+';color:'+d.c+'">'+d.l+'</span>':'')+(a.vertraulich?'<span class="lock">vertraulich</span>':'')+(from?'<span class="tag" style="background:var(--gray-bg);color:var(--t2)">von '+from.name+'</span>':'')+'</div>'
     +'<div class="fl"><label>Titel</label><div style="display:flex;gap:6px"><input id="det-titel" value="'+a.titel.replace(/"/g,'&quot;')+'" style="font-size:13px;font-weight:500;flex:1" onblur="saveDetailField(\''+id+'\',\'titel\',this.value)" onkeydown="if(event.key===\'Enter\'){event.preventDefault();saveDetailField(\''+id+'\',\'titel\',this.value);this.blur()}"><button onclick="saveDetailField(\''+id+'\',\'titel\',document.getElementById(\'det-titel\').value)" style="padding:4px 10px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);cursor:pointer;font-size:12px;font-family:inherit;flex-shrink:0">✓</button></div></div>'
     +'<div class="fl"><label>Notiz</label><textarea id="det-notiz" rows="2" placeholder="Notiz…" style="resize:none;font-size:12px" onblur="saveDetailField(\''+id+'\',\'notiz\',this.value)">'+( a.notiz||'')+'</textarea></div>'
@@ -3372,7 +3385,7 @@ window.addEventListener('keydown',e=>{
         const ls=document.getElementById('login-screen'),ap=document.getElementById('app');
         if(ls)ls.style.display='none';
         if(ap)ap.style.display='flex';
-        updateBadge();render();startSonderPoller();startDataPoller();
+        updateBadge();render();startSonderPoller();startDataPoller();handleDeepLink();
       } else localStorage.removeItem('h_session');
     }
   }catch(e){console.warn('Session restore:',e);}
