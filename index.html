@@ -869,9 +869,9 @@ function rSignalBlock(pid){
   out+='<div><div style="font-size:12px;font-weight:600;color:var(--text)">Reibung & Feedback</div>';
   out+='<div style="font-size:10px;color:var(--t3);margin-top:1px">Operatives Feedback — wird direkt zur Aufgabe</div></div>';
   out+='<div style="display:flex;gap:6px">'
-    +'<button onclick="openNeueIdee(\'wolke\')" style="font-size:12px;padding:6px 12px;border-radius:8px;border:1px solid var(--bd);background:var(--gray-bg);color:var(--t2);cursor:pointer;font-family:inherit">☁ Wolke</button>'
-    +'<button onclick="openNeueIdee(\'idee\')" style="font-size:12px;padding:6px 12px;border-radius:8px;border:1px solid var(--blue-bd);background:var(--blue-bg);color:var(--blue);cursor:pointer;font-family:inherit">💡 Idee</button>'
-    +'<button onclick="openSignal()" style="font-size:12px;padding:6px 12px;border-radius:8px;background:var(--inv);color:var(--inv-t);border:none;font-family:inherit;cursor:pointer;font-weight:500">+ Reibung</button>'
+    +'<button onclick="openNeueIdee(\'wolke\',\''+pid+'\')" style="font-size:12px;padding:6px 12px;border-radius:8px;border:1px solid var(--bd);background:var(--gray-bg);color:var(--t2);cursor:pointer;font-family:inherit">☁ Wolke</button>'
+    +'<button onclick="openNeueIdee(\'idee\',\''+pid+'\')" style="font-size:12px;padding:6px 12px;border-radius:8px;border:1px solid var(--blue-bd);background:var(--blue-bg);color:var(--blue);cursor:pointer;font-family:inherit">💡 Idee</button>'
+    +'<button onclick="openSignal(\''+pid+'\')" style="font-size:12px;padding:6px 12px;border-radius:8px;background:var(--inv);color:var(--inv-t);border:none;font-family:inherit;cursor:pointer;font-weight:500">+ Reibung</button>'
     +'</div>';
   out+='</div>';
   if(mine.length===0){
@@ -894,8 +894,8 @@ function rSignalBlock(pid){
   return out;
 }
 
-function openSignal(){
-  const personOpts=S.personen.map(p=>'<option value="'+p.id+'">'+esc(p.name)+'</option>').join('');
+function openSignal(preselPid){
+  const personOpts=S.personen.map(p=>'<option value="'+p.id+'"'+(p.id===preselPid?' selected':'')+'>'+esc(p.name)+'</option>').join('');
   document.getElementById('mb').innerHTML='<div class="mt">Reibung melden</div>'
     +'<div style="font-size:12px;color:var(--t2);margin-bottom:16px;line-height:1.6">Was hakt? → wird sofort als Aufgabe angelegt.</div>'
     +'<div class="fl"><label>Was ist passiert?</label><input id="sig-was" placeholder="z.B. Kunde beschwert sich über Lieferzeit" autofocus></div>'
@@ -1800,19 +1800,15 @@ function rTag(){
     while(_dbd[_sd.toISOString().slice(0,10)]){_stk++;_sd.setDate(_sd.getDate()-1);}
     out+='<div style="display:flex;align-items:center;gap:14px;margin-bottom:16px">';
     out+='<div style="width:48px;height:48px;border-radius:14px;background:var(--inv);color:var(--inv-t);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;flex-shrink:0">'+tag+'</div>';
-    out+='<div><div style="font-size:15px;font-weight:700;color:var(--text)">'+wt+'</div>';
+    out+='<div style="flex:1"><div style="font-size:15px;font-weight:700;color:var(--text)">'+wt+'</div>';
     out+='<div style="font-size:12px;color:var(--t2)">'+tag+'. '+mon+'</div></div>';
-    out+='<div style="width:1px;height:28px;background:var(--bd);margin:0 2px"></div>';
-    out+='<div><div id="tag-clock" style="font-size:22px;font-weight:700;color:var(--text);font-family:monospace;letter-spacing:1px;line-height:1"></div>';
-    out+='<div id="tag-remaining" style="font-size:11px;color:var(--t3);margin-top:2px"></div></div>';
-    out+='</div>';
-    // Streak-Badge
     if(_stk>=2){
-      out+='<div style="display:inline-flex;align-items:center;gap:6px;padding:5px 12px;background:var(--orange-bg);border:1px solid var(--orange-bd);border-radius:99px;margin-bottom:14px;font-size:12px">';
-      out+='<span style="font-size:14px">🔥</span>';
-      out+='<span style="font-weight:600;color:var(--orange)">'+_stk+' Tage in Folge produktiv</span>';
+      out+='<div style="display:inline-flex;align-items:center;gap:5px;padding:4px 10px;background:var(--orange-bg);border:1px solid var(--orange-bd);border-radius:99px;font-size:11px;flex-shrink:0">';
+      out+='<span style="font-size:12px">🔥</span>';
+      out+='<span style="font-weight:600;color:var(--orange)">'+_stk+'</span>';
       out+='</div>';
     }
+    out+='</div>';
   }
 
   // ── Big 3 Wochenkompass ──
@@ -3229,11 +3225,12 @@ function rIdeenPool(){
   out+='</div>';
   return out;
 }
-function openNeueIdee(typ){
+function openNeueIdee(typ,preselPid){
+  const preselName=preselPid?person(preselPid)?.name||'':'';
   const fuerOpts=[
     '<option value="">— für alle —</option>',
     ...S.teams.map(t=>'<option value="Team '+esc(t.name)+'">Team '+esc(t.name)+'</option>'),
-    ...S.personen.filter(p=>p.id!==aP).map(p=>'<option value="'+esc(p.name)+'">'+esc(p.name)+'</option>')
+    ...S.personen.filter(p=>p.id!==aP).map(p=>'<option value="'+esc(p.name)+'"'+(p.name===preselName?' selected':'')+'>'+esc(p.name)+'</option>')
   ].join('');
   const isIdee=typ==='idee';
   document.getElementById('mb').innerHTML=''
@@ -3596,21 +3593,6 @@ function startTimers(){
     const hh=('0'+now.getHours()).slice(-2),mm=('0'+now.getMinutes()).slice(-2);
     const clock=document.getElementById('live-clock');
     if(clock)clock.textContent=hh+':'+mm;
-    // Tag-Clock im Datum-Header
-    const tc=document.getElementById('tag-clock');
-    if(tc)tc.textContent=hh+':'+mm;
-    const tr=document.getElementById('tag-remaining');
-    if(tr&&aP){
-      const p=me();
-      const endH=p&&p.fokus_end?parseInt(p.fokus_end.split(':')[0]):17;
-      const endM=p&&p.fokus_end?parseInt(p.fokus_end.split(':')[1]||0):0;
-      const nowMin=now.getHours()*60+now.getMinutes();
-      const endMin=Math.max(endH,16)*60+endM;
-      const left=endMin-nowMin;
-      if(left>0&&left<600)tr.textContent='noch '+Math.floor(left/60)+'h '+(left%60)+'min';
-      else if(left<=0)tr.textContent='Feierabend 🌅';
-      else tr.textContent='';
-    }
     if(aP){
       const p=me();if(p){
         const fs=p.fokus_start||'09:00',fe=p.fokus_end||'11:00';
