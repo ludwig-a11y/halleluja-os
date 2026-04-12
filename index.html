@@ -1337,7 +1337,7 @@ function render(){
 
 function rSB(){
   const sorted=[...S.teams].sort((a,b)=>a.id==='gf'?-1:b.id==='gf'?1:0);
-  // Pre-compute per-person counts (avoid O(n²) in inner loop)
+  // Pre-compute per-person counts
   const counts={};
   S.aufgaben.forEach(a=>{
     if(!canSee(a))return;
@@ -1345,31 +1345,74 @@ function rSB(){
     if(a.status==='neu')counts[a.pid].neu++;
     else if(a.status==='aktiv')counts[a.pid].aktiv++;
   });
+  // Build sets: myTeam, goalPartners, others
+  const myTeamIds=new Set();
+  const myGoalPartnerIds=new Set();
+  const shownIds=new Set();
+  // My teams
   const visIds=isGF()?null:isLead()?visiblePersonIds(aP):null;
-  let h='';
   sorted.forEach(t=>{
-    const vis=t.members.filter(id=>{
-      const p=person(id);if(!p)return false;
-      if(isGF())return true;
-      if(visIds)return visIds.includes(id);
-      return id===aP;
-    });
-    if(!vis.length)return;
-    h+='<div class="gl">'+esc(t.name)+'</div>';
-    vis.forEach(id=>{
-      const p=person(id);if(!p)return;
-      const c=cl(p),isMe=id===aP;
-      const ct=counts[id]||{neu:0,aktiv:0};
-      const paddel=getPaddelCount(id);
-      h+='<button class="sbn'+(isMe?' on':'')+'" onclick="switchPerson(\''+id+'\')">'+av(p,22,8)
-        +'<span style="flex:1;font-size:11px;font-weight:'+(isMe?600:400)+';color:'+(isMe?c.tc:'var(--text)')+'">'+esc(p.name)+'</span>'
-        +'<div style="display:flex;gap:3px;align-items:center">'
-        +(paddel?'<span style="font-size:9px;color:var(--amber)">🏅'+paddel+'</span>':'')
-        +(ct.neu?'<span style="font-size:8px;background:var(--red-bg);color:var(--red);border-radius:99px;padding:1px 4px;font-weight:700">'+ct.neu+'</span>':'')
-        +(ct.aktiv?'<span style="font-size:8px;background:'+c.bg+';color:'+c.tc+';border-radius:99px;padding:1px 4px;font-weight:700">'+ct.aktiv+'</span>':'')
-        +'</div></button>';
+    t.members.forEach(id=>{
+      if(isGF()||id===aP||(visIds&&visIds.includes(id)))myTeamIds.add(id);
     });
   });
+  // Goal partners: people working on same goals as me
+  const myGoalIds=new Set(S.aufgaben.filter(a=>a.pid===aP&&a.zielId).map(a=>a.zielId));
+  S.ziele.forEach(z=>{if(z.verantwortlich_id===aP)myGoalIds.add(z.id);});
+  if(myGoalIds.size){
+    S.aufgaben.forEach(a=>{if(myGoalIds.has(a.zielId)&&a.pid!==aP&&!myTeamIds.has(a.pid))myGoalPartnerIds.add(a.pid);});
+    S.ziele.forEach(z=>{if(myGoalIds.has(z.id)&&z.verantwortlich_id&&z.verantwortlich_id!==aP&&!myTeamIds.has(z.verantwortlich_id))myGoalPartnerIds.add(z.verantwortlich_id);});
+  }
+
+  let h='';
+  // Helper to render a person row
+  const renderPerson=(id,dim)=>{
+    const p=person(id);if(!p)return'';
+    const c=cl(p),isMe=id===aP;
+    const ct=counts[id]||{neu:0,aktiv:0};
+    const paddel=getPaddelCount(id);
+    const opacity=dim?'opacity:.45;':'';
+    return '<button class="sbn'+(isMe?' on':'')+'" onclick="switchPerson(\''+id+'\')" style="'+opacity+'">'
+      +av(p,22,8)
+      +'<span style="flex:1;font-size:11px;font-weight:'+(isMe?600:400)+';color:'+(isMe?c.tc:'var(--text)')+'">'+esc(p.name)+'</span>'
+      +'<div style="display:flex;gap:3px;align-items:center">'
+      +(paddel?'<span style="font-size:9px;color:var(--amber)">🏅'+paddel+'</span>':'')
+      +(ct.neu?'<span style="font-size:8px;background:var(--red-bg);color:var(--red);border-radius:99px;padding:1px 4px;font-weight:700">'+ct.neu+'</span>':'')
+      +(ct.aktiv?'<span style="font-size:8px;background:'+c.bg+';color:'+c.tc+';border-radius:99px;padding:1px 4px;font-weight:700">'+ct.aktiv+'</span>':'')
+      +'</div></button>';
+  };
+
+  // 1) My teams (full visibility)
+  sorted.forEach(t=>{
+    const vis=t.members.filter(id=>myTeamIds.has(id)&&person(id));
+    if(!vis.length)return;
+    h+='<div class="gl">'+esc(t.name)+'</div>';
+    vis.forEach(id=>{shownIds.add(id);h+=renderPerson(id,false);});
+  });
+
+  // 2) Goal partners (shared goals, different team)
+  const goalPartners=[...myGoalPartnerIds].filter(id=>!shownIds.has(id)&&person(id));
+  if(goalPartners.length){
+    h+='<div class="gl" style="margin-top:14px">Gemeinsame Ziele</div>';
+    goalPartners.forEach(id=>{shownIds.add(id);h+=renderPerson(id,false);});
+  }
+
+  // 3) Other teams (dimmed) — only if not GF (GF already sees all)
+  if(!isGF()){
+    sorted.forEach(t=>{
+      const others=t.members.filter(id=>!shownIds.has(id)&&person(id));
+      if(!others.length)return;
+      h+='<div class="gl" style="margin-top:14px;opacity:.4">'+esc(t.name)+'</div>';
+      others.forEach(id=>{shownIds.add(id);h+=renderPerson(id,true);});
+    });
+    // Anyone not in any team
+    const noTeam=S.personen.filter(p=>!shownIds.has(p.id));
+    if(noTeam.length){
+      h+='<div class="gl" style="margin-top:14px;opacity:.4">Weitere</div>';
+      noTeam.forEach(p=>{h+=renderPerson(p.id,true);});
+    }
+  }
+
   const sb=document.getElementById('sb');
   if(sb)sb.innerHTML=h;
 }
