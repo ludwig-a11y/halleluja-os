@@ -1497,6 +1497,61 @@ function rWoche(){
     out+='</div>';
   }
 
+  // ── Strategie-Briefing (nur GF) ──
+  if(isGF()){
+    const bKey='briefing-'+aP+'-'+TODAY;
+    const cached=localStorage.getItem(bKey);
+    const hasKey=!!localStorage.getItem('anthropic_key');
+    if(cached){
+      try{
+        const b=JSON.parse(cached);
+        out+='<div style="background:linear-gradient(135deg,#1a1a1a,#2d2d2d);border-radius:14px;padding:14px 16px;margin-bottom:14px;color:#fff">';
+        // Header
+        out+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">';
+        out+='<span style="font-size:16px">🧠</span>';
+        out+='<span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;opacity:.5">Strategie-Briefing</span>';
+        out+='<span style="margin-left:auto;font-size:9px;opacity:.3">'+b.time+'</span>';
+        out+='<button onclick="localStorage.removeItem(\''+bKey+'\');aiDailyBriefing()" style="font-size:9px;padding:2px 8px;border-radius:5px;background:rgba(255,255,255,.1);color:rgba(255,255,255,.5);border:none;cursor:pointer;font-family:inherit">↻</button>';
+        out+='</div>';
+        // P1 — prominent
+        if(b.p1)out+='<div style="background:rgba(255,255,255,.08);border-radius:10px;padding:10px 12px;margin-bottom:8px"><div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;opacity:.4;margin-bottom:4px">Dein #1 heute</div><div style="font-size:13px;font-weight:700">'+b.p1+'</div>'+(b.p1why?'<div style="font-size:11px;opacity:.5;margin-top:2px">'+b.p1why+'</div>':'')+'</div>';
+        // Bottleneck — rot/orange
+        if(b.bottleneck)out+='<div style="background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.2);border-radius:8px;padding:8px 10px;margin-bottom:6px;font-size:11px;line-height:1.5"><span style="color:#f87171;font-weight:700">⛔ Engpass:</span> <span style="color:rgba(255,255,255,.7)">'+b.bottleneck+'</span></div>';
+        // Projektion — mit P(Ziel)
+        if(b.projektion){
+          const pMatch=b.projektion.match(/(\d+)%/);
+          const pVal=pMatch?parseInt(pMatch[1]):0;
+          const pColor=pVal>=30?'#4ade80':pVal>=15?'#fbbf24':'#f87171';
+          out+='<div style="background:rgba(255,255,255,.05);border-radius:8px;padding:8px 10px;margin-bottom:6px;display:flex;align-items:center;gap:10px">';
+          if(pVal>0)out+='<div style="width:36px;height:36px;border-radius:8px;background:'+pColor+';color:#000;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;flex-shrink:0">'+pVal+'%</div>';
+          out+='<div style="font-size:11px;color:rgba(255,255,255,.7);line-height:1.5">'+b.projektion+'</div>';
+          out+='</div>';
+        }
+        // Hebel — grün
+        if(b.hebel)out+='<div style="font-size:11px;color:#4ade80;margin-bottom:4px;line-height:1.5;padding:0 2px">🎯 '+b.hebel+'</div>';
+        // Contrarian — lila/besonders
+        if(b.contrarian)out+='<div style="font-size:11px;color:#c084fc;margin-bottom:4px;line-height:1.5;padding:0 2px">🔮 '+b.contrarian+'</div>';
+        // Velocity
+        if(b.velocity)out+='<div style="font-size:11px;opacity:.4;line-height:1.5;padding:0 2px">⚡ '+b.velocity+'</div>';
+        // Datenquellen-Badges
+        const quellen=[...new Set(S.kontext.map(k=>k.quelle))];
+        if(quellen.length){
+          const qIcons={gmail:'📧',hubspot:'🔗',meta:'📣',slack:'💬',gcal:'📅',meeting:'🎙️',crm:'🏢',gdrive:'📁'};
+          out+='<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,.08)">';
+          quellen.forEach(q=>out+='<span style="font-size:9px;padding:2px 7px;border-radius:4px;background:rgba(255,255,255,.08);color:rgba(255,255,255,.4)">'+(qIcons[q]||'📌')+' '+q+'</span>');
+          out+='</div>';
+        }
+        out+='</div>';
+      }catch(e){}
+    }else if(hasKey){
+      out+='<div onclick="aiDailyBriefing()" class="hover-dim" style="background:linear-gradient(135deg,#1a1a1a,#2d2d2d);border-radius:14px;padding:14px 16px;margin-bottom:14px;cursor:pointer;display:flex;align-items:center;gap:12px">';
+      out+='<span style="font-size:20px">🧠</span>';
+      out+='<div style="flex:1"><div style="font-size:13px;font-weight:700;color:#fff">Tages-Briefing abrufen</div>';
+      out+='<div style="font-size:11px;color:rgba(255,255,255,.4);margin-top:1px">Claude analysiert deinen Tag</div></div>';
+      out+='<span style="color:rgba(255,255,255,.3);font-size:16px">›</span></div>';
+    }
+  }// end isGF briefing
+
   // ── Tagesübersicht ──
   out+='<div style="background:#fff;border:1px solid var(--bd);border-radius:12px;overflow:hidden;margin-bottom:14px">';
   tage.forEach((datum,i)=>{
@@ -1593,16 +1648,16 @@ function rTag(){
   if(wrAktuell&&(wrAktuell.big3_1||wrAktuell.big3_2)){
     const fz=S.ziele.find(z=>z.id===wrAktuell.focus_ziel_id);
     const f=fz?FARBEN[fz.farbe||0]:FARBEN[0];
-    const b3items=[[wrAktuell.big3_1,wrAktuell.big3_1_done],[wrAktuell.big3_2,wrAktuell.big3_2_done],[wrAktuell.big3_3,wrAktuell.big3_3_done]].filter(([txt])=>!!txt);
-    const alleDone=b3items.length>0&&b3items.every(([,done])=>!!done);
-    out+='<details '+(alleDone?'':'open')+' style="margin-bottom:14px">';
-    out+='<summary style="list-style:none;cursor:pointer;background:#fff;border:1px solid '+f.bd+';border-left:3px solid '+f.tc+';border-radius:0 10px 10px 0;padding:9px 14px;display:flex;align-items:center;gap:8px">';
-    out+='<span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:'+f.tc+';flex:1">Big 3 · KW '+kwAkt+(fz?' · '+esc(fz.name):'')+'</span>';
     const doneCount=[wrAktuell.big3_1&&wrAktuell.big3_1_done,wrAktuell.big3_2&&wrAktuell.big3_2_done,wrAktuell.big3_3&&wrAktuell.big3_3_done].filter(Boolean).length;
     const totalCount=[wrAktuell.big3_1,wrAktuell.big3_2,wrAktuell.big3_3].filter(Boolean).length;
-    out+='<span style="font-size:10px;color:'+(doneCount===totalCount?'#15803d':'var(--t3)')+'">'+doneCount+'/'+totalCount+'</span>';
+    out+='<details style="margin-bottom:14px">';
+    out+='<summary style="list-style:none;cursor:pointer;display:flex;align-items:center;gap:8px;padding:7px 12px;background:var(--sf);border:1px solid var(--bd);border-left:3px solid '+f.tc+';border-radius:0 8px 8px 0;font-size:11px">';
+    out+='<span style="font-weight:700;color:'+f.tc+';letter-spacing:.3px;text-transform:uppercase;font-size:10px">Big 3</span>';
+    out+='<span style="color:var(--t3);font-size:10px">KW '+kwAkt+(fz?' · '+esc(fz.name):'')+'</span>';
+    out+='<span style="margin-left:auto;font-size:10px;color:'+(doneCount===totalCount?'var(--green)':'var(--t3)')+'">'+doneCount+'/'+totalCount+' ✓</span>';
+    out+='<span style="font-size:9px;color:var(--t3)">▸</span>';
     out+='</summary>';
-    out+='<div style="background:#fff;border:1px solid '+f.bd+';border-top:none;border-left:3px solid '+f.tc+';border-radius:0 0 10px 0;padding:8px 14px 10px">';
+    out+='<div style="padding:8px 12px 10px;border:1px solid var(--bd);border-top:none;border-left:3px solid '+f.tc+';border-radius:0 0 8px 0;background:#fff">';
     [[1,'big3_1_done'],[2,'big3_2_done'],[3,'big3_3_done']].forEach(([n,doneF])=>{
       const txt=wrItemName(wrAktuell,n);if(!txt)return;
       const done=wrAktuell[doneF];
@@ -1624,61 +1679,6 @@ function rTag(){
 
   const hasSonderKpi=S.ziele.flatMap(z=>z.kpis||[]).some(k=>String(k.pid)===String(aP)&&k.sonder);
   if(hasSonderKpi)out+=rKpiBlock(aP);
-
-  // ── Strategie-Briefing (nur GF) ──
-  if(isGF()){
-    const bKey='briefing-'+aP+'-'+TODAY;
-    const cached=localStorage.getItem(bKey);
-    const hasKey=!!localStorage.getItem('anthropic_key');
-    if(cached){
-      try{
-        const b=JSON.parse(cached);
-        out+='<div style="background:linear-gradient(135deg,#1a1a1a,#2d2d2d);border-radius:14px;padding:14px 16px;margin-bottom:14px;color:#fff">';
-        // Header
-        out+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">';
-        out+='<span style="font-size:16px">🧠</span>';
-        out+='<span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;opacity:.5">Strategie-Briefing</span>';
-        out+='<span style="margin-left:auto;font-size:9px;opacity:.3">'+b.time+'</span>';
-        out+='<button onclick="localStorage.removeItem(\''+bKey+'\');aiDailyBriefing()" style="font-size:9px;padding:2px 8px;border-radius:5px;background:rgba(255,255,255,.1);color:rgba(255,255,255,.5);border:none;cursor:pointer;font-family:inherit">↻</button>';
-        out+='</div>';
-        // P1 — prominent
-        if(b.p1)out+='<div style="background:rgba(255,255,255,.08);border-radius:10px;padding:10px 12px;margin-bottom:8px"><div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;opacity:.4;margin-bottom:4px">Dein #1 heute</div><div style="font-size:13px;font-weight:700">'+b.p1+'</div>'+(b.p1why?'<div style="font-size:11px;opacity:.5;margin-top:2px">'+b.p1why+'</div>':'')+'</div>';
-        // Bottleneck — rot/orange
-        if(b.bottleneck)out+='<div style="background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.2);border-radius:8px;padding:8px 10px;margin-bottom:6px;font-size:11px;line-height:1.5"><span style="color:#f87171;font-weight:700">⛔ Engpass:</span> <span style="color:rgba(255,255,255,.7)">'+b.bottleneck+'</span></div>';
-        // Projektion — mit P(Ziel)
-        if(b.projektion){
-          const pMatch=b.projektion.match(/(\d+)%/);
-          const pVal=pMatch?parseInt(pMatch[1]):0;
-          const pColor=pVal>=30?'#4ade80':pVal>=15?'#fbbf24':'#f87171';
-          out+='<div style="background:rgba(255,255,255,.05);border-radius:8px;padding:8px 10px;margin-bottom:6px;display:flex;align-items:center;gap:10px">';
-          if(pVal>0)out+='<div style="width:36px;height:36px;border-radius:8px;background:'+pColor+';color:#000;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;flex-shrink:0">'+pVal+'%</div>';
-          out+='<div style="font-size:11px;color:rgba(255,255,255,.7);line-height:1.5">'+b.projektion+'</div>';
-          out+='</div>';
-        }
-        // Hebel — grün
-        if(b.hebel)out+='<div style="font-size:11px;color:#4ade80;margin-bottom:4px;line-height:1.5;padding:0 2px">🎯 '+b.hebel+'</div>';
-        // Contrarian — lila/besonders
-        if(b.contrarian)out+='<div style="font-size:11px;color:#c084fc;margin-bottom:4px;line-height:1.5;padding:0 2px">🔮 '+b.contrarian+'</div>';
-        // Velocity
-        if(b.velocity)out+='<div style="font-size:11px;opacity:.4;line-height:1.5;padding:0 2px">⚡ '+b.velocity+'</div>';
-        // Datenquellen-Badges
-        const quellen=[...new Set(S.kontext.map(k=>k.quelle))];
-        if(quellen.length){
-          const qIcons={gmail:'📧',hubspot:'🔗',meta:'📣',slack:'💬',gcal:'📅',meeting:'🎙️',crm:'🏢',gdrive:'📁'};
-          out+='<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,.08)">';
-          quellen.forEach(q=>out+='<span style="font-size:9px;padding:2px 7px;border-radius:4px;background:rgba(255,255,255,.08);color:rgba(255,255,255,.4)">'+(qIcons[q]||'📌')+' '+q+'</span>');
-          out+='</div>';
-        }
-        out+='</div>';
-      }catch(e){}
-    }else if(hasKey){
-      out+='<div onclick="aiDailyBriefing()" class="hover-dim" style="background:linear-gradient(135deg,#1a1a1a,#2d2d2d);border-radius:14px;padding:14px 16px;margin-bottom:14px;cursor:pointer;display:flex;align-items:center;gap:12px">';
-      out+='<span style="font-size:20px">🧠</span>';
-      out+='<div style="flex:1"><div style="font-size:13px;font-weight:700;color:#fff">Tages-Briefing abrufen</div>';
-      out+='<div style="font-size:11px;color:rgba(255,255,255,.4);margin-top:1px">Claude analysiert deinen Tag</div></div>';
-      out+='<span style="color:rgba(255,255,255,.3);font-size:16px">›</span></div>';
-    }
-  }// end isGF briefing
 
   // ── Tages-Zeitstrahl (einzeilig, drag-to-reorder) ──
   {
@@ -1811,38 +1811,36 @@ function rTag(){
     }
   } else if(naechste){
     const zN=getZielName(naechste),tzN=getTZName(naechste);
-    const editable=canChangePrio(naechste);
     const from=naechste.erstelltVon&&naechste.erstelltVon!==aP?person(naechste.erstelltVon):null;
-    out+='<div style="background:var(--sf);border:1.5px solid var(--bd);border-radius:18px;padding:24px;margin-bottom:16px;">';
-    out+='<div style="font-size:11px;color:var(--t2);font-style:italic;margin-bottom:10px;line-height:1.5">Was ist die eine Sache, die — wenn erledigt — alles andere einfacher oder überflüssig macht?</div>';
-    out+='<div style="font-size:22px;font-weight:700;color:var(--text);margin-bottom:10px;line-height:1.3;cursor:pointer" onclick="openDetail(\''+naechste.id+'\')">'+naechste.titel+'</div>';
+    out+='<div style="background:linear-gradient(135deg,#1a1a1a 0%,#2d1f1a 100%);border-radius:18px;padding:24px;margin-bottom:16px;color:#fff">';
+    out+='<div style="font-size:10px;font-weight:700;opacity:.4;letter-spacing:.8px;text-transform:uppercase;margin-bottom:8px">Nächster Schritt</div>';
+    out+='<div style="font-size:22px;font-weight:700;margin-bottom:6px;line-height:1.3;cursor:pointer" onclick="openDetail(\''+naechste.id+'\')">'+esc(naechste.titel)+'</div>';
     out+='<div style="display:flex;gap:8px;align-items:center;margin-bottom:16px;flex-wrap:wrap">';
-    if(naechste.prio)out+=prioTag(naechste.prio,naechste.id,editable);
-    if(zN)out+='<span style="font-size:12px;color:var(--t2)">'+zN+'</span>';
-    else out+='<span onclick="event.stopPropagation();quickAssignZiel(\''+naechste.id+'\')" style="font-size:10px;color:var(--t3);border:1px dashed var(--bd);padding:2px 7px;border-radius:6px;cursor:pointer;white-space:nowrap">+ Ziel?</span>';
-    if(tzN)out+='<span style="font-size:12px;color:var(--purple)">'+tzN+'</span>';
-    if(naechste.dl){const d=dli(naechste.dl);if(d)out+='<span style="font-size:11px;color:'+d.c+'">'+d.l+'</span>';}
-    if(naechste.geplant)out+='<span style="font-size:11px;color:var(--t3)">'+fmtH(naechste.geplant)+'</span>';
-    if(from)out+='<span style="font-size:10px;color:var(--t3)">von '+esc(from.name)+'</span>';
+    if(naechste.prio)out+='<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:6px;background:rgba(255,255,255,.12);color:'+(naechste.prio==='P1'?'#fca5a5':naechste.prio==='P2'?'#fed7aa':'rgba(255,255,255,.5)')+'">'+naechste.prio+'</span>';
+    if(zN)out+='<span style="font-size:11px;opacity:.5">'+zN+'</span>';
+    if(tzN)out+='<span style="font-size:11px;color:#c4b5fd">'+tzN+'</span>';
+    if(naechste.dl){const d=dli(naechste.dl);if(d)out+='<span style="font-size:11px;opacity:.5">'+d.l+'</span>';}
+    if(naechste.geplant)out+='<span style="font-size:11px;opacity:.4">'+fmtH(naechste.geplant)+'</span>';
+    if(from)out+='<span style="font-size:10px;opacity:.35">von '+esc(from.name)+'</span>';
     out+='</div>';
-    if(naechste.notiz)out+='<div style="font-size:12px;color:var(--t2);font-style:italic;margin-bottom:12px">'+esc(naechste.notiz)+'</div>';
+    if(naechste.notiz)out+='<div style="font-size:12px;opacity:.5;font-style:italic;margin-bottom:14px">'+esc(naechste.notiz)+'</div>';
     if(naechste.ua&&naechste.ua.length){
-      out+='<div style="margin-bottom:14px;padding:10px 12px;background:var(--gray-bg);border-radius:10px">';
+      out+='<div style="margin-bottom:16px;padding:10px 12px;background:rgba(255,255,255,.06);border-radius:10px">';
       naechste.ua.forEach((u,i)=>{
-        out+='<div class="sr" onclick="toggleStep(\''+naechste.id+'\','+i+')" style="padding:5px 0">'
-          +'<div class="sc'+(u.d?' dn':'')+'">'+( u.d?'<span style="color:#fff;font-size:8px">✓</span>':'')+  '</div>'
-          +'<span class="sl'+(u.d?' dn':'')+'" style="font-size:12px">'+u.t+'</span>'
+        out+='<div class="sr" onclick="toggleStep(\''+naechste.id+'\','+i+')" style="padding:4px 0">'
+          +'<div style="width:14px;height:14px;border-radius:3px;flex-shrink:0;display:flex;align-items:center;justify-content:center;'+(u.d?'background:#fff;border:1.5px solid #fff':'border:1.5px solid rgba(255,255,255,.25)')+'">'+(u.d?'<span style="color:#1a1a1a;font-size:8px;font-weight:800">✓</span>':'')+'</div>'
+          +'<span style="font-size:12px;'+(u.d?'opacity:.35;text-decoration:line-through':'opacity:.8')+'">'+u.t+'</span>'
           +'</div>';
       });
       out+='</div>';
     }
     out+='<div style="display:flex;gap:6px;margin-bottom:16px">'
-      +'<input class="asi" id="si-'+naechste.id+'" placeholder="+ Schritt hinzufügen…" onkeydown="if(event.key===\'Enter\')addStep(\''+naechste.id+'\')" style="font-size:12px;padding:6px 10px">'
-      +'<button onclick="addStep(\''+naechste.id+'\')" style="font-size:11px;padding:5px 10px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);cursor:pointer">+</button>'
+      +'<input class="asi" id="si-'+naechste.id+'" placeholder="+ Schritt hinzufügen…" onkeydown="if(event.key===\'Enter\')addStep(\''+naechste.id+'\')" style="font-size:12px;padding:6px 10px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);color:#fff;border-radius:8px">'
+      +'<button onclick="addStep(\''+naechste.id+'\')" style="font-size:11px;padding:5px 10px;border-radius:6px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.08);color:rgba(255,255,255,.5);cursor:pointer">+</button>'
       +'</div>';
     out+='<div style="display:flex;gap:10px">';
-    out+='<button onclick="startenA(\''+naechste.id+'\')" style="flex:1;padding:14px;border-radius:12px;background:var(--text);color:#fff;border:none;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer;transition:background .15s,transform .1s" onmouseenter="this.style.background=\'#333\'" onmouseleave="this.style.background=\'var(--text)\'" onmousedown="this.style.transform=\'scale(.98)\'" onmouseup="this.style.transform=\'scale(1)\'">▶ Starten</button>';
-    out+='<button onclick="openDetail(\''+naechste.id+'\')" style="padding:14px 18px;border-radius:12px;background:var(--gray-bg);color:var(--t2);border:1px solid var(--bd);font-family:inherit;font-size:13px;font-weight:500;cursor:pointer;transition:background .15s,border-color .15s" onmouseenter="this.style.background=\'#f0efee\';this.style.borderColor=\'#ccc\'" onmouseleave="this.style.background=\'var(--gray-bg)\';this.style.borderColor=\'var(--bd)\'">···</button>';
+    out+='<button onclick="startenA(\''+naechste.id+'\')" style="flex:1;padding:14px;border-radius:12px;background:#fff;color:#1a1a1a;border:none;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer;box-shadow:0 0 24px rgba(255,255,255,.12);transition:all .15s" onmouseenter="this.style.boxShadow=\'0 0 32px rgba(255,255,255,.25)\'" onmouseleave="this.style.boxShadow=\'0 0 24px rgba(255,255,255,.12)\'" onmousedown="this.style.transform=\'scale(.98)\'" onmouseup="this.style.transform=\'scale(1)\'">▶ Starten</button>';
+    out+='<button onclick="openDetail(\''+naechste.id+'\')" style="padding:14px 18px;border-radius:12px;background:rgba(255,255,255,.1);color:rgba(255,255,255,.5);border:none;font-family:inherit;font-size:13px;font-weight:500;cursor:pointer;transition:background .15s" onmouseenter="this.style.background=\'rgba(255,255,255,.2)\'" onmouseleave="this.style.background=\'rgba(255,255,255,.1)\'">···</button>';
     out+='</div></div>';
   } else if(alleGeschafft||!myA.length){
     out+='<div style="background:var(--green);border-radius:18px;padding:32px 24px;margin-bottom:16px;color:#fff;text-align:center">';
