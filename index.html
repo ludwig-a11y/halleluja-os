@@ -393,6 +393,14 @@ const person=id=>S.personen.find(p=>p.id===id);
 const me=()=>person(aP);
 function esc(s){return s==null?'':String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 function safeName(p){return p&&p.name?p.name:'?';}
+function notify(evt,data){
+  const url=localStorage.getItem('n8n_webhook');
+  if(!url)return;
+  const p=person(aP);
+  fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({event:evt,actor:p?{id:p.id,name:p.name,rolle:p.rolle}:null,...data,ts:new Date().toISOString()})
+  }).catch(()=>{});
+}
 const cl=p=>p?CL[p.ci%CL.length]:CL[0];
 const isGF=()=>{const m=me();return m&&m.stufe==='gf';};
 const isLead=()=>{const m=me();return m&&(m.stufe==='lead'||m.stufe==='gf');};
@@ -1023,6 +1031,7 @@ async function saveBlocker(wrId){
   const wr=S.wochenresets.find(r=>r.id===wrId);if(!wr)return;
   wr.blockiert=text;
   await dbPatch('wochenresets',wrId,{blockiert:text});
+  if(text)notify('blocker',{blocker:text});
   cm();render();
 }
 function rSignaleTeam(){
@@ -1364,6 +1373,7 @@ async function toggleBig3(wrId,field){
   const wr=S.wochenresets.find(r=>r.id===wrId);if(!wr)return;
   wr[field]=!wr[field];
   await dbPatch('wochenresets',wrId,{[field]:wr[field]});
+  if(wr[field]){const n=field.replace('_done','');const txt=wrItemName(wr,parseInt(n.slice(-1)));if(txt)notify('big3_erledigt',{big3:txt,kw:getKW().kw});}
   if(aV==='woche')rWoche();else rTag();
 }
 
@@ -2222,7 +2232,9 @@ async function toggleTZ(zid,tzid){
   const z=zielObj(zid);if(!z)return;
   const tz=(z.teilziele||[]).find(t=>t.id===tzid);if(!tz)return;
   tz.erledigt=!tz.erledigt;
-  await dbPatch('teilziele',tzid,{erledigt:tz.erledigt});rZiele();
+  await dbPatch('teilziele',tzid,{erledigt:tz.erledigt});
+  if(tz.erledigt)notify('meilenstein_erledigt',{meilenstein:tz.name,ziel:z.name});
+  rZiele();
 }
 function openAddTZ(zid){
   document.getElementById('mb').innerHTML='<div class="mt">Meilenstein hinzufügen</div>'
@@ -2814,7 +2826,9 @@ async function saveNeu(){
     recurring:document.getElementById('nrec')?.value||null,
     erstellt_von:aP};
   S.aufgaben.push(normalizeAufgabe(rec));
-  await dbInsert('aufgaben',rec);cm();render();
+  await dbInsert('aufgaben',rec);
+  if(pid!==aP){const tp=person(pid);notify('aufgabe_zugewiesen',{aufgabe:t,fuer:{id:pid,name:tp?tp.name:'?'},prio:rec.prio,dl:rec.dl});}
+  cm();render();
 }
 
 function quickAssignZiel(id){
@@ -3106,6 +3120,10 @@ function openSettings(){
     h+='<div class="settings-row"><div style="flex:1"><div style="font-size:12px;font-weight:500">'+t.name+'</div><div style="font-size:10px;color:var(--t3)">'+(members||'Keine Mitglieder')+'</div></div><button onclick="editTeam(\''+t.id+'\')" class="btn btn-gr" style="font-size:10px;padding:3px 9px">bearbeiten</button></div>';
   });
   h+='<button onclick="addTeam()" class="btn btn-gr" style="margin-top:8px;width:100%">+ Team hinzufügen</button>';
+  h+='<div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin:20px 0 10px">Slack-Benachrichtigungen</div>';
+  h+='<div class="fl"><label>n8n Webhook URL <span style="font-weight:400;color:var(--t2)">(für Slack-Notifications)</span></label><input type="url" id="set-webhook" value="'+(localStorage.getItem('n8n_webhook')||'')+'" placeholder="https://dein-n8n.app/webhook/halleluja-notify" style="font-family:monospace;font-size:11px"></div>';
+  h+='<button onclick="localStorage.setItem(\'n8n_webhook\',document.getElementById(\'set-webhook\').value.trim());this.textContent=\'✓ Gespeichert\';this.style.color=\'var(--green)\'" class="btn btn-gr" style="margin-bottom:4px">Webhook speichern</button>';
+  h+='<div style="font-size:10px;color:var(--t3);margin-bottom:8px">Events: Aufgabe zugewiesen, Meilenstein erledigt, Big 3 erledigt, Blocker gemeldet</div>';
   h+='<div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin:20px 0 10px">KI-Assistent</div>';
   h+='<div class="fl"><label>Anthropic API Key</label><input type="password" id="set-aikey" value="'+(localStorage.getItem('anthropic_key')||'')+'" placeholder="sk-ant-..." style="font-family:monospace;font-size:11px"></div>';
   h+='<button onclick="localStorage.setItem(\'anthropic_key\',document.getElementById(\'set-aikey\').value.trim());this.textContent=\'✓ Gespeichert\';this.style.color=\'var(--green)\'" class="btn btn-gr" style="margin-bottom:12px">API Key speichern</button>';

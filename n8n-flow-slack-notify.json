@@ -1,0 +1,64 @@
+{
+  "name": "Halleluja OS → Slack Notifications",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "halleluja-notify",
+        "responseMode": "onReceived",
+        "responseData": "allEntries",
+        "options": {}
+      },
+      "id": "webhook",
+      "name": "Webhook empfangen",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "halleluja-notify",
+      "notes": "POST von der App bei: aufgabe_zugewiesen, meilenstein_erledigt, big3_erledigt, blocker"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $json.body || $json;\nconst evt = body.event;\nconst actor = body.actor || {};\nconst actorName = actor.name || 'Jemand';\n\nlet emoji = '📋';\nlet text = '';\nlet channel = '{{ $env.SLACK_NOTIFY_CHANNEL || \"C0A7LTX603Z\" }}';\nlet priority = 'normal';\n\nswitch(evt) {\n  case 'aufgabe_zugewiesen':\n    emoji = '📋';\n    text = `*${actorName}* hat eine Aufgabe zugewiesen an *${body.fuer?.name || '?'}*:\\n> ${body.aufgabe || '?'}${body.prio ? ' (' + body.prio + ')' : ''}${body.dl ? ' — fällig: ' + body.dl : ''}`;\n    break;\n\n  case 'meilenstein_erledigt':\n    emoji = '🎯';\n    text = `*${actorName}* hat einen Meilenstein erreicht! 🎉\\n> ✅ *${body.meilenstein || '?'}*${body.ziel ? '\\n> Ziel: ' + body.ziel : ''}`;\n    priority = 'high';\n    break;\n\n  case 'big3_erledigt':\n    emoji = '✅';\n    text = `*${actorName}* hat ein Big-3-Ziel erledigt (KW ${body.kw || '?'}):\\n> ✅ ${body.big3 || '?'}`;\n    break;\n\n  case 'blocker':\n    emoji = '⚠️';\n    text = `*${actorName}* meldet einen Blocker:\\n> ⚠️ ${body.blocker || '?'}`;\n    priority = 'high';\n    break;\n\n  default:\n    text = `${actorName}: Unbekanntes Event (${evt})`;\n}\n\nreturn [{\n  json: {\n    channel,\n    text: `${emoji} ${text}`,\n    event: evt,\n    priority\n  }\n}];"
+      },
+      "id": "format",
+      "name": "Nachricht formatieren",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [250, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://slack.com/api/chat.postMessage",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "slackOAuth2Api",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ channel: $json.channel, text: $json.text, unfurl_links: false }) }}",
+        "options": {}
+      },
+      "id": "slack-send",
+      "name": "An Slack senden",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [500, 0],
+      "notes": "Nutzt Slack OAuth2 Credential. Channel-ID anpassen in ENV: SLACK_NOTIFY_CHANNEL"
+    }
+  ],
+  "connections": {
+    "Webhook empfangen": {
+      "main": [[ { "node": "Nachricht formatieren", "type": "main", "index": 0 } ]]
+    },
+    "Nachricht formatieren": {
+      "main": [[ { "node": "An Slack senden", "type": "main", "index": 0 } ]]
+    }
+  },
+  "settings": { "executionOrder": "v1" }
+}
