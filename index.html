@@ -2981,7 +2981,7 @@ SCHRITTE: ["schritt1","schritt2","schritt3"]
 PRIO: [P1/P2/P3]
 DAUER: [Zahl in Stunden, z.B. 0.5 oder 2]`;
   try{
-    const res=useProxy
+    let res=useProxy
       ?await fetch('https://halleluja-app.germanywestcentral.cloudapp.azure.com/n8n/webhook/ki-proxy',{
         method:'POST',headers:{'Content-Type':'application/json'},
         body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:400,system:'',messages:[{role:'user',content:prompt}]})
@@ -2991,6 +2991,13 @@ DAUER: [Zahl in Stunden, z.B. 0.5 oder 2]`;
         headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
         body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:400,messages:[{role:'user',content:prompt}]})
       });
+    // Fallback: bei 401/403 vom direkten API automatisch Proxy versuchen
+    if(!useProxy&&(res.status===401||res.status===403)){
+      res=await fetch('https://halleluja-app.germanywestcentral.cloudapp.azure.com/n8n/webhook/ki-proxy',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:400,system:'',messages:[{role:'user',content:prompt}]})
+      });
+    }
     if(!res.ok){box.innerHTML='<div style="background:var(--red-bg);border:1px solid var(--red-bd);border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:11px;color:var(--red)">API Fehler: '+res.status+'</div>';return;}
     const data=await res.json();
     const text=data.content?.[0]?.text||'';
@@ -3157,7 +3164,7 @@ CONTRARIAN: [Was übersehen alle? Oder: welche aktuelle Aktivität ist Zeitversc
 VELOCITY: [X Aufgaben/Woche, Yh produktiv — Trend + Bewertung]`;
 
   try{
-    const res=useProxyB
+    let res=useProxyB
       ?await fetch('https://halleluja-app.germanywestcentral.cloudapp.azure.com/n8n/webhook/ki-proxy',{
         method:'POST',headers:{'Content-Type':'application/json'},
         body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:700,system:'',messages:[{role:'user',content:prompt}]})
@@ -3167,6 +3174,13 @@ VELOCITY: [X Aufgaben/Woche, Yh produktiv — Trend + Bewertung]`;
         headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
         body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:700,messages:[{role:'user',content:prompt}]})
       });
+    // Fallback: bei 401/403 vom direkten API automatisch Proxy versuchen
+    if(!useProxyB&&(res.status===401||res.status===403)){
+      res=await fetch('https://halleluja-app.germanywestcentral.cloudapp.azure.com/n8n/webhook/ki-proxy',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:700,system:'',messages:[{role:'user',content:prompt}]})
+      });
+    }
     const el=document.getElementById('briefing-loading');if(el)el.remove();
     if(!res.ok){alert('API Fehler: '+res.status);return;}
     const data=await res.json();
