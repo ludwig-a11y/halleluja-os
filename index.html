@@ -1854,12 +1854,11 @@ function rWoche(){
 function aufgabeKarte(a){
   const zN=getZielName(a),editable=canChangePrio(a);
   let r='<div class="hoverable" style="background:var(--sf);border:1px solid var(--bd);border-radius:10px;padding:10px 14px;margin-bottom:6px;cursor:pointer" onclick="openDetail(\''+a.id+'\')">';
-  r+='<div style="display:flex;align-items:center;gap:10px">';
-  r+='<div style="flex:1"><div style="font-size:12px;font-weight:500">'+esc(a.titel)+'</div>';
-  r+='<div style="display:flex;gap:5px;margin-top:3px;align-items:center;flex-wrap:wrap" onclick="event.stopPropagation()">'+prioTag(a.prio,a.id,editable);
+  r+='<div style="font-size:13px;font-weight:500;margin-bottom:4px">'+esc(a.titel)+'</div>';
+  r+='<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap" onclick="event.stopPropagation()">'+prioTag(a.prio,a.id,editable);
   r+=zN?'<span style="font-size:10px;color:var(--t3)">'+esc(zN)+'</span>':'<span onclick="event.stopPropagation();quickAssignZiel(\''+a.id+'\')" style="font-size:10px;color:var(--t3);border:1px dashed var(--bd);padding:1px 6px;border-radius:5px;cursor:pointer">+ Ziel?</span>';
-  r+=dlTag(a.dl)+'</div></div>';
-  r+='<button onclick="event.stopPropagation();startenA(\''+a.id+'\')" style="font-size:12px;padding:8px 14px;border-radius:10px;background:var(--inv);color:var(--inv-t);border:none;font-family:inherit;cursor:pointer;flex-shrink:0;font-weight:600">▶ Start</button>';
+  r+=dlTag(a.dl);
+  r+='<button onclick="event.stopPropagation();startenA(\''+a.id+'\')" style="font-size:11px;padding:4px 12px;border-radius:8px;background:var(--inv);color:var(--inv-t);border:none;font-family:inherit;cursor:pointer;font-weight:600;margin-left:auto">▶ Start</button>';
   r+='</div></div>';
   return r;
 }
