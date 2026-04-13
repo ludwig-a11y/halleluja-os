@@ -782,6 +782,32 @@ async function aufgabeZurueck(id){
   await dbPatch('aufgaben',id,{pid:a.erstelltVon,status:'neu',prio:null});
   render();
 }
+function toggleWeiterleiten(id){
+  const el=document.getElementById('wl-'+id);
+  if(el)el.style.display=el.style.display==='none'?'flex':'none';
+}
+async function weiterleitenAufgabe(id,newPid){
+  const a=S.aufgaben.find(x=>x.id===id);if(!a||a.pid===newPid)return;
+  const neuePerson=person(newPid);
+  const absender=person(a.erstelltVon);
+  // Aufgabe weiterleiten
+  a.pid=newPid;a.status='zugewiesen';a.erstelltVon=a.erstelltVon||aP;
+  await dbPatch('aufgaben',id,{pid:newPid,status:'zugewiesen',erstellt_von:a.erstelltVon});
+  // Neue Person benachrichtigen
+  notify('aufgabe_zugewiesen',{
+    aufgabe:a.titel,prio:a.prio,dl:a.dl,
+    fuer:neuePerson?{id:neuePerson.id,name:neuePerson.name,slack_id:neuePerson.slack_id}:null
+  });
+  // Absender benachrichtigen dass weitergeleitet wurde
+  if(absender&&absender.id!==aP){
+    notify('aufgabe_weitergeleitet',{
+      aufgabe:a.titel,
+      weitergeleitet_an:neuePerson?neuePerson.name:'?',
+      fuer:absender.slack_id?{id:absender.id,name:absender.name,slack_id:absender.slack_id}:null
+    });
+  }
+  render();
+}
 async function klassifiziereAlsRandom(id){
   const a=S.aufgaben.find(x=>x.id===id);if(!a)return;
   a.typ='random';a.prio=null;a.status='backlog';
@@ -2219,7 +2245,12 @@ function rTag(){
         +'<button onclick="klassifiziereAlsIdee(\''+a.id+'\')" style="font-size:11px;padding:4px 11px;border-radius:8px;border:1px solid var(--blue-bd);background:var(--blue-bg);color:var(--blue);cursor:pointer;font-family:inherit">→ Ideen-Pool</button>'
         +(S.ziele.length?'<button onclick="aufgabeZuMeilenstein(\''+a.id+'\')" style="font-size:11px;padding:4px 11px;border-radius:8px;border:1px solid var(--green-bd);background:var(--green-bg);color:var(--green);cursor:pointer;font-family:inherit">→ Meilenstein</button>':'')
         +(a.erstelltVon&&a.erstelltVon!==aP?'<button onclick="aufgabeZurueck(\''+a.id+'\')" style="font-size:11px;padding:4px 11px;border-radius:8px;border:1px solid var(--red-bd);background:var(--red-bg);color:var(--red);cursor:pointer;font-family:inherit">↩ Zurück</button>':'')
+        +'<button onclick="toggleWeiterleiten(\''+a.id+'\')" style="font-size:11px;padding:4px 11px;border-radius:8px;border:1px solid var(--purple-bd);background:var(--purple-bg);color:var(--purple);cursor:pointer;font-family:inherit">→ Weiterleiten</button>'
         +'<button onclick="delAufgabe(\''+a.id+'\')" style="font-size:11px;padding:4px 8px;border-radius:8px;border:1px solid var(--bd);background:var(--sf);color:var(--t3);cursor:pointer;font-family:inherit">✕</button>'
+        +'</div>'
+        +'<div id="wl-'+a.id+'" style="display:none;gap:5px;flex-wrap:wrap;margin-top:6px;padding:8px 10px;background:var(--purple-bg);border:1px solid var(--purple-bd);border-radius:8px">'
+        +'<span style="font-size:10px;color:var(--purple);font-weight:600;width:100%;margin-bottom:2px">An wen weiterleiten?</span>'
+        +S.personen.filter(p=>p.id!==aP).map(p=>'<div onclick="weiterleitenAufgabe(\''+a.id+'\',\''+p.id+'\')" style="cursor:pointer;font-size:11px;font-weight:600;padding:4px 11px;border-radius:99px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);white-space:nowrap;transition:all .15s" onmousedown="this.style.background=\'var(--purple)\';this.style.color=\'#fff\'" onmouseup="this.style.background=\'var(--sf)\';this.style.color=\'var(--t2)\'">'+esc(p.name.split(' ')[0])+'</div>').join('')
         +'</div></div>';
     });
     out+='</div>';
