@@ -1738,7 +1738,7 @@ function rWoche(){
   if(isGF()){
     const bKey='briefing-'+aP+'-'+TODAY;
     const cached=localStorage.getItem(bKey);
-    const hasKey=!!localStorage.getItem('anthropic_key');
+    const hasKey=true;
     if(cached){
       try{
         const b=JSON.parse(cached);
@@ -2847,7 +2847,7 @@ function openNeu(pf={}){
   window._aiDebounce=null;
   const defaultPid=pf.pid||aP;
   const zieleOpts=zieleOptgroups(defaultPid,pf.zielId||'');
-  const hasAI=!!localStorage.getItem('anthropic_key');
+  const hasAI=true;
   document.getElementById('mb').innerHTML='<div class="mt">Neue Aufgabe</div>'
     +'<div class="fl"><label>Was soll gemacht werden?</label><div style="display:flex;gap:6px"><input id="nt" value="'+(pf.titel||'')+'" placeholder="Aufgabe, Todo, Meeting-Ergebnis…" autofocus style="flex:1" oninput="aiDebounce()">'
     +(hasAI?'<button onclick="aiAnalyze()" style="font-size:11px;padding:5px 10px;border-radius:7px;border:1px solid var(--bd);background:var(--gray-bg);color:var(--t2);cursor:pointer;font-family:inherit;flex-shrink:0;white-space:nowrap" title="KI-Hebel-Analyse starten">✨ KI</button>':'')
@@ -2897,7 +2897,7 @@ async function aiAnalyze(){
   const titel=document.getElementById('nt')?.value.trim();
   if(!titel||titel.length<3){const b=document.getElementById('ai-suggestion');if(b){b.style.display='none';}return;}
   const key=localStorage.getItem('anthropic_key');
-  if(!key)return;
+  const useProxy=!key;
   const box=document.getElementById('ai-suggestion');
   if(!box)return;
   box.style.display='block';
@@ -2982,11 +2982,16 @@ SCHRITTE: ["schritt1","schritt2","schritt3"]
 PRIO: [P1/P2/P3]
 DAUER: [Zahl in Stunden, z.B. 0.5 oder 2]`;
   try{
-    const res=await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:400,messages:[{role:'user',content:prompt}]})
-    });
+    const res=useProxy
+      ?await fetch('https://halleluja-app.germanywestcentral.cloudapp.azure.com/n8n/webhook/ki-proxy',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:400,system:'',messages:[{role:'user',content:prompt}]})
+      })
+      :await fetch('https://api.anthropic.com/v1/messages',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+        body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:400,messages:[{role:'user',content:prompt}]})
+      });
     if(!res.ok){box.innerHTML='<div style="background:var(--red-bg);border:1px solid var(--red-bd);border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:11px;color:var(--red)">API Fehler: '+res.status+'</div>';return;}
     const data=await res.json();
     const text=data.content?.[0]?.text||'';
@@ -3047,7 +3052,7 @@ DAUER: [Zahl in Stunden, z.B. 0.5 oder 2]`;
 }
 async function aiDailyBriefing(){
   const key=localStorage.getItem('anthropic_key');
-  if(!key){alert('Bitte zuerst API Key in Einstellungen hinterlegen.');return;}
+  const useProxyB=!key;
   const bKey='briefing-'+aP+'-'+TODAY;
   // show loading state
   const main=document.getElementById('main');
@@ -3153,11 +3158,16 @@ CONTRARIAN: [Was übersehen alle? Oder: welche aktuelle Aktivität ist Zeitversc
 VELOCITY: [X Aufgaben/Woche, Yh produktiv — Trend + Bewertung]`;
 
   try{
-    const res=await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:700,messages:[{role:'user',content:prompt}]})
-    });
+    const res=useProxyB
+      ?await fetch('https://halleluja-app.germanywestcentral.cloudapp.azure.com/n8n/webhook/ki-proxy',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:700,system:'',messages:[{role:'user',content:prompt}]})
+      })
+      :await fetch('https://api.anthropic.com/v1/messages',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+        body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:700,messages:[{role:'user',content:prompt}]})
+      });
     const el=document.getElementById('briefing-loading');if(el)el.remove();
     if(!res.ok){alert('API Fehler: '+res.status);return;}
     const data=await res.json();
