@@ -839,7 +839,7 @@ function rDelegBlock(pid){
     out+='<div style="font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(a.titel)+'</div>';
     out+='<div style="display:flex;gap:6px;margin-top:2px;align-items:center">';
     if(a.prio)out+=prioTag(a.prio,null,false);
-    if(assignee)out+='<span style="font-size:10px;color:var(--t3)">→ '+esc(assignee.name)+'</span>';
+    out+='<select onchange="event.stopPropagation();reassignAufgabe(\''+a.id+'\',this.value)" onclick="event.stopPropagation()" style="font-size:10px;padding:1px 4px;border-radius:5px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);font-family:inherit;cursor:pointer">'+S.personen.filter(p=>p.id!==pid).map(p=>'<option value="'+p.id+'"'+(p.id===a.pid?' selected':'')+'>→ '+esc(p.name.split(' ')[0])+'</option>').join('')+'</select>';
     out+='</div></div>';
     out+='<div style="text-align:right;flex-shrink:0">';
     out+='<div style="font-size:11px;font-weight:600;color:'+statusColor[st]+'">'+statusMap[st]+'</div>';
@@ -2853,7 +2853,7 @@ function openNeu(pf={}){
     +(hasAI?'<button onclick="aiAnalyze()" style="font-size:11px;padding:5px 10px;border-radius:7px;border:1px solid var(--bd);background:var(--gray-bg);color:var(--t2);cursor:pointer;font-family:inherit;flex-shrink:0;white-space:nowrap" title="KI-Hebel-Analyse starten">✨ KI</button>':'')
     +'</div></div>'
     +'<div id="ai-suggestion" style="display:none"></div>'
-    +'<div class="f2"><div class="fl"><label>Wer?</label><select id="np">'+S.personen.map(p=>'<option value="'+p.id+'"'+(defaultPid===p.id?' selected':'')+'>'+esc(p.name)+'</option>').join('')+'</select></div>'
+    +'<div class="f2"><div class="fl"><label>Wer?</label><input type="hidden" id="np" value="'+defaultPid+'"><div style="display:flex;flex-wrap:wrap;gap:5px">'+S.personen.map(p=>'<div onclick="this.parentNode.querySelectorAll(\'.pp\').forEach(x=>{x.style.background=\'var(--sf)\';x.style.color=\'var(--t2)\';x.style.borderColor=\'var(--bd)\'});this.style.background=\'var(--inv)\';this.style.color=\'var(--inv-t)\';this.style.borderColor=\'var(--inv)\';document.getElementById(\'np\').value=\''+p.id+'\'" class="pp" style="cursor:pointer;font-size:12px;font-weight:600;padding:5px 12px;border-radius:99px;border:1.5px solid '+(p.id===defaultPid?'var(--inv)':'var(--bd)')+';background:'+(p.id===defaultPid?'var(--inv)':'var(--sf)')+';color:'+(p.id===defaultPid?'var(--inv-t)':'var(--t2)')+';white-space:nowrap">'+esc(p.name.split(' ')[0])+'</div>').join('')+'</div></div>'
     +'<div class="fl"><label>Ziel <span style="font-weight:400;color:var(--t2)">(optional)</span></label><select id="nziel" onchange="updateNeuTZ()">'+zieleOpts+'</select></div></div>'
     +'<div id="neu-tz-wrap" class="fl" style="display:none"><label>Meilenstein <span style="font-weight:400;color:var(--t2)">(optional)</span></label><select id="ntz"><option value="">— kein Meilenstein —</option></select></div>'
     +'<div class="fl"><label>Priorität</label><div style="display:flex;gap:6px;margin-top:2px">'
