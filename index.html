@@ -475,7 +475,7 @@ const isLead=()=>{const m=me();return m&&(m.stufe==='lead'||m.stufe==='gf');};
 const zielObj=id=>S.ziele.find(z=>z.id===id);
 const kpiVal=k=>{const e=S.kpiVals[k.pid+'-'+k.id];return e!==undefined?e.val:k.ist;};
 const kpiOk=k=>{const v=kpiVal(k);return k.inv?v<=k.ziel:v>=k.ziel*0.85;};
-const canSeeTeam=()=>isLead();
+const canSeeTeam=()=>true;
 const canSee=a=>{
   if(a.vertraulich&&!isGF())return false;
   if(a.zielId){const z=zielObj(a.zielId);if(z&&z.vertraulich&&!isGF())return false;}
