@@ -756,8 +756,13 @@ async function submitKpi(kpiId,pid){
 async function bestaetigeAufgabe(id,prio){
   const a=S.aufgaben.find(x=>x.id===id);if(!a)return;
   const p=(!prio||prio==='null')?null:prio;
+  const zielSel=document.getElementById('inbox-ziel-'+id);
+  const zid=zielSel?zielSel.value:'';
   a.prio=p;a.status=p?'backlog':'neu';
-  await dbPatch('aufgaben',id,{prio:a.prio,status:a.status});
+  if(zid){a.zielId=zid;a.teilzielId=null;}
+  const patch={prio:a.prio,status:a.status};
+  if(zid){patch.ziel_id=zid;patch.teilziel_id=null;}
+  await dbPatch('aufgaben',id,patch);
   render();
 }
 async function klassifiziereAlsRandom(id){
@@ -2165,13 +2170,15 @@ function rTag(){
         +'<span style="background:var(--blue);color:#fff;font-size:10px;font-weight:700;padding:2px 9px;border-radius:99px">'+zugewiesenA.length+' neu</span>'
         +'<span style="font-size:12px;font-weight:600">Inbox — bestätige mit Klick auf Priorität</span>'
         +'</div>';
+      const zielOptsI=S.ziele.length?'<select id="inbox-ziel-PLACEHOLDER" style="font-size:11px;padding:3px 8px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);font-family:inherit;max-width:180px"><option value="">— Ziel —</option>'+S.ziele.map(z=>'<option value="'+z.id+'">'+esc(z.name).slice(0,30)+'</option>').join('')+'</select>':'';
       zugewiesenA.forEach(a=>{
         const from=person(a.erstelltVon);
         out+='<div style="background:var(--gray-bg);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;margin-bottom:8px">'
           +'<input value="'+esc(a.titel)+'" onblur="saveDetailField(\''+a.id+'\',\'titel\',this.value)" onkeydown="if(event.key===\'Enter\')this.blur()" style="font-size:13px;font-weight:600;margin-bottom:3px;width:100%;border:none;border-bottom:1px dashed var(--bd);background:transparent;color:var(--text);font-family:inherit;padding:0 0 2px;box-sizing:border-box;outline:none">'
           +(from?'<div style="font-size:11px;color:var(--t2);margin-bottom:4px">von '+esc(from.name)+(a.prio?' · Vorschlag: <strong>'+a.prio+'</strong>':'')+'</div>':'')
           +(a.notiz?'<div style="font-size:11px;color:var(--t2);margin-bottom:8px;font-style:italic;line-height:1.4">💬 '+esc(a.notiz).slice(0,150)+(a.notiz.length>150?'…':'')+'</div>':'')
-          +'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px">'
+          +'<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px">'
+          +zielOptsI.replace('PLACEHOLDER',a.id)
           +['P1','P2','P3','null'].map(p=>{
             const lbl=p==='null'?'Kein Prio':p;
             const bg=p==='P1'?'var(--red-bg)':p==='P2'?'#fff7ed':p==='P3'?'var(--gray-bg)':'var(--sf)';
@@ -2196,13 +2203,15 @@ function rTag(){
       out+='<span style="background:var(--red);color:#fff;font-size:10px;font-weight:700;padding:2px 9px;border-radius:99px">'+neu.length+' neu</span>';
       out+='<span style="font-size:12px;font-weight:600">Priorität wählen</span>';
       out+='</div>';
+      const zielOptsN=S.ziele.length?'<select id="inbox-ziel-PLACEHOLDER" style="font-size:11px;padding:3px 8px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);font-family:inherit;max-width:180px"><option value="">— Ziel —</option>'+S.ziele.map(z=>'<option value="'+z.id+'">'+esc(z.name).slice(0,30)+'</option>').join('')+'</select>':'';
       neu.forEach(a=>{
         const from=a.erstelltVon&&a.erstelltVon!==aP?person(a.erstelltVon):null;
         out+='<div style="background:var(--gray-bg);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;margin-bottom:8px">';
         out+='<input value="'+esc(a.titel)+'" onblur="saveDetailField(\''+a.id+'\',\'titel\',this.value)" onkeydown="if(event.key===\'Enter\')this.blur()" style="font-size:13px;font-weight:600;margin-bottom:3px;width:100%;border:none;border-bottom:1px dashed var(--bd);background:transparent;color:var(--text);font-family:inherit;padding:0 0 2px;box-sizing:border-box;outline:none">';
         if(from)out+='<div style="font-size:11px;color:var(--t2);margin-bottom:4px">von '+esc(from.name)+'</div>';
         if(a.notiz)out+='<div style="font-size:11px;color:var(--t2);margin-bottom:8px;font-style:italic;line-height:1.4">💬 '+esc(a.notiz).slice(0,150)+(a.notiz.length>150?'…':'')+'</div>';
-        out+='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px">';
+        out+='<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px">';
+        out+=zielOptsN.replace('PLACEHOLDER',a.id);
         out+=(['P1','P2','P3','null'].map(pr=>{
           const lbl=pr==='null'?'Kein Prio':pr;
           const bg=pr==='P1'?'var(--red-bg)':pr==='P2'?'#fff7ed':pr==='P3'?'var(--gray-bg)':'var(--sf)';
@@ -2252,8 +2261,14 @@ async function setPrio(id,pr){
   const a=S.aufgaben.find(x=>x.id===id);if(!a||a._busy)return;
   const prev={prio:a.prio,status:a.status};a._busy=true;
   try{
-    a.prio=pr;a.status='backlog';try{render();}catch(e){console.error('render@setPrio',e);}
-    const ok=await dbPatch('aufgaben',id,{prio:pr,status:'backlog'});
+    const zielSel=document.getElementById('inbox-ziel-'+id);
+    const zid=zielSel?zielSel.value:'';
+    a.prio=pr;a.status='backlog';
+    if(zid){a.zielId=zid;a.teilzielId=null;}
+    try{render();}catch(e){console.error('render@setPrio',e);}
+    const patch={prio:pr,status:'backlog'};
+    if(zid){patch.ziel_id=zid;patch.teilziel_id=null;}
+    const ok=await dbPatch('aufgaben',id,patch);
     if(!ok){a.prio=prev.prio;a.status=prev.status;}
   }catch(e){console.error('setPrio',e);a.prio=prev.prio;a.status=prev.status;}
   finally{a._busy=false;try{render();}catch(e){console.error('render@setPrio2',e);}}
