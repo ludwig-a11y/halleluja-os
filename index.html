@@ -1177,7 +1177,6 @@ async function saveBlocker(wrId){
   cm();render();
 }
 function rSignaleTeam(){
-  if(!isGF()&&!isLead())return'';
   const visible=visiblePersonIds(aP);
   const TYPEN={reklamation:{l:'Reklamation',bg:'var(--red-bg)',tc:'var(--red)',bd:'var(--red-bd)'},reibung:{l:'Reibung',bg:'var(--amber-bg)',tc:'var(--amber)',bd:'var(--amber-bd)'},idee:{l:'Idee',bg:'var(--blue-bg)',tc:'var(--blue)',bd:'var(--blue-bd)'},wiederholung:{l:'↻ Wiederholung',bg:'var(--purple-bg)',tc:'var(--purple)',bd:'var(--purple-bd)'}};
   const mine=S.signale.filter(s=>visible.includes(s.pid));
@@ -2863,7 +2862,7 @@ function openNeu(pf={}){
     +'<div class="fl"><label>Fällig</label><div style="display:flex;gap:6px;align-items:center"><input type="date" id="ndl" value="'+(pf.dl||'')+'" style="flex:1">'
     +'<button id="dltype-bis" onclick="toggleDlType(\'bis\')" class="btn-toggle on" data-v="bis">bis</button>'
     +'<button id="dltype-am" onclick="toggleDlType(\'am\')" class="btn-toggle" data-v="am">am</button>'
-    +'</div></div>'
+    +'</div></div></div>'
     +'<div class="fl" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">'
     +'<label style="display:flex;align-items:center;gap:6px;text-transform:none;font-size:12px;font-weight:400;color:var(--t3);cursor:pointer;margin:0"><select id="nrec" style="width:auto;padding:4px 8px;font-size:11px;border:1px solid var(--bd);border-radius:6px;color:var(--t2);background:var(--sf)"><option value="">Einmalig</option><option value="daily">🔄 Täglich</option><option value="weekly">🔄 Wöchentlich</option><option value="monthly">🔄 Monatlich</option></select></label>'
     +(isGF()?'<label style="display:flex;align-items:center;gap:6px;text-transform:none;font-size:12px;font-weight:400;color:var(--t3);cursor:pointer;margin:0"><input type="checkbox" id="nvert" style="width:auto"> Vertraulich</label>':'')
@@ -3444,6 +3443,75 @@ async function ideenZuAufgabe(sid){
 function rTeam(){
   const teams=isGF()?[...S.teams].sort((a,b)=>a.id==='gf'?-1:b.id==='gf'?1:0):S.teams.filter(t=>(me()?.teams||[]).includes(t.id));
   let out='<div style="margin-bottom:20px"><div style="font-size:16px;font-weight:700">Team</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Wer macht was</div></div>';
+
+  // ── Deine Übersicht: Ziele + Für dich ──
+  {
+    const sichtbarZ=S.ziele.filter(z=>z.status!=='vorschlag'&&(!z.vertraulich||isGF()));
+    const meineZ=sichtbarZ.filter(z=>String(z.verantwortlichId)===String(aP)||(z.teilziele||[]).some(tz=>String(tz.verantwortlichId)===String(aP)));
+    const myTaskZielIds=new Set(S.aufgaben.filter(a=>a.pid===aP&&a.zielId).map(a=>a.zielId));
+    const beteiligt=sichtbarZ.filter(z=>myTaskZielIds.has(z.id)&&!meineZ.find(m=>m.id===z.id));
+    const alleRelevant=[...meineZ.map(z=>({z,rolle:'verantwortlich'})),...beteiligt.map(z=>({z,rolle:'mitwirkend'}))];
+    const meinName=me()?.name||'';
+    const fuerMich=S.signale.filter(s=>(s.typ==='wolke'||s.typ==='idee')&&s.bereich===meinName&&s.pid!==aP);
+
+    if(alleRelevant.length||fuerMich.length){
+      out+='<div style="background:var(--sf);border:1px solid var(--bd);border-radius:14px;padding:16px;margin-bottom:16px">';
+      out+='<div style="font-size:13px;font-weight:700;margin-bottom:12px">Deine Übersicht</div>';
+
+      // Ziele
+      if(alleRelevant.length){
+        out+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t2);margin-bottom:8px">Deine Ziele</div>';
+        alleRelevant.forEach(({z,rolle})=>{
+          const f=FARBEN[z.farbe||0];
+          const pct=z.pct||0;
+          const verantw=person(z.verantwortlichId);
+          const meineTasks=S.aufgaben.filter(a=>a.pid===aP&&a.zielId===z.id&&a.status!=='erledigt').length;
+          const tzOffen=(z.teilziele||[]).filter(t=>!t.erledigt).length;
+          const isOwn=String(z.verantwortlichId)===String(aP);
+          out+='<div onclick="nav(\'ziele\')" style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--bd);border-radius:10px;margin-bottom:6px;cursor:pointer;background:var(--bg);transition:transform .1s" onmousedown="this.style.transform=\'scale(.98)\'" onmouseup="this.style.transform=\'scale(1)\'">';
+          out+='<div style="width:10px;height:10px;border-radius:99px;background:'+f.tc+';flex-shrink:0"></div>';
+          out+='<div style="flex:1;min-width:0">';
+          out+='<div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(z.name)+'</div>';
+          out+='<div style="display:flex;gap:6px;margin-top:3px;flex-wrap:wrap">';
+          if(!isOwn&&verantw)out+='<span style="font-size:10px;color:var(--t3)">'+esc(verantw.name)+'</span>';
+          out+='<span style="font-size:10px;padding:1px 6px;border-radius:99px;background:'+(isOwn?'var(--green-bg)':'var(--blue-bg)')+';color:'+(isOwn?'var(--green)':'var(--blue)')+'">'+(isOwn?'Verantwortlich':'Mitwirkend')+'</span>';
+          if(meineTasks)out+='<span style="font-size:10px;color:var(--t3)">'+meineTasks+' offene Aufgabe'+(meineTasks>1?'n':'')+'</span>';
+          if(tzOffen)out+='<span style="font-size:10px;color:var(--t3)">'+tzOffen+' Meilenstein'+(tzOffen>1?'e':'')+' offen</span>';
+          out+='</div></div>';
+          // Progress bar
+          out+='<div style="width:40px;text-align:right"><div style="font-size:11px;font-weight:700;color:'+f.tc+'">'+pct+'%</div>';
+          out+='<div style="width:40px;height:4px;border-radius:99px;background:var(--bd);margin-top:2px"><div style="width:'+Math.min(pct,100)+'%;height:100%;border-radius:99px;background:'+f.tc+'"></div></div></div>';
+          out+='</div>';
+        });
+      }
+
+      // Für dich: Wolken & Ideen
+      if(fuerMich.length){
+        out+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t2);margin-top:14px;margin-bottom:8px">📬 Für dich</div>';
+        fuerMich.forEach(s=>{
+          const von=person(s.pid);
+          const isIdee=s.typ==='idee';
+          const badge=isIdee?'💡 Idee':'☁ Wolke';
+          const bg=isIdee?'var(--blue-bg)':'var(--gray-bg)';
+          const tc=isIdee?'var(--blue)':'var(--t2)';
+          const bd=isIdee?'var(--blue-bd)':'var(--bd)';
+          out+='<div style="display:flex;align-items:flex-start;gap:8px;padding:9px 12px;border:1px solid '+bd+';border-radius:10px;margin-bottom:6px;background:var(--bg)">';
+          out+='<span style="font-size:10px;padding:2px 7px;border-radius:99px;background:'+bg+';color:'+tc+';font-weight:600;flex-shrink:0;margin-top:1px">'+badge+'</span>';
+          out+='<div style="flex:1;min-width:0">';
+          out+='<div style="font-size:12px;font-weight:500">'+esc(s.was)+'</div>';
+          if(s.notiz)out+='<div style="font-size:11px;color:var(--t2);margin-top:2px;font-style:italic">'+esc(s.notiz)+'</div>';
+          out+='<div style="font-size:10px;color:var(--t3);margin-top:2px">'+(von?'von '+esc(von.name)+' · ':'')+(s.created_at?s.created_at.slice(0,10):'')+'</div>';
+          out+='</div>';
+          out+='<div style="display:flex;gap:4px;flex-shrink:0">';
+          out+='<button onclick="ideenZuAufgabe(\''+s.id+'\')" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--text);cursor:pointer;font-family:inherit">→ Aufgabe</button>';
+          out+='</div></div>';
+        });
+      }
+
+      out+='</div>';
+    }
+  }
+
   const rankData=S.personen.map(p=>({p,count:getPaddelCount(p.id)})).sort((a,b)=>b.count-a.count).filter(x=>x.count>0);
   if(rankData.length){
     out+='<div style="background:var(--amber-bg);border:1px solid var(--amber-bd);border-radius:14px;padding:14px 16px;margin-bottom:16px">';
@@ -3462,9 +3530,23 @@ function rTeam(){
     const mids=t.members;
     const aktiv=S.aufgaben.filter(a=>mids.includes(a.pid)&&a.status==='aktiv'&&canSee(a));
     const pipeline=S.aufgaben.filter(a=>mids.includes(a.pid)&&(a.status==='backlog'||a.status==='neu')&&canSee(a)).sort((a,b)=>(a.prio||'P9').localeCompare(b.prio||'P9')).slice(0,8);
+    // Ziele dieses Teams: wo ein Mitglied verantwortlich oder mitwirkend ist
+    const teamZiele=S.ziele.filter(z=>z.status!=='vorschlag'&&(!z.vertraulich||isGF())&&(mids.includes(z.verantwortlichId)||S.aufgaben.some(a=>mids.includes(a.pid)&&a.zielId===z.id)));
+    // Wolken/Ideen für dieses Team
+    const teamNames=mids.map(id=>{const p=person(id);return p?p.name:'';}).filter(Boolean);
+    const teamSignale=S.signale.filter(s=>(s.typ==='wolke'||s.typ==='idee')&&teamNames.includes(s.bereich));
     out+='<div class="team-block"><div class="team-block-head">'
       +'<div style="flex:1"><div style="font-size:14px;font-weight:700">'+esc(t.name)+'</div></div>'
       +'<div style="display:flex;gap:6px;flex-shrink:0">'+mids.map(id=>{const p=person(id);return p?av(p,28,10):'';}).join('')+'</div></div>';
+    // Ziele des Teams anzeigen
+    if(teamZiele.length){
+      out+='<div style="padding:8px 16px 4px;display:flex;gap:5px;flex-wrap:wrap">';
+      teamZiele.forEach(z=>{
+        const f=FARBEN[z.farbe||0];
+        out+='<span style="font-size:10px;padding:2px 8px;border-radius:99px;background:'+f.bg+';color:'+f.tc+';font-weight:600;border:1px solid '+f.tc+'20">🎯 '+esc(z.name.length>25?z.name.slice(0,25)+'…':z.name)+'</span>';
+      });
+      out+='</div>';
+    }
     if(aktiv.length){
       out+='<div style="padding:10px 16px 2px;font-size:10px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.5px">Läuft gerade</div>';
       aktiv.forEach(a=>{
@@ -3484,17 +3566,33 @@ function rTeam(){
       });
     }
     if(!aktiv.length&&!pipeline.length)out+='<div style="padding:14px 16px;font-size:12px;color:var(--t3);font-style:italic">Keine aktiven Aufgaben</div>';
+    // Wolken/Ideen für Team-Mitglieder
+    if(teamSignale.length){
+      out+='<div style="padding:8px 16px 4px;font-size:10px;font-weight:700;color:var(--purple);text-transform:uppercase;letter-spacing:.5px">Wolken & Ideen</div>';
+      teamSignale.slice(0,3).forEach(s=>{
+        const von=person(s.pid);
+        const badge=s.typ==='idee'?'💡':'☁';
+        out+='<div style="padding:4px 16px 6px;display:flex;gap:8px;align-items:flex-start">';
+        out+='<span style="font-size:12px;flex-shrink:0">'+badge+'</span>';
+        out+='<div style="flex:1;min-width:0"><div style="font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(s.was)+'</div>';
+        out+='<div style="font-size:10px;color:var(--t3)">'+(von?'von '+esc(von.name):'')+(s.bereich?' → '+esc(s.bereich):'')+'</div></div></div>';
+      });
+      if(teamSignale.length>3)out+='<div style="padding:2px 16px 6px;font-size:10px;color:var(--t3)">+ '+(teamSignale.length-3)+' weitere</div>';
+    }
     out+='<div style="height:4px"></div></div>';
   });
   out+=rIdeenPool();
   out+=rSignaleTeam();
-  // ── Big 3 GF Ansicht ──
-  if(isGF()){
+  // ── Big 3 Team-Überblick ──
+  {
     const{kw,jahr}=getKW();
     const dieseWoche=S.wochenresets.filter(r=>r.kw===kw&&r.jahr===jahr);
+    const teamMids=new Set();teams.forEach(t=>t.members.forEach(m=>teamMids.add(m)));
+    const sichtbarePers=isGF()?S.personen.filter(p=>p.stufe!=='gf'):S.personen.filter(p=>teamMids.has(p.id)&&p.id!==aP);
+    if(sichtbarePers.length){
     out+='<div style="margin-top:28px">';
-    out+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t2);margin-bottom:12px">Big 3 · KW '+kw+'</div>';
-    S.personen.filter(p=>p.stufe!=='gf').forEach(p=>{
+    out+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t2);margin-bottom:12px">Big 3 im Team · KW '+kw+'</div>';
+    sichtbarePers.forEach(p=>{
       const r=dieseWoche.find(x=>String(x.pid)===String(p.id));
       const f=FARBEN[p.ci||0];
       const done=[r?.big3_1_done,r?.big3_2_done,r?.big3_3_done].filter(Boolean).length;
@@ -3519,7 +3617,7 @@ function rTeam(){
       out+='</div>';
     });
     out+='</div>';
-  }
+  }}
 
   // ── Wiederkehrende Aufgaben — GF Optimierungs-Insight ──
   if(isGF()){
