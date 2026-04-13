@@ -2154,7 +2154,8 @@ function rTag(){
       const from=a.erstelltVon&&a.erstelltVon!==aP?person(a.erstelltVon):null;
       out+='<div style="background:var(--gray-bg);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;margin-bottom:8px">';
       out+='<input value="'+esc(a.titel)+'" onblur="saveDetailField(\''+a.id+'\',\'titel\',this.value)" onkeydown="if(event.key===\'Enter\')this.blur()" style="font-size:13px;font-weight:600;margin-bottom:3px;width:100%;border:none;border-bottom:1px dashed var(--bd);background:transparent;color:var(--text);font-family:inherit;padding:0 0 2px;box-sizing:border-box;outline:none">';
-      if(from)out+='<div style="font-size:11px;color:var(--t2);margin-bottom:8px">von '+esc(from.name)+'</div>';
+      if(from)out+='<div style="font-size:11px;color:var(--t2);margin-bottom:4px">von '+esc(from.name)+'</div>';
+      if(a.notiz)out+='<div style="font-size:11px;color:var(--t2);margin-bottom:8px;font-style:italic;line-height:1.4">💬 '+esc(a.notiz).slice(0,150)+(a.notiz.length>150?'…':'')+'</div>';
       out+='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px">';
       out+=(['P1','P2','P3','null'].map(pr=>{
         const lbl=pr==='null'?'Kein Prio':pr;
@@ -2163,11 +2164,11 @@ function rTag(){
         return'<button onclick="setPrio(\''+a.id+'\',\''+(pr==='null'?null:pr)+'\')" style="font-size:11px;padding:5px 13px;border-radius:8px;border:1px solid var(--bd);background:'+bg+';color:'+tc+';cursor:pointer;font-family:inherit">'+lbl+'</button>';
       }).join(''));
       out+='</div>';
-      out+='<div style="display:flex;gap:6px;align-items:center">';
+      out+='<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">';
       out+='<span style="font-size:10px;color:var(--t3)">oder:</span>';
       out+='<button onclick="klassifiziereAlsIdee(\''+a.id+'\')" style="font-size:11px;padding:4px 11px;border-radius:8px;border:1px solid var(--blue-bd);background:var(--blue-bg);color:var(--blue);cursor:pointer;font-family:inherit">💡 Idee</button>';
       out+='<button onclick="klassifiziereAlsRandom(\''+a.id+'\')" style="font-size:11px;padding:4px 11px;border-radius:8px;border:1px solid var(--bd);background:var(--gray-bg);color:var(--t2);cursor:pointer;font-family:inherit">🎲 Random</button>';
-      if(S.ziele.length)out+='<button onclick="aufgabeZuMeilenstein(\''+a.id+'\')" style="font-size:11px;padding:4px 11px;border-radius:8px;border:1px solid var(--green-bd);background:var(--green-bg);color:var(--green);cursor:pointer;font-family:inherit">🎯 Meilenstein</button>';
+      if(S.ziele.length)out+='<button onclick="aufgabeZuMeilenstein(\''+a.id+'\')" style="font-size:11px;padding:4px 11px;border-radius:8px;border:1px solid var(--green-bd);background:var(--green-bg);color:var(--green);cursor:pointer;font-family:inherit">→ Meilenstein</button>';
       out+='</div></div>';
     });
     out+='</div>';
@@ -2184,7 +2185,8 @@ function rTag(){
       const from=person(a.erstelltVon);
       out+='<div style="background:var(--gray-bg);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;margin-bottom:8px">'
         +'<input value="'+esc(a.titel)+'" onblur="saveDetailField(\''+a.id+'\',\'titel\',this.value)" onkeydown="if(event.key===\'Enter\')this.blur()" style="font-size:13px;font-weight:600;margin-bottom:3px;width:100%;border:none;border-bottom:1px dashed var(--bd);background:transparent;color:var(--text);font-family:inherit;padding:0 0 2px;box-sizing:border-box;outline:none">'
-        +(from?'<div style="font-size:11px;color:var(--t2);margin-bottom:8px">von '+esc(from.name)+(a.prio?' · Vorschlag: <strong>'+a.prio+'</strong>':'')+'</div>':'')
+        +(from?'<div style="font-size:11px;color:var(--t2);margin-bottom:4px">von '+esc(from.name)+(a.prio?' · Vorschlag: <strong>'+a.prio+'</strong>':'')+'</div>':'')
+        +(a.notiz?'<div style="font-size:11px;color:var(--t2);margin-bottom:8px;font-style:italic;line-height:1.4">💬 '+esc(a.notiz).slice(0,150)+(a.notiz.length>150?'…':'')+'</div>':'')
         +'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px">'
         +['P1','P2','P3','null'].map(p=>{
           const lbl=p==='null'?'Kein Prio':p;
@@ -2194,11 +2196,11 @@ function rTag(){
           return'<button onclick="bestaetigeAufgabe(\''+a.id+'\',\''+p+'\')" style="font-size:11px;padding:5px 13px;border-radius:8px;border:'+(suggested?'2px solid var(--text)':'1px solid var(--bd)')+';background:'+bg+';color:'+tc+';cursor:pointer;font-family:inherit;font-weight:'+(suggested?700:400)+'">'+lbl+'</button>';
         }).join('')
         +'</div>'
-        +'<div style="display:flex;gap:6px;align-items:center">'
+        +'<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">'
         +'<span style="font-size:10px;color:var(--t3)">oder:</span>'
         +'<button onclick="klassifiziereAlsIdee(\''+a.id+'\')" style="font-size:11px;padding:4px 11px;border-radius:8px;border:1px solid var(--blue-bd);background:var(--blue-bg);color:var(--blue);cursor:pointer;font-family:inherit">💡 Idee</button>'
         +'<button onclick="klassifiziereAlsRandom(\''+a.id+'\')" style="font-size:11px;padding:4px 11px;border-radius:8px;border:1px solid var(--bd);background:var(--gray-bg);color:var(--t2);cursor:pointer;font-family:inherit">🎲 Random</button>'
-        +(S.ziele.length?'<button onclick="aufgabeZuMeilenstein(\''+a.id+'\')" style="font-size:11px;padding:4px 11px;border-radius:8px;border:1px solid var(--green-bd);background:var(--green-bg);color:var(--green);cursor:pointer;font-family:inherit">🎯 Meilenstein</button>':'')
+        +(S.ziele.length?'<button onclick="aufgabeZuMeilenstein(\''+a.id+'\')" style="font-size:11px;padding:4px 11px;border-radius:8px;border:1px solid var(--green-bd);background:var(--green-bg);color:var(--green);cursor:pointer;font-family:inherit">→ Meilenstein</button>':'')
         +'</div></div>';
     });
     out+='</div>';
