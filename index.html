@@ -765,6 +765,12 @@ async function bestaetigeAufgabe(id,prio){
   await dbPatch('aufgaben',id,patch);
   render();
 }
+async function aufgabeZurueck(id){
+  const a=S.aufgaben.find(x=>x.id===id);if(!a||!a.erstelltVon)return;
+  a.pid=a.erstelltVon;a.status='neu';a.prio=null;
+  await dbPatch('aufgaben',id,{pid:a.erstelltVon,status:'neu',prio:null});
+  render();
+}
 async function klassifiziereAlsRandom(id){
   const a=S.aufgaben.find(x=>x.id===id);if(!a)return;
   a.typ='random';a.prio=null;a.status='backlog';
@@ -2193,6 +2199,7 @@ function rTag(){
           +'<button onclick="klassifiziereAlsIdee(\''+a.id+'\')" style="font-size:11px;padding:4px 11px;border-radius:8px;border:1px solid var(--blue-bd);background:var(--blue-bg);color:var(--blue);cursor:pointer;font-family:inherit">💡 Idee</button>'
           +'<button onclick="klassifiziereAlsRandom(\''+a.id+'\')" style="font-size:11px;padding:4px 11px;border-radius:8px;border:1px solid var(--bd);background:var(--gray-bg);color:var(--t2);cursor:pointer;font-family:inherit">🎲 Random</button>'
           +(S.ziele.length?'<button onclick="aufgabeZuMeilenstein(\''+a.id+'\')" style="font-size:11px;padding:4px 11px;border-radius:8px;border:1px solid var(--green-bd);background:var(--green-bg);color:var(--green);cursor:pointer;font-family:inherit">→ Meilenstein</button>':'')
+          +(a.erstelltVon&&a.erstelltVon!==aP?'<button onclick="aufgabeZurueck(\''+a.id+'\')" style="font-size:11px;padding:4px 11px;border-radius:8px;border:1px solid var(--red-bd);background:var(--red-bg);color:var(--red);cursor:pointer;font-family:inherit">↩ Zurück</button>':'')
           +'</div></div>';
       });
       out+='</div>';
