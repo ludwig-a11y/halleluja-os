@@ -3225,7 +3225,14 @@ async function saveNeu(){
   const teilzielId=tzSel?tzSel.value||null:null;
   const typ=zielId?'strategisch':'operativ';
   const vert=document.getElementById('nvert')?document.getElementById('nvert').checked:false;
-  const pid=document.getElementById('np').value;
+  let pid=document.getElementById('np').value;
+  // @mention Erkennung: @vorname → Person zuweisen
+  const mentionMatch=t.match(/@(\w+)/i);
+  if(mentionMatch){
+    const mName=mentionMatch[1].toLowerCase();
+    const matched=S.personen.find(p=>p.name.toLowerCase().startsWith(mName)||p.name.split(' ')[0].toLowerCase()===mName);
+    if(matched){pid=matched.id;document.getElementById('np').value=pid;}
+  }
   const id=nid('a');
   const rec={id,pid,titel:t,typ,status:pid!==aP?'zugewiesen':(_selPrio?'backlog':'neu'),prio:_selPrio||null,
     ziel_id:zielId,teilziel_id:teilzielId,
