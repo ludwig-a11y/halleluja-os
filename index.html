@@ -3966,6 +3966,7 @@ function mdRenderPreview(){
     html+='</select>';
     html+='<input type="date" id="md-dl-'+i+'" value="'+(t.dl||'')+'" style="font-size:14px;padding:8px 10px;border:1px solid var(--bd);border-radius:8px;font-family:inherit;background:var(--sf);min-height:40px">';
     html+='</div>';
+    if(S.ziele.length){html+='<div style="margin-top:6px;padding-left:26px"><select id="md-ziel-'+i+'" style="font-size:12px;padding:5px 8px;border:1px solid var(--bd);border-radius:7px;font-family:inherit;background:var(--sf);color:var(--t2)"><option value="">— Ziel —</option>'+S.ziele.filter(z=>z.status!=='vorschlag').map(z=>'<option value="'+z.id+'"'+(t.ziel_id===z.id?' selected':'')+'>'+esc(z.name).slice(0,40)+'</option>').join('')+'</select></div>';}
     if(t.kontext){html+='<div style="font-size:11px;color:var(--t3);margin-top:8px;font-style:italic;padding-left:26px">💬 '+esc(t.kontext)+'</div>';}
     html+='</div>';
   });
@@ -3998,7 +3999,8 @@ async function mdConfirm(){
     const pid=document.getElementById('md-pid-'+i).value||aP;
     const prio=document.getElementById('md-prio-'+i).value||null;
     const dl=document.getElementById('md-dl-'+i).value||null;
-    const ziel_id=t.ziel_id||null;
+    const zielSel=document.getElementById('md-ziel-'+i);
+    const ziel_id=(zielSel?zielSel.value:'')||t.ziel_id||null;
     toCreate.push({titel,pid,prio,dl,ziel_id,kontext:t.kontext||''});
   });
   if(!toCreate.length)return;
