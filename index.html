@@ -2143,78 +2143,83 @@ function rTag(){
     out+='</div>';
   }
 
-  if(neu.length){
-    out+='<div style="background:var(--sf);border:1.5px solid var(--red-bd);border-radius:14px;padding:14px 16px;margin-bottom:12px">';
-    out+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">';
-    out+='<span style="background:var(--red);color:#fff;font-size:10px;font-weight:700;padding:2px 9px;border-radius:99px">'+neu.length+' neu</span>';
-    out+='<span style="font-size:13px;font-weight:600">Neue Aufgaben</span>';
-    out+='</div>';
-    out+='<div style="font-size:11px;color:var(--t2);margin-bottom:12px">Wähle eine Priorität um die Aufgabe zu übernehmen</div>';
-    neu.forEach(a=>{
-      const from=a.erstelltVon&&a.erstelltVon!==aP?person(a.erstelltVon):null;
-      out+='<div style="background:var(--gray-bg);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;margin-bottom:8px">';
-      out+='<input value="'+esc(a.titel)+'" onblur="saveDetailField(\''+a.id+'\',\'titel\',this.value)" onkeydown="if(event.key===\'Enter\')this.blur()" style="font-size:13px;font-weight:600;margin-bottom:3px;width:100%;border:none;border-bottom:1px dashed var(--bd);background:transparent;color:var(--text);font-family:inherit;padding:0 0 2px;box-sizing:border-box;outline:none">';
-      if(from)out+='<div style="font-size:11px;color:var(--t2);margin-bottom:4px">von '+esc(from.name)+'</div>';
-      if(a.notiz)out+='<div style="font-size:11px;color:var(--t2);margin-bottom:8px;font-style:italic;line-height:1.4">💬 '+esc(a.notiz).slice(0,150)+(a.notiz.length>150?'…':'')+'</div>';
-      out+='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px">';
-      out+=(['P1','P2','P3','null'].map(pr=>{
-        const lbl=pr==='null'?'Kein Prio':pr;
-        const bg=pr==='P1'?'var(--red-bg)':pr==='P2'?'#fff7ed':pr==='P3'?'var(--gray-bg)':'var(--sf)';
-        const tc=pr==='P1'?'var(--red)':pr==='P2'?'#c2410c':pr==='P3'?'var(--t2)':'var(--t3)';
-        return'<button onclick="setPrio(\''+a.id+'\',\''+(pr==='null'?null:pr)+'\')" style="font-size:11px;padding:5px 13px;border-radius:8px;border:1px solid var(--bd);background:'+bg+';color:'+tc+';cursor:pointer;font-family:inherit">'+lbl+'</button>';
-      }).join(''));
-      out+='</div>';
-      out+='<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">';
-      out+='<span style="font-size:10px;color:var(--t3)">oder:</span>';
-      out+='<button onclick="klassifiziereAlsIdee(\''+a.id+'\')" style="font-size:11px;padding:4px 11px;border-radius:8px;border:1px solid var(--blue-bd);background:var(--blue-bg);color:var(--blue);cursor:pointer;font-family:inherit">💡 Idee</button>';
-      out+='<button onclick="klassifiziereAlsRandom(\''+a.id+'\')" style="font-size:11px;padding:4px 11px;border-radius:8px;border:1px solid var(--bd);background:var(--gray-bg);color:var(--t2);cursor:pointer;font-family:inherit">🎲 Random</button>';
-      if(S.ziele.length)out+='<button onclick="aufgabeZuMeilenstein(\''+a.id+'\')" style="font-size:11px;padding:4px 11px;border-radius:8px;border:1px solid var(--green-bd);background:var(--green-bg);color:var(--green);cursor:pointer;font-family:inherit">→ Meilenstein</button>';
-      out+='</div></div>';
-    });
-    out+='</div>';
-  }
-
-  if(zugewiesenA.length){
-    out+='<div style="background:var(--sf);border:1.5px solid var(--blue-bd);border-radius:14px;padding:14px 16px;margin-bottom:12px">'
-      +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">'
-      +'<span style="background:var(--blue);color:#fff;font-size:10px;font-weight:700;padding:2px 9px;border-radius:99px">'+zugewiesenA.length+' neu</span>'
-      +'<span style="font-size:13px;font-weight:600">Inbox</span>'
-      +'</div>'
-      +'<div style="font-size:11px;color:var(--t2);margin-bottom:12px">Bestätige mit Klick auf eine Priorität</div>';
-    zugewiesenA.forEach(a=>{
-      const from=person(a.erstelltVon);
-      out+='<div style="background:var(--gray-bg);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;margin-bottom:8px">'
-        +'<input value="'+esc(a.titel)+'" onblur="saveDetailField(\''+a.id+'\',\'titel\',this.value)" onkeydown="if(event.key===\'Enter\')this.blur()" style="font-size:13px;font-weight:600;margin-bottom:3px;width:100%;border:none;border-bottom:1px dashed var(--bd);background:transparent;color:var(--text);font-family:inherit;padding:0 0 2px;box-sizing:border-box;outline:none">'
-        +(from?'<div style="font-size:11px;color:var(--t2);margin-bottom:4px">von '+esc(from.name)+(a.prio?' · Vorschlag: <strong>'+a.prio+'</strong>':'')+'</div>':'')
-        +(a.notiz?'<div style="font-size:11px;color:var(--t2);margin-bottom:8px;font-style:italic;line-height:1.4">💬 '+esc(a.notiz).slice(0,150)+(a.notiz.length>150?'…':'')+'</div>':'')
-        +'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px">'
-        +['P1','P2','P3','null'].map(p=>{
-          const lbl=p==='null'?'Kein Prio':p;
-          const bg=p==='P1'?'var(--red-bg)':p==='P2'?'#fff7ed':p==='P3'?'var(--gray-bg)':'var(--sf)';
-          const tc=p==='P1'?'var(--red)':p==='P2'?'#c2410c':p==='P3'?'var(--t2)':'var(--t3)';
-          const suggested=p===a.prio||(p==='null'&&!a.prio);
-          return'<button onclick="bestaetigeAufgabe(\''+a.id+'\',\''+p+'\')" style="font-size:11px;padding:5px 13px;border-radius:8px;border:'+(suggested?'2px solid var(--text)':'1px solid var(--bd)')+';background:'+bg+';color:'+tc+';cursor:pointer;font-family:inherit;font-weight:'+(suggested?700:400)+'">'+lbl+'</button>';
-        }).join('')
-        +'</div>'
-        +'<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">'
-        +'<span style="font-size:10px;color:var(--t3)">oder:</span>'
-        +'<button onclick="klassifiziereAlsIdee(\''+a.id+'\')" style="font-size:11px;padding:4px 11px;border-radius:8px;border:1px solid var(--blue-bd);background:var(--blue-bg);color:var(--blue);cursor:pointer;font-family:inherit">💡 Idee</button>'
-        +'<button onclick="klassifiziereAlsRandom(\''+a.id+'\')" style="font-size:11px;padding:4px 11px;border-radius:8px;border:1px solid var(--bd);background:var(--gray-bg);color:var(--t2);cursor:pointer;font-family:inherit">🎲 Random</button>'
-        +(S.ziele.length?'<button onclick="aufgabeZuMeilenstein(\''+a.id+'\')" style="font-size:11px;padding:4px 11px;border-radius:8px;border:1px solid var(--green-bd);background:var(--green-bg);color:var(--green);cursor:pointer;font-family:inherit">→ Meilenstein</button>':'')
-        +'</div></div>';
-    });
-    out+='</div>';
-  }
-
   const weitere=bl.filter(a=>a.id!==naechste?.id);
   const weitereSichtbar=weitere.slice(0,2);
   const weitereRest=weitere.slice(2);
   weitereSichtbar.forEach(a=>{out+=aufgabeKarte(a);});
-  if(weitereRest.length){
-    out+='<details style="margin-bottom:12px"><summary style="list-style:none;cursor:pointer;padding:12px 16px;background:var(--sf);border:1px solid var(--bd);border-radius:12px;display:flex;align-items:center;justify-content:space-between">';
-    out+='<span style="font-size:13px;font-weight:600">Weitere Aufgaben</span>';
-    out+='<span style="font-size:12px;color:var(--t3)">'+weitereRest.length+' · anzeigen</span></summary>';
+
+  // ── Backlog: Inbox + weitere Aufgaben ──
+  const inboxCount=neu.length+zugewiesenA.length;
+  if(weitereRest.length||inboxCount){
+    out+='<details'+(inboxCount?' open':'')+' style="margin-bottom:12px"><summary style="list-style:none;cursor:pointer;padding:12px 16px;background:var(--sf);border:1px solid var(--bd);border-radius:12px;display:flex;align-items:center;justify-content:space-between">';
+    out+='<span style="font-size:13px;font-weight:600">Backlog</span>';
+    const counts=[];
+    if(inboxCount)counts.push(inboxCount+' Inbox');
+    if(weitereRest.length)counts.push(weitereRest.length+' weitere');
+    out+='<span style="font-size:12px;color:var(--t3)">'+counts.join(' · ')+'</span></summary>';
     out+='<div style="margin-top:8px">';
+
+    if(zugewiesenA.length){
+      out+='<div style="background:var(--sf);border:1.5px solid var(--blue-bd);border-radius:14px;padding:14px 16px;margin-bottom:10px">'
+        +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">'
+        +'<span style="background:var(--blue);color:#fff;font-size:10px;font-weight:700;padding:2px 9px;border-radius:99px">'+zugewiesenA.length+' neu</span>'
+        +'<span style="font-size:12px;font-weight:600">Inbox — bestätige mit Klick auf Priorität</span>'
+        +'</div>';
+      zugewiesenA.forEach(a=>{
+        const from=person(a.erstelltVon);
+        out+='<div style="background:var(--gray-bg);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;margin-bottom:8px">'
+          +'<input value="'+esc(a.titel)+'" onblur="saveDetailField(\''+a.id+'\',\'titel\',this.value)" onkeydown="if(event.key===\'Enter\')this.blur()" style="font-size:13px;font-weight:600;margin-bottom:3px;width:100%;border:none;border-bottom:1px dashed var(--bd);background:transparent;color:var(--text);font-family:inherit;padding:0 0 2px;box-sizing:border-box;outline:none">'
+          +(from?'<div style="font-size:11px;color:var(--t2);margin-bottom:4px">von '+esc(from.name)+(a.prio?' · Vorschlag: <strong>'+a.prio+'</strong>':'')+'</div>':'')
+          +(a.notiz?'<div style="font-size:11px;color:var(--t2);margin-bottom:8px;font-style:italic;line-height:1.4">💬 '+esc(a.notiz).slice(0,150)+(a.notiz.length>150?'…':'')+'</div>':'')
+          +'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px">'
+          +['P1','P2','P3','null'].map(p=>{
+            const lbl=p==='null'?'Kein Prio':p;
+            const bg=p==='P1'?'var(--red-bg)':p==='P2'?'#fff7ed':p==='P3'?'var(--gray-bg)':'var(--sf)';
+            const tc=p==='P1'?'var(--red)':p==='P2'?'#c2410c':p==='P3'?'var(--t2)':'var(--t3)';
+            const suggested=p===a.prio||(p==='null'&&!a.prio);
+            return'<button onclick="bestaetigeAufgabe(\''+a.id+'\',\''+p+'\')" style="font-size:11px;padding:5px 13px;border-radius:8px;border:'+(suggested?'2px solid var(--text)':'1px solid var(--bd)')+';background:'+bg+';color:'+tc+';cursor:pointer;font-family:inherit;font-weight:'+(suggested?700:400)+'">'+lbl+'</button>';
+          }).join('')
+          +'</div>'
+          +'<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">'
+          +'<span style="font-size:10px;color:var(--t3)">oder:</span>'
+          +'<button onclick="klassifiziereAlsIdee(\''+a.id+'\')" style="font-size:11px;padding:4px 11px;border-radius:8px;border:1px solid var(--blue-bd);background:var(--blue-bg);color:var(--blue);cursor:pointer;font-family:inherit">💡 Idee</button>'
+          +'<button onclick="klassifiziereAlsRandom(\''+a.id+'\')" style="font-size:11px;padding:4px 11px;border-radius:8px;border:1px solid var(--bd);background:var(--gray-bg);color:var(--t2);cursor:pointer;font-family:inherit">🎲 Random</button>'
+          +(S.ziele.length?'<button onclick="aufgabeZuMeilenstein(\''+a.id+'\')" style="font-size:11px;padding:4px 11px;border-radius:8px;border:1px solid var(--green-bd);background:var(--green-bg);color:var(--green);cursor:pointer;font-family:inherit">→ Meilenstein</button>':'')
+          +'</div></div>';
+      });
+      out+='</div>';
+    }
+
+    if(neu.length){
+      out+='<div style="background:var(--sf);border:1.5px solid var(--red-bd);border-radius:14px;padding:14px 16px;margin-bottom:10px">';
+      out+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">';
+      out+='<span style="background:var(--red);color:#fff;font-size:10px;font-weight:700;padding:2px 9px;border-radius:99px">'+neu.length+' neu</span>';
+      out+='<span style="font-size:12px;font-weight:600">Priorität wählen</span>';
+      out+='</div>';
+      neu.forEach(a=>{
+        const from=a.erstelltVon&&a.erstelltVon!==aP?person(a.erstelltVon):null;
+        out+='<div style="background:var(--gray-bg);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;margin-bottom:8px">';
+        out+='<input value="'+esc(a.titel)+'" onblur="saveDetailField(\''+a.id+'\',\'titel\',this.value)" onkeydown="if(event.key===\'Enter\')this.blur()" style="font-size:13px;font-weight:600;margin-bottom:3px;width:100%;border:none;border-bottom:1px dashed var(--bd);background:transparent;color:var(--text);font-family:inherit;padding:0 0 2px;box-sizing:border-box;outline:none">';
+        if(from)out+='<div style="font-size:11px;color:var(--t2);margin-bottom:4px">von '+esc(from.name)+'</div>';
+        if(a.notiz)out+='<div style="font-size:11px;color:var(--t2);margin-bottom:8px;font-style:italic;line-height:1.4">💬 '+esc(a.notiz).slice(0,150)+(a.notiz.length>150?'…':'')+'</div>';
+        out+='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px">';
+        out+=(['P1','P2','P3','null'].map(pr=>{
+          const lbl=pr==='null'?'Kein Prio':pr;
+          const bg=pr==='P1'?'var(--red-bg)':pr==='P2'?'#fff7ed':pr==='P3'?'var(--gray-bg)':'var(--sf)';
+          const tc=pr==='P1'?'var(--red)':pr==='P2'?'#c2410c':pr==='P3'?'var(--t2)':'var(--t3)';
+          return'<button onclick="setPrio(\''+a.id+'\',\''+(pr==='null'?null:pr)+'\')" style="font-size:11px;padding:5px 13px;border-radius:8px;border:1px solid var(--bd);background:'+bg+';color:'+tc+';cursor:pointer;font-family:inherit">'+lbl+'</button>';
+        }).join(''));
+        out+='</div>';
+        out+='<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">';
+        out+='<span style="font-size:10px;color:var(--t3)">oder:</span>';
+        out+='<button onclick="klassifiziereAlsIdee(\''+a.id+'\')" style="font-size:11px;padding:4px 11px;border-radius:8px;border:1px solid var(--blue-bd);background:var(--blue-bg);color:var(--blue);cursor:pointer;font-family:inherit">💡 Idee</button>';
+        out+='<button onclick="klassifiziereAlsRandom(\''+a.id+'\')" style="font-size:11px;padding:4px 11px;border-radius:8px;border:1px solid var(--bd);background:var(--gray-bg);color:var(--t2);cursor:pointer;font-family:inherit">🎲 Random</button>';
+        if(S.ziele.length)out+='<button onclick="aufgabeZuMeilenstein(\''+a.id+'\')" style="font-size:11px;padding:4px 11px;border-radius:8px;border:1px solid var(--green-bd);background:var(--green-bg);color:var(--green);cursor:pointer;font-family:inherit">→ Meilenstein</button>';
+        out+='</div></div>';
+      });
+      out+='</div>';
+    }
+
     weitereRest.forEach(a=>{out+=aufgabeKarte(a);});
     out+='</div></details>';
   }
