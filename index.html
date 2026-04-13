@@ -271,7 +271,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;font-size:1
   <button id="mob-add" onclick="openNeu()">+</button>
 </div>
 
-<div class="ovl" id="ovl">
+<div class="ovl" id="ovl" onclick="if(event.target===this&&!window._noOverlayClose)cm()">
   <div class="modal" id="mb"></div>
 </div>
 
@@ -3856,6 +3856,7 @@ function openSharedGoals(partnerId){
 let _mdTasks=[];
 
 function openMeeting(){
+  window._noOverlayClose=true;
   _mdTasks=[];
   const m=document.getElementById('mb');
   m.innerHTML='<div class="mt">📝 Meeting Dump</div>'
@@ -4048,6 +4049,7 @@ async function mdConfirm(){
 // ===== /MEETING DUMP =====
 
 function cm(){
+  window._noOverlayClose=false;
   const ovl=document.getElementById('ovl');
   if(ovl)ovl.classList.remove('open');
   if(_dataPending){_dataPending=false;_dataHash=_aufgabenHash(S.aufgaben);render();}
