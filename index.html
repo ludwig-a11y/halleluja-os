@@ -1859,7 +1859,7 @@ function aufgabeKarte(a){
   r+='<div style="display:flex;gap:5px;margin-top:3px;align-items:center;flex-wrap:wrap" onclick="event.stopPropagation()">'+prioTag(a.prio,a.id,editable);
   r+=zN?'<span style="font-size:10px;color:var(--t3)">'+esc(zN)+'</span>':'<span onclick="event.stopPropagation();quickAssignZiel(\''+a.id+'\')" style="font-size:10px;color:var(--t3);border:1px dashed var(--bd);padding:1px 6px;border-radius:5px;cursor:pointer">+ Ziel?</span>';
   r+=dlTag(a.dl)+'</div></div>';
-  r+='<button onclick="event.stopPropagation();startenA(\''+a.id+'\')" style="font-size:11px;padding:5px 10px;border-radius:8px;background:var(--inv);color:var(--inv-t);border:none;font-family:inherit;cursor:pointer;flex-shrink:0">▶</button>';
+  r+='<button onclick="event.stopPropagation();startenA(\''+a.id+'\')" style="font-size:12px;padding:8px 14px;border-radius:10px;background:var(--inv);color:var(--inv-t);border:none;font-family:inherit;cursor:pointer;flex-shrink:0;font-weight:600">▶ Start</button>';
   r+='</div></div>';
   return r;
 }
