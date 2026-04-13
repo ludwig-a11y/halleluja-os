@@ -421,6 +421,17 @@ async function loadData(){
     teilziele:(teilziele||[]).filter(t=>t.ziel_id===z.id).map(t=>({...t,zielId:t.ziel_id,verantwortlichId:t.verantwortlich_id,datum:t.datum||''}))
   }));
   S.aufgaben=(aufgaben||[]).map(normalizeAufgabe);
+  // Auto-reassign: @mention in Titel → Person zuweisen
+  S.aufgaben.forEach(a=>{
+    if(a.status!=='neu'&&a.status!=='zugewiesen')return;
+    const m=a.titel.match(/@(\w+)/i);if(!m)return;
+    const mName=m[1].toLowerCase();
+    const matched=S.personen.find(p=>p.name.toLowerCase().startsWith(mName)||p.name.split(' ')[0].toLowerCase()===mName);
+    if(matched&&matched.id!==a.pid){
+      a.pid=matched.id;a.status='zugewiesen';a.erstelltVon=a.erstelltVon||a.pid;
+      dbPatch('aufgaben',a.id,{pid:matched.id,status:'zugewiesen',erstellt_von:a.erstelltVon});
+    }
+  });
   S.kpiVals={};
   (kpiVals||[]).forEach(v=>{const k=v.pid+'-'+v.kpi_id;if(!S.kpiVals[k]||v.datum>S.kpiVals[k].datum)S.kpiVals[k]={val:v.val,datum:v.datum};});
   S.checkins={};
