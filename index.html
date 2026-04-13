@@ -1105,14 +1105,16 @@ async function saveWochenreset(){
   const newTzIds=[];
   for(const txt of newTzTexts){
     if(!txt){newTzIds.push(null);continue;}
-    const tzId=nid('tz');
-    const tzRec={id:tzId,ziel_id:zielId||null,name:txt,verantwortlich_id:String(aP),datum:'',erledigt:false};
     if(zielId){
+      const tzId=nid('tz');
+      const tzRec={id:tzId,ziel_id:zielId,name:txt,verantwortlich_id:String(aP),datum:'',erledigt:false};
       const z=S.ziele.find(x=>x.id===zielId);
       if(z){z.teilziele=z.teilziele||[];z.teilziele.push({...tzRec,zielId,verantwortlichId:aP});}
       await dbInsert('teilziele',tzRec);
+      newTzIds.push(tzId);
+    } else {
+      newTzIds.push(null);
     }
-    newTzIds.push(tzId);
   }
   const allIds=[...selTzIds,...newTzIds.filter(Boolean)].slice(0,3);
   while(allIds.length<3)allIds.push(null);
@@ -1125,7 +1127,7 @@ async function saveWochenreset(){
     wenn_dann:(document.getElementById('wr-wenndann')?.value.trim()||''),
     focus_ziel_id:zielId,
     big3_1_tz_id:allIds[0],big3_2_tz_id:allIds[1],big3_3_tz_id:allIds[2],
-    big3_1:tzName(allIds[0]),big3_2:tzName(allIds[1]),big3_3:tzName(allIds[2]),
+    big3_1:tzName(allIds[0])||newTzTexts[0]||null,big3_2:tzName(allIds[1])||newTzTexts[1]||null,big3_3:tzName(allIds[2])||newTzTexts[2]||null,
     big3_1_done:wr?.big3_1_tz_id===allIds[0]&&wr?.big3_1_done||false,
     big3_2_done:wr?.big3_2_tz_id===allIds[1]&&wr?.big3_2_done||false,
     big3_3_done:wr?.big3_3_tz_id===allIds[2]&&wr?.big3_3_done||false
