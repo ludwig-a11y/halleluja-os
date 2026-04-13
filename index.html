@@ -3441,7 +3441,8 @@ async function ideenZuAufgabe(sid){
   openNeu({titel:s.was,notiz:s.notiz||''});
 }
 function rTeam(){
-  const teams=isGF()?[...S.teams].sort((a,b)=>a.id==='gf'?-1:b.id==='gf'?1:0):S.teams.filter(t=>(me()?.teams||[]).includes(t.id));
+  let teams=isGF()?[...S.teams].sort((a,b)=>a.id==='gf'?-1:b.id==='gf'?1:0):S.teams.filter(t=>(me()?.teams||[]).includes(t.id)||t.members.includes(aP));
+  if(!teams.length)teams=[...S.teams]; // Fallback: zeige alle Teams wenn User keinem zugeordnet
   let out='<div style="margin-bottom:20px"><div style="font-size:16px;font-weight:700">Team</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Wer macht was</div></div>';
 
   // ── Deine Übersicht: Ziele + Für dich ──
