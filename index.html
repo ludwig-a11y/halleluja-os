@@ -1031,28 +1031,47 @@ function openWochenreset(){
   const andereZ=aktZiele.filter(z=>!meineZ.find(m=>m.id===z.id));
   const selZielId=wr?.focus_ziel_id||'';
   const zBtn=z=>{const f=FARBEN[z.farbe||0];const sel=z.id===selZielId;return '<div onclick="[...document.querySelectorAll(\'.zw-opt\')].forEach(x=>{x.style.borderColor=\'#e5e5e3\';x.style.color=\'#888\';x.style.background=\'#fff\'});this.style.borderColor=\''+f.tc+'\';this.style.color=\''+f.tc+'\';this.style.background=\''+f.bg+'\';document.getElementById(\'wr-ziel\').value=\''+z.id+'\';updateWRTZSection()" class="zw-opt" style="cursor:pointer;border:1.5px solid '+(sel?f.tc:'#e5e5e3')+';border-radius:8px;padding:8px 11px;font-size:12px;font-weight:600;color:'+(sel?f.tc:'#888')+';background:'+(sel?f.bg:'#fff')+';margin-bottom:5px">'+esc(z.name)+'</div>';};
-  let zieleOpts='';
-  if(meineZ.length){zieleOpts+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);margin-bottom:5px;margin-top:4px">Meine Ziele</div>';zieleOpts+=meineZ.map(zBtn).join('');}
-  if(andereZ.length){zieleOpts+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);margin-bottom:5px;margin-top:8px">Andere Ziele</div>';zieleOpts+=andereZ.map(zBtn).join('');}
+  // Ziel-Optionen aufteilen: Meine sichtbar, Andere eingeklappt
+  let zieleHtml='';
+  if(meineZ.length){meineZ.forEach(z=>{zieleHtml+=zBtn(z);});}
+  if(andereZ.length){zieleHtml+='<details style="margin-top:6px"><summary style="font-size:11px;color:var(--t3);cursor:pointer;padding:4px 0">Andere Ziele ('+andereZ.length+')</summary><div style="margin-top:6px">'+andereZ.map(zBtn).join('')+'</div></details>';}
 
   document.getElementById('mb').innerHTML=
-    '<div class="mt">'+(wr?'Big 3 bearbeiten — KW '+kw:'Wochenrückblick KW '+kw)+'</div>'
-    +(rueckblickHtml&&!wr?'<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px">'+rueckblickHtml+'</div>':'')
+    '<div class="mt">'+(wr?'Big 3 bearbeiten — KW '+kw:'Wochenplanung KW '+nextKw)+'</div>'
+    +(rueckblickHtml&&!wr?'<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px">'+rueckblickHtml+'</div>':'')
     +(!wr?'<div class="fl"><label>Warum die Lücke? <span style="font-weight:400;color:var(--t2)">(optional)</span></label>'
     +'<textarea id="wr-blockiert" rows="2" style="width:100%;padding:8px;border:1px solid var(--bd);border-radius:8px;font-family:inherit;font-size:13px;resize:vertical" placeholder="z.B. Leads brauchten mehr Entscheidungszeit…"></textarea></div>'
     +'<div style="border-top:1px solid var(--bd);margin:13px 0"></div>':'')
-    +'<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px">'+(wr?'Fokus-Ziel wählen':'Big 3 — KW '+nextKw)+'</div>'
-    +'<div style="font-size:12px;color:var(--t2);margin-bottom:10px;font-style:italic">Welche Meilensteine treibst du diese Woche voran?</div>'
+
+    // ── Step 1: Fokus-Ziel ──
+    +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">'
+    +'<span style="background:var(--inv);color:var(--inv-t);font-size:12px;font-weight:800;width:24px;height:24px;border-radius:99px;display:flex;align-items:center;justify-content:center;flex-shrink:0">1</span>'
+    +'<span style="font-size:16px;font-weight:700;color:var(--text)">Fokus-Ziel wählen</span>'
+    +'</div>'
+    +'<div style="font-size:12px;color:var(--t2);margin-bottom:10px;margin-left:34px">Welches Ziel treibst du diese Woche voran?</div>'
     +'<input type="hidden" id="wr-ziel" value="'+selZielId+'">'
     +(wr?'<textarea id="wr-blockiert" style="display:none">'+esc(wr.blockiert||'')+'</textarea>':'')
-    +zieleOpts
-    +'<div id="wr-tz-section" style="margin-top:10px"></div>'
-    +'<div style="border-top:1px solid var(--bd);margin:16px 0"></div>'
-    +'<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:2px">Wenn-Dann-Plan</div>'
-    +'<div style="font-size:11px;color:var(--t2);margin-bottom:8px;font-style:italic">Was könnte dich diese Woche aufhalten — und wie reagierst du?</div>'
+    +'<div style="margin-left:34px">'+zieleHtml+'</div>'
+
+    // ── Step 2: Meilensteine ──
+    +'<div style="display:flex;align-items:center;gap:10px;margin-top:18px;margin-bottom:6px">'
+    +'<span style="background:'+(selZielId?'var(--inv)':'var(--bd)')+';color:'+(selZielId?'var(--inv-t)':'var(--t3)')+';font-size:12px;font-weight:800;width:24px;height:24px;border-radius:99px;display:flex;align-items:center;justify-content:center;flex-shrink:0">2</span>'
+    +'<span style="font-size:16px;font-weight:700;color:'+(selZielId?'var(--text)':'var(--t3)')+'">Meilensteine für diese Woche</span>'
+    +'</div>'
+    +(selZielId?'<div style="font-size:12px;color:var(--t2);margin-bottom:8px;margin-left:34px">Wähle bestehende oder lege neue an (max. 3)</div>':'<div style="font-size:12px;color:var(--t3);margin-bottom:8px;margin-left:34px">Zuerst ein Ziel oben auswählen</div>')
+    +'<div id="wr-tz-section" style="margin-left:34px"></div>'
+
+    // ── Step 3: Wenn-Dann-Plan ──
+    +'<details style="margin-top:18px"><summary style="display:flex;align-items:center;gap:10px;cursor:pointer;list-style:none">'
+    +'<span style="background:var(--bd);color:var(--t3);font-size:12px;font-weight:800;width:24px;height:24px;border-radius:99px;display:flex;align-items:center;justify-content:center;flex-shrink:0">3</span>'
+    +'<span style="font-size:16px;font-weight:700;color:var(--t2)">Wenn-Dann-Plan <span style="font-size:12px;font-weight:400;color:var(--t3)">(optional)</span></span>'
+    +'</summary>'
+    +'<div style="margin-left:34px;margin-top:8px">'
     +'<textarea id="wr-hindernis" rows="2" placeholder="Mein größtes Hindernis diese Woche…" style="width:100%;padding:8px;border:1px solid var(--bd);border-radius:8px;font-family:inherit;font-size:13px;resize:vertical;margin-bottom:6px;box-sizing:border-box">'+esc(wr?.blockiert||'')+'</textarea>'
     +'<textarea id="wr-wenndann" rows="2" placeholder="Wenn [Hindernis], dann werde ich [Aktion]…" style="width:100%;padding:8px;border:1px solid var(--bd);border-radius:8px;font-family:inherit;font-size:13px;resize:vertical;box-sizing:border-box">'+esc(wr?.wenn_dann||'')+'</textarea>'
     +'<div style="font-size:10px;color:var(--t3);margin-top:3px">Wenn-Dann-Pläne verdoppeln die Erfolgsrate (Gollwitzer, 1999)</div>'
+    +'</div></details>'
+
     +'<div class="mf"><button class="btn btn-gr" onclick="cm()">Abbrechen</button>'
     +'<button class="btn btn-dk" onclick="saveWochenreset()">Speichern</button></div>';
   document.getElementById('ovl').classList.add('open');
