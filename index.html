@@ -2849,7 +2849,7 @@ function openNeu(pf={}){
   const zieleOpts=zieleOptgroups(defaultPid,pf.zielId||'');
   const hasAI=!!localStorage.getItem('anthropic_key');
   document.getElementById('mb').innerHTML='<div class="mt">Neue Aufgabe</div>'
-    +'<div class="fl"><label>Was soll gemacht werden?</label><div style="display:flex;gap:6px"><input id="nt" value="'+(pf.titel||'')+'" placeholder="Aufgabe, Todo, Meeting-Ergebnis…" autofocus style="flex:1">'
+    +'<div class="fl"><label>Was soll gemacht werden?</label><div style="display:flex;gap:6px"><input id="nt" value="'+(pf.titel||'')+'" placeholder="Aufgabe, Todo, Meeting-Ergebnis…" autofocus style="flex:1" oninput="aiDebounce()">'
     +(hasAI?'<button onclick="aiAnalyze()" style="font-size:11px;padding:5px 10px;border-radius:7px;border:1px solid var(--bd);background:var(--gray-bg);color:var(--t2);cursor:pointer;font-family:inherit;flex-shrink:0;white-space:nowrap" title="KI-Hebel-Analyse starten">✨ KI</button>':'')
     +'</div></div>'
     +'<div id="ai-suggestion" style="display:none"></div>'
