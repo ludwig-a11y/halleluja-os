@@ -774,12 +774,13 @@ async function klassifiziereAlsRandom(id){
 function aufgabeZuMeilenstein(id){
   const a=S.aufgaben.find(x=>x.id===id);if(!a)return;
   const zielOpts=S.ziele.map(z=>'<option value="'+z.id+'">'+esc(z.name)+'</option>').join('');
-  document.getElementById('mb').innerHTML='<div class="mt">Aufgabe → Meilenstein</div>'
-    +'<div class="fl"><label>Ziel</label><select id="ms-ziel">'+zielOpts+'</select></div>'
-    +'<div class="fl"><label>Name</label><input id="ms-name" value="'+esc(a.titel)+'" autofocus></div>'
-    +'<div class="f2"><div class="fl"><label>Verantwortlich</label><select id="ms-vid">'+S.personen.map(p=>'<option value="'+p.id+'"'+(p.id===aP?' selected':'')+'>'+esc(p.name)+'</option>').join('')+'</select></div>'
-    +'<div class="fl"><label>Bis wann</label><input type="date" id="ms-datum" value="'+(a.dl||'')+'"></div></div>'
-    +'<div class="mf"><button class="btn btn-gr" onclick="cm()">Abbrechen</button><button class="btn btn-dk" onclick="saveMeilensteinFromAufgabe(\''+id+'\')">Meilenstein erstellen</button></div>';
+  document.getElementById('mb').innerHTML='<div class="mt">Als Meilenstein anlegen</div>'
+    +'<div style="font-size:12px;color:var(--t2);margin:-8px 0 16px;line-height:1.4">Die Aufgabe wird in einen Meilenstein umgewandelt und dem gewählten Ziel zugeordnet.</div>'
+    +'<div class="fl"><label>Gehört zu Ziel</label><select id="ms-ziel">'+zielOpts+'</select></div>'
+    +'<div class="fl"><label>Meilenstein-Name</label><input id="ms-name" value="'+esc(a.titel)+'" placeholder="z.B. ROI-Konzept fertiggestellt" autofocus></div>'
+    +'<div class="f2"><div class="fl"><label>Wer ist verantwortlich?</label><select id="ms-vid">'+S.personen.map(p=>'<option value="'+p.id+'"'+(p.id===aP?' selected':'')+'>'+esc(p.name)+'</option>').join('')+'</select></div>'
+    +'<div class="fl"><label>Bis wann?</label><input type="date" id="ms-datum" value="'+(a.dl||'')+'"></div></div>'
+    +'<div class="mf"><button class="btn btn-gr" onclick="cm()">Abbrechen</button><button class="btn btn-dk" onclick="saveMeilensteinFromAufgabe(\''+id+'\')">→ Meilenstein anlegen</button></div>';
   document.getElementById('ovl').classList.add('open');
 }
 async function saveMeilensteinFromAufgabe(aufgabeId){
