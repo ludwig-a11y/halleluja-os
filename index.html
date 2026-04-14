@@ -2632,7 +2632,7 @@ async function setStatusModal(id,st){
   else if(a.status==='aktiv'){patch.gebucht=Math.round(((a.gebucht||0)+(Date.now()-(a.aktSeit||Date.now()))/3600000)*100)/100;patch.akt_seit=null;}
   Object.assign(a,{status:st,aktSeit:st==='aktiv'?Date.now():null,...(patch.gebucht!==undefined?{gebucht:patch.gebucht}:{})});
   const _teamSlack=S.personen.filter(p=>p.id!==aP&&p.slack_id).map(p=>p.slack_id);
-  if(st==='erledigt'){checkP1Done(a.pid);notify('aufgabe_erledigt',{prio:a.prio||null,team_slack_ids:_teamSlack});}
+  if(st==='erledigt'){checkP1Done(a.pid);notify('aufgabe_erledigt',{prio:a.prio||null,team_slack_ids:_teamSlack,actor_slack_id:me()?.slack_id||''});}
   if(st==='aktiv')notify('aufgabe_gestartet',{prio:a.prio||null,team_slack_ids:_teamSlack});
   await dbPatch('aufgaben',id,patch);cm();render();
 }
