@@ -1551,7 +1551,7 @@ function tryLogin(){
     try{localStorage.setItem('h_session',JSON.stringify({pid:loginSel,ts:Date.now()}));}catch(e){}
     document.getElementById('login-screen').style.display='none';
     document.getElementById('app').style.display='flex';
-    if(localStorage.getItem('openai_key')&&!document.getElementById('fab-mic')){const fb=document.createElement('button');fb.id='fab-mic';fb.className='fab-mic';fb.textContent='🎤';fb.onclick=toggleVoiceRec;document.body.appendChild(fb);}
+    if(!document.getElementById('fab-mic')){const fb=document.createElement('button');fb.id='fab-mic';fb.className='fab-mic';fb.textContent='🎤';fb.onclick=toggleVoiceRec;document.body.appendChild(fb);}
     updateBadge();render();startSonderPoller();startDataPoller();handleDeepLink();
   } else {
     document.getElementById('login-err').textContent='Falsche PIN.';pinIn='';updDots();
