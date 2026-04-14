@@ -2541,26 +2541,53 @@ function openDetail(id){
   const d=dli(a.dl),tzN=getTZName(a),zN=getZielName(a);
   const from=a.erstelltVon&&a.erstelltVon!==a.pid?person(a.erstelltVon):null;
   const zielOpts=S.ziele.map(z=>'<option value="'+z.id+'"'+(a.zielId===z.id?' selected':'')+'>'+esc(z.name)+'</option>').join('');
-  document.getElementById('mb').innerHTML='<div style="display:flex;align-items:flex-start;gap:8px"><div class="mt" style="flex:1">'+esc(a.titel)+'</div><button onclick="copyTaskLink(\''+id+'\',this)" style="flex-shrink:0;margin-top:2px;font-size:13px;padding:6px 12px;border-radius:8px;border:1px solid var(--bd);background:var(--gray-bg);color:var(--t2);cursor:pointer;font-family:inherit;transition:all .15s" title="Link kopieren">🔗</button></div>'
-    +'<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:14px">'+typTag(a)+prioTag(a.prio,a.id,canChangePrio(a))+(zN?'<span class="tag" style="background:var(--gray-bg);color:var(--t2)">'+esc(zN)+'</span>':'')+(tzN?'<span class="tag" style="background:var(--purple-bg);color:var(--purple)">'+esc(tzN)+'</span>':'')+(d?'<span class="tag" style="background:'+d.bg+';color:'+d.c+'">'+d.l+'</span>':'')+(a.vertraulich?'<span class="lock">vertraulich</span>':'')+(from?'<span class="tag" style="background:var(--gray-bg);color:var(--t2)">von '+esc(from.name)+'</span>':'')+'</div>'
-    +'<div class="fl"><label>Titel</label><div style="display:flex;gap:6px"><input id="det-titel" value="'+esc(a.titel)+'" style="font-size:13px;font-weight:500;flex:1" onblur="saveDetailField(\''+id+'\',\'titel\',this.value)" onkeydown="if(event.key===\'Enter\'){event.preventDefault();saveDetailField(\''+id+'\',\'titel\',this.value);this.blur()}"><button onclick="saveDetailField(\''+id+'\',\'titel\',document.getElementById(\'det-titel\').value)" style="padding:4px 10px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);cursor:pointer;font-size:12px;font-family:inherit;flex-shrink:0">✓</button></div></div>'
-    +'<div class="fl"><label>Notiz</label><textarea id="det-notiz" rows="2" placeholder="Notiz…" style="resize:none;font-size:12px" onblur="saveDetailField(\''+id+'\',\'notiz\',this.value)">'+esc(a.notiz||'')+'</textarea></div>'
-    +'<div class="fl"><label>Zuständig</label><select onchange="reassignAufgabe(\''+id+'\',this.value)" style="font-size:12px">'+S.personen.map(p=>'<option value="'+p.id+'"'+(p.id===a.pid?' selected':'')+'>'+esc(p.name)+'</option>').join('')+'</select></div>'
-    +'<div class="fl" style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'
+  const zust=person(a.pid);
+  let h='';
+  // ── Card View (read-only) ──
+  h+='<div style="display:flex;align-items:flex-start;gap:8px"><div class="mt" style="flex:1">'+esc(a.titel)+'</div><button onclick="copyTaskLink(\''+id+'\',this)" style="flex-shrink:0;margin-top:2px;font-size:13px;padding:6px 12px;border-radius:8px;border:1px solid var(--bd);background:var(--gray-bg);color:var(--t2);cursor:pointer;font-family:inherit;transition:all .15s" title="Link kopieren">🔗</button></div>';
+  h+='<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px">'+typTag(a)+prioTag(a.prio,a.id,canChangePrio(a))+(zN?'<span class="tag" style="background:var(--gray-bg);color:var(--t2)">'+esc(zN)+'</span>':'')+(tzN?'<span class="tag" style="background:var(--purple-bg);color:var(--purple)">'+esc(tzN)+'</span>':'')+(d?'<span class="tag" style="background:'+d.bg+';color:'+d.c+'">'+d.l+'</span>':'')+(a.vertraulich?'<span class="lock">vertraulich</span>':'')+(from?'<span class="tag" style="background:var(--gray-bg);color:var(--t2)">von '+esc(from.name)+'</span>':'')+'</div>';
+  if(zust)h+='<div style="font-size:12px;color:var(--t2);margin-bottom:10px">'+esc(zust.name)+'</div>';
+  if(a.notiz)h+='<div style="font-size:13px;color:var(--text);margin-bottom:12px;padding:10px 12px;background:var(--gray-bg);border-radius:8px;white-space:pre-wrap;line-height:1.5">'+esc(a.notiz)+'</div>';
+  if(a.ua&&a.ua.length)h+='<div style="margin-bottom:12px"><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);margin-bottom:6px">Schritte</div>'+stepsHtml(a,false)+'</div>';
+  h+='<div style="font-size:11px;color:var(--t2);padding:8px 0;border-top:1px solid var(--bd);margin-bottom:12px">Zeit: <strong>'+fmt(elapsedSec(a))+'</strong> von '+fmtH(a.geplant)+' geplant</div>';
+  // ── Action Buttons ──
+  h+='<div style="display:flex;gap:8px;margin-bottom:16px">';
+  if(a.status==='aktiv'){
+    h+='<button onclick="setStatusModal(\''+id+'\',\'neu\')" style="flex:1;padding:10px;border-radius:10px;border:none;background:var(--amber);color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Stoppen</button>';
+    h+='<button onclick="setStatusModal(\''+id+'\',\'erledigt\')" style="flex:1;padding:10px;border-radius:10px;border:none;background:var(--green);color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Erledigt</button>';
+  } else if(a.status==='erledigt'){
+    h+='<button onclick="setStatusModal(\''+id+'\',\'aktiv\')" style="flex:1;padding:10px;border-radius:10px;border:none;background:var(--blue);color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Wieder starten</button>';
+  } else {
+    h+='<button onclick="setStatusModal(\''+id+'\',\'aktiv\')" style="flex:1;padding:10px;border-radius:10px;border:none;background:var(--blue);color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Starten</button>';
+    h+='<button onclick="setStatusModal(\''+id+'\',\'erledigt\')" style="flex:1;padding:10px;border-radius:10px;border:none;background:var(--green);color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Erledigt</button>';
+  }
+  h+='</div>';
+  // ── Edit Section (collapsed) ──
+  h+='<details id="det-edit"><summary style="font-size:13px;font-weight:600;color:var(--t2);cursor:pointer;padding:8px 0;user-select:none;list-style:none;display:flex;align-items:center;gap:6px"><span style="transition:transform .15s;display:inline-block" id="det-arrow">&#9654;</span> Bearbeiten</summary>';
+  h+='<div style="padding-top:10px">';
+  h+='<div class="fl"><label>Titel</label><div style="display:flex;gap:6px"><input id="det-titel" value="'+esc(a.titel)+'" style="font-size:13px;font-weight:500;flex:1" onblur="saveDetailField(\''+id+'\',\'titel\',this.value)" onkeydown="if(event.key===\'Enter\'){event.preventDefault();saveDetailField(\''+id+'\',\'titel\',this.value);this.blur()}"><button onclick="saveDetailField(\''+id+'\',\'titel\',document.getElementById(\'det-titel\').value)" style="padding:4px 10px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);cursor:pointer;font-size:12px;font-family:inherit;flex-shrink:0">OK</button></div></div>';
+  h+='<div class="fl"><label>Notiz</label><textarea id="det-notiz" rows="2" placeholder="Notiz…" style="resize:none;font-size:12px" onblur="saveDetailField(\''+id+'\',\'notiz\',this.value)">'+esc(a.notiz||'')+'</textarea></div>';
+  h+='<div class="fl"><label>Zuständig</label><select onchange="reassignAufgabe(\''+id+'\',this.value)" style="font-size:12px">'+S.personen.map(p=>'<option value="'+p.id+'"'+(p.id===a.pid?' selected':'')+'>'+esc(p.name)+'</option>').join('')+'</select></div>';
+  h+='<div class="fl" style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'
     +'<div><label>Deadline</label><input type="date" id="det-dl" value="'+(a.dl||'')+'" onchange="saveDetailField(\''+id+'\',\'dl\',this.value)"></div>'
     +'<div><label>Geplant (h)</label><input type="number" id="det-geplant" value="'+(a.geplant||'')+'" min="0" step="0.5" placeholder="Std." onblur="saveDetailField(\''+id+'\',\'geplant\',parseFloat(this.value)||null)"></div>'
-    +'</div>'
-    +'<div class="fl"><label>Wiederkehrend</label><select id="det-rec" onchange="saveDetailField(\''+id+'\',\'recurring\',this.value||null)" style="font-size:12px"><option value="">Einmalig</option><option value="daily"'+(a.recurring==='daily'?' selected':'')+'>🔄 Täglich</option><option value="weekly"'+(a.recurring==='weekly'?' selected':'')+'>🔄 Wöchentlich</option><option value="monthly"'+(a.recurring==='monthly'?' selected':'')+'>🔄 Monatlich</option></select></div>'
-    +'<div class="fl"><label>Ziel</label><select id="det-ziel" onchange="saveDetailField(\''+id+'\',\'ziel_id\',this.value||null)"><option value="">— kein Ziel —</option>'+zielOpts+'</select></div>'
-    +'<div class="fl"><label>Status</label><div style="display:flex;gap:5px;flex-wrap:wrap">'
+    +'</div>';
+  h+='<div class="fl"><label>Wiederkehrend</label><select id="det-rec" onchange="saveDetailField(\''+id+'\',\'recurring\',this.value||null)" style="font-size:12px"><option value="">Einmalig</option><option value="daily"'+(a.recurring==='daily'?' selected':'')+'>Täglich</option><option value="weekly"'+(a.recurring==='weekly'?' selected':'')+'>Wöchentlich</option><option value="monthly"'+(a.recurring==='monthly'?' selected':'')+'>Monatlich</option></select></div>';
+  h+='<div class="fl"><label>Ziel</label><select id="det-ziel" onchange="saveDetailField(\''+id+'\',\'ziel_id\',this.value||null)"><option value="">— kein Ziel —</option>'+zielOpts+'</select></div>';
+  h+='<div class="fl"><label>Status</label><div style="display:flex;gap:5px;flex-wrap:wrap">'
     +[['neu','Neu','var(--red-bg)','var(--red)'],['backlog','Backlog','var(--gray-bg)','var(--t2)'],['aktiv','Aktiv','var(--blue-bg)','var(--blue)'],['erledigt','Erledigt','var(--green-bg)','var(--green)']].map(x=>
       '<button onclick="setStatusModal(\''+id+'\',\''+x[0]+'\')" style="font-size:11px;padding:4px 10px;border-radius:8px;border:'+(a.status===x[0]?'2px':'1px')+' solid '+(a.status===x[0]?'var(--text)':'var(--bd)')+';background:'+(a.status===x[0]?x[2]:'var(--sf)')+';color:'+(a.status===x[0]?x[3]:'var(--t2)')+';cursor:pointer;font-family:inherit;font-weight:'+(a.status===x[0]?600:400)+'">'+x[1]+'</button>'
-    ).join('')+'</div></div>'
-    +'<div class="fl"><label>Teilziel</label><select id="det-tz" onchange="setTeilziel(\''+id+'\',this.value)"><option value="">— kein Meilenstein —</option>'+(a.zielId?(zielObj(a.zielId)?.teilziele||[]).map(tz=>'<option value="'+tz.id+'"'+(a.teilzielId===tz.id?' selected':'')+'>'+esc(tz.name)+'</option>').join(''):'')+'</select></div>'
-    +(isGF()?'<div class="fl"><label style="display:flex;align-items:center;gap:8px;text-transform:none;font-size:13px;font-weight:400;cursor:pointer"><input type="checkbox" id="det-vert"'+(a.vertraulich?' checked':'')+' style="width:auto" onchange="saveDetailField(\''+id+'\',\'vertraulich\',this.checked)"> Vertraulich</label></div>':'')
-    +'<div class="fl"><label>Schritte</label>'+stepsHtml(a,true)+'</div>'
-    +'<div style="font-size:11px;color:var(--t2);padding:10px 0;border-top:1px solid var(--bd)">Zeit: <strong>'+fmt(elapsedSec(a))+'</strong> von '+fmtH(a.geplant)+' geplant</div>'
-    +'<div class="mf"><button class="btn btn-red" onclick="delAufgabe(\''+id+'\')">Löschen</button><button class="btn btn-gr" onclick="cm()">Schließen</button></div>';
+    ).join('')+'</div></div>';
+  h+='<div class="fl"><label>Teilziel</label><select id="det-tz" onchange="setTeilziel(\''+id+'\',this.value)"><option value="">— kein Meilenstein —</option>'+(a.zielId?(zielObj(a.zielId)?.teilziele||[]).map(tz=>'<option value="'+tz.id+'"'+(a.teilzielId===tz.id?' selected':'')+'>'+esc(tz.name)+'</option>').join(''):'')+'</select></div>';
+  if(isGF())h+='<div class="fl"><label style="display:flex;align-items:center;gap:8px;text-transform:none;font-size:13px;font-weight:400;cursor:pointer"><input type="checkbox" id="det-vert"'+(a.vertraulich?' checked':'')+' style="width:auto" onchange="saveDetailField(\''+id+'\',\'vertraulich\',this.checked)"> Vertraulich</label></div>';
+  h+='<div class="fl"><label>Schritte</label>'+stepsHtml(a,true)+'</div>';
+  h+='</div></details>';
+  // ── Footer ──
+  h+='<div class="mf"><button class="btn btn-red" onclick="delAufgabe(\''+id+'\')">Löschen</button><button class="btn btn-gr" onclick="cm()">Schließen</button></div>';
+  document.getElementById('mb').innerHTML=h;
+  // rotate arrow on toggle
+  const det=document.getElementById('det-edit');
+  if(det)det.addEventListener('toggle',function(){const ar=document.getElementById('det-arrow');if(ar)ar.style.transform=det.open?'rotate(90deg)':'';});
   document.getElementById('ovl').classList.add('open');
 }
 async function saveDetailField(id,field,val){
