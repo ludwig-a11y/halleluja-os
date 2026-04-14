@@ -138,6 +138,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;font-size:1
 .toast{position:fixed;top:24px;left:50%;transform:translateX(-50%) translateY(-120px);background:var(--inv);color:var(--inv-t);padding:12px 24px;border-radius:var(--r-full);font-size:15px;font-weight:600;z-index:9999;pointer-events:none;opacity:0;transition:transform .4s cubic-bezier(.2,1,.3,1),opacity .4s ease}
 .toast.show{transform:translateX(-50%) translateY(0);opacity:1}
 .toast.hide{transform:translateX(-50%) translateY(-40px);opacity:0}
+.focus-takeover{position:fixed;inset:0;z-index:9990;display:flex;align-items:center;justify-content:center;flex-direction:column;background:var(--hero);opacity:0;transition:opacity .3s ease;pointer-events:none}
+.focus-takeover.show{opacity:1;pointer-events:auto}
+.focus-takeover.hide{opacity:0;pointer-events:none}
+.ft-emoji{font-size:96px;animation:ftPulse 1.2s ease infinite}
+.ft-text{font-size:42px;font-weight:900;color:var(--hero-t);margin-top:16px;letter-spacing:-1px}
+.ft-sub{font-size:18px;font-weight:500;color:var(--hero-t);opacity:.6;margin-top:8px}
+@keyframes ftPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.15)}}
 .cele-wrap{position:fixed;inset:0;z-index:9998;pointer-events:none;overflow:hidden}
 .cele-msg{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(0);z-index:9999;text-align:center;pointer-events:none;opacity:0;transition:transform .5s cubic-bezier(.2,1.2,.3,1),opacity .4s ease}
 .cele-msg.show{transform:translate(-50%,-50%) scale(1);opacity:1}
@@ -490,6 +497,16 @@ function toast(msg){
   el.textContent=msg;el.className='toast';
   requestAnimationFrame(()=>{el.className='toast show';});
   clearTimeout(el._t);el._t=setTimeout(()=>{el.className='toast hide';},2500);
+}
+function focusTakeover(){
+  let ft=document.getElementById('focus-takeover');
+  if(ft)ft.remove();
+  ft=document.createElement('div');ft.id='focus-takeover';ft.className='focus-takeover';
+  ft.innerHTML='<div class="ft-emoji">💪</div><div class="ft-text">LOS GEHT\u2019S!</div><div class="ft-sub">Du packst das.</div>';
+  document.body.appendChild(ft);
+  requestAnimationFrame(()=>{ft.className='focus-takeover show';});
+  setTimeout(()=>{ft.className='focus-takeover hide';},2200);
+  setTimeout(()=>{if(ft.parentNode)ft.remove();},2700);
 }
 function celebrate(emoji,text){
   // Confetti
@@ -2508,7 +2525,7 @@ async function startenA(id){
   const prev={status:a.status,aktSeit:a.aktSeit};a._busy=true;
   try{
     a.status='aktiv';a.aktSeit=Date.now();try{render();}catch(e){console.error('render@startenA',e);}
-    toast('💪 Los geht\u2019s!');
+    focusTakeover();
     notify('aufgabe_gestartet',{prio:a.prio||null,team_slack_ids:S.personen.filter(p=>p.id!==aP&&p.slack_id).map(p=>p.slack_id),actor_slack_id:me()?.slack_id||''});
     const ok=await dbPatch('aufgaben',id,{status:'aktiv',akt_seit:new Date().toISOString()});
     if(!ok){a.status=prev.status;a.aktSeit=prev.aktSeit;}
