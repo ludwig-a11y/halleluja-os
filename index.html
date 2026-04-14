@@ -2463,7 +2463,7 @@ async function startenA(id){
   const prev={status:a.status,aktSeit:a.aktSeit};a._busy=true;
   try{
     a.status='aktiv';a.aktSeit=Date.now();try{render();}catch(e){console.error('render@startenA',e);}
-    notify('aufgabe_gestartet',{prio:a.prio||null});
+    notify('aufgabe_gestartet',{prio:a.prio||null,team_slack_ids:S.personen.filter(p=>p.id!==aP&&p.slack_id).map(p=>p.slack_id)});
     const ok=await dbPatch('aufgaben',id,{status:'aktiv',akt_seit:new Date().toISOString()});
     if(!ok){a.status=prev.status;a.aktSeit=prev.aktSeit;}
   }catch(e){console.error('startenA',e);a.status=prev.status;a.aktSeit=prev.aktSeit;}
@@ -2631,8 +2631,9 @@ async function setStatusModal(id,st){
   if(st==='aktiv')patch.akt_seit=new Date().toISOString();
   else if(a.status==='aktiv'){patch.gebucht=Math.round(((a.gebucht||0)+(Date.now()-(a.aktSeit||Date.now()))/3600000)*100)/100;patch.akt_seit=null;}
   Object.assign(a,{status:st,aktSeit:st==='aktiv'?Date.now():null,...(patch.gebucht!==undefined?{gebucht:patch.gebucht}:{})});
-  if(st==='erledigt'){checkP1Done(a.pid);notify('aufgabe_erledigt',{prio:a.prio||null});}
-  if(st==='aktiv')notify('aufgabe_gestartet',{prio:a.prio||null});
+  const _teamSlack=S.personen.filter(p=>p.id!==aP&&p.slack_id).map(p=>p.slack_id);
+  if(st==='erledigt'){checkP1Done(a.pid);notify('aufgabe_erledigt',{prio:a.prio||null,team_slack_ids:_teamSlack});}
+  if(st==='aktiv')notify('aufgabe_gestartet',{prio:a.prio||null,team_slack_ids:_teamSlack});
   await dbPatch('aufgaben',id,patch);cm();render();
 }
 async function setTeilziel(id,tzid){
