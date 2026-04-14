@@ -138,6 +138,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;font-size:1
 .toast{position:fixed;top:24px;left:50%;transform:translateX(-50%) translateY(-120px);background:var(--inv);color:var(--inv-t);padding:12px 24px;border-radius:var(--r-full);font-size:15px;font-weight:600;z-index:9999;pointer-events:none;opacity:0;transition:transform .4s cubic-bezier(.2,1,.3,1),opacity .4s ease}
 .toast.show{transform:translateX(-50%) translateY(0);opacity:1}
 .toast.hide{transform:translateX(-50%) translateY(-40px);opacity:0}
+.cele-wrap{position:fixed;inset:0;z-index:9998;pointer-events:none;overflow:hidden}
+.cele-msg{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(0);z-index:9999;text-align:center;pointer-events:none;opacity:0;transition:transform .5s cubic-bezier(.2,1.2,.3,1),opacity .4s ease}
+.cele-msg.show{transform:translate(-50%,-50%) scale(1);opacity:1}
+.cele-msg.hide{transform:translate(-50%,-50%) scale(.8);opacity:0}
+.cele-emoji{font-size:64px;display:block;margin-bottom:8px}
+.cele-text{font-size:22px;font-weight:800;color:var(--text);background:var(--sf);padding:16px 32px;border-radius:var(--r-xl);box-shadow:0 8px 32px rgba(0,0,0,.15)}
+.confetti{position:absolute;width:8px;height:8px;border-radius:2px;animation:confettiFall linear forwards}
+@keyframes confettiFall{0%{opacity:1;transform:translateY(0) rotate(0deg)}100%{opacity:0;transform:translateY(100vh) rotate(720deg)}}
 .sl{font-size:11px}.sl.dn{text-decoration:line-through;color:var(--t3)}
 .asi{flex:1;font-size:11px;padding:4px 8px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--text);font-family:inherit;outline:none}
 .zcard{border-radius:var(--r-lg);padding:18px;margin-bottom:14px;border:1px solid;transition:box-shadow .15s,transform .15s}
@@ -482,6 +490,32 @@ function toast(msg){
   el.textContent=msg;el.className='toast';
   requestAnimationFrame(()=>{el.className='toast show';});
   clearTimeout(el._t);el._t=setTimeout(()=>{el.className='toast hide';},2500);
+}
+function celebrate(emoji,text){
+  // Confetti
+  let wrap=document.getElementById('cele-wrap');
+  if(wrap)wrap.remove();
+  wrap=document.createElement('div');wrap.id='cele-wrap';wrap.className='cele-wrap';document.body.appendChild(wrap);
+  const colors=['#15803d','#1d4ed8','#7c3aed','#c2410c','#a16207','#9d174d','#e11d48','#0891b2'];
+  for(let i=0;i<40;i++){
+    const c=document.createElement('div');c.className='confetti';
+    c.style.left=Math.random()*100+'%';c.style.top=-10+'px';
+    c.style.background=colors[Math.floor(Math.random()*colors.length)];
+    c.style.width=(5+Math.random()*8)+'px';c.style.height=(5+Math.random()*8)+'px';
+    c.style.animationDuration=(1.5+Math.random()*2)+'s';
+    c.style.animationDelay=(Math.random()*0.6)+'s';
+    wrap.appendChild(c);
+  }
+  setTimeout(()=>{if(wrap.parentNode)wrap.remove();},4000);
+  // Message
+  let msg=document.getElementById('cele-msg');
+  if(msg)msg.remove();
+  msg=document.createElement('div');msg.id='cele-msg';msg.className='cele-msg';
+  msg.innerHTML='<span class="cele-emoji">'+emoji+'</span><div class="cele-text">'+text+'</div>';
+  document.body.appendChild(msg);
+  requestAnimationFrame(()=>{msg.className='cele-msg show';});
+  setTimeout(()=>{msg.className='cele-msg hide';},2200);
+  setTimeout(()=>{if(msg.parentNode)msg.remove();},2800);
 }
 const cl=p=>p?CL[p.ci%CL.length]:CL[0];
 const isGF=()=>{const m=me();return m&&m.stufe==='gf';};
@@ -2643,7 +2677,7 @@ async function setStatusModal(id,st){
   else if(a.status==='aktiv'){patch.gebucht=Math.round(((a.gebucht||0)+(Date.now()-(a.aktSeit||Date.now()))/3600000)*100)/100;patch.akt_seit=null;}
   Object.assign(a,{status:st,aktSeit:st==='aktiv'?Date.now():null,...(patch.gebucht!==undefined?{gebucht:patch.gebucht}:{})});
   const _teamSlack=S.personen.filter(p=>p.id!==aP&&p.slack_id).map(p=>p.slack_id);
-  if(st==='erledigt'){toast('🎉 Geschafft! Weiter so');checkP1Done(a.pid);notify('aufgabe_erledigt',{prio:a.prio||null,team_slack_ids:_teamSlack,actor_slack_id:me()?.slack_id||''});}
+  if(st==='erledigt'){celebrate('🎉','Geschafft! Weiter so 💪');checkP1Done(a.pid);notify('aufgabe_erledigt',{prio:a.prio||null,team_slack_ids:_teamSlack,actor_slack_id:me()?.slack_id||''});}
   if(st==='aktiv')notify('aufgabe_gestartet',{prio:a.prio||null,team_slack_ids:_teamSlack,actor_slack_id:me()?.slack_id||''});
   await dbPatch('aufgaben',id,patch);cm();render();
 }
@@ -2864,7 +2898,7 @@ async function toggleTZ(zid,tzid){
   const tz=(z.teilziele||[]).find(t=>t.id===tzid);if(!tz)return;
   tz.erledigt=!tz.erledigt;
   await dbPatch('teilziele',tzid,{erledigt:tz.erledigt});
-  if(tz.erledigt)notify('meilenstein_erledigt',{meilenstein:tz.name,ziel:z.name});
+  if(tz.erledigt){celebrate('🎯','Meilenstein erreicht!');notify('meilenstein_erledigt',{meilenstein:tz.name,ziel:z.name});}
   rZiele();
 }
 function openAddTZ(zid){
