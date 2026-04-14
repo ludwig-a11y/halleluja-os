@@ -814,6 +814,22 @@ function signalGesehen(id){
   if(!gesehen.includes(id)){gesehen.push(id);localStorage.setItem(key,JSON.stringify(gesehen));}
   render();
 }
+async function wolkeZurueck(id){
+  const s=S.signale.find(x=>x.id===id);if(!s)return;
+  const von=person(s.pid);
+  const meinName=me()?.name||'';
+  // Bereich leeren → zurück in den allgemeinen Pool
+  s.bereich='';
+  await supa('signale?id=eq.'+id,{method:'PATCH',body:{bereich:''},prefer:'return=minimal'});
+  // Absender benachrichtigen
+  notify('wolke_zurueck',{
+    thema:s.was,
+    typ:s.typ==='idee'?'Idee':'Wolke',
+    zurueck_von:meinName,
+    fuer:von?{id:von.id,name:von.name,slack_id:von.slack_id}:null
+  });
+  render();
+}
 function besprechenSignal(id){
   const s=S.signale.find(x=>x.id===id);if(!s)return;
   const von=person(s.pid);
@@ -2002,6 +2018,7 @@ function rTag(){
         out+='<button onclick="besprechenSignal(\''+s.id+'\')" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--blue-bd);background:var(--blue-bg);color:var(--blue);cursor:pointer;font-family:inherit">💬</button>';
         out+='<button onclick="ideenZuAufgabe(\''+s.id+'\')" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--text);cursor:pointer;font-family:inherit">→ Aufgabe</button>';
         out+='<button onclick="signalGesehen(\''+s.id+'\')" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--green-bd);background:var(--green-bg);color:var(--green);cursor:pointer;font-family:inherit">✓ Parkplatz</button>';
+        out+='<button onclick="wolkeZurueck(\''+s.id+'\')" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--red-bd);background:var(--red-bg);color:var(--red);cursor:pointer;font-family:inherit">↩ Zurück</button>';
         out+='</div></div>';
       });
       out+='</div>';
