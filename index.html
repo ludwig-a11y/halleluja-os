@@ -2569,7 +2569,7 @@ function openDetail(id){
   // ── Action Buttons ──
   h+='<div style="display:flex;gap:8px;margin-bottom:16px">';
   if(a.status==='aktiv'){
-    h+='<button onclick="setStatusModal(\''+id+'\',\'neu\')" style="flex:1;padding:10px;border-radius:10px;border:none;background:var(--amber);color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Stoppen</button>';
+    h+='<button onclick="setStatusModal(\''+id+'\',\'backlog\')" style="flex:1;padding:10px;border-radius:10px;border:none;background:var(--amber);color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Stoppen</button>';
     h+='<button onclick="setStatusModal(\''+id+'\',\'erledigt\')" style="flex:1;padding:10px;border-radius:10px;border:none;background:var(--green);color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Erledigt</button>';
   } else if(a.status==='erledigt'){
     h+='<button onclick="setStatusModal(\''+id+'\',\'aktiv\')" style="flex:1;padding:10px;border-radius:10px;border:none;background:var(--blue);color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Wieder starten</button>';
@@ -2626,7 +2626,9 @@ async function setStatusModal(id,st){
   else if(a.status==='aktiv'){patch.gebucht=Math.round(((a.gebucht||0)+(Date.now()-(a.aktSeit||Date.now()))/3600000)*100)/100;patch.akt_seit=null;}
   Object.assign(a,{status:st,aktSeit:st==='aktiv'?Date.now():null,...(patch.gebucht!==undefined?{gebucht:patch.gebucht}:{})});
   if(st==='erledigt')checkP1Done(a.pid);
-  await dbPatch('aufgaben',id,patch);openDetail(id);render();
+  await dbPatch('aufgaben',id,patch);
+  if(st==='erledigt'){cm();render();}
+  else{openDetail(id);render();}
 }
 async function setTeilziel(id,tzid){
   const a=S.aufgaben.find(x=>x.id===id);if(!a)return;
