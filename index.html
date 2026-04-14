@@ -811,11 +811,19 @@ async function weiterleitenAufgabe(id,newPid){
 function signalGesehen(id){
   const key='signale_gesehen_'+aP;
   const gesehen=JSON.parse(localStorage.getItem(key)||'[]');
-  if(!gesehen.includes(id)){gesehen.push(id);localStorage.setItem(key,JSON.stringify(gesehen));}
+  const sid=String(id);
+  if(!gesehen.includes(sid)){gesehen.push(sid);localStorage.setItem(key,JSON.stringify(gesehen));}
+  render();
+}
+function signalErledigt(id){
+  const key='signale_erledigt_'+aP;
+  const erledigt=JSON.parse(localStorage.getItem(key)||'[]');
+  const sid=String(id);
+  if(!erledigt.includes(sid)){erledigt.push(sid);localStorage.setItem(key,JSON.stringify(erledigt));}
   render();
 }
 async function wolkeZurueck(id){
-  const s=S.signale.find(x=>x.id===id);if(!s)return;
+  const s=S.signale.find(x=>String(x.id)===String(id));if(!s)return;
   const von=person(s.pid);
   const meinName=me()?.name||'';
   // Bereich leeren → zurück in den allgemeinen Pool
@@ -831,7 +839,7 @@ async function wolkeZurueck(id){
   render();
 }
 function besprechenSignal(id){
-  const s=S.signale.find(x=>x.id===id);if(!s)return;
+  const s=S.signale.find(x=>String(x.id)===String(id));if(!s)return;
   const von=person(s.pid);
   const badge=s.typ==='idee'?'💡 Idee':'☁️ Wolke';
   const bereich=s.bereich?' (für '+s.bereich+')':'';
@@ -1772,6 +1780,33 @@ function rWoche(){
     out+='</div>';
   }
 
+  // ── Wochen-Parkplatz (geparkte Wolken & Ideen) ──
+  {
+    const _pkMn=person(aP)?.name||'';
+    const _pkGs=JSON.parse(localStorage.getItem('signale_gesehen_'+aP)||'[]');
+    const _pkErl=JSON.parse(localStorage.getItem('signale_erledigt_'+aP)||'[]');
+    const geparkt=S.signale.filter(s=>(s.typ==='wolke'||s.typ==='idee')&&s.bereich===_pkMn&&_pkGs.includes(String(s.id))&&!_pkErl.includes(String(s.id)));
+    if(geparkt.length){
+      out+='<div style="background:var(--purple-bg);border:1px solid var(--purple-bd);border-radius:12px;padding:12px 14px;margin-bottom:14px">';
+      out+='<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px"><span style="font-size:13px">☁️</span><span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--purple)">Parkplatz</span><span style="font-size:10px;color:var(--t3);margin-left:auto">'+geparkt.length+' geparkt</span></div>';
+      geparkt.forEach((s,i)=>{
+        const von=person(s.pid);const isIdee=s.typ==='idee';
+        out+='<div style="display:flex;align-items:flex-start;gap:8px;padding:7px 0'+(i?';border-top:1px solid var(--purple-bd)':'')+'">';
+        out+='<span style="font-size:13px;flex-shrink:0;margin-top:1px">'+(isIdee?'💡':'☁️')+'</span>';
+        out+='<div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(s.was)+'</div>';
+        if(s.notiz)out+='<div style="font-size:11px;color:var(--t2);font-style:italic;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(s.notiz)+'</div>';
+        if(von)out+='<div style="font-size:10px;color:var(--t3)">von '+esc(von.name)+'</div>';
+        out+='</div>';
+        out+='<div style="display:flex;gap:4px;flex-shrink:0">';
+        out+='<button onclick="besprechenSignal(\''+s.id+'\')" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--blue-bd);background:var(--blue-bg);color:var(--blue);cursor:pointer;font-family:inherit">💬</button>';
+        out+='<button onclick="ideenZuAufgabe(\''+s.id+'\')" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--text);cursor:pointer;font-family:inherit">→ Aufgabe</button>';
+        out+='<button onclick="signalErledigt(\''+s.id+'\')" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--green-bd);background:var(--green-bg);color:var(--green);cursor:pointer;font-family:inherit">✓ Erledigt</button>';
+        out+='</div></div>';
+      });
+      out+='</div>';
+    }
+  }
+
   // ── Strategie-Briefing (nur GF) ──
   if(isGF()){
     const bKey='briefing-'+aP+'-'+TODAY;
@@ -1998,32 +2033,7 @@ function rTag(){
     }
   }
 
-  // ── Wolken & Ideen für dich (oben, vor Tagesplan) ──
-  {
-    const meinName2=person(aP)?.name||'';
-    const gesehen2=JSON.parse(localStorage.getItem('signale_gesehen_'+aP)||'[]');
-    const fuerMich2=S.signale.filter(s=>(s.typ==='wolke'||s.typ==='idee')&&s.bereich===meinName2&&!gesehen2.includes(s.id));
-    if(fuerMich2.length){
-      out+='<div style="background:var(--purple-bg);border:1px solid var(--purple-bd);border-radius:12px;padding:12px 14px;margin-bottom:14px">';
-      out+='<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px"><span style="font-size:13px">📬</span><span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--purple)">Für dich</span><span style="font-size:10px;color:var(--t3);margin-left:auto">'+fuerMich2.length+' neu</span></div>';
-      fuerMich2.forEach((s,i)=>{
-        const von=person(s.pid);const isIdee=s.typ==='idee';
-        out+='<div style="display:flex;align-items:center;gap:8px;padding:7px 0'+(i?';border-top:1px solid var(--bd)':'')+'">';
-        out+='<span style="font-size:13px;flex-shrink:0">'+(isIdee?'💡':'☁️')+'</span>';
-        out+='<div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(s.was)+'</div>';
-        if(s.notiz)out+='<div style="font-size:11px;color:var(--t2);font-style:italic;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(s.notiz)+'</div>';
-        if(von)out+='<div style="font-size:10px;color:var(--t3)">von '+esc(von.name)+(s.created_at?' · '+s.created_at.slice(0,10):'')+'</div>';
-        out+='</div>';
-        out+='<div style="display:flex;gap:4px;flex-shrink:0">';
-        out+='<button onclick="besprechenSignal(\''+s.id+'\')" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--blue-bd);background:var(--blue-bg);color:var(--blue);cursor:pointer;font-family:inherit">💬</button>';
-        out+='<button onclick="ideenZuAufgabe(\''+s.id+'\')" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--text);cursor:pointer;font-family:inherit">→ Aufgabe</button>';
-        out+='<button onclick="signalGesehen(\''+s.id+'\')" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--green-bd);background:var(--green-bg);color:var(--green);cursor:pointer;font-family:inherit">✓ Parkplatz</button>';
-        out+='<button onclick="wolkeZurueck(\''+s.id+'\')" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--red-bd);background:var(--red-bg);color:var(--red);cursor:pointer;font-family:inherit">↩ Zurück</button>';
-        out+='</div></div>';
-      });
-      out+='</div>';
-    }
-  }
+  // (Wolken & Ideen moved into unified Inbox below)
 
   // ── Freitag Reset Banner ──
   if(isResetZeit()&&!dieseWocheReset(aP)){
@@ -2234,13 +2244,40 @@ function rTag(){
   const weitereRest=weitere.slice(2);
   weitereSichtbar.forEach(a=>{out+=aufgabeKarte(a);});
 
-  // ── Inbox (immer sichtbar) ──
-  if(zugewiesenA.length){
-    out+='<div style="background:var(--sf);border:1.5px solid var(--blue-bd);border-radius:14px;padding:14px 16px;margin-bottom:10px">'
-      +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">'
-      +'<span style="background:var(--blue);color:#fff;font-size:10px;font-weight:700;padding:2px 9px;border-radius:99px">'+zugewiesenA.length+' neu</span>'
-      +'<span style="font-size:12px;font-weight:600">Inbox — bestätige mit Klick auf Priorität</span>'
-      +'</div>';
+  // ── Inbox (unified: Wolken + Aufgaben) ──
+  {
+  const _mn=person(aP)?.name||'';
+  const _gs=JSON.parse(localStorage.getItem('signale_gesehen_'+aP)||'[]');
+  const _erl=JSON.parse(localStorage.getItem('signale_erledigt_'+aP)||'[]');
+  const _fm=S.signale.filter(s=>(s.typ==='wolke'||s.typ==='idee')&&s.bereich===_mn&&!_gs.includes(String(s.id))&&!_erl.includes(String(s.id)));
+  const _inboxN=_fm.length+zugewiesenA.length+neu.length;
+  if(_inboxN){
+    out+='<div style="background:var(--sf);border:1.5px solid var(--blue-bd);border-radius:14px;padding:14px 16px;margin-bottom:10px">';
+    out+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><span style="font-size:15px">📬</span><span style="font-size:13px;font-weight:700">Inbox</span><span style="background:var(--blue);color:#fff;font-size:10px;font-weight:700;padding:2px 9px;border-radius:99px;margin-left:auto">'+_inboxN+' neu</span></div>';
+    // ── Wolken & Ideen sub-section ──
+    if(_fm.length){
+      out+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--purple);margin-bottom:6px">☁️ Wolken & Ideen</div>';
+      _fm.forEach((s,i)=>{
+        const von=person(s.pid);const isIdee=s.typ==='idee';
+        out+='<div style="background:var(--purple-bg);border:1px solid var(--purple-bd);border-radius:10px;padding:8px 12px;margin-bottom:6px">';
+        out+='<div style="display:flex;align-items:flex-start;gap:8px">';
+        out+='<span style="font-size:13px;flex-shrink:0;margin-top:1px">'+(isIdee?'💡':'☁️')+'</span>';
+        out+='<div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(s.was)+'</div>';
+        if(s.notiz)out+='<div style="font-size:11px;color:var(--t2);font-style:italic;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(s.notiz)+'</div>';
+        if(von)out+='<div style="font-size:10px;color:var(--t3)">von '+esc(von.name)+(s.created_at?' · '+s.created_at.slice(0,10):'')+'</div>';
+        out+='</div></div>';
+        out+='<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:6px">';
+        out+='<button onclick="besprechenSignal(\''+s.id+'\')" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--blue-bd);background:var(--blue-bg);color:var(--blue);cursor:pointer;font-family:inherit">💬 Besprechen</button>';
+        out+='<button onclick="ideenZuAufgabe(\''+s.id+'\')" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--text);cursor:pointer;font-family:inherit">→ Aufgabe</button>';
+        out+='<button onclick="signalGesehen(\''+s.id+'\')" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--green-bd);background:var(--green-bg);color:var(--green);cursor:pointer;font-family:inherit">✓ Parkplatz</button>';
+        out+='<button onclick="wolkeZurueck(\''+s.id+'\')" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--red-bd);background:var(--red-bg);color:var(--red);cursor:pointer;font-family:inherit">↩ Zurück</button>';
+        out+='</div></div>';
+      });
+    }
+    // ── Zugewiesene Aufgaben sub-section ──
+    if(zugewiesenA.length){
+    if(_fm.length)out+='<div style="border-top:1px solid var(--bd);margin:10px 0"></div>';
+    out+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--blue);margin-bottom:6px">📋 Bestätige mit Priorität</div>';
     const zielOptsI=S.ziele.length?'<select id="inbox-ziel-PLACEHOLDER" style="font-size:11px;padding:3px 8px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);font-family:inherit;max-width:180px"><option value="">— Ziel —</option>'+S.ziele.map(z=>'<option value="'+z.id+'">'+esc(z.name).slice(0,30)+'</option>').join('')+'</select>':'';
     zugewiesenA.forEach(a=>{
       const from=person(a.erstelltVon);
@@ -2271,15 +2308,11 @@ function rTag(){
         +S.personen.filter(p=>p.id!==aP).map(p=>'<div onclick="weiterleitenAufgabe(\''+a.id+'\',\''+p.id+'\')" style="cursor:pointer;font-size:11px;font-weight:600;padding:4px 11px;border-radius:99px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);white-space:nowrap;transition:all .15s" onmousedown="this.style.background=\'var(--purple)\';this.style.color=\'#fff\'" onmouseup="this.style.background=\'var(--sf)\';this.style.color=\'var(--t2)\'">'+esc(p.name.split(' ')[0])+'</div>').join('')
         +'</div></div>';
     });
-    out+='</div>';
-  }
-
-  if(neu.length){
-    out+='<div style="background:var(--sf);border:1.5px solid var(--red-bd);border-radius:14px;padding:14px 16px;margin-bottom:10px">';
-    out+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">';
-    out+='<span style="background:var(--red);color:#fff;font-size:10px;font-weight:700;padding:2px 9px;border-radius:99px">'+neu.length+' neu</span>';
-    out+='<span style="font-size:12px;font-weight:600">Priorität wählen</span>';
-    out+='</div>';
+    }
+    // ── Neue Aufgaben sub-section ──
+    if(neu.length){
+    if(_fm.length||zugewiesenA.length)out+='<div style="border-top:1px solid var(--bd);margin:10px 0"></div>';
+    out+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--red);margin-bottom:6px">⚡ Priorität wählen</div>';
     const zielOptsN=S.ziele.length?'<select id="inbox-ziel-PLACEHOLDER" style="font-size:11px;padding:3px 8px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);font-family:inherit;max-width:180px"><option value="">— Ziel —</option>'+S.ziele.map(z=>'<option value="'+z.id+'">'+esc(z.name).slice(0,30)+'</option>').join('')+'</select>':'';
     neu.forEach(a=>{
       const from=a.erstelltVon&&a.erstelltVon!==aP?person(a.erstelltVon):null;
@@ -2304,7 +2337,9 @@ function rTag(){
       out+='<button onclick="delAufgabe(\''+a.id+'\')" style="font-size:11px;padding:4px 8px;border-radius:8px;border:1px solid var(--bd);background:var(--sf);color:var(--t3);cursor:pointer;font-family:inherit">✕</button>';
       out+='</div></div>';
     });
+    }
     out+='</div>';
+  }
   }
 
   // ── Backlog (einklappbar) ──
@@ -3501,7 +3536,7 @@ async function saveIdee(typ){
   cm();render();
 }
 async function ideenZuAufgabe(sid){
-  const s=S.signale.find(x=>x.id===sid);if(!s)return;
+  const s=S.signale.find(x=>String(x.id)===String(sid));if(!s)return;
   openNeu({titel:s.was,notiz:s.notiz||''});
 }
 function rTeam(){
