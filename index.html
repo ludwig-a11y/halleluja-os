@@ -145,7 +145,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;font-size:1
 .cele-emoji{font-size:64px;display:block;margin-bottom:8px}
 .cele-text{font-size:22px;font-weight:800;color:var(--text);background:var(--sf);padding:16px 32px;border-radius:var(--r-xl);box-shadow:0 8px 32px rgba(0,0,0,.15)}
 .confetti{position:absolute;width:8px;height:8px;border-radius:2px;animation:confettiFall linear forwards}
-@keyframes confettiFall{0%{opacity:1;transform:translateY(0) rotate(0deg)}100%{opacity:0;transform:translateY(100vh) rotate(720deg)}}
+@keyframes confettiFall{0%{opacity:1;transform:translateY(0) rotate(0deg) translateX(0)}40%{opacity:1}100%{opacity:0;transform:translateY(85vh) rotate(1080deg) translateX(var(--cx))}}
 .sl{font-size:11px}.sl.dn{text-decoration:line-through;color:var(--t3)}
 .asi{flex:1;font-size:11px;padding:4px 8px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--text);font-family:inherit;outline:none}
 .zcard{border-radius:var(--r-lg);padding:18px;margin-bottom:14px;border:1px solid;transition:box-shadow .15s,transform .15s}
@@ -502,11 +502,12 @@ function celebrate(emoji,text){
     c.style.left=Math.random()*100+'%';c.style.top=-10+'px';
     c.style.background=colors[Math.floor(Math.random()*colors.length)];
     c.style.width=(5+Math.random()*8)+'px';c.style.height=(5+Math.random()*8)+'px';
-    c.style.animationDuration=(1.5+Math.random()*2)+'s';
-    c.style.animationDelay=(Math.random()*0.6)+'s';
+    c.style.setProperty('--cx',(Math.random()*120-60)+'px');
+    c.style.animationDuration=(3+Math.random()*3)+'s';
+    c.style.animationDelay=(Math.random()*0.8)+'s';
     wrap.appendChild(c);
   }
-  setTimeout(()=>{if(wrap.parentNode)wrap.remove();},4000);
+  setTimeout(()=>{if(wrap.parentNode)wrap.remove();},7000);
   // Message
   let msg=document.getElementById('cele-msg');
   if(msg)msg.remove();
