@@ -4545,6 +4545,7 @@ window.addEventListener('keydown',e=>{
         const ls=document.getElementById('login-screen'),ap=document.getElementById('app');
         if(ls)ls.style.display='none';
         if(ap)ap.style.display='flex';
+        if(!document.getElementById('fab-mic')){const fb=document.createElement('button');fb.id='fab-mic';fb.className='fab-mic';fb.textContent='🎤';fb.onclick=toggleVoiceRec;document.body.appendChild(fb);}
         updateBadge();render();startSonderPoller();startDataPoller();handleDeepLink();
       } else localStorage.removeItem('h_session');
     }
