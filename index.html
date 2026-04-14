@@ -1275,7 +1275,7 @@ async function blockerLoesen(wrId){
 function rSignaleTeam(){
   const visible=visiblePersonIds(aP);
   const TYPEN={reklamation:{l:'Reklamation',bg:'var(--red-bg)',tc:'var(--red)',bd:'var(--red-bd)'},reibung:{l:'Reibung',bg:'var(--amber-bg)',tc:'var(--amber)',bd:'var(--amber-bd)'},idee:{l:'Idee',bg:'var(--blue-bg)',tc:'var(--blue)',bd:'var(--blue-bd)'},wiederholung:{l:'↻ Wiederholung',bg:'var(--purple-bg)',tc:'var(--purple)',bd:'var(--purple-bd)'}};
-  const mine=S.signale.filter(s=>visible.includes(s.pid));
+  const mine=S.signale.filter(s=>visible.includes(s.pid)&&(!s.vertraulich||isGF()));
   if(!mine.length)return'';
   const wdh=mine.filter(s=>s.typ==='wiederholung');
   const gruppen={};
@@ -1815,7 +1815,7 @@ function rWoche(){
     const _pkMn=person(aP)?.name||'';
     const _pkGs=JSON.parse(localStorage.getItem('signale_gesehen_'+aP)||'[]');
     const _pkErl=JSON.parse(localStorage.getItem('signale_erledigt_'+aP)||'[]');
-    const geparkt=S.signale.filter(s=>(s.typ==='wolke'||s.typ==='idee')&&s.bereich===_pkMn&&_pkGs.includes(String(s.id))&&!_pkErl.includes(String(s.id)));
+    const geparkt=S.signale.filter(s=>(s.typ==='wolke'||s.typ==='idee')&&s.bereich===_pkMn&&_pkGs.includes(String(s.id))&&!_pkErl.includes(String(s.id))&&(!s.vertraulich||isGF()));
     if(geparkt.length){
       out+='<div style="background:var(--purple-bg);border:1px solid var(--purple-bd);border-radius:12px;padding:12px 14px;margin-bottom:14px">';
       out+='<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px"><span style="font-size:13px">☁️</span><span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--purple)">Parkplatz</span><span style="font-size:10px;color:var(--t3);margin-left:auto">'+geparkt.length+' geparkt</span></div>';
@@ -2310,7 +2310,7 @@ function rTag(){
   const _mn=person(aP)?.name||'';
   const _gs=JSON.parse(localStorage.getItem('signale_gesehen_'+aP)||'[]');
   const _erl=JSON.parse(localStorage.getItem('signale_erledigt_'+aP)||'[]');
-  const _fm=S.signale.filter(s=>(s.typ==='wolke'||s.typ==='idee')&&s.bereich===_mn&&!_gs.includes(String(s.id))&&!_erl.includes(String(s.id)));
+  const _fm=S.signale.filter(s=>(s.typ==='wolke'||s.typ==='idee')&&s.bereich===_mn&&!_gs.includes(String(s.id))&&!_erl.includes(String(s.id))&&(!s.vertraulich||isGF()));
   const _inboxN=_fm.length+zugewiesenA.length+neu.length;
   if(_inboxN){
     out+='<div style="background:var(--sf);border:1.5px solid var(--blue-bd);border-radius:14px;padding:14px 16px;margin-bottom:10px">';
@@ -2768,13 +2768,12 @@ function rZiele(){
         // Header row — weißer Hintergrund
         out+='<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--sf)">';
         if(canManageTZ(z.id))out+='<input type="checkbox" '+(tz.erledigt?'checked':'')+' onclick="toggleTZ(\''+z.id+'\',\''+tz.id+'\')" style="flex-shrink:0;margin:0;width:15px;height:15px;accent-color:'+f.tc+'">';
-        out+='<div style="flex:1;min-width:0">';
+        out+='<div style="flex:1;min-width:0;cursor:pointer" onclick="'+(canManageTZ(z.id)?'editTZ(\''+z.id+'\',\''+tz.id+'\')':'')+'">';
         out+='<div style="font-size:13px;font-weight:600;color:var(--text);'+(tz.erledigt?'text-decoration:line-through;':'')+'white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(tz.name)+'</div>';
         const _wrT=dieseWocheReset(aP),_inB3=_wrT&&[_wrT.big3_1_tz_id,_wrT.big3_2_tz_id,_wrT.big3_3_tz_id].some(x=>x===tz.id);
         if(tzV||tz.datum||_inB3)out+='<div style="font-size:10px;color:var(--t2);margin-top:1px;display:flex;gap:5px;align-items:center">'+(_inB3?'<span style="font-size:9px;font-weight:700;color:'+f.tc+';background:'+f.bg+';border:1px solid '+f.bd+';padding:0 6px;border-radius:99px">● KW '+getKW().kw+'</span>':'')+(tzV?tzV.name:'')+(tz.datum?' · '+tz.datum.slice(8)+'.'+tz.datum.slice(5,7)+'.':'')+'</div>';
         out+='</div>';
         if(tzA.length)out+='<span style="font-size:10px;color:'+f.tc+';background:'+f.bg+';border:1px solid '+f.bd+';padding:1px 7px;border-radius:99px;flex-shrink:0;font-weight:600">'+tzA.length+'</span>';
-        if(canManageTZ(z.id))out+='<button onclick="editTZ(\''+z.id+'\',\''+tz.id+'\')" style="font-size:11px;padding:3px 7px;border-radius:6px;border:1px solid '+f.bd+';background:'+f.bg+';color:'+f.tc+';cursor:pointer;font-family:inherit;flex-shrink:0">···</button>';
         out+='</div>';
         // Aufgaben inside card
         if(tzA.length){
@@ -3562,7 +3561,7 @@ async function confirmAI(p){
 }
 
 function rIdeenPool(){
-  const pool=S.signale.filter(s=>s.typ==='idee'||s.typ==='wolke').sort((a,b)=>b.created_at?.localeCompare(a.created_at||'')||0);
+  const pool=S.signale.filter(s=>(s.typ==='idee'||s.typ==='wolke')&&(!s.vertraulich||isGF())).sort((a,b)=>b.created_at?.localeCompare(a.created_at||'')||0);
   const canConvert=isGF()||isLead();
   let out='<div style="background:var(--sf);border:1px solid var(--bd);border-radius:14px;padding:14px 16px;margin-bottom:16px">';
   out+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">'
@@ -3616,6 +3615,7 @@ function openNeueIdee(typ,preselPid){
     +'<div class="fl"><label>'+(isIdee?'Die Idee':'Die Beobachtung')+'</label><input id="id-was" placeholder="'+(isIdee?'Konkret beschreiben…':'Was hast du beobachtet?')+'" autofocus></div>'
     +'<div class="fl"><label>Warum diese '+(isIdee?'Idee':'Wolke')+'? <span style="font-weight:400;color:var(--t3)">(optional)</span></label><input id="id-why" placeholder="z.B. Sales Call mit X, Muster erkannt…"></div>'
     +'<div class="fl"><label>Für wen? <span style="font-weight:400;color:var(--t3)">(optional)</span></label><select id="id-fuer">'+fuerOpts+'</select></div>'
+    +(isGF()?'<div class="fl"><label style="display:flex;align-items:center;gap:8px;text-transform:none;font-size:13px;font-weight:400;cursor:pointer"><input type="checkbox" id="id-vert" style="width:auto"> Vertraulich <span style="font-weight:400;color:var(--t3)">(nur GF sichtbar)</span></label></div>':'')
     +'<div class="mf"><button class="btn btn-gr" onclick="cm()">Abbrechen</button><button class="btn btn-dk" onclick="saveIdee(\''+typ+'\')">Einwerfen</button></div>';
   document.getElementById('ovl').classList.add('open');
 }
@@ -3623,8 +3623,9 @@ async function saveIdee(typ){
   const was=document.getElementById('id-was')?.value.trim();if(!was)return;
   const why=document.getElementById('id-why')?.value.trim()||null;
   const fuer=document.getElementById('id-fuer')?.value||null;
+  const vert=document.getElementById('id-vert')?.checked||false;
   const id=nid('id');
-  const rec={id,pid:aP,was,typ,bereich:fuer||'',notiz:why||null,haeufig:null,created_at:new Date().toISOString()};
+  const rec={id,pid:aP,was,typ,bereich:fuer||'',notiz:why||null,haeufig:null,vertraulich:vert,created_at:new Date().toISOString()};
   S.signale.unshift(rec);
   await dbInsert('signale',rec);
   cm();render();
@@ -3646,7 +3647,7 @@ function rTeam(){
     const beteiligt=sichtbarZ.filter(z=>myTaskZielIds.has(z.id)&&!meineZ.find(m=>m.id===z.id));
     const alleRelevant=[...meineZ.map(z=>({z,rolle:'verantwortlich'})),...beteiligt.map(z=>({z,rolle:'mitwirkend'}))];
     const meinName=me()?.name||'';
-    const fuerMich=S.signale.filter(s=>(s.typ==='wolke'||s.typ==='idee')&&s.bereich===meinName&&s.pid!==aP);
+    const fuerMich=S.signale.filter(s=>(s.typ==='wolke'||s.typ==='idee')&&s.bereich===meinName&&s.pid!==aP&&(!s.vertraulich||isGF()));
 
     if(alleRelevant.length||fuerMich.length){
       out+='<div style="background:var(--sf);border:1px solid var(--bd);border-radius:14px;padding:16px;margin-bottom:16px">';
@@ -3729,7 +3730,7 @@ function rTeam(){
     const teamZiele=S.ziele.filter(z=>z.status!=='vorschlag'&&(!z.vertraulich||isGF())&&(mids.includes(z.verantwortlichId)||S.aufgaben.some(a=>mids.includes(a.pid)&&a.zielId===z.id)));
     // Wolken/Ideen für dieses Team
     const teamNames=mids.map(id=>{const p=person(id);return p?p.name:'';}).filter(Boolean);
-    const teamSignale=S.signale.filter(s=>(s.typ==='wolke'||s.typ==='idee')&&teamNames.includes(s.bereich));
+    const teamSignale=S.signale.filter(s=>(s.typ==='wolke'||s.typ==='idee')&&teamNames.includes(s.bereich)&&(!s.vertraulich||isGF()));
     out+='<div class="team-block"><div class="team-block-head">'
       +'<div style="flex:1"><div style="font-size:14px;font-weight:700">'+esc(t.name)+'</div></div>'
       +'<div style="display:flex;gap:6px;flex-shrink:0">'+mids.map(id=>{const p=person(id);return p?av(p,28,10):'';}).join('')+'</div></div>';
