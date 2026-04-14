@@ -1250,6 +1250,24 @@ async function saveBlocker(wrId){
   if(text){const gfs=S.personen.filter(p=>p.stufe==='gf'&&p.slack_id).map(p=>p.slack_id);notify('blocker',{blocker:text,gf_slack_ids:gfs});}
   cm();render();
 }
+function blockerZuAufgabe(wrId,pid){
+  const wr=S.wochenresets.find(r=>r.id===wrId);if(!wr)return;
+  const p=person(wr.pid);
+  openNeu({titel:'Blocker lösen: '+wr.blockiert,notiz:'Blocker von '+(p?.name||'?')+' (KW '+wr.kw+')',pid:pid||wr.pid});
+}
+function blockerBesprechen(wrId){
+  const wr=S.wochenresets.find(r=>r.id===wrId);if(!wr)return;
+  const p=person(wr.pid);
+  notify('diskussion',{thema:'Blocker: '+wr.blockiert,typ:'⚠ Blocker',bereich:'team',notiz:'Gemeldet von '+(p?.name||'?'),von:me()?.name||''});
+  const btn=event?.target;
+  if(btn){btn.textContent='✓ In Slack';btn.style.background='var(--green-bg)';btn.style.color='var(--green)';btn.style.borderColor='var(--green-bd)';setTimeout(()=>{btn.textContent='💬 Besprechen';btn.style.background='var(--blue-bg)';btn.style.color='var(--blue)';btn.style.borderColor='var(--blue-bd)';},2500);}
+}
+async function blockerLoesen(wrId){
+  const wr=S.wochenresets.find(r=>r.id===wrId);if(!wr)return;
+  wr.blockiert='';
+  await dbPatch('wochenresets',wrId,{blockiert:''});
+  render();
+}
 function rSignaleTeam(){
   const visible=visiblePersonIds(aP);
   const TYPEN={reklamation:{l:'Reklamation',bg:'var(--red-bg)',tc:'var(--red)',bd:'var(--red-bd)'},reibung:{l:'Reibung',bg:'var(--amber-bg)',tc:'var(--amber)',bd:'var(--amber-bd)'},idee:{l:'Idee',bg:'var(--blue-bg)',tc:'var(--blue)',bd:'var(--blue-bd)'},wiederholung:{l:'↻ Wiederholung',bg:'var(--purple-bg)',tc:'var(--purple)',bd:'var(--purple-bd)'}};
@@ -2046,10 +2064,15 @@ function rTag(){
       out+='<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px"><span style="font-size:13px">⚠</span><span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--red)">Team-Blocker</span><span style="font-size:10px;color:var(--t3);margin-left:auto">'+teamBlocker.length+'</span></div>';
       teamBlocker.forEach((r,i)=>{
         const p=person(r.pid);
-        out+='<div style="display:flex;align-items:flex-start;gap:8px;padding:7px 0'+(i?';border-top:1px solid var(--red-bd)':'')+'">';
+        out+='<div style="padding:7px 0'+(i?';border-top:1px solid var(--red-bd)':'')+'">';
+        out+='<div style="display:flex;align-items:flex-start;gap:8px">';
         out+='<div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600">'+esc(p?.name||'?')+'</div>';
-        out+='<div style="font-size:11px;color:var(--red);margin-top:2px">'+esc(r.blockiert)+'</div></div>';
-        out+='</div>';
+        out+='<div style="font-size:11px;color:var(--red);margin-top:2px">'+esc(r.blockiert)+'</div></div></div>';
+        out+='<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:6px">';
+        out+='<button onclick="blockerZuAufgabe(\''+r.id+'\',\''+esc(p?.id||'')+'\')" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--text);cursor:pointer;font-family:inherit">→ Aufgabe</button>';
+        out+='<button onclick="blockerBesprechen(\''+r.id+'\')" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--blue-bd);background:var(--blue-bg);color:var(--blue);cursor:pointer;font-family:inherit">💬 Besprechen</button>';
+        out+='<button onclick="blockerLoesen(\''+r.id+'\')" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--green-bd);background:var(--green-bg);color:var(--green);cursor:pointer;font-family:inherit">✓ Gelöst</button>';
+        out+='</div></div>';
       });
       out+='</div>';
     }
