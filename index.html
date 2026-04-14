@@ -2051,6 +2051,14 @@ function rTag(){
     if(wrAktuell?.wenn_dann){
       out+='<div style="font-size:11px;color:var(--t3);margin-top:-8px;margin-bottom:10px;padding-left:4px">💡 '+esc(wrAktuell.wenn_dann).slice(0,80)+(wrAktuell.wenn_dann.length>80?'…':'')+'</div>';
     }
+    if(wrAktuell.blockiert){
+      out+='<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--red-bg);border:1px solid var(--red-bd);border-radius:8px;margin-top:-6px;margin-bottom:12px">';
+      out+='<span style="font-size:11px">⚠</span><span style="font-size:11px;color:var(--red);flex:1">'+esc(wrAktuell.blockiert).slice(0,60)+(wrAktuell.blockiert.length>60?'…':'')+'</span>';
+      out+='<button onclick="openBlocker(\''+wrAktuell.id+'\')" style="font-size:10px;padding:2px 8px;border-radius:5px;border:1px solid var(--red-bd);background:var(--sf);color:var(--red);cursor:pointer;font-family:inherit;flex-shrink:0">Ändern</button>';
+      out+='</div>';
+    } else {
+      out+='<div style="margin-top:-6px;margin-bottom:12px"><button onclick="openBlocker(\''+wrAktuell.id+'\')" style="font-size:10px;padding:3px 10px;border-radius:6px;border:1px dashed var(--bd);background:transparent;color:var(--t3);cursor:pointer;font-family:inherit">⚠ Blockade melden</button></div>';
+    }
   }
 
   // (Wolken & Ideen moved into unified Inbox below)
