@@ -808,6 +808,22 @@ async function weiterleitenAufgabe(id,newPid){
   }
   render();
 }
+function besprechenSignal(id){
+  const s=S.signale.find(x=>x.id===id);if(!s)return;
+  const von=person(s.pid);
+  const badge=s.typ==='idee'?'💡 Idee':'☁️ Wolke';
+  const bereich=s.bereich?' (für '+s.bereich+')':'';
+  notify('diskussion',{
+    thema:s.was,
+    typ:badge,
+    bereich:s.bereich||'alle',
+    notiz:s.notiz||'',
+    von:von?von.name:'',
+  });
+  // Visual feedback
+  const btn=event?.target;
+  if(btn){btn.textContent='✓ In Slack';btn.style.background='var(--green-bg)';btn.style.color='var(--green)';btn.style.borderColor='var(--green-bd)';setTimeout(()=>{btn.textContent='💬 Besprechen';btn.style.background='var(--blue-bg)';btn.style.color='var(--blue)';btn.style.borderColor='var(--blue-bd)';},2500);}
+}
 async function klassifiziereAlsRandom(id){
   const a=S.aufgaben.find(x=>x.id===id);if(!a)return;
   a.typ='random';a.prio=null;a.status='backlog';
@@ -1734,31 +1750,6 @@ function rWoche(){
     out+='</div>';
   }
 
-  // ── Wolken & Ideen für dich (Woche) ──
-  {
-    const meinName=person(aP)?.name||'';
-    const fuerMich=S.signale.filter(s=>(s.typ==='wolke'||s.typ==='idee')&&s.bereich===meinName);
-    if(fuerMich.length){
-      out+='<div style="background:var(--purple-bg);border:1px solid var(--purple-bd);border-radius:12px;padding:12px 14px;margin-bottom:14px">';
-      out+='<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px"><span style="font-size:13px">📬</span><span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--purple)">Wolken & Ideen für dich</span><span style="font-size:10px;color:var(--t3);margin-left:auto">'+fuerMich.length+'</span></div>';
-      fuerMich.forEach((s,i)=>{
-        const von=person(s.pid);const isIdee=s.typ==='idee';
-        out+='<div style="display:flex;align-items:center;gap:8px;padding:7px 0'+(i?';border-top:1px solid var(--bd)':'')+'">';
-        out+='<span style="font-size:13px;flex-shrink:0">'+(isIdee?'💡':'☁️')+'</span>';
-        out+='<div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(s.was)+'</div>';
-        if(s.notiz)out+='<div style="font-size:11px;color:var(--t2);font-style:italic;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">💬 '+esc(s.notiz)+'</div>';
-        if(von)out+='<div style="font-size:10px;color:var(--t3)">von '+esc(von.name)+(s.created_at?' · '+s.created_at.slice(0,10):'')+'</div>';
-        out+='</div>';
-        out+='<div style="display:flex;gap:4px;flex-shrink:0">';
-        out+='<button onclick="ideenZuAufgabe(\''+s.id+'\')" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--text);cursor:pointer;font-family:inherit;white-space:nowrap">→ Aufgabe</button>';
-        out+='<button onclick="delSignal(\''+s.id+'\')" style="font-size:10px;padding:3px 6px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--t3);cursor:pointer;font-family:inherit">✕</button>';
-        out+='</div>';
-        out+='</div>';
-      });
-      out+='</div>';
-    }
-  }
-
   // ── Strategie-Briefing (nur GF) ──
   if(isGF()){
     const bKey='briefing-'+aP+'-'+TODAY;
@@ -1982,29 +1973,6 @@ function rTag(){
     out+='</div></details>';
     if(wrAktuell?.wenn_dann){
       out+='<div style="font-size:11px;color:var(--t3);margin-top:-8px;margin-bottom:10px;padding-left:4px">💡 '+esc(wrAktuell.wenn_dann).slice(0,80)+(wrAktuell.wenn_dann.length>80?'…':'')+'</div>';
-    }
-  }
-  // ── Wolken & Ideen für dich (Inbox) ──
-  {
-    const meinName=person(aP)?.name||'';
-    const fuerMich=S.signale.filter(s=>(s.typ==='wolke'||s.typ==='idee')&&s.bereich===meinName);
-    if(fuerMich.length){
-      out+='<div style="background:var(--purple-bg);border:1px solid var(--purple-bd);border-radius:12px;padding:12px 14px;margin-bottom:14px">';
-      out+='<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px"><span style="font-size:13px">📬</span><span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--purple)">Für dich</span><span style="font-size:10px;color:var(--t3);margin-left:auto">'+fuerMich.length+' offen</span></div>';
-      fuerMich.forEach((s,i)=>{
-        const von=person(s.pid);const isIdee=s.typ==='idee';
-        out+='<div style="display:flex;align-items:center;gap:8px;padding:7px 0'+(i?';border-top:1px solid var(--bd)':'')+'">';
-        out+='<span style="font-size:13px;flex-shrink:0">'+(isIdee?'💡':'☁️')+'</span>';
-        out+='<div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(s.was)+'</div>';
-        if(von)out+='<div style="font-size:10px;color:var(--t3)">von '+esc(von.name)+(s.created_at?' · '+s.created_at.slice(0,10):'')+'</div>';
-        out+='</div>';
-        out+='<div style="display:flex;gap:4px;flex-shrink:0">';
-        out+='<button onclick="ideenZuAufgabe(\''+s.id+'\')" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--text);cursor:pointer;font-family:inherit;white-space:nowrap">→ Aufgabe</button>';
-        out+='<button onclick="delSignal(\''+s.id+'\')" style="font-size:10px;padding:3px 6px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--t3);cursor:pointer;font-family:inherit">✕</button>';
-        out+='</div>';
-        out+='</div>';
-      });
-      out+='</div>';
     }
   }
   // ── Freitag Reset Banner ──
@@ -3446,6 +3414,7 @@ function rIdeenPool(){
       out+='<span style="font-size:10px;color:var(--t3)">'+(s.created_at?s.created_at.slice(0,10):'')+'</span>';
       out+='</div></div>';
       out+='<div style="display:flex;gap:5px;flex-shrink:0">';
+      out+='<button onclick="besprechenSignal(\''+s.id+'\')" style="font-size:10px;padding:3px 9px;border-radius:7px;border:1px solid var(--blue-bd);background:var(--blue-bg);color:var(--blue);cursor:pointer;font-family:inherit;white-space:nowrap">💬 Besprechen</button>';
       if(canConvert)out+='<button onclick="ideenZuAufgabe(\''+s.id+'\')" style="font-size:10px;padding:3px 9px;border-radius:7px;border:1px solid var(--bd);background:var(--sf);color:var(--text);cursor:pointer;font-family:inherit;white-space:nowrap">→ Aufgabe</button>';
       if(s.pid===aP||isGF())out+='<button onclick="delSignal(\''+s.id+'\')" style="font-size:10px;padding:3px 7px;border-radius:7px;border:1px solid var(--red-bd);background:var(--red-bg);color:var(--red);cursor:pointer;font-family:inherit">✕</button>';
       out+='</div></div></div>';
@@ -3549,6 +3518,7 @@ function rTeam(){
           out+='<div style="font-size:10px;color:var(--t3);margin-top:2px">'+(von?'von '+esc(von.name)+' · ':'')+(s.created_at?s.created_at.slice(0,10):'')+'</div>';
           out+='</div>';
           out+='<div style="display:flex;gap:4px;flex-shrink:0">';
+          out+='<button onclick="besprechenSignal(\''+s.id+'\')" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--blue-bd);background:var(--blue-bg);color:var(--blue);cursor:pointer;font-family:inherit">💬 Besprechen</button>';
           out+='<button onclick="ideenZuAufgabe(\''+s.id+'\')" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--text);cursor:pointer;font-family:inherit">→ Aufgabe</button>';
           out+='</div></div>';
         });
