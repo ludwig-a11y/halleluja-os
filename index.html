@@ -566,7 +566,7 @@ function stopVoiceRec(){if(_vRec&&_vRec.state==='recording')_vRec.stop();documen
 function showVoiceBar(){
   let bar=document.getElementById('voice-bar');
   if(!bar){bar=document.createElement('div');bar.id='voice-bar';bar.className='voice-bar';document.body.appendChild(bar);}
-  bar.innerHTML='<div class="voice-timer" id="voice-timer">00:00</div><div class="voice-hint">Aufnahme läuft — nochmal tippen zum Stoppen</div>';
+  bar.innerHTML='<div class="voice-timer" id="voice-timer">00:00</div><button onclick="stopVoiceRec()" style="display:block;margin:10px auto 0;padding:12px 40px;border-radius:99px;border:none;background:#e11d48;color:#fff;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit">⏹ Stoppen</button>';
   bar.classList.add('show');
 }
 async function transcribeAudio(blob){
