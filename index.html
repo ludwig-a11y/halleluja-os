@@ -80,13 +80,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;font-size:1
 .pin-key:hover{background:var(--gray-bg)}
 .login-err{font-size:12px;color:var(--red);text-align:center;min-height:18px;margin-top:8px}
 
-.bar{background:var(--sf);border-bottom:1px solid var(--bd);display:flex;align-items:center;padding:0 14px;height:46px;flex-shrink:0;gap:2px}
+.bar{background:var(--sf);border-bottom:1px solid var(--bd);display:flex;align-items:center;padding:0 14px;height:46px;flex-shrink:0;gap:6px}
 .logo{font-size:13px;font-weight:700;padding-right:12px;border-right:1px solid var(--bd);margin-right:6px;white-space:nowrap}
 .nt{font-size:13px;padding:0 14px;height:46px;border:none;border-bottom:2px solid transparent;cursor:pointer;background:transparent;color:var(--t2);font-family:inherit;font-weight:500;white-space:nowrap;transition:color .15s,border-color .15s}
 .nt:hover{color:var(--text)}
 .nt.on{color:var(--text);font-weight:600;border-bottom-color:var(--text)}
 .nt.new-btn{color:var(--blue);font-weight:600;border:1px solid var(--blue-bd);background:var(--blue-bg);border-radius:8px;height:32px;padding:0 14px;font-size:13px}
-.nt.meet-btn{color:var(--amber);font-weight:600;border:1px solid var(--amber-bd);background:var(--amber-bg);border-radius:8px;height:32px;padding:0 14px;margin-left:4px;font-size:13px}
+.nt.meet-btn{color:var(--amber);font-weight:600;border:1px solid var(--amber-bd);background:var(--amber-bg);border-radius:8px;height:32px;padding:0 14px;margin-left:8px;font-size:13px}
 .shell{display:flex;flex:1;overflow:hidden}
 .sb{width:168px;flex-shrink:0;background:var(--sf);border-right:1px solid var(--bd);overflow-y:auto;padding:10px 8px;display:flex;flex-direction:column}
 .main{flex:1;overflow-y:auto;padding:20px 24px}
@@ -251,9 +251,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;font-size:1
     <div style="flex:1"></div>
     <div id="fokus-banner" style="display:none;align-items:center;gap:6px;padding:4px 12px;background:var(--red-bg);border:1px solid var(--red-bd);border-radius:8px;font-size:11px;font-weight:600;color:var(--red)">🎯 <span id="fokus-label"></span></div>
     <div id="live-clock" style="font-size:12px;font-weight:600;color:var(--t2);font-family:monospace;padding:0 8px"></div>
-    <button class="nt meet-btn" onclick="openMeeting()">📝 Meeting</button>
+    <button class="nt meet-btn" onclick="openMeeting()">🎙 + Aufgabe</button>
     <button class="nt new-btn" onclick="openNeu()">+ Aufgabe</button>
-    <div style="margin-left:8px;display:flex;align-items:center;gap:6px">
+    <div style="margin-left:12px;display:flex;align-items:center;gap:8px">
       <div id="kap-pill" style="display:none;cursor:pointer" onclick="openMeinProfil()"></div>
       <div id="me-badge" style="display:flex;align-items:center;gap:6px;padding:0 6px;cursor:pointer;border-radius:8px" onclick="openMeinProfil()"></div>
       <button id="dark-toggle" onclick="toggleDark()" style="font-size:14px;padding:2px 6px;border:none;background:transparent;cursor:pointer;line-height:1" title="Dark Mode"></button>
