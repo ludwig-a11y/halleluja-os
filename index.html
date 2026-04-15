@@ -2246,8 +2246,8 @@ function rTag(){
         out+='<span style="color:'+(isUeberfaellig?'var(--red)':'var(--t3)')+'">fällig '+dlStr+(isUeberfaellig?' ⚠':'')+'</span>';
         out+='</div>';
         if(istMeine){
-          out+='<div style="display:flex;gap:6px">';
-          out+='<button onclick="openDecisionAnswer(\''+d.id+'\',\'entscheiden\')" style="flex:1;font-size:11px;padding:6px 12px;border-radius:8px;border:none;background:#f59e0b;color:#fff;cursor:pointer;font-family:inherit;font-weight:600">✓ Entscheiden</button>';
+          out+='<div style="display:flex;gap:6px;flex-wrap:wrap">';
+          out+='<button onclick="openDecisionAnswer(\''+d.id+'\',\'entscheiden\')" style="flex:1 1 100%;font-size:11px;padding:6px 12px;border-radius:8px;border:none;background:#f59e0b;color:#fff;cursor:pointer;font-family:inherit;font-weight:600">✓ Entscheiden</button>';
           out+='<button onclick="openDecisionAnswer(\''+d.id+'\',\'weiterleiten\')" style="font-size:11px;padding:6px 10px;border-radius:8px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);cursor:pointer;font-family:inherit">→ Weiterleiten</button>';
           out+='<button onclick="openDecisionAnswer(\''+d.id+'\',\'zurueck\')" style="font-size:11px;padding:6px 10px;border-radius:8px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);cursor:pointer;font-family:inherit">↩ Zurück</button>';
           if(von?.slack_id)out+='<a href="https://slack.com/app_redirect?channel='+esc(von.slack_id)+'" target="_blank" style="font-size:11px;padding:6px 10px;border-radius:8px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);cursor:pointer;text-decoration:none;display:flex;align-items:center">💬</a>';
@@ -2848,7 +2848,12 @@ async function setStatusModal(id,st){
   else if(a.status==='aktiv'){patch.gebucht=Math.round(((a.gebucht||0)+(Date.now()-(a.aktSeit||Date.now()))/3600000)*100)/100;patch.akt_seit=null;}
   Object.assign(a,{status:st,aktSeit:st==='aktiv'?Date.now():null,updated_at:now,...(patch.gebucht!==undefined?{gebucht:patch.gebucht}:{})});
   const _teamSlack=S.personen.filter(p=>p.id!==aP&&p.slack_id).map(p=>p.slack_id);
-  if(st==='erledigt'){celebrate('🎉','Geschafft! Weiter so 💪');checkP1Done(a.pid);notify('aufgabe_erledigt',{prio:a.prio||null,team_slack_ids:_teamSlack,actor_slack_id:me()?.slack_id||''});}
+  if(st==='erledigt'){
+    celebrate('🎉','Geschafft! Weiter so 💪');checkP1Done(a.pid);
+    notify('aufgabe_erledigt',{prio:a.prio||null,team_slack_ids:_teamSlack,actor_slack_id:me()?.slack_id||''});
+    const restOffen=S.aufgaben.filter(x=>String(x.pid)===String(aP)&&x.status!=='erledigt');
+    if(!restOffen.length)setTimeout(()=>celebrate('🏆','Alle Aufgaben erledigt! 🎉'),1500);
+  }
   if(st==='aktiv')notify('aufgabe_gestartet',{prio:a.prio||null,team_slack_ids:_teamSlack,actor_slack_id:me()?.slack_id||''});
   await dbPatch('aufgaben',id,patch);cm();render();
 }
@@ -4095,7 +4100,7 @@ function rTeam(){
   if(isGF()){
     const allDR=[...S.decisionRequests];
     if(allDR.length){
-      const[filterDR,setFilterDR]=[window._drFilter||'alle',v=>{window._drFilter=v;}];
+      const filterDR=localStorage.getItem('dr_filter')||'alle';
       const gefiltert=filterDR==='alle'?allDR:allDR.filter(d=>d.status===filterDR);
       out+='<div style="margin-top:28px">';
       out+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">';
@@ -4104,7 +4109,7 @@ function rTeam(){
       ['alle','offen','entschieden','zurueckgegeben'].forEach(f=>{
         const lbl={'alle':'Alle','offen':'Offen','entschieden':'Entschieden','zurueckgegeben':'Zurückgegeben'}[f];
         const active=filterDR===f;
-        out+='<button onclick="window._drFilter=\''+f+'\';render()" style="font-size:10px;padding:3px 9px;border-radius:99px;border:1px solid '+(active?'var(--text)':'var(--bd)')+';background:'+(active?'var(--text)':'var(--sf)')+';color:'+(active?'var(--inv-t)':'var(--t2)')+';cursor:pointer;font-family:inherit">'+lbl+'</button>';
+        out+='<button onclick="localStorage.setItem(\'dr_filter\',\''+f+'\');render()" style="font-size:10px;padding:3px 9px;border-radius:99px;border:1px solid '+(active?'var(--text)':'var(--bd)')+';background:'+(active?'var(--text)':'var(--sf)')+';color:'+(active?'var(--inv-t)':'var(--t2)')+';cursor:pointer;font-family:inherit">'+lbl+'</button>';
       });
       out+='</div></div>';
       gefiltert.forEach(d=>{
@@ -4148,7 +4153,12 @@ function rTeam(){
         }
         out+='</div>';
       });
-      if(!gefiltert.length)out+='<div style="font-size:12px;color:var(--t3);padding:8px 0">Keine Einträge</div>';
+      if(!gefiltert.length){
+        const filterLabel={'alle':'','offen':'Offen','entschieden':'Entschieden','zurueckgegeben':'Zurückgegeben'}[filterDR]||'';
+        out+='<div style="font-size:12px;color:var(--t3);padding:8px 0">Keine Einträge'+(filterLabel?' für „'+filterLabel+'"':'')+' '
+          +(filterDR!=='alle'?'· <button onclick="localStorage.setItem(\'dr_filter\',\'alle\');render()" style="font-size:11px;color:var(--blue);background:none;border:none;cursor:pointer;font-family:inherit;text-decoration:underline">Alle anzeigen</button>':'')
+          +'</div>';
+      }
       out+='</div>';
     }
   }
