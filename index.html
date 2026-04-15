@@ -4668,8 +4668,6 @@ function openDecisionForm(){
     +'<textarea id="dr-kontext" rows="2" placeholder="Hintergrundinformationen, die helfen..." style="resize:none"></textarea></div>'
     +'<div class="fl"><label>Was steht ohne Antwort still? <span style="color:var(--t3);font-weight:400">(optional)</span></label>'
     +'<input type="text" id="dr-blockiert" placeholder="z.B. Angebot kann nicht versendet werden"></div>'
-    +'<div class="fl"><label>Slack-Link <span style="color:var(--t3);font-weight:400">(optional)</span></label>'
-    +'<input type="url" id="dr-slack" placeholder="https://..."></div>'
     +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
     +'<div class="fl"><label>Priorität <span style="color:var(--red)">*</span></label>'
     +'<select id="dr-prio" style="font-size:13px">'
@@ -4700,7 +4698,6 @@ async function saveDecisionRequest(){
     frage,
     kontext:document.getElementById('dr-kontext').value.trim()||null,
     blockiert:document.getElementById('dr-blockiert').value.trim()||null,
-    slack_link:document.getElementById('dr-slack').value.trim()||null,
     prioritaet:document.getElementById('dr-prio').value,
     deadline,
     sichtbarkeit:sicht,
