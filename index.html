@@ -443,7 +443,7 @@ async function loadData(){
     dbGet('wochenresets','select=*&order=created_at.desc'),
     dbGet('beobachtungen','select=*&order=created_at.desc'),
     dbGet('kontext_feed','select=*&order=created_at.desc&limit=50'),
-    dbGet('decision_requests','select=*&order=created_at.desc'),
+    dbGet('decision_requests','select=*&order=erstellt_am.desc'),
   ]);
   S.personen=personen||[];
   S.teams=(teams||[]).map(t=>({...t,members:t.members||[]}));
@@ -726,7 +726,7 @@ function startDataPoller(){
       dbGet('wochenresets','select=*&order=created_at.desc'),
       dbGet('beobachtungen','select=*&order=created_at.desc'),
       dbGet('kontext_feed','select=*&order=created_at.desc&limit=50'),
-      dbGet('decision_requests','select=*&order=created_at.desc')
+      dbGet('decision_requests','select=*&order=erstellt_am.desc')
     ]);
     if(decisionRequests)S.decisionRequests=decisionRequests;
     if(kontextFeed)S.kontext=kontextFeed;
