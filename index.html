@@ -1547,16 +1547,15 @@ function openMeinProfil(){
       s+='<div style="font-size:10px;color:var(--t2)">Meetings in der Tagesplan-Zeitleiste</div></div>';
       s+=gcalConn?'<span style="font-size:11px;color:var(--green);font-weight:600">✅ Verbunden</span>':'<span style="font-size:11px;color:var(--t3)">Nicht verbunden</span>';
       s+='</div>';
-      s+='<div class="fl" style="margin:0 0 8px"><label style="font-size:10px">Google OAuth Client-ID</label>';
-      s+='<input type="text" id="mp-gcalid" value="'+(localStorage.getItem('gcal_client_id')||'')+'" placeholder="123456….apps.googleusercontent.com" style="font-family:monospace;font-size:10px" onblur="localStorage.setItem(\'gcal_client_id\',this.value.trim())"></div>';
       if(gcalConn){
         s+='<div style="display:flex;gap:8px">';
         s+='<button onclick="gcalFetchToday();toast(\'↻ Aktualisiert\');openMeinProfil()" class="btn btn-gr" style="flex:1;font-size:11px">↻ Aktualisieren</button>';
         s+='<button onclick="gcalDisconnect();openMeinProfil()" class="btn btn-red" style="font-size:11px">Trennen</button>';
         s+='</div>';
-        s+='<div style="font-size:10px;color:var(--t3);margin-top:6px">'+(S.kalender.length)+' Termin'+(S.kalender.length!==1?'e':'')+' heute · Toast 10 Min vor jedem Meeting</div>';
+        s+='<div style="font-size:10px;color:var(--t3);margin-top:6px">'+(S.kalender.length)+' Termin'+(S.kalender.length!==1?'e':'')+' heute · Toast 10 Min vor jedem Meeting · Aufgaben mit Datum → Kalender</div>';
       }else{
-        s+='<button onclick="localStorage.setItem(\'gcal_client_id\',document.getElementById(\'mp-gcalid\').value.trim());gcalConnect()" class="btn btn-gr" style="width:100%;font-size:11px">🗓 Verbinden</button>';
+        s+='<button onclick="gcalConnect()" class="btn btn-gr" style="width:100%;font-size:11px">🗓 Mit Google Kalender verbinden</button>';
+        s+='<div style="font-size:10px;color:var(--t3);margin-top:6px">Meetings in der Tagesplan-Zeitleiste · Aufgaben mit Datum im Kalender</div>';
       }
       s+='</div>';
       return s;
@@ -2590,6 +2589,7 @@ async function startenA(id){
     notify('aufgabe_gestartet',{prio:a.prio||null,team_slack_ids:S.personen.filter(p=>p.id!==aP&&p.slack_id).map(p=>p.slack_id),actor_slack_id:me()?.slack_id||''});
     const ok=await dbPatch('aufgaben',id,{status:'aktiv',akt_seit:new Date().toISOString()});
     if(!ok){a.status=prev.status;a.aktSeit=prev.aktSeit;}
+    else{gcalUpdateEventStart(a);}
   }catch(e){console.error('startenA',e);a.status=prev.status;a.aktSeit=prev.aktSeit;}
   finally{a._busy=false;try{render();}catch(e){console.error('render@startenA2',e);}}
 }
@@ -2613,6 +2613,7 @@ async function fertig(id){
     a.gebucht=gebucht;a.aktSeit=null;a.status='erledigt';a.updated_at=new Date().toISOString();try{render();}catch(e){console.error('render@fertig',e);}
     const ok=await dbPatch('aufgaben',id,{gebucht,akt_seit:null,status:'erledigt',updated_at:new Date().toISOString()});
     if(!ok){a.gebucht=prev.gebucht;a.aktSeit=prev.aktSeit;a.status=prev.status;a.updated_at=prev.updated_at;return;}
+    gcalUpdateEventEnd(a);
     // recurring: create next instance
     if(a.recurring){
       const nextDl=nextRecurringDate(a.dl||TODAY,a.recurring);
@@ -2747,6 +2748,7 @@ async function saveDetailField(id,field,val){
   const patch={[field]:field==='titel'?a.titel:field==='notiz'?a.notiz:field==='dl'?a.dl:field==='geplant'?a.geplant:field==='vertraulich'?val:val||null};
   if(field==='ziel_id')patch.teilziel_id=null;
   await dbPatch('aufgaben',id,patch);
+  if(field==='dl'&&val&&!gcalGetEvtId(id))gcalCreateEvent(a);
   render();
 }
 async function setStatusModal(id,st){
@@ -3617,6 +3619,7 @@ async function saveNeu(){
     erstellt_von:aP};
   S.aufgaben.push(normalizeAufgabe(rec));
   await dbInsert('aufgaben',rec);
+  if(rec.dl)gcalCreateEvent(rec);
   if(pid!==aP){const tp=person(pid);notify('aufgabe_zugewiesen',{aufgabe:t,fuer:{id:pid,name:tp?tp.name:'?',slack_id:tp?.slack_id||''},prio:rec.prio,dl:rec.dl});}
   cm();render();
 }
@@ -4028,18 +4031,18 @@ function openSettings(){
   h+='<div style="font-size:10px;color:var(--t3);margin-bottom:12px">Wird automatisch gespeichert</div>';
   h+='<div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin:20px 0 10px">Google Kalender</div>';
   const gcalConn=gcalIsConnected();
-  h+='<div class="fl"><label>Google OAuth Client ID</label><input type="text" id="set-gcalid" value="'+(localStorage.getItem('gcal_client_id')||'')+'" placeholder="123456….apps.googleusercontent.com" style="font-family:monospace;font-size:11px" onblur="localStorage.setItem(\'gcal_client_id\',this.value.trim())"></div>';
-  h+='<div style="font-size:10px;color:var(--t3);margin-bottom:10px">Google Cloud Console → APIs &amp; Dienste → Anmeldedaten → OAuth 2.0-Client-ID (Webanwendung). Redirect-URI: <span style="font-family:monospace;word-break:break-all">'+esc(location.origin+location.pathname)+'</span></div>';
+  h+='<div class="fl"><label>Google OAuth Client ID</label><input type="text" id="set-gcalid" value="'+(localStorage.getItem('gcal_client_id')||GCAL_DEFAULT_CLIENT_ID)+'" placeholder="123456….apps.googleusercontent.com" style="font-family:monospace;font-size:11px" onblur="localStorage.setItem(\'gcal_client_id\',this.value.trim())"></div>';
+  h+='<div style="font-size:10px;color:var(--t3);margin-bottom:10px">Einmal hier setzen — alle Teammitglieder verbinden sich über ihr Profil-Badge. Redirect-URI: <span style="font-family:monospace;word-break:break-all">'+esc(location.origin+location.pathname)+'</span></div>';
   if(gcalConn){
     h+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">';
     h+='<span style="font-size:12px;color:var(--green);font-weight:600">✅ Verbunden</span>';
     h+='<button onclick="gcalFetchToday();cm()" class="btn btn-gr" style="font-size:10px;padding:3px 9px">↻ Aktualisieren</button>';
     h+='<button onclick="gcalDisconnect()" class="btn btn-red" style="font-size:10px;padding:3px 9px">Trennen</button>';
     h+='</div>';
-    h+='<div style="font-size:10px;color:var(--t3);margin-bottom:8px">'+(S.kalender.length)+' Termin'+(S.kalender.length!==1?'e':'')+' heute geladen · Toast-Erinnerung 10 Min vorher</div>';
+    h+='<div style="font-size:10px;color:var(--t3);margin-bottom:8px">'+(S.kalender.length)+' Termin'+(S.kalender.length!==1?'e':'')+' heute · Meetings in Zeitleiste · Aufgaben mit Datum → Kalender</div>';
   }else{
-    h+='<button onclick="localStorage.setItem(\'gcal_client_id\',document.getElementById(\'set-gcalid\').value.trim());gcalConnect()" class="btn btn-gr" style="margin-bottom:4px">🗓 Google Kalender verbinden</button>';
-    h+='<div style="font-size:10px;color:var(--t3);margin-bottom:8px">Nur Lese-Zugriff. Meetings erscheinen in der Tagesplan-Zeitleiste. Toast-Erinnerung 10 Min vor jedem Termin.</div>';
+    h+='<button onclick="gcalConnect()" class="btn btn-gr" style="margin-bottom:4px">🗓 Google Kalender verbinden</button>';
+    h+='<div style="font-size:10px;color:var(--t3);margin-bottom:8px">Meetings in der Tagesplan-Zeitleiste · Aufgaben mit Datum im Kalender · Toast-Erinnerung 10 Min vorher</div>';
   }
   h+='<div class="fl"><label>Firmen-Kontext <span style="font-weight:400;color:var(--t2)">(CRM-Daten, Abschlussraten, Pipeline, etc.)</span></label>'
     +'<textarea id="set-firmenkontext" rows="5" style="resize:vertical;font-size:11px" placeholder="z.B.:\nAbschlussrate Kalt: 3%\nAbschlussrate Warm: 15%\nPipeline-Wert: 450k\nDurchschn. Dealsize: 12.000€\nTop-Kanal: Messe-Leads\nCAC: 800€\nLTV: 25.000€" onblur="localStorage.setItem(\'firmen_kontext\',this.value)">'+(localStorage.getItem('firmen_kontext')||'')+'</textarea></div>';
@@ -4512,10 +4515,10 @@ function gcalIsConnected(){
   const expiry=parseInt(localStorage.getItem('gcal_token_expiry')||'0');
   return !!(token&&Date.now()<expiry);
 }
+const GCAL_DEFAULT_CLIENT_ID='72621178595-l3kjb0a7u8khba1dt61lgu5gfs0daorb.apps.googleusercontent.com';
 function gcalConnect(){
-  const clientId=(localStorage.getItem('gcal_client_id')||'').trim();
-  if(!clientId){toast('Bitte zuerst Client ID eintragen und speichern');return;}
-  const scope='https://www.googleapis.com/auth/calendar.readonly';
+  const clientId=(localStorage.getItem('gcal_client_id')||GCAL_DEFAULT_CLIENT_ID).trim();
+  const scope='https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events';
   const redirectUri=location.origin+location.pathname;
   location.href='https://accounts.google.com/o/oauth2/v2/auth'
     +'?client_id='+encodeURIComponent(clientId)
@@ -4592,6 +4595,65 @@ function gcalShowEvent(id){
     +(ev.beschreibung?'<div style="font-size:12px;color:var(--text);line-height:1.6;white-space:pre-wrap;background:var(--gray-bg);border-radius:8px;padding:10px 12px;margin-bottom:14px;max-height:200px;overflow-y:auto">'+esc(ev.beschreibung)+'</div>':'')
     +'<div class="mf"><button class="btn btn-gr" onclick="cm()">Schließen</button></div>';
   document.getElementById('ovl').classList.add('open');
+}
+// ─── Google Calendar Write-Sync ─────────────────────────────────
+function gcalGetEvtId(aufgabeId){return localStorage.getItem('gcal_evt_'+aufgabeId)||null;}
+function gcalSetEvtId(aufgabeId,gcalId){if(gcalId)localStorage.setItem('gcal_evt_'+aufgabeId,gcalId);else localStorage.removeItem('gcal_evt_'+aufgabeId);}
+function gcalNextDay(dateStr){const d=new Date(dateStr+'T12:00:00');d.setDate(d.getDate()+1);return localDate(d);}
+async function gcalCreateEvent(a){
+  if(!gcalIsConnected()||!a.dl||a.pid!==aP)return;
+  if(gcalGetEvtId(a.id))return; // already exists
+  const token=localStorage.getItem('gcal_token');
+  const colorMap={'P1':'11','P2':'6','P3':'8'};
+  const body={
+    summary:(a.prio?'['+a.prio+'] ':'')+a.titel,
+    description:'Halleluja OS',
+    colorId:colorMap[a.prio||'P3']||'8',
+    start:{date:a.dl},
+    end:{date:gcalNextDay(a.dl)}
+  };
+  try{
+    const resp=await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events',
+      {method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify(body)});
+    if(resp.ok){const d=await resp.json();gcalSetEvtId(a.id,d.id);}
+    else if(resp.status===401){localStorage.removeItem('gcal_token');}
+  }catch(e){console.warn('gcalCreateEvent:',e);}
+}
+async function gcalUpdateEventStart(a){
+  if(!gcalIsConnected()||a.pid!==aP)return;
+  const evtId=gcalGetEvtId(a.id);
+  if(!evtId){if(a.dl)await gcalCreateEvent(a);return;}
+  const token=localStorage.getItem('gcal_token');
+  const now=new Date();
+  const end=new Date(now.getTime()+(a.geplant||1)*3600000);
+  const tz=Intl.DateTimeFormat().resolvedOptions().timeZone;
+  try{
+    await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events/'+encodeURIComponent(evtId),
+      {method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},
+       body:JSON.stringify({start:{dateTime:now.toISOString(),timeZone:tz},end:{dateTime:end.toISOString(),timeZone:tz}})});
+  }catch(e){console.warn('gcalUpdateEventStart:',e);}
+}
+async function gcalUpdateEventEnd(a){
+  if(!gcalIsConnected()||a.pid!==aP)return;
+  const evtId=gcalGetEvtId(a.id);
+  if(!evtId)return;
+  const token=localStorage.getItem('gcal_token');
+  const now=new Date();
+  const tz=Intl.DateTimeFormat().resolvedOptions().timeZone;
+  try{
+    const getResp=await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events/'+encodeURIComponent(evtId),
+      {headers:{Authorization:'Bearer '+token}});
+    if(!getResp.ok)return;
+    const evt=await getResp.json();
+    const patch={end:{dateTime:now.toISOString(),timeZone:tz}};
+    if(evt.start&&evt.start.date){
+      // Was still all-day → set start to beginning of today
+      const d=new Date(); d.setHours(9,0,0,0);
+      patch.start={dateTime:d.toISOString(),timeZone:tz};
+    }
+    await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events/'+encodeURIComponent(evtId),
+      {method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify(patch)});
+  }catch(e){console.warn('gcalUpdateEventEnd:',e);}
 }
 // ────────────────────────────────────────────────────────────────
 window.addEventListener('keydown',e=>{
