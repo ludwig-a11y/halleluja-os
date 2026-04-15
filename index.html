@@ -4914,12 +4914,16 @@ async function gcalCreateEvent(a){
   if(gcalGetEvtId(a.id))return;
   const token=localStorage.getItem('gcal_token');
   const colorMap={'P1':'11','P2':'6','P3':'8'};
+  const tz=Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const hrs=a.geplant||1;
+  const startD=new Date(a.dl+'T09:00:00');
+  const endD=new Date(startD.getTime()+hrs*3600000);
   const body={
     summary:(a.prio?'['+a.prio+'] ':'')+a.titel,
     description:'Halleluja OS',
     colorId:colorMap[a.prio||'P3']||'8',
-    start:{date:a.dl},
-    end:{date:gcalNextDay(a.dl)}
+    start:{dateTime:startD.toISOString(),timeZone:tz},
+    end:{dateTime:endD.toISOString(),timeZone:tz}
   };
   try{
     const resp=await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events',
