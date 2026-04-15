@@ -485,9 +485,6 @@ function handleDeepLink(){
   }
 }
 function notify(evt,data){
-  // Respect per-user Slack notification preference for personal DM events
-  const personalEvts=['task_start','task_done'];
-  if(personalEvts.includes(evt)&&localStorage.getItem('slack_notif_'+aP)==='off')return;
   const url=localStorage.getItem('n8n_webhook')||'https://halleluja-app.germanywestcentral.cloudapp.azure.com/n8n/webhook/halleluja-notify';
   if(!url)return;
   const p=person(aP);
@@ -1557,22 +1554,6 @@ function openMeinProfil(){
         s+='<button onclick="gcalConnect()" class="btn btn-gr" style="width:100%;font-size:11px">🗓 Mit Google Kalender verbinden</button>';
         s+='<div style="font-size:10px;color:var(--t3);margin-top:6px">Meetings in der Tagesplan-Zeitleiste · Aufgaben mit Datum im Kalender</div>';
       }
-      s+='</div>';
-      return s;
-    })()
-    // Slack Notifications
-    +(()=>{
-      const notifKey='slack_notif_'+aP;
-      const notifOn=localStorage.getItem(notifKey)!=='off';
-      let s='<div style="background:var(--gray-bg);border-radius:10px;padding:12px 14px;margin-bottom:14px">';
-      s+='<div style="display:flex;align-items:center;gap:8px">';
-      s+='<span style="font-size:16px">💬</span>';
-      s+='<div style="flex:1"><div style="font-size:12px;font-weight:600">Slack-Benachrichtigungen</div>';
-      s+='<div style="font-size:10px;color:var(--t2)">DM beim Starten &amp; Erledigen von Tasks</div></div>';
-      s+='<label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:11px">';
-      s+='<input type="checkbox" '+(notifOn?'checked':'')+' onchange="localStorage.setItem(\'slack_notif_'+aP+'\',this.checked?\'on\':\'off\');openMeinProfil()" style="width:auto;accent-color:var(--blue)"> ';
-      s+=notifOn?'<span style="color:var(--green)">An</span>':'<span style="color:var(--t3)">Aus</span>';
-      s+='</label></div>';
       s+='</div>';
       return s;
     })()
