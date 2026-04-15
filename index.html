@@ -485,6 +485,9 @@ function handleDeepLink(){
   }
 }
 function notify(evt,data){
+  // Respect per-user Slack notification preference for personal DM events
+  const personalEvts=['task_start','task_done'];
+  if(personalEvts.includes(evt)&&localStorage.getItem('slack_notif_'+aP)==='off')return;
   const url=localStorage.getItem('n8n_webhook')||'https://halleluja-app.germanywestcentral.cloudapp.azure.com/n8n/webhook/halleluja-notify';
   if(!url)return;
   const p=person(aP);
@@ -1532,6 +1535,48 @@ function openMeinProfil(){
     +'</div>'
     +'<div style="height:1px;background:var(--bd);margin:8px 0 14px"></div>'
     +'<button onclick="toggleDark();openMeinProfil()" class="btn btn-gr" style="width:100%;margin-bottom:14px">'+(document.documentElement.classList.contains('dark')?'☀️ Light Mode':'🌙 Dark Mode')+'</button>'
+    // ── Meine Verbindungen ──────────────────────────────────────
+    +'<div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Meine Verbindungen</div>'
+    // Google Calendar
+    +(()=>{
+      const gcalConn=gcalIsConnected();
+      let s='<div style="background:var(--gray-bg);border-radius:10px;padding:12px 14px;margin-bottom:8px">';
+      s+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">';
+      s+='<span style="font-size:16px">📅</span>';
+      s+='<div style="flex:1"><div style="font-size:12px;font-weight:600">Google Kalender</div>';
+      s+='<div style="font-size:10px;color:var(--t2)">Meetings in der Tagesplan-Zeitleiste</div></div>';
+      s+=gcalConn?'<span style="font-size:11px;color:var(--green);font-weight:600">✅ Verbunden</span>':'<span style="font-size:11px;color:var(--t3)">Nicht verbunden</span>';
+      s+='</div>';
+      s+='<div class="fl" style="margin:0 0 8px"><label style="font-size:10px">Google OAuth Client-ID</label>';
+      s+='<input type="text" id="mp-gcalid" value="'+(localStorage.getItem('gcal_client_id')||'')+'" placeholder="123456….apps.googleusercontent.com" style="font-family:monospace;font-size:10px" onblur="localStorage.setItem(\'gcal_client_id\',this.value.trim())"></div>';
+      if(gcalConn){
+        s+='<div style="display:flex;gap:8px">';
+        s+='<button onclick="gcalFetchToday();toast(\'↻ Aktualisiert\');openMeinProfil()" class="btn btn-gr" style="flex:1;font-size:11px">↻ Aktualisieren</button>';
+        s+='<button onclick="gcalDisconnect();openMeinProfil()" class="btn btn-red" style="font-size:11px">Trennen</button>';
+        s+='</div>';
+        s+='<div style="font-size:10px;color:var(--t3);margin-top:6px">'+(S.kalender.length)+' Termin'+(S.kalender.length!==1?'e':'')+' heute · Toast 10 Min vor jedem Meeting</div>';
+      }else{
+        s+='<button onclick="localStorage.setItem(\'gcal_client_id\',document.getElementById(\'mp-gcalid\').value.trim());gcalConnect()" class="btn btn-gr" style="width:100%;font-size:11px">🗓 Verbinden</button>';
+      }
+      s+='</div>';
+      return s;
+    })()
+    // Slack Notifications
+    +(()=>{
+      const notifKey='slack_notif_'+aP;
+      const notifOn=localStorage.getItem(notifKey)!=='off';
+      let s='<div style="background:var(--gray-bg);border-radius:10px;padding:12px 14px;margin-bottom:14px">';
+      s+='<div style="display:flex;align-items:center;gap:8px">';
+      s+='<span style="font-size:16px">💬</span>';
+      s+='<div style="flex:1"><div style="font-size:12px;font-weight:600">Slack-Benachrichtigungen</div>';
+      s+='<div style="font-size:10px;color:var(--t2)">DM beim Starten &amp; Erledigen von Tasks</div></div>';
+      s+='<label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:11px">';
+      s+='<input type="checkbox" '+(notifOn?'checked':'')+' onchange="localStorage.setItem(\'slack_notif_'+aP+'\',this.checked?\'on\':\'off\');openMeinProfil()" style="width:auto;accent-color:var(--blue)"> ';
+      s+=notifOn?'<span style="color:var(--green)">An</span>':'<span style="color:var(--t3)">Aus</span>';
+      s+='</label></div>';
+      s+='</div>';
+      return s;
+    })()
     +'<div class="mf"><button class="btn btn-red" onclick="logout()">Abmelden</button><button class="btn btn-gr" onclick="cm()">Schließen</button></div>';
   document.getElementById('ovl').classList.add('open');
 }
