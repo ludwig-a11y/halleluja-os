@@ -4899,8 +4899,8 @@ function gcalGetEvtId(aufgabeId){return localStorage.getItem('gcal_evt_'+aufgabe
 function gcalSetEvtId(aufgabeId,gcalId){if(gcalId)localStorage.setItem('gcal_evt_'+aufgabeId,gcalId);else localStorage.removeItem('gcal_evt_'+aufgabeId);}
 function gcalNextDay(dateStr){const d=new Date(dateStr+'T12:00:00');d.setDate(d.getDate()+1);return localDate(d);}
 async function gcalCreateEvent(a){
-  if(!gcalIsConnected()||!a.dl||a.pid!==aP)return;
-  if(gcalGetEvtId(a.id))return; // already exists
+  if(!gcalIsConnected()||!a.dl||String(a.pid)!==String(aP))return;
+  if(gcalGetEvtId(a.id))return;
   const token=localStorage.getItem('gcal_token');
   const colorMap={'P1':'11','P2':'6','P3':'8'};
   const body={
@@ -4913,12 +4913,24 @@ async function gcalCreateEvent(a){
   try{
     const resp=await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events',
       {method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify(body)});
-    if(resp.ok){const d=await resp.json();gcalSetEvtId(a.id,d.id);}
-    else if(resp.status===401){localStorage.removeItem('gcal_token');}
+    if(resp.ok){
+      const d=await resp.json();
+      gcalSetEvtId(a.id,d.id);
+      toast('📅 Im Kalender eingetragen');
+    } else if(resp.status===401){
+      localStorage.removeItem('gcal_token');
+      toast('GCal: Bitte neu verbinden');
+    } else if(resp.status===403){
+      toast('GCal: Schreibrechte fehlen — bitte neu verbinden');
+      localStorage.removeItem('gcal_token');
+    } else {
+      const err=await resp.json().catch(()=>({}));
+      console.warn('gcalCreateEvent error:',resp.status,err);
+    }
   }catch(e){console.warn('gcalCreateEvent:',e);}
 }
 async function gcalUpdateEventStart(a){
-  if(!gcalIsConnected()||a.pid!==aP)return;
+  if(!gcalIsConnected()||String(a.pid)!==String(aP))return;
   const evtId=gcalGetEvtId(a.id);
   if(!evtId){if(a.dl)await gcalCreateEvent(a);return;}
   const token=localStorage.getItem('gcal_token');
@@ -4926,13 +4938,15 @@ async function gcalUpdateEventStart(a){
   const end=new Date(now.getTime()+(a.geplant||1)*3600000);
   const tz=Intl.DateTimeFormat().resolvedOptions().timeZone;
   try{
-    await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events/'+encodeURIComponent(evtId),
+    const resp=await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events/'+encodeURIComponent(evtId),
       {method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},
        body:JSON.stringify({start:{dateTime:now.toISOString(),timeZone:tz},end:{dateTime:end.toISOString(),timeZone:tz}})});
+    if(resp.status===401){localStorage.removeItem('gcal_token');}
+    else if(resp.status===403){localStorage.removeItem('gcal_token');toast('GCal: Schreibrechte fehlen — bitte neu verbinden');}
   }catch(e){console.warn('gcalUpdateEventStart:',e);}
 }
 async function gcalUpdateEventEnd(a){
-  if(!gcalIsConnected()||a.pid!==aP)return;
+  if(!gcalIsConnected()||String(a.pid)!==String(aP))return;
   const evtId=gcalGetEvtId(a.id);
   if(!evtId)return;
   const token=localStorage.getItem('gcal_token');
@@ -4941,16 +4955,17 @@ async function gcalUpdateEventEnd(a){
   try{
     const getResp=await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events/'+encodeURIComponent(evtId),
       {headers:{Authorization:'Bearer '+token}});
-    if(!getResp.ok)return;
+    if(!getResp.ok){if(getResp.status===401)localStorage.removeItem('gcal_token');return;}
     const evt=await getResp.json();
     const patch={end:{dateTime:now.toISOString(),timeZone:tz}};
     if(evt.start&&evt.start.date){
-      // Was still all-day → set start to beginning of today
       const d=new Date(); d.setHours(9,0,0,0);
       patch.start={dateTime:d.toISOString(),timeZone:tz};
     }
-    await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events/'+encodeURIComponent(evtId),
+    const resp=await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events/'+encodeURIComponent(evtId),
       {method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify(patch)});
+    if(resp.status===401){localStorage.removeItem('gcal_token');}
+    else if(resp.status===403){localStorage.removeItem('gcal_token');toast('GCal: Schreibrechte fehlen — bitte neu verbinden');}
   }catch(e){console.warn('gcalUpdateEventEnd:',e);}
 }
 // ────────────────────────────────────────────────────────────────
