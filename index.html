@@ -19,7 +19,7 @@
   --blue:#1d4ed8;--blue-bg:#eff6ff;--blue-bd:#bfdbfe;
   --green:#15803d;--green-bg:#f0fdf4;--green-bd:#bbf7d0;
   --red:#b91c1c;--red-bg:#fef2f2;--red-bd:#fecaca;
-  --amber:#a16207;--amber-bg:#fefce8;--amber-bd:#fde68a;
+  --amber:#a16207;--amber-bg:#fefce8;--amber-bd:#fde68a;--gold:#f59e0b;--gold-t:#92400e;
   --purple:#7c3aed;--purple-bg:#f5f3ff;--purple-bd:#ddd6fe;
   --gray-bg:#f8f8f7;
   --orange:#c2410c;--orange-bg:#fff7ed;--orange-bd:#fed7aa;
@@ -33,7 +33,7 @@ html.dark{
   --blue:#7db8f0;--blue-bg:#131820;--blue-bd:#1e3354;
   --green:#6ecf8a;--green-bg:#131a15;--green-bd:#1a3822;
   --red:#f09090;--red-bg:#1a1313;--red-bd:#3d2020;
-  --amber:#d4a94d;--amber-bg:#1a1810;--amber-bd:#3a3018;
+  --amber:#d4a94d;--amber-bg:#1a1810;--amber-bd:#3a3018;--gold:#f0a030;--gold-t:#fbbf24;
   --purple:#b09ae8;--purple-bg:#16131e;--purple-bd:#2c2242;
   --gray-bg:#171614;
   --orange:#d49a6a;--orange-bg:#1a1710;--orange-bd:#3a2c18;
@@ -610,7 +610,7 @@ function dli(d){
   if(isNaN(df))return null;
   if(df<0)return{l:Math.abs(df)+'d überfällig',bg:'var(--red-bg)',c:'var(--red)'};
   if(df===0)return{l:'Heute fällig',bg:'var(--red-bg)',c:'var(--red)'};
-  if(df===1)return{l:'Morgen',bg:'#fff7ed',c:'#c2410c'};
+  if(df===1)return{l:'Morgen',bg:'var(--orange-bg)',c:'var(--orange)'};
   if(df<=4)return{l:'in '+df+' Tagen',bg:'var(--amber-bg)',c:'var(--amber)'};
   return{l:d.slice(8)+'.'+d.slice(5,7)+'.',bg:'var(--gray-bg)',c:'var(--t3)'};
 }
@@ -1882,7 +1882,7 @@ function rWoche(){
     out+='<div style="display:flex;gap:6px;margin-top:10px">';
     out+='<button onclick="openWochenreset()" style="font-size:11px;padding:5px 12px;border-radius:7px;border:1px solid var(--bd);background:var(--gray-bg);color:var(--t2);cursor:pointer;font-family:inherit">✎ Bearbeiten</button>';
     out+='<button onclick="openBlocker(\''+wr.id+'\')" style="font-size:11px;padding:5px 12px;border-radius:7px;border:1px solid var(--red-bd);background:var(--red-bg);color:var(--red);cursor:pointer;font-family:inherit">⚠ Blocker</button>';
-    out+='<button onclick="openDecisionForm()" style="font-size:11px;padding:5px 12px;border-radius:7px;border:1px dashed #f59e0b;background:transparent;color:#d97706;cursor:pointer;font-family:inherit">⚖️ Entscheidung</button>';
+    out+='<button onclick="openDecisionForm()" style="font-size:11px;padding:5px 12px;border-radius:7px;border:1px dashed var(--gold);background:transparent;color:var(--gold-t);cursor:pointer;font-family:inherit">⚖️ Entscheidung</button>';
     out+='</div>';
     out+='</div>';
   }else{
@@ -2200,7 +2200,7 @@ function rTag(){
     } else {
       out+='<div style="margin-top:-6px;margin-bottom:12px;display:flex;gap:6px">'
         +'<button onclick="openBlocker(\''+wrAktuell.id+'\')" style="font-size:10px;padding:3px 10px;border-radius:6px;border:1px dashed var(--bd);background:transparent;color:var(--t3);cursor:pointer;font-family:inherit">⚠ Blockade melden</button>'
-        +'<button onclick="openDecisionForm()" style="font-size:10px;padding:3px 10px;border-radius:6px;border:1px dashed #f59e0b;background:transparent;color:#d97706;cursor:pointer;font-family:inherit">⚖️ Entscheidung anfragen</button>'
+        +'<button onclick="openDecisionForm()" style="font-size:10px;padding:3px 10px;border-radius:6px;border:1px dashed var(--gold);background:transparent;color:var(--gold-t);cursor:pointer;font-family:inherit">⚖️ Entscheidung anfragen</button>'
         +'</div>';
     }
   }
@@ -2219,17 +2219,17 @@ function rTag(){
     const andereDR=isGF()?S.decisionRequests.filter(d=>d.status==='offen'&&d.an_person_id&&d.an_person_id!==aP).sort((a,b)=>(a.deadline||'').localeCompare(b.deadline||'')):[];
     const alleDR=[...meineDR,...andereDR];
     if(alleDR.length){
-      out+='<div style="background:var(--sf);border:1.5px solid #f59e0b;border-radius:14px;padding:14px 16px;margin-bottom:14px">';
+      out+='<div style="background:var(--sf);border:1.5px solid var(--gold);border-radius:14px;padding:14px 16px;margin-bottom:14px">';
       out+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">';
       out+='<span style="font-size:15px">⚖️</span>';
       out+='<span style="font-size:13px;font-weight:700">Entscheidungen</span>';
-      out+='<span style="background:#f59e0b;color:#fff;font-size:10px;font-weight:700;padding:2px 9px;border-radius:99px;margin-left:auto">'+(meineDR.length)+' an mich'+(andereDR.length?' · '+andereDR.length+' weitere':'')+'</span>';
+      out+='<span style="background:var(--gold);color:#fff;font-size:10px;font-weight:700;padding:2px 9px;border-radius:99px;margin-left:auto">'+(meineDR.length)+' an mich'+(andereDR.length?' · '+andereDR.length+' weitere':'')+'</span>';
       out+='</div>';
       alleDR.forEach(d=>{
         const von=S.personen.find(p=>p.id===d.erstellt_von);
         const anP=S.personen.find(p=>p.id===d.an_person_id);
         const istMeine=d.an_person_id===aP||(!d.an_person_id&&isGF());
-        const prioCol=d.prioritaet==='hoch'?'var(--red)':d.prioritaet==='mittel'?'#d97706':'var(--t3)';
+        const prioCol=d.prioritaet==='hoch'?'var(--red)':d.prioritaet==='mittel'?'var(--gold-t)':'var(--t3)';
         const dl=d.deadline?new Date(d.deadline+'T12:00:00'):null;
         const dlStr=dl?dl.getDate()+'.'+(dl.getMonth()+1)+'.':'—';
         const isUeberfaellig=d.deadline&&d.deadline<TODAY;
@@ -2242,12 +2242,12 @@ function rTag(){
         if(d.blockiert)out+='<div style="font-size:11px;color:var(--red);margin-bottom:6px;font-weight:500">⛔ '+esc(d.blockiert).slice(0,80)+'</div>';
         out+='<div style="display:flex;align-items:center;gap:8px;font-size:10px;color:var(--t3);margin-bottom:8px">';
         if(von)out+='<span>von '+esc(von.name.split(' ')[0])+'</span><span>·</span>';
-        if(!istMeine&&anP)out+='<span style="color:#d97706">→ '+esc(anP.name.split(' ')[0])+'</span><span>·</span>';
+        if(!istMeine&&anP)out+='<span style="color:var(--gold-t)">→ '+esc(anP.name.split(' ')[0])+'</span><span>·</span>';
         out+='<span style="color:'+(isUeberfaellig?'var(--red)':'var(--t3)')+'">fällig '+dlStr+(isUeberfaellig?' ⚠':'')+'</span>';
         out+='</div>';
         if(istMeine){
           out+='<div style="display:flex;gap:6px;flex-wrap:wrap">';
-          out+='<button onclick="openDecisionAnswer(\''+d.id+'\',\'entscheiden\')" style="flex:1 1 100%;font-size:11px;padding:6px 12px;border-radius:8px;border:none;background:#f59e0b;color:#fff;cursor:pointer;font-family:inherit;font-weight:600">✓ Entscheiden</button>';
+          out+='<button onclick="openDecisionAnswer(\''+d.id+'\',\'entscheiden\')" style="flex:1 1 100%;font-size:11px;padding:6px 12px;border-radius:8px;border:none;background:var(--gold);color:#fff;cursor:pointer;font-family:inherit;font-weight:600">✓ Entscheiden</button>';
           out+='<button onclick="openDecisionAnswer(\''+d.id+'\',\'weiterleiten\')" style="font-size:11px;padding:6px 10px;border-radius:8px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);cursor:pointer;font-family:inherit">→ Weiterleiten</button>';
           out+='<button onclick="openDecisionAnswer(\''+d.id+'\',\'zurueck\')" style="font-size:11px;padding:6px 10px;border-radius:8px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);cursor:pointer;font-family:inherit">↩ Zurück</button>';
           if(von?.slack_id)out+='<a href="https://slack.com/app_redirect?channel='+esc(von.slack_id)+'" target="_blank" style="font-size:11px;padding:6px 10px;border-radius:8px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);cursor:pointer;text-decoration:none;display:flex;align-items:center">💬</a>';
@@ -2566,8 +2566,8 @@ function rTag(){
         +zielOptsI.replace('PLACEHOLDER',a.id)
         +['P1','P2','P3','null'].map(p=>{
           const lbl=p==='null'?'Kein Prio':p;
-          const bg=p==='P1'?'var(--red-bg)':p==='P2'?'#fff7ed':p==='P3'?'var(--gray-bg)':'var(--sf)';
-          const tc=p==='P1'?'var(--red)':p==='P2'?'#c2410c':p==='P3'?'var(--t2)':'var(--t3)';
+          const bg=p==='P1'?'var(--red-bg)':p==='P2'?'var(--orange-bg)':p==='P3'?'var(--gray-bg)':'var(--sf)';
+          const tc=p==='P1'?'var(--red)':p==='P2'?'var(--orange)':p==='P3'?'var(--t2)':'var(--t3)';
           const suggested=p===a.prio||(p==='null'&&!a.prio);
           return'<button onclick="bestaetigeAufgabe(\''+a.id+'\',\''+p+'\')" style="font-size:11px;padding:5px 13px;border-radius:8px;border:'+(suggested?'2px solid var(--text)':'1px solid var(--bd)')+';background:'+bg+';color:'+tc+';cursor:pointer;font-family:inherit;font-weight:'+(suggested?700:400)+'">'+lbl+'</button>';
         }).join('')
@@ -2601,15 +2601,14 @@ function rTag(){
       out+=zielOptsN.replace('PLACEHOLDER',a.id);
       out+=(['P1','P2','P3','null'].map(pr=>{
         const lbl=pr==='null'?'Kein Prio':pr;
-        const bg=pr==='P1'?'var(--red-bg)':pr==='P2'?'#fff7ed':pr==='P3'?'var(--gray-bg)':'var(--sf)';
-        const tc=pr==='P1'?'var(--red)':pr==='P2'?'#c2410c':pr==='P3'?'var(--t2)':'var(--t3)';
+        const bg=pr==='P1'?'var(--red-bg)':pr==='P2'?'var(--orange-bg)':pr==='P3'?'var(--gray-bg)':'var(--sf)';
+        const tc=pr==='P1'?'var(--red)':pr==='P2'?'var(--orange)':pr==='P3'?'var(--t2)':'var(--t3)';
         return'<button onclick="setPrio(\''+a.id+'\',\''+(pr==='null'?null:pr)+'\')" style="font-size:11px;padding:5px 13px;border-radius:8px;border:1px solid var(--bd);background:'+bg+';color:'+tc+';cursor:pointer;font-family:inherit">'+lbl+'</button>';
       }).join(''));
       out+='</div>';
       out+='<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">';
       out+='<span style="font-size:10px;color:var(--t3)">oder:</span>';
       out+='<button onclick="klassifiziereAlsIdee(\''+a.id+'\')" style="font-size:11px;padding:4px 11px;border-radius:8px;border:1px solid var(--blue-bd);background:var(--blue-bg);color:var(--blue);cursor:pointer;font-family:inherit">→ Ideen-Pool</button>';
-      out+='<button onclick="klassifiziereAlsRandom(\''+a.id+'\')" style="font-size:11px;padding:4px 11px;border-radius:8px;border:1px solid var(--bd);background:var(--gray-bg);color:var(--t2);cursor:pointer;font-family:inherit">🎲 Random</button>';
       if(S.ziele.length)out+='<button onclick="aufgabeZuMeilenstein(\''+a.id+'\')" style="font-size:11px;padding:4px 11px;border-radius:8px;border:1px solid var(--green-bd);background:var(--green-bg);color:var(--green);cursor:pointer;font-family:inherit">→ Meilenstein</button>';
       out+='<button onclick="delAufgabe(\''+a.id+'\')" style="font-size:11px;padding:4px 8px;border-radius:8px;border:1px solid var(--bd);background:var(--sf);color:var(--t3);cursor:pointer;font-family:inherit">✕</button>';
       out+='</div></div>';
@@ -3272,7 +3271,7 @@ function openNeu(pf={}){
     +'<div class="fl"><label>Ziel <span style="font-weight:400;color:var(--t2)">(optional)</span></label><select id="nziel" onchange="updateNeuTZ()">'+zieleOpts+'</select></div></div>'
     +'<div id="neu-tz-wrap" class="fl" style="display:none"><label>Meilenstein <span style="font-weight:400;color:var(--t2)">(optional)</span></label><select id="ntz"><option value="">— kein Meilenstein —</option></select></div>'
     +'<div class="fl"><label>Priorität</label><div style="display:flex;gap:6px;margin-top:2px">'
-    +[null,'P1','P2','P3'].map(pr=>{const bg=pr==='P1'?'var(--red-bg)':pr==='P2'?'#fff7ed':'var(--gray-bg)';const tc=pr==='P1'?'var(--red)':pr==='P2'?'#c2410c':'var(--t2)';return'<button id="pbp-'+(pr||'k')+'" onclick="selPrioBtn(this,\''+pr+'\')" style="font-size:12px;padding:4px 11px;border-radius:8px;border:1px solid '+(pr?tc:'var(--bd)')+';background:'+bg+';color:'+tc+';cursor:pointer;font-family:inherit">'+(pr||'kein')+'</button>';}).join('')
+    +[null,'P1','P2','P3'].map(pr=>{const bg=pr==='P1'?'var(--red-bg)':pr==='P2'?'var(--orange-bg)':'var(--gray-bg)';const tc=pr==='P1'?'var(--red)':pr==='P2'?'var(--orange)':'var(--t2)';return'<button id="pbp-'+(pr||'k')+'" onclick="selPrioBtn(this,\''+pr+'\')" style="font-size:12px;padding:4px 11px;border-radius:8px;border:1px solid '+(pr?tc:'var(--bd)')+';background:'+bg+';color:'+tc+';cursor:pointer;font-family:inherit">'+(pr||'kein')+'</button>';}).join('')
     +'</div></div>'
     +'<div class="f2"><div class="fl"><label>Dauer</label><select id="nh">'+SH.map(([h,l])=>'<option value="'+h+'"'+((pf.geplant||1)==h?' selected':'')+'>'+l+'</option>').join('')+'</select></div>'
     +'<div class="fl"><label>Fällig</label><div style="display:flex;gap:6px;align-items:center"><input type="date" id="ndl" value="'+(pf.dl||'')+'" style="flex:1">'
@@ -4037,8 +4036,8 @@ function rTeam(){
       out+='<div style="display:flex;align-items:center;gap:9px;padding:10px 14px;background:var(--gray-bg)">';
       out+=av(p,28,10);
       out+='<div style="font-size:13px;font-weight:600;flex:1">'+esc(p.name)+'</div>';
-      if(r&&total>0)out+='<span style="font-size:12px;font-weight:700;color:'+(done===total?'#15803d':'#c2410c')+'">'+done+'/'+total+' ✓</span>';
-      if(!r)out+='<span style="font-size:11px;color:#f59e0b;font-weight:600">⏳ Ausstehend</span>';
+      if(r&&total>0)out+='<span style="font-size:12px;font-weight:700;color:'+(done===total?'var(--green)':'var(--orange)')+'">'+done+'/'+total+' ✓</span>';
+      if(!r)out+='<span style="font-size:11px;color:var(--gold);font-weight:600">⏳ Ausstehend</span>';
       out+='</div>';
       if(r){
         if(r.blockiert)out+='<div style="padding:7px 14px;font-size:12px;border-top:1px solid var(--bd);background:var(--amber-bg)"><span style="font-weight:700;color:var(--orange)">⚠ </span>'+esc(r.blockiert)+'</div>';
@@ -4082,7 +4081,7 @@ function rTeam(){
 
   // ── Sales Insights Feed (GF) ──
   if(isGF()&&S.beobachtungen.length){
-    const TYPEN={einwand:{icon:'⚡',color:'#c2410c'},frage:{icon:'❓',color:'#1d4ed8'},insight:{icon:'💡',color:'#15803d'},lob:{icon:'⭐',color:'#b45309'}};
+    const TYPEN={einwand:{icon:'⚡',color:'var(--orange)'},frage:{icon:'❓',color:'var(--blue)'},insight:{icon:'💡',color:'var(--green)'},lob:{icon:'⭐',color:'var(--amber)'}};
     out+='<div style="margin-top:24px">';
     out+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t2);margin-bottom:10px">Sales Insights</div>';
     S.beobachtungen.slice(0,25).forEach(b=>{
@@ -4115,9 +4114,9 @@ function rTeam(){
       gefiltert.forEach(d=>{
         const von=S.personen.find(p=>p.id===d.erstellt_von);
         const von2=d.beantwortet_von?S.personen.find(p=>p.id===d.beantwortet_von):null;
-        const prioCol=d.prioritaet==='hoch'?'var(--red)':d.prioritaet==='mittel'?'#d97706':'var(--t3)';
+        const prioCol=d.prioritaet==='hoch'?'var(--red)':d.prioritaet==='mittel'?'var(--gold-t)':'var(--t3)';
         const stBg=d.status==='entschieden'?'var(--green-bg)':d.status==='zurueckgegeben'?'var(--blue-bg)':'#fffbeb';
-        const stCol=d.status==='entschieden'?'var(--green)':d.status==='zurueckgegeben'?'var(--blue)':'#d97706';
+        const stCol=d.status==='entschieden'?'var(--green)':d.status==='zurueckgegeben'?'var(--blue)':'var(--gold-t)';
         const stTxt={'offen':'Offen','entschieden':'Entschieden','zurueckgegeben':'Zurückgegeben'}[d.status]||d.status;
         const isGray=d.status!=='offen';
         out+='<div style="border:1px solid var(--bd);border-radius:12px;padding:12px 14px;margin-bottom:8px;'+(isGray?'opacity:.7':'')+'">';
@@ -4720,7 +4719,7 @@ function openDecisionForm(){
     +'<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer"><input type="radio" name="dr-sicht" value="gf_only" checked> Nur GF</label>'
     +'<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer"><input type="radio" name="dr-sicht" value="team"> Ganzes Team</label>'
     +'</div></div>'
-    +'<div class="mf"><button class="btn btn-gr" onclick="cm()">Abbrechen</button><button class="btn" onclick="saveDecisionRequest()" style="background:#f59e0b;border-color:#f59e0b;color:#fff">Anfragen</button></div>';
+    +'<div class="mf"><button class="btn btn-gr" onclick="cm()">Abbrechen</button><button class="btn" onclick="saveDecisionRequest()" style="background:var(--gold);border-color:var(--gold);color:#fff">Anfragen</button></div>';
   document.getElementById('ovl').classList.add('open');
 }
 async function saveDecisionRequest(){
@@ -4760,7 +4759,7 @@ function openDecisionAnswer(id,mode){
   if(mode==='entscheiden'){
     body='<div class="fl"><label>Beschluss <span style="color:var(--red)">*</span></label><textarea id="dr-beschluss" rows="3" placeholder="Was wurde entschieden?" style="resize:none"></textarea></div>'
         +'<div class="fl"><label>Warum? <span style="color:var(--red)">*</span> <span style="font-size:10px;color:var(--t3);font-weight:400">— Dalio-Prinzip</span></label><textarea id="dr-warum" rows="3" placeholder="Was war der ausschlaggebende Grund?" style="resize:none"></textarea></div>';
-    footer='<button class="btn" onclick="saveDecisionAnswer(\''+id+'\')" style="background:#f59e0b;border-color:#f59e0b;color:#fff">Beschluss speichern</button>';
+    footer='<button class="btn" onclick="saveDecisionAnswer(\''+id+'\')" style="background:var(--gold);border-color:var(--gold);color:#fff">Beschluss speichern</button>';
   } else if(mode==='weiterleiten'){
     const opts=S.personen.filter(p=>p.id!==aP&&p.id!==d.erstellt_von).map(p=>'<option value="'+p.id+'">'+esc(p.name)+'</option>').join('');
     body='<div class="fl"><label>An wen weiterleiten? <span style="color:var(--red)">*</span></label><select id="dr-wl-an" style="font-size:13px">'+opts+'</select></div>'
