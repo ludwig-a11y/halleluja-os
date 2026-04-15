@@ -414,7 +414,7 @@ function checkP1Done(pid){
   if(p1.length>0&&p1.every(a=>a.status==='erledigt'))setTimeout(showQuote,400);
 }
 
-let S={personen:[],teams:[],ziele:[],aufgaben:[],kpiVals:{},checkins:{},kpiToday:{},signale:[],wochenresets:[],beobachtungen:[],kontext:[]};
+let S={personen:[],teams:[],ziele:[],aufgaben:[],kpiVals:{},checkins:{},kpiToday:{},signale:[],wochenresets:[],beobachtungen:[],kontext:[],kalender:[]};
 let aP=null,realMe=null,aV='tag',timIv=null,_selPrio=null;
 let _kid=Date.now();
 const nid=p=>p+(++_kid);
@@ -1483,6 +1483,7 @@ function tryLogin(){
     document.getElementById('login-screen').style.display='none';
     document.getElementById('app').style.display='flex';
     updateBadge();render();startSonderPoller();startDataPoller();handleDeepLink();
+    gcalFetchToday();
   } else {
     document.getElementById('login-err').textContent='Falsche PIN.';pinIn='';updDots();
   }
@@ -2283,6 +2284,20 @@ function rTag(){
         out+='<span style="font-size:10px;font-weight:600;color:'+tc+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(a.titel)+'</span>';
         out+='<span style="font-size:9px;color:'+tc+';opacity:.5;flex-shrink:0;margin-left:auto">'+fmtH(dur)+'</span>';
         out+='</div>';
+      });
+      // meeting overlays from Google Calendar
+      window._gcalEvtMap=window._gcalEvtMap||{};
+      (S.kalender||[]).forEach((ev,idx)=>{
+        if(!ev.start||!ev.end)return;
+        const sH=ev.start.getHours()+ev.start.getMinutes()/60;
+        const eH=ev.end.getHours()+ev.end.getMinutes()/60;
+        const lPct=Math.max(0,(sH-dayStart)/barH*100);
+        const wPctM=Math.max(1,Math.min(100-lPct,(eH-sH)/barH*100));
+        if(lPct>=100)return;
+        const fmt=d=>d.getHours()+':'+(''+(d.getMinutes())).padStart(2,'0');
+        out+='<div onclick="gcalShowEvent(\''+ev.id+'\')" title="'+esc(ev.titel)+' · '+fmt(ev.start)+'–'+fmt(ev.end)+'" style="position:absolute;left:'+lPct+'%;width:'+wPctM+'%;top:0;bottom:0;background:rgba(29,78,216,.14);border-left:2px solid rgba(29,78,216,.45);z-index:6;pointer-events:auto;cursor:pointer;overflow:hidden;box-sizing:border-box">'
+          +'<span style="font-size:8px;color:var(--blue);font-weight:600;padding:0 4px;white-space:nowrap;line-height:32px;display:block;overflow:hidden;text-overflow:ellipsis">📅 '+esc(ev.titel)+'</span>'
+          +'</div>';
       });
       out+='</div>';
       // now needle — red line overlaying the bar
@@ -3966,6 +3981,21 @@ function openSettings(){
   h+='<div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin:20px 0 10px">KI-Assistent</div>';
   h+='<div class="fl"><label>Anthropic API Key</label><input type="password" id="set-aikey" value="'+(localStorage.getItem('anthropic_key')||'')+'" placeholder="sk-ant-..." style="font-family:monospace;font-size:11px" onblur="localStorage.setItem(\'anthropic_key\',this.value.trim())" onpaste="setTimeout(()=>{localStorage.setItem(\'anthropic_key\',this.value.trim())},50)"></div>';
   h+='<div style="font-size:10px;color:var(--t3);margin-bottom:12px">Wird automatisch gespeichert</div>';
+  h+='<div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin:20px 0 10px">Google Kalender</div>';
+  const gcalConn=gcalIsConnected();
+  h+='<div class="fl"><label>Google OAuth Client ID</label><input type="text" id="set-gcalid" value="'+(localStorage.getItem('gcal_client_id')||'')+'" placeholder="123456….apps.googleusercontent.com" style="font-family:monospace;font-size:11px" onblur="localStorage.setItem(\'gcal_client_id\',this.value.trim())"></div>';
+  h+='<div style="font-size:10px;color:var(--t3);margin-bottom:10px">Google Cloud Console → APIs &amp; Dienste → Anmeldedaten → OAuth 2.0-Client-ID (Webanwendung). Redirect-URI: <span style="font-family:monospace;word-break:break-all">'+esc(location.origin+location.pathname)+'</span></div>';
+  if(gcalConn){
+    h+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">';
+    h+='<span style="font-size:12px;color:var(--green);font-weight:600">✅ Verbunden</span>';
+    h+='<button onclick="gcalFetchToday();cm()" class="btn btn-gr" style="font-size:10px;padding:3px 9px">↻ Aktualisieren</button>';
+    h+='<button onclick="gcalDisconnect()" class="btn btn-red" style="font-size:10px;padding:3px 9px">Trennen</button>';
+    h+='</div>';
+    h+='<div style="font-size:10px;color:var(--t3);margin-bottom:8px">'+(S.kalender.length)+' Termin'+(S.kalender.length!==1?'e':'')+' heute geladen · Toast-Erinnerung 10 Min vorher</div>';
+  }else{
+    h+='<button onclick="localStorage.setItem(\'gcal_client_id\',document.getElementById(\'set-gcalid\').value.trim());gcalConnect()" class="btn btn-gr" style="margin-bottom:4px">🗓 Google Kalender verbinden</button>';
+    h+='<div style="font-size:10px;color:var(--t3);margin-bottom:8px">Nur Lese-Zugriff. Meetings erscheinen in der Tagesplan-Zeitleiste. Toast-Erinnerung 10 Min vor jedem Termin.</div>';
+  }
   h+='<div class="fl"><label>Firmen-Kontext <span style="font-weight:400;color:var(--t2)">(CRM-Daten, Abschlussraten, Pipeline, etc.)</span></label>'
     +'<textarea id="set-firmenkontext" rows="5" style="resize:vertical;font-size:11px" placeholder="z.B.:\nAbschlussrate Kalt: 3%\nAbschlussrate Warm: 15%\nPipeline-Wert: 450k\nDurchschn. Dealsize: 12.000€\nTop-Kanal: Messe-Leads\nCAC: 800€\nLTV: 25.000€" onblur="localStorage.setItem(\'firmen_kontext\',this.value)">'+(localStorage.getItem('firmen_kontext')||'')+'</textarea></div>';
   h+='<div style="font-size:10px;color:var(--t3);margin-bottom:8px">Claude nutzt diese Daten für die Hebel-Analyse. Lokal gespeichert.</div>';
@@ -4338,11 +4368,11 @@ function mdRenderPreview(){
     html+='<div id="md-row-'+i+'" style="background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:14px;margin-bottom:10px">';
     html+='<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:8px">';
     html+='<input type="checkbox" checked id="md-chk-'+i+'" style="margin-top:4px;accent-color:var(--blue);width:16px;height:16px" onchange="mdUpdateCount()">';
-    html+='<input type="text" id="md-titel-'+i+'" value="'+esc(t.titel)+'" style="flex:1;font-size:14px;font-weight:600;border:1px solid var(--bd);border-radius:8px;padding:6px 10px;font-family:inherit">';
+    html+='<input type="text" id="md-titel-'+i+'" value="'+esc(t.titel)+'" style="flex:1;font-size:14px;font-weight:600;border:1px solid var(--bd);border-radius:8px;padding:6px 10px;font-family:inherit;background:var(--sf);color:var(--text)">';
     html+='<button onclick="mdRemoveRow('+i+')" style="font-size:14px;border:none;background:none;cursor:pointer;padding:4px;color:var(--t3)" title="Entfernen">✕</button>';
     html+='</div>';
     html+='<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">';
-    html+='<select id="md-pid-'+i+'" style="font-size:14px;padding:8px 10px;border:1px solid var(--bd);border-radius:8px;font-family:inherit;background:var(--sf);min-height:40px;flex:1;min-width:120px">';
+    html+='<select id="md-pid-'+i+'" style="font-size:14px;padding:8px 10px;border:1px solid var(--bd);border-radius:8px;font-family:inherit;background:var(--sf);color:var(--text);min-height:40px;flex:1;min-width:120px">';
     html+='<option value="">— Zuständig —</option>'+personOpts+'</select>';
     html+='<select id="md-prio-'+i+'" style="font-size:14px;padding:8px 10px;border:1px solid var(--bd);border-radius:8px;font-family:inherit;background:var(--sf);min-height:40px">';
     html+='<option value="">— Prio —</option>';
@@ -4350,10 +4380,10 @@ function mdRenderPreview(){
     html+='<option value="P2"'+(t.prio==='P2'?' selected':'')+'>🟡 P2</option>';
     html+='<option value="P3"'+(t.prio==='P3'?' selected':'')+'>🟢 P3</option>';
     html+='</select>';
-    html+='<input type="date" id="md-dl-'+i+'" value="'+(t.dl||'')+'" style="font-size:14px;padding:8px 10px;border:1px solid var(--bd);border-radius:8px;font-family:inherit;background:var(--sf);min-height:40px">';
+    html+='<input type="date" id="md-dl-'+i+'" value="'+(t.dl||'')+'" style="font-size:14px;padding:8px 10px;border:1px solid var(--bd);border-radius:8px;font-family:inherit;background:var(--sf);color:var(--text);min-height:40px">';
     html+='</div>';
-    if(S.ziele.length){html+='<div style="margin-top:6px;padding-left:26px"><select id="md-ziel-'+i+'" style="font-size:12px;padding:5px 8px;border:1px solid var(--bd);border-radius:7px;font-family:inherit;background:var(--sf);color:var(--t2)"><option value="">— Ziel —</option>'+S.ziele.filter(z=>z.status!=='vorschlag').map(z=>'<option value="'+z.id+'"'+(t.ziel_id===z.id?' selected':'')+'>'+esc(z.name).slice(0,40)+'</option>').join('')+'</select></div>';}
-    if(t.kontext){html+='<div style="font-size:11px;color:var(--t3);margin-top:8px;font-style:italic;padding-left:26px">💬 '+esc(t.kontext)+'</div>';}
+    if(S.ziele.length){html+='<div style="margin-top:6px;padding-left:26px"><select id="md-ziel-'+i+'" style="font-size:13px;padding:6px 10px;border:1px solid var(--bd);border-radius:7px;font-family:inherit;background:var(--sf);color:var(--text)"><option value="">— Ziel —</option>'+S.ziele.filter(z=>z.status!=='vorschlag').map(z=>'<option value="'+z.id+'"'+(t.ziel_id===z.id?' selected':'')+'>'+esc(z.name).slice(0,40)+'</option>').join('')+'</select></div>';}
+    if(t.kontext){html+='<div style="font-size:11px;color:var(--t2);margin-top:8px;font-style:italic;padding-left:26px">💬 '+esc(t.kontext)+'</div>';}
     html+='</div>';
   });
   html+='<div style="display:flex;align-items:center;gap:10px;margin-top:16px;padding-top:14px;border-top:1px solid var(--bd)">';
@@ -4431,6 +4461,94 @@ function cm(){
   if(ovl)ovl.classList.remove('open');
   if(_dataPending){_dataPending=false;_dataHash=_aufgabenHash(S.aufgaben);render();}
 }
+// ─── Google Calendar Integration ───────────────────────────────
+function gcalIsConnected(){
+  const token=localStorage.getItem('gcal_token');
+  const expiry=parseInt(localStorage.getItem('gcal_token_expiry')||'0');
+  return !!(token&&Date.now()<expiry);
+}
+function gcalConnect(){
+  const clientId=(localStorage.getItem('gcal_client_id')||'').trim();
+  if(!clientId){toast('Bitte zuerst Client ID eintragen und speichern');return;}
+  const scope='https://www.googleapis.com/auth/calendar.readonly';
+  const redirectUri=location.origin+location.pathname;
+  location.href='https://accounts.google.com/o/oauth2/v2/auth'
+    +'?client_id='+encodeURIComponent(clientId)
+    +'&redirect_uri='+encodeURIComponent(redirectUri)
+    +'&response_type=token'
+    +'&scope='+encodeURIComponent(scope)
+    +'&prompt=consent';
+}
+function gcalDisconnect(){
+  localStorage.removeItem('gcal_token');
+  localStorage.removeItem('gcal_token_expiry');
+  S.kalender=[];
+  if(window._gcalNotifIv)clearInterval(window._gcalNotifIv);
+  toast('Google Kalender getrennt');
+  render();
+}
+function gcalHandleCallback(){
+  if(!location.hash.includes('access_token'))return;
+  const params=new URLSearchParams(location.hash.replace(/^#/,''));
+  const token=params.get('access_token');
+  const expiresIn=parseInt(params.get('expires_in')||'3600');
+  if(token){
+    localStorage.setItem('gcal_token',token);
+    localStorage.setItem('gcal_token_expiry',String(Date.now()+expiresIn*1000));
+    history.replaceState(null,'',location.pathname);
+    toast('✅ Google Kalender verbunden');
+  }
+}
+async function gcalFetchToday(){
+  const token=localStorage.getItem('gcal_token');
+  const expiry=parseInt(localStorage.getItem('gcal_token_expiry')||'0');
+  if(!token||Date.now()>expiry){S.kalender=[];return;}
+  const d=new Date();
+  const start=new Date(d.getFullYear(),d.getMonth(),d.getDate(),0,0,0).toISOString();
+  const end=new Date(d.getFullYear(),d.getMonth(),d.getDate(),23,59,59).toISOString();
+  try{
+    const resp=await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events'
+      +'?timeMin='+encodeURIComponent(start)
+      +'&timeMax='+encodeURIComponent(end)
+      +'&singleEvents=true&orderBy=startTime&maxResults=25',
+      {headers:{Authorization:'Bearer '+token}});
+    if(resp.status===401){localStorage.removeItem('gcal_token');S.kalender=[];render();return;}
+    const data=await resp.json();
+    window._gcalEvtMap={};
+    S.kalender=(data.items||[])
+      .filter(e=>e.start&&e.start.dateTime)
+      .map((e,i)=>{
+        const ev={id:'ge_'+i,titel:e.summary||'(Kein Titel)',beschreibung:e.description||'',ort:e.location||'',start:new Date(e.start.dateTime),end:new Date(e.end.dateTime)};
+        window._gcalEvtMap[ev.id]=ev;
+        return ev;
+      });
+    render();
+    gcalStartNotifications();
+  }catch(err){console.warn('gcal fetch:',err);}
+}
+function gcalStartNotifications(){
+  if(window._gcalNotifIv)clearInterval(window._gcalNotifIv);
+  window._gcalNotifIv=setInterval(()=>{
+    if(!aP)return;
+    const now=Date.now();
+    (S.kalender||[]).forEach(ev=>{
+      if(!ev.start)return;
+      const diff=(ev.start.getTime()-now)/60000;
+      if(diff>9&&diff<=10)toast('📅 '+ev.titel+' in 10 Min');
+      else if(diff>-1&&diff<=0&&!ev._notifFired){ev._notifFired=true;toast('📅 '+ev.titel+' startet jetzt!');}
+    });
+  },60000);
+}
+function gcalShowEvent(id){
+  const ev=(window._gcalEvtMap||{})[id];if(!ev)return;
+  const fmt=d=>d.getHours()+':'+(''+(d.getMinutes())).padStart(2,'0');
+  document.getElementById('mb').innerHTML='<div class="mt">📅 '+esc(ev.titel)+'</div>'
+    +'<div style="font-size:13px;color:var(--t2);margin-bottom:14px">'+fmt(ev.start)+' – '+fmt(ev.end)+(ev.ort?' &nbsp;·&nbsp; <span style="color:var(--t3)">'+esc(ev.ort)+'</span>':'')+'</div>'
+    +(ev.beschreibung?'<div style="font-size:12px;color:var(--text);line-height:1.6;white-space:pre-wrap;background:var(--gray-bg);border-radius:8px;padding:10px 12px;margin-bottom:14px;max-height:200px;overflow-y:auto">'+esc(ev.beschreibung)+'</div>':'')
+    +'<div class="mf"><button class="btn btn-gr" onclick="cm()">Schließen</button></div>';
+  document.getElementById('ovl').classList.add('open');
+}
+// ────────────────────────────────────────────────────────────────
 window.addEventListener('keydown',e=>{
   if(e.key==='Escape'){cm();return;}
   const ls=document.getElementById('login-screen');
@@ -4441,6 +4559,8 @@ window.addEventListener('keydown',e=>{
 });
 
 (async()=>{
+  // Handle Google OAuth callback (access_token in URL hash)
+  gcalHandleCallback();
   // Init dark mode toggle label
   const _dtb=document.getElementById('dark-toggle');
   if(_dtb)_dtb.textContent=document.documentElement.classList.contains('dark')?'☀️':'🌙';
@@ -4475,6 +4595,7 @@ window.addEventListener('keydown',e=>{
         if(ls)ls.style.display='none';
         if(ap)ap.style.display='flex';
         updateBadge();render();startSonderPoller();startDataPoller();handleDeepLink();
+        gcalFetchToday();
       } else localStorage.removeItem('h_session');
     }
   }catch(e){console.warn('Session restore:',e);}
