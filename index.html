@@ -1941,33 +1941,6 @@ function rWoche(){
     }
   }
 
-  // ── Wochen-Parkplatz (geparkte Wolken & Ideen) ──
-  {
-    const _pkMn=person(aP)?.name||'';
-    const _pkGs=JSON.parse(localStorage.getItem('signale_gesehen_'+aP)||'[]');
-    const _pkErl=JSON.parse(localStorage.getItem('signale_erledigt_'+aP)||'[]');
-    const geparkt=S.signale.filter(s=>(s.typ==='wolke'||s.typ==='idee')&&s.bereich===_pkMn&&_pkGs.includes(String(s.id))&&!_pkErl.includes(String(s.id))&&(!s.vertraulich||isGF()));
-    if(geparkt.length){
-      out+='<div style="background:var(--purple-bg);border:1px solid var(--purple-bd);border-radius:12px;padding:12px 14px;margin-bottom:14px">';
-      out+='<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px"><span style="font-size:13px">☁️</span><span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--purple)">Parkplatz</span><span style="font-size:10px;color:var(--t3);margin-left:auto">'+geparkt.length+' geparkt</span></div>';
-      geparkt.forEach((s,i)=>{
-        const von=person(s.pid);const isIdee=s.typ==='idee';
-        out+='<div style="display:flex;align-items:flex-start;gap:8px;padding:7px 0'+(i?';border-top:1px solid var(--purple-bd)':'')+'">';
-        out+='<span style="font-size:13px;flex-shrink:0;margin-top:1px">'+(isIdee?'💡':'☁️')+'</span>';
-        out+='<div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(s.was)+'</div>';
-        if(s.notiz)out+='<div style="font-size:11px;color:var(--t2);font-style:italic;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(s.notiz)+'</div>';
-        if(von)out+='<div style="font-size:10px;color:var(--t3)">von '+esc(von.name)+'</div>';
-        out+='</div>';
-        out+='<div style="display:flex;gap:4px;flex-shrink:0">';
-        out+='<button onclick="besprechenSignal(\''+s.id+'\')" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--blue-bd);background:var(--blue-bg);color:var(--blue);cursor:pointer;font-family:inherit">💬</button>';
-        out+='<button onclick="ideenZuAufgabe(\''+s.id+'\')" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--text);cursor:pointer;font-family:inherit">→ Aufgabe</button>';
-        out+='<button onclick="signalErledigt(\''+s.id+'\')" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--green-bd);background:var(--green-bg);color:var(--green);cursor:pointer;font-family:inherit">✓ Erledigt</button>';
-        out+='</div></div>';
-      });
-      out+='</div>';
-    }
-  }
-
   // ── Strategie-Briefing (nur GF) ──
   if(isGF()){
     const bKey='briefing-'+aP+'-'+TODAY;
@@ -2112,6 +2085,33 @@ function rWoche(){
       +'<div style="flex:1"><div style="font-weight:700;font-size:13px">Wochenrückblick KW '+kw2+'</div>'
       +'<div style="font-size:11px;opacity:.6;margin-top:1px">Big 3 auswerten · KW '+(kw2+1)+' planen</div></div>'
       +'<span style="opacity:.4;font-size:16px">›</span></div>';
+  }
+
+  // ── Wochen-Parkplatz (geparkte Wolken & Ideen) — unter allem ──
+  {
+    const _pkMn=person(aP)?.name||'';
+    const _pkGs=JSON.parse(localStorage.getItem('signale_gesehen_'+aP)||'[]');
+    const _pkErl=JSON.parse(localStorage.getItem('signale_erledigt_'+aP)||'[]');
+    const geparkt=S.signale.filter(s=>(s.typ==='wolke'||s.typ==='idee')&&s.bereich===_pkMn&&_pkGs.includes(String(s.id))&&!_pkErl.includes(String(s.id))&&(!s.vertraulich||isGF()));
+    if(geparkt.length){
+      out+='<div style="margin-top:8px;background:var(--purple-bg);border:1px solid var(--purple-bd);border-radius:12px;padding:12px 14px">';
+      out+='<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px"><span style="font-size:13px">☁️</span><span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--purple)">Parkplatz</span><span style="font-size:10px;color:var(--t3);margin-left:auto">'+geparkt.length+' geparkt</span></div>';
+      geparkt.forEach((s,i)=>{
+        const von=person(s.pid);const isIdee=s.typ==='idee';
+        out+='<div style="display:flex;align-items:flex-start;gap:8px;padding:7px 0'+(i?';border-top:1px solid var(--purple-bd)':'')+'">';
+        out+='<span style="font-size:13px;flex-shrink:0;margin-top:1px">'+(isIdee?'💡':'☁️')+'</span>';
+        out+='<div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(s.was)+'</div>';
+        if(s.notiz)out+='<div style="font-size:11px;color:var(--t2);font-style:italic;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(s.notiz)+'</div>';
+        if(von)out+='<div style="font-size:10px;color:var(--t3)">von '+esc(von.name)+'</div>';
+        out+='</div>';
+        out+='<div style="display:flex;gap:4px;flex-shrink:0">';
+        out+='<button onclick="besprechenSignal(\''+s.id+'\')" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--blue-bd);background:var(--blue-bg);color:var(--blue);cursor:pointer;font-family:inherit">💬</button>';
+        out+='<button onclick="ideenZuAufgabe(\''+s.id+'\')" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--text);cursor:pointer;font-family:inherit">→ Aufgabe</button>';
+        out+='<button onclick="signalErledigt(\''+s.id+'\')" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--green-bd);background:var(--green-bg);color:var(--green);cursor:pointer;font-family:inherit">✓ Erledigt</button>';
+        out+='</div></div>';
+      });
+      out+='</div>';
+    }
   }
 
   document.getElementById('main').innerHTML=out;
