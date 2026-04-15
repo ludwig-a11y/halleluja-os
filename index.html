@@ -28,7 +28,7 @@
   --r-sm:6px;--r-md:10px;--r-lg:14px;--r-xl:18px;--r-full:99px;
 }
 html.dark{
-  --text:#e0ded9;--t2:#908d88;--t3:#605d58;
+  --text:#e0ded9;--t2:#908d88;--t3:#8a8782;
   --bg:#131211;--sf:#1b1a18;--bd:#282624;
   --blue:#7da8e8;--blue-bg:#161a21;--blue-bd:#253550;
   --green:#6ec98b;--green-bg:#151c17;--green-bd:#1e3d28;
@@ -421,7 +421,7 @@ function checkP1Done(pid){
   if(p1.length>0&&p1.every(a=>a.status==='erledigt'))setTimeout(showQuote,400);
 }
 
-let S={personen:[],teams:[],ziele:[],aufgaben:[],kpiVals:{},checkins:{},kpiToday:{},signale:[],wochenresets:[],beobachtungen:[],kontext:[],kalender:[]};
+let S={personen:[],teams:[],ziele:[],aufgaben:[],kpiVals:{},checkins:{},kpiToday:{},signale:[],wochenresets:[],beobachtungen:[],kontext:[],kalender:[],decisionRequests:[]};
 let aP=null,realMe=null,aV='tag',timIv=null,_selPrio=null;
 let _kid=Date.now();
 const nid=p=>p+(++_kid);
@@ -434,7 +434,7 @@ function normalizeAufgabe(a){
     erstelltVon:a.erstellt_von||null};
 }
 async function loadData(){
-  const [personen,teams,ziele,kpis,teilziele,aufgaben,kpiVals,checkins,signale,wochenresets,beobachtungen,kontextFeed]=await Promise.all([
+  const [personen,teams,ziele,kpis,teilziele,aufgaben,kpiVals,checkins,signale,wochenresets,beobachtungen,kontextFeed,decisionRequests]=await Promise.all([
     dbGet('personen','select=*&order=ci'),dbGet('teams','select=*'),
     dbGet('ziele','select=*&order=created_at'),dbGet('kpis','select=*'),
     dbGet('teilziele','select=*&order=created_at'),dbGet('aufgaben','select=*&order=created_at'),
@@ -443,6 +443,7 @@ async function loadData(){
     dbGet('wochenresets','select=*&order=created_at.desc'),
     dbGet('beobachtungen','select=*&order=created_at.desc'),
     dbGet('kontext_feed','select=*&order=created_at.desc&limit=50'),
+    dbGet('decision_requests','select=*&order=created_at.desc'),
   ]);
   S.personen=personen||[];
   S.teams=(teams||[]).map(t=>({...t,members:t.members||[]}));
@@ -471,6 +472,7 @@ async function loadData(){
   S.wochenresets=(wochenresets||[]);
   S.beobachtungen=(beobachtungen||[]);
   S.kontext=(kontextFeed||[]);
+  S.decisionRequests=(decisionRequests||[]);
   try{S.kpiToday=JSON.parse(localStorage.getItem('kpiToday_'+TODAY)||'{}');}catch(e){S.kpiToday={};}
 }
 
@@ -717,14 +719,16 @@ function startDataPoller(){
   _dataHash=_aufgabenHash(S.aufgaben);
   _kpiHash=_kpiHashFn(S.ziele.flatMap(z=>z.kpis||[]));
   _dataPoll=setInterval(async()=>{
-    const [aufgaben,signale,kpis,wochenresets,beobachtungen,kontextFeed]=await Promise.all([
+    const [aufgaben,signale,kpis,wochenresets,beobachtungen,kontextFeed,decisionRequests]=await Promise.all([
       dbGet('aufgaben','select=*&order=created_at'),
       dbGet('signale','select=*&order=created_at.desc'),
       dbGet('kpis','select=*'),
       dbGet('wochenresets','select=*&order=created_at.desc'),
       dbGet('beobachtungen','select=*&order=created_at.desc'),
-      dbGet('kontext_feed','select=*&order=created_at.desc&limit=50')
+      dbGet('kontext_feed','select=*&order=created_at.desc&limit=50'),
+      dbGet('decision_requests','select=*&order=created_at.desc')
     ]);
+    if(decisionRequests)S.decisionRequests=decisionRequests;
     if(kontextFeed)S.kontext=kontextFeed;
     let changed=false;
     if(aufgaben){
@@ -2193,11 +2197,71 @@ function rTag(){
       out+='<button onclick="openBlocker(\''+wrAktuell.id+'\')" style="font-size:10px;padding:2px 8px;border-radius:5px;border:1px solid var(--red-bd);background:var(--sf);color:var(--red);cursor:pointer;font-family:inherit;flex-shrink:0">Ändern</button>';
       out+='</div>';
     } else {
-      out+='<div style="margin-top:-6px;margin-bottom:12px"><button onclick="openBlocker(\''+wrAktuell.id+'\')" style="font-size:10px;padding:3px 10px;border-radius:6px;border:1px dashed var(--bd);background:transparent;color:var(--t3);cursor:pointer;font-family:inherit">⚠ Blockade melden</button></div>';
+      out+='<div style="margin-top:-6px;margin-bottom:12px;display:flex;gap:6px">'
+        +'<button onclick="openBlocker(\''+wrAktuell.id+'\')" style="font-size:10px;padding:3px 10px;border-radius:6px;border:1px dashed var(--bd);background:transparent;color:var(--t3);cursor:pointer;font-family:inherit">⚠ Blockade melden</button>'
+        +'<button onclick="openDecisionForm()" style="font-size:10px;padding:3px 10px;border-radius:6px;border:1px dashed #f59e0b;background:transparent;color:#d97706;cursor:pointer;font-family:inherit">⚖️ Entscheidung anfragen</button>'
+        +'</div>';
     }
   }
 
   // (Wolken & Ideen moved into unified Inbox below)
+
+  // ── Decision Requests — GF-Queue ──
+  if(isGF()){
+    const offeneDR=S.decisionRequests.filter(d=>d.status==='offen').sort((a,b)=>{
+      const po={'hoch':0,'mittel':1,'niedrig':2};
+      const pp=(po[a.prioritaet]??1)-(po[b.prioritaet]??1);
+      if(pp!==0)return pp;
+      return(a.deadline||'').localeCompare(b.deadline||'');
+    });
+    if(offeneDR.length){
+      out+='<div style="background:var(--sf);border:1.5px solid #f59e0b;border-radius:14px;padding:14px 16px;margin-bottom:14px">';
+      out+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">';
+      out+='<span style="font-size:15px">⚖️</span>';
+      out+='<span style="font-size:13px;font-weight:700">Entscheidungen</span>';
+      out+='<span style="background:#f59e0b;color:#fff;font-size:10px;font-weight:700;padding:2px 9px;border-radius:99px;margin-left:auto">'+offeneDR.length+' offen</span>';
+      out+='</div>';
+      offeneDR.forEach((d,i)=>{
+        const von=S.personen.find(p=>p.id===d.erstellt_von);
+        const prioCol=d.prioritaet==='hoch'?'var(--red)':d.prioritaet==='mittel'?'#d97706':'var(--t3)';
+        const dl=d.deadline?new Date(d.deadline+'T12:00:00'):null;
+        const dlStr=dl?dl.getDate()+'.'+(dl.getMonth()+1)+'.':'—';
+        const isUeberfaellig=d.deadline&&d.deadline<TODAY;
+        out+='<div style="border:1px solid var(--bd);border-radius:10px;padding:10px 12px;margin-bottom:8px;background:var(--gray-bg)">';
+        out+='<div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:6px">';
+        out+='<span style="font-size:10px;font-weight:700;color:'+prioCol+';text-transform:uppercase;padding:2px 7px;border-radius:99px;border:1px solid '+prioCol+';white-space:nowrap;flex-shrink:0">'+d.prioritaet+'</span>';
+        out+='<div style="font-size:13px;font-weight:600;line-height:1.3;flex:1">'+esc(d.frage)+'</div>';
+        out+='</div>';
+        if(d.kontext)out+='<div style="font-size:11px;color:var(--t2);margin-bottom:6px;line-height:1.4">'+esc(d.kontext).slice(0,120)+(d.kontext.length>120?'…':'')+'</div>';
+        if(d.blockiert)out+='<div style="font-size:11px;color:var(--red);margin-bottom:6px;font-weight:500">⛔ Stillstand: '+esc(d.blockiert).slice(0,80)+'</div>';
+        out+='<div style="display:flex;align-items:center;gap:8px;font-size:10px;color:var(--t3);margin-bottom:8px">';
+        out+=(von?'<span>von '+esc(von.name.split(' ')[0])+'</span><span>·</span>':'');
+        out+='<span style="color:'+(isUeberfaellig?'var(--red)':'var(--t3)')+'">fällig '+dlStr+(isUeberfaellig?' ⚠':'')+'</span>';
+        if(d.slack_link)out+='<span>·</span><a href="'+esc(d.slack_link)+'" target="_blank" style="color:var(--blue);text-decoration:none;font-size:10px">Slack ↗</a>';
+        out+='</div>';
+        out+='<div style="display:flex;gap:6px">';
+        out+='<button onclick="openDecisionAnswer(\''+d.id+'\',\'entscheiden\')" style="flex:1;font-size:11px;padding:6px 12px;border-radius:8px;border:none;background:#f59e0b;color:#fff;cursor:pointer;font-family:inherit;font-weight:600">✓ Entscheiden</button>';
+        out+='<button onclick="openDecisionAnswer(\''+d.id+'\',\'zurueck\')" style="font-size:11px;padding:6px 12px;border-radius:8px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);cursor:pointer;font-family:inherit">↩ Zurückgeben</button>';
+        out+='</div></div>';
+      });
+      out+='</div>';
+    }
+  }
+  // ── Decision Requests — Zurückgegeben (für Ersteller) ──
+  {
+    const meineZurueck=S.decisionRequests.filter(d=>d.erstellt_von===aP&&d.status==='zurueckgegeben');
+    if(meineZurueck.length){
+      out+='<div style="background:var(--sf);border:1.5px solid var(--blue-bd);border-radius:14px;padding:14px 16px;margin-bottom:14px">';
+      out+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><span style="font-size:15px">↩</span><span style="font-size:13px;font-weight:700">Zurückgegeben</span><span style="background:var(--blue);color:#fff;font-size:10px;font-weight:700;padding:2px 9px;border-radius:99px;margin-left:auto">'+meineZurueck.length+'</span></div>';
+      meineZurueck.forEach(d=>{
+        out+='<div style="border:1px solid var(--bd);border-radius:10px;padding:10px 12px;margin-bottom:8px;background:var(--gray-bg)">';
+        out+='<div style="font-size:13px;font-weight:600;margin-bottom:4px">'+esc(d.frage)+'</div>';
+        out+='<div style="font-size:11px;color:var(--blue);line-height:1.4">'+esc(d.rueckgabe_begruendung||'')+'</div>';
+        out+='</div>';
+      });
+      out+='</div>';
+    }
+  }
 
   // ── Team-Blocker (GF/Lead sieht aktive Blocker) ──
   if(isGF()||isLead()){
@@ -3990,6 +4054,66 @@ function rTeam(){
     out+='</div>';
   }
 
+  // ── Decision Log (nur GF) ──
+  if(isGF()){
+    const allDR=[...S.decisionRequests];
+    if(allDR.length){
+      const[filterDR,setFilterDR]=[window._drFilter||'alle',v=>{window._drFilter=v;}];
+      const gefiltert=filterDR==='alle'?allDR:allDR.filter(d=>d.status===filterDR);
+      out+='<div style="margin-top:28px">';
+      out+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">';
+      out+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t2)">⚖️ Decision Log</div>';
+      out+='<div style="display:flex;gap:4px;margin-left:auto">';
+      ['alle','offen','entschieden','zurueckgegeben'].forEach(f=>{
+        const lbl={'alle':'Alle','offen':'Offen','entschieden':'Entschieden','zurueckgegeben':'Zurückgegeben'}[f];
+        const active=filterDR===f;
+        out+='<button onclick="window._drFilter=\''+f+'\';render()" style="font-size:10px;padding:3px 9px;border-radius:99px;border:1px solid '+(active?'var(--text)':'var(--bd)')+';background:'+(active?'var(--text)':'var(--sf)')+';color:'+(active?'var(--inv-t)':'var(--t2)')+';cursor:pointer;font-family:inherit">'+lbl+'</button>';
+      });
+      out+='</div></div>';
+      gefiltert.forEach(d=>{
+        const von=S.personen.find(p=>p.id===d.erstellt_von);
+        const von2=d.beantwortet_von?S.personen.find(p=>p.id===d.beantwortet_von):null;
+        const prioCol=d.prioritaet==='hoch'?'var(--red)':d.prioritaet==='mittel'?'#d97706':'var(--t3)';
+        const stBg=d.status==='entschieden'?'var(--green-bg)':d.status==='zurueckgegeben'?'var(--blue-bg)':'#fffbeb';
+        const stCol=d.status==='entschieden'?'var(--green)':d.status==='zurueckgegeben'?'var(--blue)':'#d97706';
+        const stTxt={'offen':'Offen','entschieden':'Entschieden','zurueckgegeben':'Zurückgegeben'}[d.status]||d.status;
+        const isGray=d.status!=='offen';
+        out+='<div style="border:1px solid var(--bd);border-radius:12px;padding:12px 14px;margin-bottom:8px;'+(isGray?'opacity:.7':'')+'">';
+        out+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">';
+        out+='<span style="font-size:10px;font-weight:700;color:'+prioCol+';padding:1px 7px;border-radius:99px;border:1px solid '+prioCol+'">'+d.prioritaet+'</span>';
+        out+='<span style="font-size:14px;font-weight:700;flex:1;line-height:1.3">'+esc(d.frage)+'</span>';
+        out+='<span style="font-size:10px;font-weight:600;color:'+stCol+';background:'+stBg+';padding:2px 9px;border-radius:99px">'+stTxt+'</span>';
+        out+='</div>';
+        if(d.kontext)out+='<div style="font-size:11px;color:var(--t2);margin-bottom:4px;line-height:1.4">'+esc(d.kontext)+'</div>';
+        if(d.blockiert)out+='<div style="font-size:11px;color:var(--red);margin-bottom:4px">⛔ '+esc(d.blockiert)+'</div>';
+        out+='<div style="font-size:10px;color:var(--t3);display:flex;gap:8px;flex-wrap:wrap;margin-bottom:'+(d.beschluss?'8':'0')+'px">';
+        out+=(von?'<span>von '+esc(von.name)+'</span>':'');
+        out+='<span>'+d.erstellt_am.slice(0,10)+'</span>';
+        if(d.deadline)out+='<span>fällig '+d.deadline+'</span>';
+        if(d.sichtbarkeit==='team')out+='<span style="color:var(--blue)">Team sichtbar</span>';
+        out+='</div>';
+        if(d.beschluss){
+          out+='<div style="border-top:1px solid var(--bd);padding-top:8px;margin-top:4px">';
+          out+='<div style="font-size:11px;font-weight:700;color:var(--green);margin-bottom:3px">✓ Beschluss</div>';
+          out+='<div style="font-size:12px;color:var(--text);line-height:1.5;margin-bottom:4px">'+esc(d.beschluss)+'</div>';
+          if(d.warum)out+='<div style="font-size:11px;color:var(--t2);line-height:1.4"><span style="font-weight:600">Warum:</span> '+esc(d.warum)+'</div>';
+          if(von2)out+='<div style="font-size:10px;color:var(--t3);margin-top:4px">entschieden von '+esc(von2.name)+' · '+d.beantwortet_am.slice(0,10)+'</div>';
+          out+='</div>';
+        }
+        if(d.rueckgabe_begruendung){
+          out+='<div style="border-top:1px solid var(--bd);padding-top:8px;margin-top:4px">';
+          out+='<div style="font-size:11px;font-weight:700;color:var(--blue);margin-bottom:3px">↩ Zurückgegeben</div>';
+          out+='<div style="font-size:12px;color:var(--text);line-height:1.5">'+esc(d.rueckgabe_begruendung)+'</div>';
+          if(von2)out+='<div style="font-size:10px;color:var(--t3);margin-top:4px">von '+esc(von2.name)+' · '+d.beantwortet_am.slice(0,10)+'</div>';
+          out+='</div>';
+        }
+        out+='</div>';
+      });
+      if(!gefiltert.length)out+='<div style="font-size:12px;color:var(--t3);padding:8px 0">Keine Einträge</div>';
+      out+='</div>';
+    }
+  }
+
   document.getElementById('main').innerHTML=out;
 }
 
@@ -4496,6 +4620,130 @@ function cm(){
   const ovl=document.getElementById('ovl');
   if(ovl)ovl.classList.remove('open');
   if(_dataPending){_dataPending=false;_dataHash=_aufgabenHash(S.aufgaben);render();}
+}
+// ─── Decision Requests ─────────────────────────────────────────
+// SQL zum Anlegen der Tabelle (einmalig in Supabase ausführen):
+// CREATE TABLE decision_requests (
+//   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+//   frage text NOT NULL,
+//   kontext text,
+//   blockiert text,
+//   slack_link text,
+//   prioritaet text DEFAULT 'mittel',
+//   deadline date NOT NULL,
+//   sichtbarkeit text DEFAULT 'gf_only',
+//   erstellt_von uuid REFERENCES personen(id),
+//   erstellt_am timestamptz DEFAULT now(),
+//   status text DEFAULT 'offen',
+//   beschluss text,
+//   warum text,
+//   beantwortet_am timestamptz,
+//   beantwortet_von uuid REFERENCES personen(id),
+//   rueckgabe_begruendung text
+// );
+
+function openDecisionForm(){
+  const m=me();if(!m)return;
+  document.getElementById('mb').innerHTML=
+    '<div class="mt">⚖️ Entscheidung anfragen</div>'
+    +'<div style="font-size:12px;color:var(--t2);margin-bottom:16px">Die GF wird benachrichtigt und entscheidet. Du bekommst die Antwort in deiner Inbox.</div>'
+    +'<div class="fl"><label>Welche Entscheidung wird gebraucht? <span style="color:var(--red)">*</span></label>'
+    +'<textarea id="dr-frage" rows="2" placeholder="z.B. Sollen wir Lieferant X wechseln?" style="resize:none"></textarea></div>'
+    +'<div class="fl"><label>Kontext <span style="color:var(--t3);font-weight:400">(optional)</span></label>'
+    +'<textarea id="dr-kontext" rows="2" placeholder="Hintergrundinformationen, die helfen..." style="resize:none"></textarea></div>'
+    +'<div class="fl"><label>Was steht ohne Antwort still? <span style="color:var(--t3);font-weight:400">(optional)</span></label>'
+    +'<input type="text" id="dr-blockiert" placeholder="z.B. Angebot kann nicht versendet werden"></div>'
+    +'<div class="fl"><label>Slack-Link <span style="color:var(--t3);font-weight:400">(optional)</span></label>'
+    +'<input type="url" id="dr-slack" placeholder="https://..."></div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
+    +'<div class="fl"><label>Priorität <span style="color:var(--red)">*</span></label>'
+    +'<select id="dr-prio" style="font-size:13px">'
+    +'<option value="hoch">🔴 Hoch</option>'
+    +'<option value="mittel" selected>🟡 Mittel</option>'
+    +'<option value="niedrig">⚪ Niedrig</option>'
+    +'</select></div>'
+    +'<div class="fl"><label>Deadline <span style="color:var(--red)">*</span></label>'
+    +'<input type="date" id="dr-deadline" value="'+TODAY+'"></div>'
+    +'</div>'
+    +'<div class="fl"><label>Sichtbarkeit nach Entscheidung</label>'
+    +'<div style="display:flex;gap:8px;margin-top:4px">'
+    +'<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer"><input type="radio" name="dr-sicht" value="gf_only" checked> Nur GF</label>'
+    +'<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer"><input type="radio" name="dr-sicht" value="team"> Ganzes Team</label>'
+    +'</div></div>'
+    +'<div class="mf"><button class="btn btn-gr" onclick="cm()">Abbrechen</button><button class="btn" onclick="saveDecisionRequest()" style="background:#f59e0b;border-color:#f59e0b;color:#fff">Anfragen</button></div>';
+  document.getElementById('ovl').classList.add('open');
+}
+async function saveDecisionRequest(){
+  const frage=document.getElementById('dr-frage').value.trim();
+  const deadline=document.getElementById('dr-deadline').value;
+  if(!frage){toast('Bitte Frage eingeben');return;}
+  if(!deadline){toast('Bitte Deadline wählen');return;}
+  const sicht=document.querySelector('input[name="dr-sicht"]:checked')?.value||'gf_only';
+  const rec={
+    id:nid('dr'),
+    frage,
+    kontext:document.getElementById('dr-kontext').value.trim()||null,
+    blockiert:document.getElementById('dr-blockiert').value.trim()||null,
+    slack_link:document.getElementById('dr-slack').value.trim()||null,
+    prioritaet:document.getElementById('dr-prio').value,
+    deadline,
+    sichtbarkeit:sicht,
+    erstellt_von:aP,
+    erstellt_am:new Date().toISOString(),
+    status:'offen'
+  };
+  S.decisionRequests.unshift(rec);
+  await dbInsert('decision_requests',rec);
+  // GF benachrichtigen
+  const gfSlackIds=S.personen.filter(p=>p.stufe==='gf'&&p.id!==aP&&p.slack_id).map(p=>p.slack_id);
+  notify('entscheidung_angefragt',{frage:rec.frage,prioritaet:rec.prioritaet,deadline:rec.deadline,blockiert:rec.blockiert,gf_slack_ids:gfSlackIds,actor_slack_id:me()?.slack_id||''});
+  cm();render();
+  toast('✅ Entscheidungsanfrage gesendet');
+}
+function openDecisionAnswer(id,mode){
+  const d=S.decisionRequests.find(x=>x.id===id);if(!d)return;
+  const isEntscheiden=mode==='entscheiden';
+  document.getElementById('mb').innerHTML=
+    '<div class="mt">'+(isEntscheiden?'✓ Entscheiden':'↩ Zurückgeben')+'</div>'
+    +'<div style="font-size:14px;font-weight:600;color:var(--t2);margin-bottom:16px;line-height:1.4">'+esc(d.frage)+'</div>'
+    +(isEntscheiden
+      ?'<div class="fl"><label>Beschluss <span style="color:var(--red)">*</span></label><textarea id="dr-beschluss" rows="3" placeholder="Was wurde entschieden?" style="resize:none"></textarea></div>'
+       +'<div class="fl"><label>Warum? <span style="color:var(--red)">*</span> <span style="font-size:10px;color:var(--t3);font-weight:400">— Dalio-Prinzip: jede Entscheidung braucht eine Begründung</span></label><textarea id="dr-warum" rows="3" placeholder="Was war der ausschlaggebende Grund?" style="resize:none"></textarea></div>'
+      :'<div class="fl"><label>Begründung <span style="color:var(--red)">*</span></label><textarea id="dr-rueck" rows="3" placeholder="Warum wird die Entscheidung zurückgegeben?" style="resize:none"></textarea></div>'
+    )
+    +'<div class="mf"><button class="btn btn-gr" onclick="cm()">Abbrechen</button>'
+    +(isEntscheiden
+      ?'<button class="btn" onclick="saveDecisionAnswer(\''+id+'\')" style="background:#f59e0b;border-color:#f59e0b;color:#fff">Beschluss speichern</button>'
+      :'<button class="btn btn-blue" onclick="returnDecisionRequest(\''+id+'\')">Zurückgeben</button>'
+    )+'</div>';
+  document.getElementById('ovl').classList.add('open');
+}
+async function saveDecisionAnswer(id){
+  const d=S.decisionRequests.find(x=>x.id===id);if(!d)return;
+  const beschluss=document.getElementById('dr-beschluss').value.trim();
+  const warum=document.getElementById('dr-warum').value.trim();
+  if(!beschluss){toast('Bitte Beschluss eingeben');return;}
+  if(!warum){toast('Warum ist Pflicht — Dalio-Prinzip');return;}
+  const now=new Date().toISOString();
+  d.status='entschieden';d.beschluss=beschluss;d.warum=warum;d.beantwortet_am=now;d.beantwortet_von=aP;
+  await dbPatch('decision_requests',id,{status:'entschieden',beschluss,warum,beantwortet_am:now,beantwortet_von:aP});
+  // Ersteller benachrichtigen
+  const von=S.personen.find(p=>p.id===d.erstellt_von);
+  if(von?.slack_id)notify('entscheidung_getroffen',{frage:d.frage,beschluss,warum,an_slack_id:von.slack_id,actor_slack_id:me()?.slack_id||''});
+  cm();render();
+  toast('✅ Beschluss gespeichert');
+}
+async function returnDecisionRequest(id){
+  const d=S.decisionRequests.find(x=>x.id===id);if(!d)return;
+  const begruendung=document.getElementById('dr-rueck').value.trim();
+  if(!begruendung){toast('Bitte Begründung eingeben');return;}
+  const now=new Date().toISOString();
+  d.status='zurueckgegeben';d.rueckgabe_begruendung=begruendung;d.beantwortet_am=now;d.beantwortet_von=aP;
+  await dbPatch('decision_requests',id,{status:'zurueckgegeben',rueckgabe_begruendung:begruendung,beantwortet_am:now,beantwortet_von:aP});
+  const von=S.personen.find(p=>p.id===d.erstellt_von);
+  if(von?.slack_id)notify('entscheidung_zurueck',{frage:d.frage,begruendung,an_slack_id:von.slack_id,actor_slack_id:me()?.slack_id||''});
+  cm();render();
+  toast('↩ Zurückgegeben');
 }
 // ─── Google Calendar Integration ───────────────────────────────
 function gcalIsConnected(){
