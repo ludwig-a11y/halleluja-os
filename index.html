@@ -2686,10 +2686,11 @@ async function saveDetailField(id,field,val){
 }
 async function setStatusModal(id,st){
   const a=S.aufgaben.find(x=>x.id===id);if(!a)return;
-  let patch={status:st};
-  if(st==='aktiv')patch.akt_seit=new Date().toISOString();
+  const now=new Date().toISOString();
+  let patch={status:st,updated_at:now};
+  if(st==='aktiv')patch.akt_seit=now;
   else if(a.status==='aktiv'){patch.gebucht=Math.round(((a.gebucht||0)+(Date.now()-(a.aktSeit||Date.now()))/3600000)*100)/100;patch.akt_seit=null;}
-  Object.assign(a,{status:st,aktSeit:st==='aktiv'?Date.now():null,...(patch.gebucht!==undefined?{gebucht:patch.gebucht}:{})});
+  Object.assign(a,{status:st,aktSeit:st==='aktiv'?Date.now():null,updated_at:now,...(patch.gebucht!==undefined?{gebucht:patch.gebucht}:{})});
   const _teamSlack=S.personen.filter(p=>p.id!==aP&&p.slack_id).map(p=>p.slack_id);
   if(st==='erledigt'){celebrate('🎉','Geschafft! Weiter so 💪');checkP1Done(a.pid);notify('aufgabe_erledigt',{prio:a.prio||null,team_slack_ids:_teamSlack,actor_slack_id:me()?.slack_id||''});}
   if(st==='aktiv')notify('aufgabe_gestartet',{prio:a.prio||null,team_slack_ids:_teamSlack,actor_slack_id:me()?.slack_id||''});
