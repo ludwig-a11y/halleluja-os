@@ -122,6 +122,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;font-size:1
 .btn-red:hover{background:var(--red-bg)}
 .btn-purple{background:var(--purple-bg);color:var(--purple);border:1px solid var(--purple-bd)}
 .btn-purple:hover{background:var(--purple-bd)}
+.btn-prio{font-size:11px;padding:5px 13px;border-radius:8px;border:1px solid var(--bd);cursor:pointer;font-family:inherit;font-weight:400;transition:all .15s}
+.btn-prio-on{border:2px solid var(--text);font-weight:700}
+.btn-prio:hover{opacity:.85}
+.btn-sm{font-size:11px;padding:4px 11px;border-radius:8px;border:1px solid var(--bd);cursor:pointer;font-family:inherit;font-weight:400;transition:all .15s}
+.btn-sm:hover{opacity:.85}
+.btn-xs{font-size:11px;padding:4px 8px;border-radius:8px;border:1px solid var(--bd);background:var(--sf);color:var(--t3);cursor:pointer;font-family:inherit}
+.btn-xs:hover{opacity:.7}
 .btn-toggle{font-size:11px;padding:5px 10px;border-radius:7px;border:1px solid var(--bd);background:var(--gray-bg);color:var(--t2);cursor:pointer;font-family:inherit;font-weight:400;transition:all .15s}
 .btn-toggle.on{background:var(--inv);color:var(--inv-t);font-weight:700}
 .hoverable{transition:background .12s}
@@ -842,18 +849,7 @@ async function submitKpi(kpiId,pid){
   render();
 }
 
-async function bestaetigeAufgabe(id,prio){
-  const a=S.aufgaben.find(x=>x.id===id);if(!a)return;
-  const p=(!prio||prio==='null')?null:prio;
-  const zielSel=document.getElementById('inbox-ziel-'+id);
-  const zid=zielSel?zielSel.value:'';
-  a.prio=p;a.status=p?'backlog':'neu';
-  if(zid){a.zielId=zid;a.teilzielId=null;}
-  const patch={prio:a.prio,status:a.status};
-  if(zid){patch.ziel_id=zid;patch.teilziel_id=null;}
-  await dbPatch('aufgaben',id,patch);
-  render();
-}
+// bestaetigeAufgabe merged into setPrio (supports null prio)
 async function aufgabeZurueck(id){
   const a=S.aufgaben.find(x=>x.id===id);if(!a||!a.erstelltVon)return;
   a.pid=a.erstelltVon;a.status='neu';a.prio=null;
@@ -2577,16 +2573,16 @@ function rTag(){
           const bg=p==='P1'?'var(--red-bg)':p==='P2'?'var(--orange-bg)':p==='P3'?'var(--gray-bg)':'var(--sf)';
           const tc=p==='P1'?'var(--red)':p==='P2'?'var(--orange)':p==='P3'?'var(--t2)':'var(--t3)';
           const suggested=p===a.prio||(p==='null'&&!a.prio);
-          return'<button onclick="bestaetigeAufgabe(\''+a.id+'\',\''+p+'\')" style="font-size:11px;padding:5px 13px;border-radius:8px;border:'+(suggested?'2px solid var(--text)':'1px solid var(--bd)')+';background:'+bg+';color:'+tc+';cursor:pointer;font-family:inherit;font-weight:'+(suggested?700:400)+'">'+lbl+'</button>';
+          return'<button onclick="setPrio(\''+a.id+'\',\''+p+'\')" class="btn-prio'+(suggested?' btn-prio-on':'')+'" style="background:'+bg+';color:'+tc+'">'+lbl+'</button>';
         }).join('')
         +'</div>'
         +'<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">'
         +'<span style="font-size:10px;color:var(--t3)">oder:</span>'
-        +'<button onclick="klassifiziereAlsIdee(\''+a.id+'\')" style="font-size:11px;padding:4px 11px;border-radius:8px;border:1px solid var(--blue-bd);background:var(--blue-bg);color:var(--blue);cursor:pointer;font-family:inherit">→ Ideen-Pool</button>'
-        +(S.ziele.length?'<button onclick="aufgabeZuMeilenstein(\''+a.id+'\')" style="font-size:11px;padding:4px 11px;border-radius:8px;border:1px solid var(--green-bd);background:var(--green-bg);color:var(--green);cursor:pointer;font-family:inherit">→ Meilenstein</button>':'')
-        +(a.erstelltVon&&a.erstelltVon!==aP?'<button onclick="aufgabeZurueck(\''+a.id+'\')" style="font-size:11px;padding:4px 11px;border-radius:8px;border:1px solid var(--red-bd);background:var(--red-bg);color:var(--red);cursor:pointer;font-family:inherit">↩ Zurück</button>':'')
-        +'<button onclick="toggleWeiterleiten(\''+a.id+'\')" style="font-size:11px;padding:4px 11px;border-radius:8px;border:1px solid var(--purple-bd);background:var(--purple-bg);color:var(--purple);cursor:pointer;font-family:inherit">→ Weiterleiten</button>'
-        +'<button onclick="delAufgabe(\''+a.id+'\')" style="font-size:11px;padding:4px 8px;border-radius:8px;border:1px solid var(--bd);background:var(--sf);color:var(--t3);cursor:pointer;font-family:inherit">✕</button>'
+        +'<button onclick="klassifiziereAlsIdee(\''+a.id+'\')" class="btn-sm" style="border-color:var(--blue-bd);background:var(--blue-bg);color:var(--blue)">→ Ideen-Pool</button>'
+        +(S.ziele.length?'<button onclick="aufgabeZuMeilenstein(\''+a.id+'\')" class="btn-sm" style="border-color:var(--green-bd);background:var(--green-bg);color:var(--green)">→ Meilenstein</button>':'')
+        +(a.erstelltVon&&a.erstelltVon!==aP?'<button onclick="aufgabeZurueck(\''+a.id+'\')" class="btn-sm" style="border-color:var(--red-bd);background:var(--red-bg);color:var(--red)">↩ Zurück</button>':'')
+        +'<button onclick="toggleWeiterleiten(\''+a.id+'\')" class="btn-sm" style="border-color:var(--purple-bd);background:var(--purple-bg);color:var(--purple)">→ Weiterleiten</button>'
+        +'<button onclick="delAufgabe(\''+a.id+'\')" class="btn-xs">✕</button>'
         +'</div>'
         +'<div id="wl-'+a.id+'" style="display:none;gap:5px;flex-wrap:wrap;margin-top:6px;padding:8px 10px;background:var(--purple-bg);border:1px solid var(--purple-bd);border-radius:8px">'
         +'<span style="font-size:10px;color:var(--purple);font-weight:600;width:100%;margin-bottom:2px">An wen weiterleiten?</span>'
@@ -2611,14 +2607,14 @@ function rTag(){
         const lbl=pr==='null'?'Kein Prio':pr;
         const bg=pr==='P1'?'var(--red-bg)':pr==='P2'?'var(--orange-bg)':pr==='P3'?'var(--gray-bg)':'var(--sf)';
         const tc=pr==='P1'?'var(--red)':pr==='P2'?'var(--orange)':pr==='P3'?'var(--t2)':'var(--t3)';
-        return'<button onclick="setPrio(\''+a.id+'\',\''+(pr==='null'?null:pr)+'\')" style="font-size:11px;padding:5px 13px;border-radius:8px;border:1px solid var(--bd);background:'+bg+';color:'+tc+';cursor:pointer;font-family:inherit">'+lbl+'</button>';
+        return'<button onclick="setPrio(\''+a.id+'\',\''+(pr==='null'?null:pr)+'\')" class="btn-prio" style="background:'+bg+';color:'+tc+'">'+lbl+'</button>';
       }).join(''));
       out+='</div>';
       out+='<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">';
       out+='<span style="font-size:10px;color:var(--t3)">oder:</span>';
-      out+='<button onclick="klassifiziereAlsIdee(\''+a.id+'\')" style="font-size:11px;padding:4px 11px;border-radius:8px;border:1px solid var(--blue-bd);background:var(--blue-bg);color:var(--blue);cursor:pointer;font-family:inherit">→ Ideen-Pool</button>';
-      if(S.ziele.length)out+='<button onclick="aufgabeZuMeilenstein(\''+a.id+'\')" style="font-size:11px;padding:4px 11px;border-radius:8px;border:1px solid var(--green-bd);background:var(--green-bg);color:var(--green);cursor:pointer;font-family:inherit">→ Meilenstein</button>';
-      out+='<button onclick="delAufgabe(\''+a.id+'\')" style="font-size:11px;padding:4px 8px;border-radius:8px;border:1px solid var(--bd);background:var(--sf);color:var(--t3);cursor:pointer;font-family:inherit">✕</button>';
+      out+='<button onclick="klassifiziereAlsIdee(\''+a.id+'\')" class="btn-sm" style="border-color:var(--blue-bd);background:var(--blue-bg);color:var(--blue)">→ Ideen-Pool</button>';
+      if(S.ziele.length)out+='<button onclick="aufgabeZuMeilenstein(\''+a.id+'\')" class="btn-sm" style="border-color:var(--green-bd);background:var(--green-bg);color:var(--green)">→ Meilenstein</button>';
+      out+='<button onclick="delAufgabe(\''+a.id+'\')" class="btn-xs">✕</button>';
       out+='</div></div>';
     });
     }
@@ -2663,13 +2659,14 @@ function rTag(){
 async function setPrio(id,pr){
   const a=S.aufgaben.find(x=>x.id===id);if(!a||a._busy)return;
   const prev={prio:a.prio,status:a.status};a._busy=true;
+  const p=(!pr||pr==='null')?null:pr;
   try{
     const zielSel=document.getElementById('inbox-ziel-'+id);
     const zid=zielSel?zielSel.value:'';
-    a.prio=pr;a.status='backlog';
+    a.prio=p;a.status=p?'backlog':'neu';
     if(zid){a.zielId=zid;a.teilzielId=null;}
     try{render();}catch(e){console.error('render@setPrio',e);}
-    const patch={prio:pr,status:'backlog'};
+    const patch={prio:p,status:a.status};
     if(zid){patch.ziel_id=zid;patch.teilziel_id=null;}
     const ok=await dbPatch('aufgaben',id,patch);
     if(!ok){a.prio=prev.prio;a.status=prev.status;}
