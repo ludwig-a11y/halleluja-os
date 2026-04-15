@@ -540,7 +540,7 @@ const kpiVal=k=>{const e=S.kpiVals[k.pid+'-'+k.id];return e!==undefined?e.val:k.
 const kpiOk=k=>{const v=kpiVal(k);return k.inv?v<=k.ziel:v>=k.ziel*0.85;};
 const canSeeTeam=()=>true;
 const canSee=a=>{
-  if(a.vertraulich&&!isGF())return false;
+  if(a.vertraulich&&!isGF()&&a.pid!==aP&&a.erstelltVon!==aP)return false;
   if(a.zielId){const z=zielObj(a.zielId);if(z&&z.vertraulich&&!isGF())return false;}
   return true;
 };
@@ -2661,7 +2661,7 @@ function openDetail(id){
       '<button onclick="setStatusModal(\''+id+'\',\''+x[0]+'\')" style="font-size:11px;padding:4px 10px;border-radius:8px;border:'+(a.status===x[0]?'2px':'1px')+' solid '+(a.status===x[0]?'var(--text)':'var(--bd)')+';background:'+(a.status===x[0]?x[2]:'var(--sf)')+';color:'+(a.status===x[0]?x[3]:'var(--t2)')+';cursor:pointer;font-family:inherit;font-weight:'+(a.status===x[0]?600:400)+'">'+x[1]+'</button>'
     ).join('')+'</div></div>';
   h+='<div class="fl"><label>Teilziel</label><select id="det-tz" onchange="setTeilziel(\''+id+'\',this.value)"><option value="">— kein Meilenstein —</option>'+(a.zielId?(zielObj(a.zielId)?.teilziele||[]).map(tz=>'<option value="'+tz.id+'"'+(a.teilzielId===tz.id?' selected':'')+'>'+esc(tz.name)+'</option>').join(''):'')+'</select></div>';
-  if(isGF())h+='<div class="fl"><label style="display:flex;align-items:center;gap:8px;text-transform:none;font-size:13px;font-weight:400;cursor:pointer"><input type="checkbox" id="det-vert"'+(a.vertraulich?' checked':'')+' style="width:auto" onchange="saveDetailField(\''+id+'\',\'vertraulich\',this.checked)"> Vertraulich</label></div>';
+  h+='<div class="fl"><label style="display:flex;align-items:center;gap:8px;text-transform:none;font-size:13px;font-weight:400;cursor:pointer" title="Nur GF, Zuständiger und Ersteller sehen diese Aufgabe"><input type="checkbox" id="det-vert"'+(a.vertraulich?' checked':'')+' style="width:auto" onchange="saveDetailField(\''+id+'\',\'vertraulich\',this.checked)"> 🔒 Vertraulich</label></div>';
   h+='<div class="fl"><label>Schritte</label>'+stepsHtml(a,true)+'</div>';
   h+='</div></details>';
   // ── Footer ──
@@ -3120,7 +3120,7 @@ function openNeu(pf={}){
     +'</div></div></div>'
     +'<div class="fl" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">'
     +'<label style="display:flex;align-items:center;gap:6px;text-transform:none;font-size:12px;font-weight:400;color:var(--t3);cursor:pointer;margin:0"><select id="nrec" style="width:auto;padding:4px 8px;font-size:11px;border:1px solid var(--bd);border-radius:6px;color:var(--t2);background:var(--sf)"><option value="">Einmalig</option><option value="daily">🔄 Täglich</option><option value="weekly">🔄 Wöchentlich</option><option value="monthly">🔄 Monatlich</option></select></label>'
-    +(isGF()?'<label style="display:flex;align-items:center;gap:6px;text-transform:none;font-size:12px;font-weight:400;color:var(--t3);cursor:pointer;margin:0"><input type="checkbox" id="nvert" style="width:auto"> Vertraulich</label>':'')
+    +'<label style="display:flex;align-items:center;gap:6px;text-transform:none;font-size:12px;font-weight:400;color:var(--t3);cursor:pointer;margin:0" title="Nur GF, Zuständiger und Ersteller sehen diese Aufgabe"><input type="checkbox" id="nvert" style="width:auto"> 🔒 Vertraulich</label>'
     +'</div>'
     +'<div class="fl"><label>Schritte</label><div id="neu-steps"></div>'
     +'<div style="display:flex;gap:6px"><input class="asi" id="neu-step-input" placeholder="+ Schritt…" onkeydown="if(event.key===\'Enter\'){event.preventDefault();addNeuStep()}" style="font-size:12px;padding:6px 10px"><button onclick="addNeuStep()" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);cursor:pointer">+</button></div></div>'
