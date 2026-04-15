@@ -1342,9 +1342,12 @@ function blockerBesprechen(wrId){
 }
 async function blockerLoesen(wrId){
   const wr=S.wochenresets.find(r=>r.id===wrId);if(!wr)return;
+  const melder=S.personen.find(p=>String(p.id)===String(wr.pid));
   wr.blockiert='';
   await dbPatch('wochenresets',wrId,{blockiert:''});
+  if(melder?.slack_id)notify('blocker_geloest',{melder_name:melder.name,an_slack_id:melder.slack_id,actor_slack_id:me()?.slack_id||''});
   render();
+  toast('✓ Blocker aufgelöst');
 }
 function rSignaleTeam(){
   const visible=visiblePersonIds(aP);
@@ -2262,7 +2265,8 @@ function rTag(){
   {
     // ── Entschieden (Feedback an Anfragenden) ──
     const cutoff=new Date(Date.now()-7*24*60*60*1000).toISOString();
-    const meineEntschieden=S.decisionRequests.filter(d=>d.erstellt_von===aP&&d.status==='entschieden'&&(d.beantwortet_am||'')>=cutoff);
+    const drSeen=JSON.parse(localStorage.getItem('dr_gesehen_'+aP)||'[]');
+    const meineEntschieden=S.decisionRequests.filter(d=>d.erstellt_von===aP&&d.status==='entschieden'&&(d.beantwortet_am||'')>=cutoff&&!drSeen.includes(d.id));
     if(meineEntschieden.length){
       out+='<div style="background:var(--sf);border:1.5px solid var(--green-bd);border-radius:14px;padding:14px 16px;margin-bottom:14px">';
       out+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><span style="font-size:15px">✅</span><span style="font-size:13px;font-weight:700">Entschieden</span><span style="background:var(--green);color:#fff;font-size:10px;font-weight:700;padding:2px 9px;border-radius:99px;margin-left:auto">'+meineEntschieden.length+'</span></div>';
@@ -2272,16 +2276,18 @@ function rTag(){
         out+='<div style="font-size:11px;color:var(--t3);margin-bottom:3px">'+esc(d.frage)+'</div>';
         out+='<div style="font-size:13px;font-weight:600;color:var(--green);margin-bottom:4px">→ '+esc(d.beschluss||'')+'</div>';
         if(d.warum)out+='<div style="font-size:11px;color:var(--t2);line-height:1.4;margin-bottom:6px">💡 '+esc(d.warum)+'</div>';
-        out+='<div style="display:flex;align-items:center;justify-content:space-between">';
-        if(entscheider)out+='<span style="font-size:10px;color:var(--t3)">von '+esc(entscheider.name.split(' ')[0])+'</span>';
-        if(entscheider?.slack_id)out+='<a href="https://slack.com/app_redirect?channel='+esc(entscheider.slack_id)+'" target="_blank" style="font-size:10px;color:var(--blue);text-decoration:none">💬 Slack</a>';
+        out+='<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">';
+        out+='<button onclick="aufgabeAusEntscheidung(\''+d.id+'\')" style="font-size:11px;padding:4px 10px;border-radius:8px;border:1px solid var(--green-bd);background:var(--sf);color:var(--green);cursor:pointer;font-family:inherit;font-weight:600">→ Aufgabe</button>';
+        out+='<button onclick="drGesehen(\''+d.id+'\')" style="font-size:11px;padding:4px 10px;border-radius:8px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);cursor:pointer;font-family:inherit">✓ Gesehen</button>';
+        if(entscheider?.slack_id)out+='<a href="https://slack.com/app_redirect?channel='+esc(entscheider.slack_id)+'" target="_blank" style="font-size:11px;padding:4px 10px;border-radius:8px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);cursor:pointer;text-decoration:none;font-family:inherit">💬 Slack</a>';
+        if(entscheider)out+='<span style="font-size:10px;color:var(--t3);margin-left:auto">von '+esc(entscheider.name.split(' ')[0])+'</span>';
         out+='</div>';
         out+='</div>';
       });
       out+='</div>';
     }
     // ── Zurückgegeben ──
-    const meineZurueck=S.decisionRequests.filter(d=>d.erstellt_von===aP&&d.status==='zurueckgegeben');
+    const meineZurueck=S.decisionRequests.filter(d=>d.erstellt_von===aP&&d.status==='zurueckgegeben'&&!drSeen.includes(d.id));
     if(meineZurueck.length){
       out+='<div style="background:var(--sf);border:1.5px solid var(--blue-bd);border-radius:14px;padding:14px 16px;margin-bottom:14px">';
       out+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><span style="font-size:15px">↩</span><span style="font-size:13px;font-weight:700">Zurückgegeben</span><span style="background:var(--blue);color:#fff;font-size:10px;font-weight:700;padding:2px 9px;border-radius:99px;margin-left:auto">'+meineZurueck.length+'</span></div>';
@@ -2290,9 +2296,11 @@ function rTag(){
         out+='<div style="border:1px solid var(--bd);border-radius:10px;padding:10px 12px;margin-bottom:8px;background:var(--gray-bg)">';
         out+='<div style="font-size:13px;font-weight:600;margin-bottom:4px">'+esc(d.frage)+'</div>';
         out+='<div style="font-size:11px;color:var(--blue);line-height:1.4;margin-bottom:6px">'+esc(d.rueckgabe_begruendung||'')+'</div>';
-        out+='<div style="display:flex;align-items:center;justify-content:space-between">';
-        if(beantworter)out+='<span style="font-size:10px;color:var(--t3)">von '+esc(beantworter.name.split(' ')[0])+'</span>';
-        if(beantworter?.slack_id)out+='<a href="https://slack.com/app_redirect?channel='+esc(beantworter.slack_id)+'" target="_blank" style="font-size:10px;color:var(--blue);text-decoration:none">💬 Slack</a>';
+        out+='<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">';
+        out+='<button onclick="drNeuAnfragen(\''+d.id+'\')" style="font-size:11px;padding:4px 10px;border-radius:8px;border:1px solid var(--blue-bd);background:var(--sf);color:var(--blue);cursor:pointer;font-family:inherit;font-weight:600">↻ Neu anfragen</button>';
+        out+='<button onclick="drGesehen(\''+d.id+'\')" style="font-size:11px;padding:4px 10px;border-radius:8px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);cursor:pointer;font-family:inherit">✓ Erledigt</button>';
+        if(beantworter?.slack_id)out+='<a href="https://slack.com/app_redirect?channel='+esc(beantworter.slack_id)+'" target="_blank" style="font-size:11px;padding:4px 10px;border-radius:8px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);cursor:pointer;text-decoration:none;font-family:inherit">💬 Slack</a>';
+        if(beantworter)out+='<span style="font-size:10px;color:var(--t3);margin-left:auto">von '+esc(beantworter.name.split(' ')[0])+'</span>';
         out+='</div>';
         out+='</div>';
       });
@@ -4816,6 +4824,28 @@ async function returnDecisionRequest(id){
   if(von?.slack_id)notify('entscheidung_zurueck',{frage:d.frage,begruendung,an_slack_id:von.slack_id,actor_slack_id:me()?.slack_id||''});
   cm();render();
   toast('↩ Zurückgegeben');
+}
+// ── Decision Lifecycle: Aufgabe erstellen, Gesehen, Neu anfragen ──
+function aufgabeAusEntscheidung(drId){
+  const d=S.decisionRequests.find(x=>x.id===drId);if(!d)return;
+  openNeu({titel:'→ '+d.beschluss,notiz:'Entscheidung: '+d.frage+(d.warum?'\nWarum: '+d.warum:'')});
+  drGesehen(drId);
+}
+function drGesehen(drId){
+  const seen=JSON.parse(localStorage.getItem('dr_gesehen_'+aP)||'[]');
+  if(!seen.includes(drId)){seen.push(drId);localStorage.setItem('dr_gesehen_'+aP,JSON.stringify(seen));}
+  render();
+}
+function drNeuAnfragen(drId){
+  const d=S.decisionRequests.find(x=>x.id===drId);if(!d)return;
+  drGesehen(drId);
+  openDecisionForm();
+  // Pre-fill nach kurzer Verzögerung (DOM muss erst aufbauen)
+  setTimeout(()=>{
+    const f=document.getElementById('dr-frage');if(f)f.value=d.frage;
+    const k=document.getElementById('dr-kontext');if(k)k.value=(d.kontext||'')+(d.rueckgabe_begruendung?'\n\n↩ Zurückgegeben: '+d.rueckgabe_begruendung:'');
+    const b=document.getElementById('dr-blockiert');if(b)b.value=d.blockiert||'';
+  },100);
 }
 // ─── Google Calendar Integration ───────────────────────────────
 function gcalIsConnected(){
