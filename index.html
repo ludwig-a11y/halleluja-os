@@ -4740,7 +4740,8 @@ async function saveDecisionRequest(){
   const gfSlackIds=S.personen.filter(p=>p.stufe==='gf'&&p.id!==aP&&p.id!==anPersonId&&p.slack_id).map(p=>p.slack_id);
   notify('entscheidung_angefragt',{frage:rec.frage,prioritaet:rec.prioritaet,deadline:rec.deadline,blockiert:rec.blockiert,an_slack_id:anP?.slack_id||'',gf_slack_ids:gfSlackIds,actor_slack_id:me()?.slack_id||''});
   cm();render();
-  toast('✅ Entscheidungsanfrage gesendet');
+  const slackName=anP?.name?.split(' ')[0]||'';
+  toast('✅ Gesendet' + (slackName&&anP?.slack_id ? ' · 💬 Slack DM an '+slackName : ''));
 }
 function openDecisionAnswer(id,mode){
   const d=S.decisionRequests.find(x=>x.id===id);if(!d)return;
