@@ -1141,14 +1141,14 @@ function rKapazitaetBlock(pid){
   out+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">';
   out+='<div style="font-size:11px;font-weight:600;color:var(--t2);display:flex;gap:5px;align-items:center">Fokuszeit <span style="font-size:10px;padding:1px 6px;border-radius:99px;background:var(--red-bg);color:var(--red);font-weight:700">P1</span></div>';
   out+='<div style="font-size:11px;color:'+ft.color+'"><span style="font-weight:700">'+k.p1h.toFixed(1)+'h</span> / '+k.fh+'h · <span style="font-weight:600">'+ft.label+'</span></div></div>';
-  out+='<div style="height:5px;background:var(--bd);border-radius:99px;overflow:hidden"><div style="height:100%;border-radius:99px;background:'+ft.bar+';width:'+fPct+'%;transition:width .4s"></div></div>';
+  out+='<div style="height:7px;background:var(--red-bg);border-radius:99px;overflow:hidden"><div style="height:100%;border-radius:99px;background:var(--red);width:'+fPct+'%;transition:width .4s"></div></div>';
   out+='</div>';
   // P2/P3
   out+='<div style="margin-bottom:6px">';
   out+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">';
-  out+='<div style="font-size:11px;font-weight:600;color:var(--t2);display:flex;gap:5px;align-items:center">Restzeit <span style="font-size:10px;padding:1px 6px;border-radius:99px;background:var(--orange-bg);color:var(--orange);font-weight:700">P2</span><span style="font-size:10px;padding:1px 6px;border-radius:99px;background:var(--sf);color:var(--t2);border:1px solid var(--bd);font-weight:600">P3</span></div>';
+  out+='<div style="font-size:11px;font-weight:600;color:var(--t2);display:flex;gap:5px;align-items:center">Restzeit <span style="font-size:10px;padding:1px 6px;border-radius:99px;background:var(--blue-bg);color:var(--blue);font-weight:700">P2</span><span style="font-size:10px;padding:1px 6px;border-radius:99px;background:var(--sf);color:var(--t2);border:1px solid var(--bd);font-weight:600">P3</span></div>';
   out+='<div style="font-size:11px;color:'+rt.color+'"><span style="font-weight:700">'+k.p23h.toFixed(1)+'h</span> / '+k.rh+'h · <span style="font-weight:600">'+rt.label+'</span></div></div>';
-  out+='<div style="height:5px;background:var(--bd);border-radius:99px;overflow:hidden"><div style="height:100%;border-radius:99px;background:'+rt.bar+';width:'+rPct+'%;transition:width .4s"></div></div>';
+  out+='<div style="height:7px;background:var(--blue-bg);border-radius:99px;overflow:hidden"><div style="height:100%;border-radius:99px;background:var(--blue);width:'+rPct+'%;transition:width .4s"></div></div>';
   out+='</div>';
   // Tages-Verteilung
   out+=dagBar;
