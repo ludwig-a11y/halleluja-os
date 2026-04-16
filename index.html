@@ -270,12 +270,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;font-size:1
     <div style="flex:1"></div>
     <div id="fokus-banner" style="display:none;align-items:center;gap:6px;padding:4px 12px;background:var(--red-bg);border:1px solid var(--red-bd);border-radius:8px;font-size:11px;font-weight:600;color:var(--red)">🎯 <span id="fokus-label"></span></div>
     <div id="live-clock" style="font-size:12px;font-weight:600;color:var(--t2);font-family:monospace;padding:0 8px"></div>
-    <button class="nt meet-btn" onclick="openMeeting()">🎙 + Aufgabe</button>
     <button class="nt new-btn" onclick="openNeu()">+ Aufgabe</button>
     <div style="margin-left:12px;display:flex;align-items:center;gap:8px">
       <div id="kap-pill" style="display:none;cursor:pointer" onclick="openMeinProfil()"></div>
       <div id="me-badge" style="display:flex;align-items:center;gap:6px;padding:0 6px;cursor:pointer;border-radius:8px" onclick="openMeinProfil()"></div>
-      <button id="dark-toggle" onclick="toggleDark()" style="font-size:14px;padding:2px 6px;border:none;background:transparent;cursor:pointer;line-height:1" title="Dark Mode"></button>
       <button id="btn-settings" style="display:none;font-size:11px;padding:4px 10px;border-radius:8px;border:1px solid var(--bd);background:transparent;color:var(--t2);cursor:pointer;font-family:inherit" onclick="openSettings()">⚙</button>
     </div>
   </div>
@@ -306,7 +304,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;font-size:1
       Ich
     </button>
   </div>
-  <button id="mob-memo" onclick="openMeeting()">🎙</button>
   <button id="mob-add" onclick="openNeu()">+</button>
 </div>
 
@@ -325,8 +322,6 @@ function toggleDark(){
   document.documentElement.classList.toggle('dark');
   const d=document.documentElement.classList.contains('dark');
   localStorage.setItem('halleluja_dark',d?'1':'0');
-  const b=document.getElementById('dark-toggle');
-  if(b)b.textContent=d?'☀️':'🌙';
 }
 
 const SUPA_URL='https://zkxeuphsbufdvskkuahk.supabase.co';
@@ -3543,7 +3538,7 @@ function openNeu(pf={}){
   const defaultPid=pf.pid||aP;
   const zieleOpts=zieleOptgroups(defaultPid,pf.zielId||'');
   const hasAI=true;
-  document.getElementById('mb').innerHTML='<div class="mt">Neue Aufgabe</div>'
+  document.getElementById('mb').innerHTML='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px"><div class="mt" style="margin-bottom:0">Neue Aufgabe</div><button onclick="cm();openMeeting()" style="font-size:11px;padding:4px 10px;border-radius:7px;border:1px solid var(--bd);background:var(--gray-bg);color:var(--t2);cursor:pointer;font-family:inherit;white-space:nowrap">📝 Aus Meeting</button></div>'
     +'<div class="fl"><label>Was soll gemacht werden?</label><div style="display:flex;gap:6px"><input id="nt" value="'+(pf.titel||'')+'" placeholder="Aufgabe, Todo, Meeting-Ergebnis…" autofocus style="flex:1" oninput="aiDebounce()">'
     +(hasAI?'<button onclick="aiAnalyze()" style="font-size:11px;padding:5px 10px;border-radius:7px;border:1px solid var(--bd);background:var(--gray-bg);color:var(--t2);cursor:pointer;font-family:inherit;flex-shrink:0;white-space:nowrap" title="KI-Hebel-Analyse starten">✨ KI</button>':'')
     +'</div></div>'
@@ -5380,9 +5375,7 @@ window.addEventListener('keydown',e=>{
 (async()=>{
   // Handle Google OAuth callback (access_token in URL hash)
   gcalHandleCallback();
-  // Init dark mode toggle label
-  const _dtb=document.getElementById('dark-toggle');
-  if(_dtb)_dtb.textContent=document.documentElement.classList.contains('dark')?'☀️':'🌙';
+  // Dark mode via profile only
   try{
     await Promise.race([
       loadData(),
