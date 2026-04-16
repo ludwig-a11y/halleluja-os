@@ -5513,21 +5513,26 @@ function openOffeneFrage(opts={}){
   const personOpts='<option value="">— optional —</option>'+S.personen.filter(p=>p.id!==aP).map(p=>'<option value="'+p.id+'">'+esc(p.name)+'</option>').join('');
   document.getElementById('mb').innerHTML=
     '<div class="mt">🔍 Klärungsbedarf melden</div>'
-    +'<div style="font-size:11px;color:var(--t3);margin:-6px 0 14px;line-height:1.5">Wird direkt beantwortet — oder bei Bedarf in ein Meeting aufgenommen.</div>'
+    +'<div style="font-size:11px;color:var(--t3);margin:-6px 0 16px;line-height:1.5">Wird direkt beantwortet — oder bei Bedarf in ein Meeting aufgenommen.</div>'
+    // 1. Hauptfrage zuerst — autofocus
+    +'<div class="fl"><label>Was muss geklärt werden? <span style="color:var(--red)">*</span></label>'
+    +'<textarea id="of-frage" rows="3" placeholder="z.B. Sollen wir Lieferant X wechseln?" style="resize:none" autofocus></textarea></div>'
+    // 2. Typ — jetzt wo man die Frage sieht
     +'<div class="fl"><label>Art der Klärung</label>'
-    +'<div style="display:flex;gap:12px;margin-top:4px;flex-wrap:wrap">'
-    +'<label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer"><input type="radio" name="of-typ" value="entscheidung"'+(typ==='entscheidung'?' checked':'')+'>  ⚖️ Entscheidung nötig</label>'
-    +'<label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer"><input type="radio" name="of-typ" value="problem"'+(typ==='problem'?' checked':'')+'>  ⚠️ Problem / Blocker</label>'
-    +'<label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer"><input type="radio" name="of-typ" value="unklarheit"'+(typ==='unklarheit'?' checked':'')+'>  ❓ Offene Frage</label>'
+    +'<div style="display:flex;gap:16px;margin-top:6px;flex-wrap:nowrap">'
+    +'<label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;white-space:nowrap"><input type="radio" name="of-typ" value="entscheidung"'+(typ==='entscheidung'?' checked':'')+'>  ⚖️ Entscheidung</label>'
+    +'<label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;white-space:nowrap"><input type="radio" name="of-typ" value="problem"'+(typ==='problem'?' checked':'')+'>  ⚠️ Blocker</label>'
+    +'<label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;white-space:nowrap"><input type="radio" name="of-typ" value="unklarheit"'+(typ==='unklarheit'?' checked':'')+'>  ❓ Offene Frage</label>'
     +'</div></div>'
+    // 3. An wen
     +'<div class="fl"><label>An wen? <span style="color:var(--t3);font-weight:400">(optional)</span></label>'
     +'<select id="of-an" style="font-size:13px">'+personOpts+'</select></div>'
-    +'<div class="fl"><label>Was muss geklärt werden? <span style="color:var(--red)">*</span></label>'
-    +'<textarea id="of-frage" rows="2" placeholder="z.B. Sollen wir Lieferant X wechseln?" style="resize:none" autofocus></textarea></div>'
+    // 4. Kontext
     +'<div class="fl"><label>Kontext <span style="color:var(--t3);font-weight:400">(optional)</span></label>'
     +'<textarea id="of-kontext" rows="2" placeholder="Hintergrund, der bei der Entscheidung hilft…" style="resize:none">'+esc(opts.kontext||'')+'</textarea></div>'
-    +'<div class="fl"><label>Blockiert <span style="color:var(--t3);font-weight:400">(optional — was steht ohne Antwort still?)</span></label>'
-    +'<input type="text" id="of-blockiert" placeholder="z.B. Angebot kann nicht raus"></div>'
+    // 5. Details eingeklappt
+    +'<details style="margin-bottom:10px"><summary style="font-size:11px;color:var(--t3);cursor:pointer;padding:4px 0;list-style:none;display:flex;align-items:center;gap:4px">▸ Details (Priorität, Deadline, Blockiert)</summary>'
+    +'<div style="padding-top:10px">'
     +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
     +'<div class="fl"><label>Priorität</label>'
     +'<select id="of-prio" style="font-size:13px">'
@@ -5538,12 +5543,16 @@ function openOffeneFrage(opts={}){
     +'<div class="fl"><label>Deadline <span style="color:var(--t3);font-weight:400">(optional)</span></label>'
     +'<input type="date" id="of-deadline"></div>'
     +'</div>'
-    +'<div class="fl"><label style="font-size:11px;color:var(--t3);font-weight:400">Beschluss sichtbar für</label>'
-    +'<div style="display:flex;gap:12px;margin-top:4px">'
-    +'<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer"><input type="radio" name="of-sicht" value="gf_only" checked> Nur GF</label>'
-    +'<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer"><input type="radio" name="of-sicht" value="team"> Ganzes Team</label>'
-    +'</div></div>'
-    +'<div class="mf"><button class="btn btn-gr" onclick="cm()">Abbrechen</button><button class="btn" onclick="saveOffeneFrage()" style="background:var(--gold);border-color:var(--gold);color:#fff">Klärung anfragen</button></div>';
+    +'<div class="fl"><label>Blockiert <span style="color:var(--t3);font-weight:400">(was steht ohne Antwort still?)</span></label>'
+    +'<input type="text" id="of-blockiert" placeholder="z.B. Angebot kann nicht raus"></div>'
+    +'</div></details>'
+    // 6. Sichtbarkeit — ganz unten, klein, Toggle-Style
+    +'<div style="display:flex;align-items:center;gap:8px;padding:6px 0;margin-bottom:4px">'
+    +'<label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--t3);cursor:pointer">'
+    +'<input type="checkbox" id="of-sicht-team" style="width:14px;height:14px"> Beschluss für ganzes Team sichtbar'
+    +'</label></div>'
+    +'<div class="mf"><button class="btn btn-gr" onclick="cm()">Abbrechen</button>'
+    +'<button class="btn" onclick="saveOffeneFrage()" style="background:var(--gold);border-color:var(--gold);color:#fff">Klärung anfragen →</button></div>';
   document.getElementById('ovl').classList.add('open');
 }
 function openDecisionForm(){openOffeneFrage();}
@@ -5552,7 +5561,7 @@ async function saveOffeneFrage(){
   const frage=document.getElementById('of-frage').value.trim();
   if(!frage){toast('Bitte Frage eingeben');return;}
   const typ=document.querySelector('input[name="of-typ"]:checked')?.value||'entscheidung';
-  const sicht=document.querySelector('input[name="of-sicht"]:checked')?.value||'gf_only';
+  const sicht=document.getElementById('of-sicht-team')?.checked?'team':'gf_only';
   const anPersonId=document.getElementById('of-an').value||null;
   const deadline=document.getElementById('of-deadline').value||null;
   const rec={
