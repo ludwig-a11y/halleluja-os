@@ -73,7 +73,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;font-size:1
 #mob-add{position:fixed;bottom:72px;right:18px;z-index:51;width:52px;height:52px;border-radius:50%;background:var(--inv);color:var(--inv-t);border:none;font-size:26px;cursor:pointer;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(0,0,0,.25);font-family:inherit;transition:transform .15s,box-shadow .15s}
 #mob-add:hover{transform:scale(1.05);box-shadow:0 6px 20px rgba(0,0,0,.3)}
 #mob-add:active{transform:scale(.97)}
-#mob-memo{position:fixed;bottom:132px;right:18px;z-index:51;width:44px;height:44px;border-radius:50%;background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-bd);font-size:18px;cursor:pointer;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(0,0,0,.15);font-family:inherit;transition:transform .15s}
 #mob-memo:active{transform:scale(.93)}
 
 #login-screen{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:200}
@@ -98,7 +97,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;font-size:1
 .nt:hover{color:var(--text)}
 .nt.on{color:var(--text);font-weight:600;border-bottom-color:var(--text)}
 .nt.new-btn{color:var(--blue);font-weight:600;border:1px solid var(--blue-bd);background:var(--blue-bg);border-radius:8px;height:32px;padding:0 14px;font-size:13px}
-.nt.meet-btn{color:var(--amber);font-weight:600;border:1px solid var(--amber-bd);background:var(--amber-bg);border-radius:8px;height:32px;padding:0 14px;margin-left:8px;font-size:13px}
 .shell{display:flex;flex:1;overflow:hidden}
 .sb{width:168px;flex-shrink:0;background:var(--sf);border-right:1px solid var(--bd);overflow-y:auto;padding:10px 8px;display:flex;flex-direction:column}
 .main{flex:1;overflow-y:auto;padding:20px 24px}
@@ -4731,7 +4729,7 @@ function openSharedGoals(partnerId){
       if(!myTasks.length)h+='<div style="font-size:12px;color:var(--t3);font-style:italic;padding:4px 0">Keine offenen</div>';
       myTasks.slice(0,5).forEach(a=>{
         h+='<div style="display:flex;align-items:center;gap:6px;padding:4px 0;font-size:12px;cursor:pointer" onclick="openDetail(\''+a.id+'\')">';
-        if(a.prio)h+='<span style="font-size:9px;font-weight:700;color:'+(a.prio==='P1'?'var(--red)':a.prio==='P2'?'var(--amber)':'var(--green)')+'">'+a.prio+'</span>';
+        if(a.prio)h+='<span style="font-size:9px;font-weight:700;color:'+(a.prio==='P1'?'var(--red)':a.prio==='P2'?'var(--blue)':'var(--t3)')+'">'+a.prio+'</span>';
         h+='<span style="flex:1;color:var(--text)">'+esc(a.titel)+'</span>';
         h+='<span style="font-size:10px;color:var(--t3)">'+a.status+'</span>';
         h+='</div>';
@@ -4745,7 +4743,7 @@ function openSharedGoals(partnerId){
       if(!partnerTasks.length)h+='<div style="font-size:12px;color:var(--t3);font-style:italic;padding:4px 0">Keine offenen</div>';
       partnerTasks.slice(0,5).forEach(a=>{
         h+='<div style="display:flex;align-items:center;gap:6px;padding:4px 0;font-size:12px">';
-        if(a.prio)h+='<span style="font-size:9px;font-weight:700;color:'+(a.prio==='P1'?'var(--red)':a.prio==='P2'?'var(--amber)':'var(--green)')+'">'+a.prio+'</span>';
+        if(a.prio)h+='<span style="font-size:9px;font-weight:700;color:'+(a.prio==='P1'?'var(--red)':a.prio==='P2'?'var(--blue)':'var(--t3)')+'">'+a.prio+'</span>';
         h+='<span style="flex:1;color:var(--t2)">'+esc(a.titel)+'</span>';
         h+='<span style="font-size:10px;color:var(--t3)">'+a.status+'</span>';
         h+='</div>';
@@ -4880,7 +4878,7 @@ function mdRenderPreview(){
     html+='<select id="md-prio-'+i+'" style="font-size:14px;padding:8px 10px;border:1px solid var(--bd);border-radius:8px;font-family:inherit;background:var(--sf);min-height:40px">';
     html+='<option value="">— Prio —</option>';
     html+='<option value="P1"'+(t.prio==='P1'?' selected':'')+'>🔴 P1</option>';
-    html+='<option value="P2"'+(t.prio==='P2'?' selected':'')+'>🟡 P2</option>';
+    html+='<option value="P2"'+(t.prio==='P2'?' selected':'')+'>🔵 P2</option>';
     html+='<option value="P3"'+(t.prio==='P3'?' selected':'')+'>🟢 P3</option>';
     html+='</select>';
     html+='<input type="date" id="md-dl-'+i+'" value="'+(t.dl||'')+'" style="font-size:14px;padding:8px 10px;border:1px solid var(--bd);border-radius:8px;font-family:inherit;background:var(--sf);color:var(--text);min-height:40px">';
