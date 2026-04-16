@@ -876,35 +876,49 @@ function aufgabeZurueck(id){
   _doAufgabeZurueck(id,grund.trim());
 }
 async function _doAufgabeZurueck(id,grund){
-  const a=S.aufgaben.find(x=>x.id===id);if(!a)return;
-  const absender=person(a.erstelltVon);
-  a.pid=a.erstelltVon;a.status='zurueckgegeben';a.prio=null;
-  const notizPrefix='↩ Zurückgegeben';
-  a.notiz=(grund?notizPrefix+': '+grund:notizPrefix)+(a.notiz?'\n\n'+a.notiz:'');
-  await dbPatch('aufgaben',id,{pid:a.erstelltVon,status:'zurueckgegeben',prio:null,notiz:a.notiz});
-  if(absender?.slack_id){
-    notify('aufgabe_zurueckgegeben',{
-      aufgabe:a.titel,grund:grund||'',
-      fuer:{id:absender.id,name:absender.name,slack_id:absender.slack_id}
-    });
-  }
-  toast('↩ Aufgabe zurückgegeben');
-  render();
+  const a=S.aufgaben.find(x=>x.id===id);if(!a||a._busy)return;
+  a._busy=true;
+  const prev={pid:a.pid,status:a.status,prio:a.prio,notiz:a.notiz};
+  try{
+    const absender=person(a.erstelltVon);
+    a.pid=a.erstelltVon;a.status='zurueckgegeben';a.prio=null;
+    const notizPrefix='↩ Zurückgegeben';
+    a.notiz=(grund?notizPrefix+': '+grund:notizPrefix)+(prev.notiz?'\n\n'+prev.notiz:'');
+    render();
+    const ok=await dbPatch('aufgaben',id,{pid:a.erstelltVon,status:'zurueckgegeben',prio:null,notiz:a.notiz});
+    if(!ok){a.pid=prev.pid;a.status=prev.status;a.prio=prev.prio;a.notiz=prev.notiz;toast('⚠ Fehler beim Speichern');}
+    else{
+      if(absender?.slack_id)notify('aufgabe_zurueckgegeben',{aufgabe:a.titel,grund:grund||'',fuer:{id:absender.id,name:absender.name,slack_id:absender.slack_id}});
+      toast('↩ Aufgabe zurückgegeben');
+    }
+  }catch(e){console.error('_doAufgabeZurueck',e);a.pid=prev.pid;a.status=prev.status;a.prio=prev.prio;a.notiz=prev.notiz;toast('⚠ Fehler');}
+  finally{a._busy=false;render();}
 }
 async function aufgabeZurueckGesehen(id){
-  const a=S.aufgaben.find(x=>x.id===id);if(!a)return;
-  a.status='erledigt';a.notiz=(a.notiz||'').replace(/^↩ Zurückgegeben[^\n]*/,'✓ Zurückgabe gesehen');
-  await dbPatch('aufgaben',id,{status:'erledigt',notiz:a.notiz,updated_at:new Date().toISOString()});
-  render();
+  const a=S.aufgaben.find(x=>x.id===id);if(!a||a._busy)return;
+  a._busy=true;
+  const prev={status:a.status,notiz:a.notiz};
+  try{
+    a.status='erledigt';a.notiz=(a.notiz||'').replace(/^↩ Zurückgegeben[^\n]*/,'✓ Zurückgabe gesehen');
+    render();
+    const ok=await dbPatch('aufgaben',id,{status:'erledigt',notiz:a.notiz,updated_at:new Date().toISOString()});
+    if(!ok){a.status=prev.status;a.notiz=prev.notiz;toast('⚠ Fehler beim Speichern');}
+  }catch(e){console.error('aufgabeZurueckGesehen',e);a.status=prev.status;a.notiz=prev.notiz;}
+  finally{a._busy=false;render();}
 }
 async function aufgabeZurueckNeu(id){
-  const a=S.aufgaben.find(x=>x.id===id);if(!a)return;
-  // Zurück in den Pool als neue Aufgabe
-  a.status='neu';a.prio=null;
-  a.notiz=(a.notiz||'').replace(/^↩ Zurückgegeben[^\n]*/,'');
-  if(a.notiz.startsWith('\n'))a.notiz=a.notiz.replace(/^\n+/,'');
-  await dbPatch('aufgaben',id,{status:'neu',prio:null,notiz:a.notiz||null});
-  render();
+  const a=S.aufgaben.find(x=>x.id===id);if(!a||a._busy)return;
+  a._busy=true;
+  const prev={status:a.status,prio:a.prio,notiz:a.notiz};
+  try{
+    a.status='neu';a.prio=null;
+    a.notiz=(a.notiz||'').replace(/^↩ Zurückgegeben[^\n]*/,'');
+    if(a.notiz.startsWith('\n'))a.notiz=a.notiz.replace(/^\n+/,'');
+    render();
+    const ok=await dbPatch('aufgaben',id,{status:'neu',prio:null,notiz:a.notiz||null});
+    if(!ok){a.status=prev.status;a.prio=prev.prio;a.notiz=prev.notiz;toast('⚠ Fehler beim Speichern');}
+  }catch(e){console.error('aufgabeZurueckNeu',e);a.status=prev.status;a.prio=prev.prio;a.notiz=prev.notiz;}
+  finally{a._busy=false;render();}
 }
 function inboxAblehnenZurueck(id){
   const ta=document.getElementById('abl-grund-'+id);
@@ -917,27 +931,26 @@ function toggleWeiterleiten(id){
   if(el)el.style.display=el.style.display==='none'?'flex':'none';
 }
 async function weiterleitenAufgabe(id,newPid){
-  const a=S.aufgaben.find(x=>x.id===id);if(!a||a.pid===newPid)return;
+  const a=S.aufgaben.find(x=>x.id===id);if(!a||a._busy||a.pid===newPid)return;
   const grundEl=document.getElementById('wl-grund-'+id);
   const grund=grundEl?grundEl.value.trim():'';
   if(!grund){toast('⚠ Bitte Grund angeben');if(grundEl)grundEl.focus();return;}
-  const neuePerson=person(newPid);
-  const absender=person(a.erstelltVon);
-  a.pid=newPid;a.status='zugewiesen';a.erstelltVon=a.erstelltVon||aP;
-  await dbPatch('aufgaben',id,{pid:newPid,status:'zugewiesen',erstellt_von:a.erstelltVon});
-  notify('aufgabe_zugewiesen',{
-    aufgabe:a.titel,prio:a.prio,dl:a.dl,notiz:grund,
-    fuer:neuePerson?{id:neuePerson.id,name:neuePerson.name,slack_id:neuePerson.slack_id}:null
-  });
-  if(absender&&absender.id!==aP){
-    notify('aufgabe_weitergeleitet',{
-      aufgabe:a.titel,notiz:grund,
-      weitergeleitet_an:neuePerson?neuePerson.name:'?',
-      fuer:absender.slack_id?{id:absender.id,name:absender.name,slack_id:absender.slack_id}:null
-    });
-  }
-  toast('→ Weitergeleitet an '+((neuePerson?.name||'?').split(' ')[0]));
-  render();
+  a._busy=true;
+  const prev={pid:a.pid,status:a.status,erstelltVon:a.erstelltVon};
+  try{
+    const neuePerson=person(newPid);
+    const absender=person(a.erstelltVon);
+    a.pid=newPid;a.status='zugewiesen';a.erstelltVon=a.erstelltVon||aP;
+    render();
+    const ok=await dbPatch('aufgaben',id,{pid:newPid,status:'zugewiesen',erstellt_von:a.erstelltVon});
+    if(!ok){a.pid=prev.pid;a.status=prev.status;a.erstelltVon=prev.erstelltVon;toast('⚠ Fehler beim Speichern');}
+    else{
+      notify('aufgabe_zugewiesen',{aufgabe:a.titel,prio:a.prio,dl:a.dl,notiz:grund,fuer:neuePerson?{id:neuePerson.id,name:neuePerson.name,slack_id:neuePerson.slack_id}:null});
+      if(absender&&absender.id!==aP)notify('aufgabe_weitergeleitet',{aufgabe:a.titel,notiz:grund,weitergeleitet_an:neuePerson?neuePerson.name:'?',fuer:absender.slack_id?{id:absender.id,name:absender.name,slack_id:absender.slack_id}:null});
+      toast('→ Weitergeleitet an '+((neuePerson?.name||'?').split(' ')[0]));
+    }
+  }catch(e){console.error('weiterleitenAufgabe',e);a.pid=prev.pid;a.status=prev.status;a.erstelltVon=prev.erstelltVon;toast('⚠ Fehler');}
+  finally{a._busy=false;render();}
 }
 function signalGesehen(id){
   const key='signale_gesehen_'+aP;
@@ -2891,6 +2904,22 @@ function rTag(){
     out+='<span style="font-size:12px;color:var(--t3)">'+ohneZiel.length+'</span></summary>';
     out+='<div style="margin-top:8px">';
     ohneZiel.forEach(a=>{out+=aufgabeKarte(a);});
+    out+='</div></details>';
+  }
+
+  // ── Geplante Aufgaben (am-Datum in Zukunft — sonst unsichtbar) ──
+  const geplante=myA.filter(a=>['neu','backlog'].includes(a.status)&&a.dl_type==='am'&&a.dl>TODAY);
+  if(geplante.length){
+    out+='<details style="margin-bottom:12px"><summary style="list-style:none;cursor:pointer;padding:10px 16px;background:var(--blue-bg);border:1px solid var(--blue-bd);border-radius:12px;display:flex;align-items:center;justify-content:space-between">';
+    out+='<span style="font-size:12px;font-weight:600;color:var(--blue)">📅 Geplant</span>';
+    out+='<span style="font-size:12px;color:var(--blue);opacity:.7">'+geplante.length+'</span></summary>';
+    out+='<div style="margin-top:8px">';
+    geplante.sort((a,b)=>a.dl.localeCompare(b.dl)).forEach(a=>{
+      out+='<div onclick="openDetail(\''+a.id+'\')" style="background:var(--blue-bg);border:1px solid var(--blue-bd);border-radius:10px;padding:9px 14px;margin-bottom:5px;display:flex;align-items:center;gap:8px;cursor:pointer">'
+        +'<span style="flex:1;font-size:12px;color:var(--text)">'+esc(a.titel)+'</span>'
+        +'<span style="font-size:10px;color:var(--blue);font-weight:600">'+a.dl.slice(8)+'.'+a.dl.slice(5,7)+'.</span>'
+        +'</div>';
+    });
     out+='</div></details>';
   }
 
