@@ -2778,9 +2778,13 @@ function rTag(){
       }
       // 9:00 is the anchor — always. Early = bonus, late = visible gap
       const anchor=9;
-      let dayStart=Math.min(anchor,Math.floor(fzStartH!=null?Math.min(nowH,fzStartH):nowH));
-      let dayEnd=Math.max(17,Math.ceil(nowH+offenH));
-      if(fzEndH!=null&&fzEndH>dayEnd)dayEnd=Math.ceil(fzEndH);
+      const DAY_START_MIN=7;  // frühestens 7:00
+      const DAY_CAP=21;       // Tagesende: niemals über 21:00
+      const isFeierabend=nowH>=DAY_CAP;
+      let dayStart=Math.max(DAY_START_MIN,Math.min(anchor,Math.floor(fzStartH!=null?Math.min(nowH,fzStartH):nowH)));
+      let dayEnd=Math.min(DAY_CAP,Math.max(17,Math.ceil(nowH+offenH)));
+      if(fzEndH!=null&&fzEndH>dayEnd)dayEnd=Math.min(DAY_CAP,Math.ceil(fzEndH));
+      if(isFeierabend){dayStart=DAY_START_MIN;dayEnd=DAY_CAP;} // nach 21:00: fixe Ansicht 7–21
       const barH=dayEnd-dayStart;
       const erlPct=(erlH/barH*100);
       const gapH=Math.max(0,(nowH-dayStart)-erlH);
@@ -2800,8 +2804,8 @@ function rTag(){
       }
       out+='</div>';
       out+='<div style="font-size:11px;color:var(--t3)">'
-        +(gapH>0.5?'<span style="color:var(--red)">'+Math.round(gapH*10)/10+'h ungenutzt</span> · ':'')
-        +Math.round(erlH*10)/10+'h erledigt · '+Math.round(offenH*10)/10+'h offen</div>';
+        +(isFeierabend?'<span style="color:var(--t3)">🌙 Feierabend</span> · ':gapH>0.5?'<span style="color:var(--red)">'+Math.round(gapH*10)/10+'h ungenutzt</span> · ':'')
+        +Math.round(erlH*10)/10+'h erledigt'+(isFeierabend?'':' · '+Math.round(offenH*10)/10+'h offen')+'</div>';
       out+='</div>';
       // time markers + Fokuszeit-Klammer
       const fzRow=fzStartH!=null;
@@ -2852,8 +2856,13 @@ function rTag(){
         if(gapH>0.5)out+='<span style="font-size:8px;color:var(--t3);white-space:nowrap">'+Math.round(gapH*10)/10+'h</span>';
         out+='</div>';
       }
-      // task segments (start from "now")
-      tlTasks.forEach((a,i)=>{
+      // task segments (start from "now") — nach 22:00 keine Tasks mehr anzeigen
+      if(isFeierabend){
+        out+='<div style="flex:1;display:flex;align-items:center;justify-content:center;background:var(--gray-bg);opacity:.4">';
+        out+='<span style="font-size:10px;color:var(--t3)">🌙 '+offenH.toFixed(1)+'h morgen</span>';
+        out+='</div>';
+      }
+      if(!isFeierabend)tlTasks.forEach((a,i)=>{
         const dur=a.geplant||1;
         const wPct=(dur/barH*100);
         const isAktiv=a.status==='aktiv';
@@ -2872,7 +2881,7 @@ function rTag(){
         out+='<span style="font-size:10px;font-weight:600;color:'+tc+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(a.titel)+'</span>';
         out+='<span style="font-size:9px;color:'+tc+';opacity:.5;flex-shrink:0;margin-left:auto">'+fmtH(dur)+'</span>';
         out+='</div>';
-      });
+      }); // end !isFeierabend forEach
       // meeting overlays from Google Calendar
       window._gcalEvtMap=window._gcalEvtMap||{};
       (showExtern?(S.kalender||[]):[]).forEach((ev,idx)=>{
