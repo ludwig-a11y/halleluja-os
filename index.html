@@ -5039,9 +5039,9 @@ async function gcalCreateEvent(a){
   const startD=new Date(tag+'T09:00:00');
   const endD=new Date(startD.getTime()+hrs*3600000);
   const zN=getZielName(a);
-  // P1: klarer Titel ohne Prio-Prefix, Ziel als Beschreibung
-  const summary=a.prio==='P1'?a.titel:'['+a.prio+'] '+a.titel;
-  const description=a.prio==='P1'&&zN?'⚡ Ziel: '+zN+'\n\nHalleluja OS':'Halleluja OS';
+  // P1: Titel = "⚡ P1 — Zielname" (privat, kein Aufgabentitel nach außen)
+  const summary=a.prio==='P1'?'⚡ P1 — '+(zN||'Fokus'):'['+a.prio+'] '+a.titel;
+  const description=a.prio==='P1'?'Halleluja OS':'Halleluja OS';
   const colorMap={'P1':'11','P2':'6','P3':'8'};
   const body={
     summary,
