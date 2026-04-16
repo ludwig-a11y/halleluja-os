@@ -2553,8 +2553,8 @@ function rTag(){
         const dur=a.geplant||1;
         const wPct=(dur/barH*100);
         const isAktiv=a.status==='aktiv';
-        const pc=a.prio==='P1'?'var(--red)':a.prio==='P2'?'var(--orange)':'var(--t3)';
-        const bg=isAktiv?'var(--inv)':a.prio==='P1'?'var(--red-bg)':a.prio==='P2'?'var(--orange-bg)':'var(--gray-bg)';
+        const pc=a.prio==='P1'?'var(--red)':a.prio==='P2'?'var(--blue)':'var(--t3)';
+        const bg=isAktiv?'var(--inv)':a.prio==='P1'?'var(--red-bg)':a.prio==='P2'?'var(--blue-bg)':'var(--gray-bg)';
         const tc=isAktiv?'var(--inv-t)':pc;
         const bd=i<tlTasks.length-1?'border-right:1px solid rgba(0,0,0,.08);':'';
         out+='<div draggable="true" data-tpid="'+a.id+'" data-tpi="'+i+'" onclick="openDetail(\''+a.id+'\')" '
