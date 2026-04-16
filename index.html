@@ -3089,7 +3089,9 @@ function rZiele(){
         out+='<div style="flex:1;min-width:0;cursor:pointer" onclick="'+(canManageTZ(z.id)?'editTZ(\''+z.id+'\',\''+tz.id+'\')':'')+'">';
         out+='<div style="font-size:13px;font-weight:600;color:var(--text);'+(tz.erledigt?'text-decoration:line-through;':'')+'white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(tz.name)+'</div>';
         const _wrT=dieseWocheReset(aP),_inB3=_wrT&&[_wrT.big3_1_tz_id,_wrT.big3_2_tz_id,_wrT.big3_3_tz_id].some(x=>x===tz.id);
-        if(tzV||tz.datum||_inB3)out+='<div style="font-size:10px;color:var(--t2);margin-top:1px;display:flex;gap:5px;align-items:center">'+(_inB3?'<span style="font-size:9px;font-weight:700;color:'+f.tc+';background:'+f.bg+';border:1px solid '+f.bd+';padding:0 6px;border-radius:99px">● KW '+getKW().kw+'</span>':'')+(tzV?tzV.name:'')+(tz.datum?' · '+tz.datum.slice(8)+'.'+tz.datum.slice(5,7)+'.':'')+'</div>';
+        const _monate=['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
+        const _tzMonat=tz.datum?('bis '+_monate[parseInt(tz.datum.slice(5,7),10)-1]+(tz.datum.slice(0,4)!==String(new Date().getFullYear())?' '+tz.datum.slice(2,4):'')):null;
+        if(tzV||tz.datum||_inB3)out+='<div style="font-size:10px;color:var(--t2);margin-top:1px;display:flex;gap:5px;align-items:center">'+(_inB3?'<span style="font-size:9px;font-weight:700;color:'+f.tc+';background:'+f.bg+';border:1px solid '+f.bd+';padding:0 6px;border-radius:99px">● Big3</span>':'')+(tzV?tzV.name:'')+(tz.datum&&_tzMonat?' · '+_tzMonat:'')+'</div>';
         out+='</div>';
         if(tzA.length)out+='<span style="font-size:10px;color:'+f.tc+';background:'+f.bg+';border:1px solid '+f.bd+';padding:1px 7px;border-radius:99px;flex-shrink:0;font-weight:600">'+tzA.length+'</span>';
         out+='</div>';
@@ -3346,6 +3348,15 @@ async function delKpi(zid,kid){
   await dbDelete('kpis',kid);cm();rZiele();
 }
 
+function getFriday(){
+  const d=new Date();
+  const day=d.getDay(); // 0=So,1=Mo,...,5=Fr,6=Sa
+  const daysToFri=(5-day+7)%7; // 0=heute Fr, 1=Do, 2=Mi, 3=Di, 4=Mo, 5=So, 6=Sa
+  // ≤1 Tag bis Freitag (also Donnerstag) → nächste Woche; alle anderen → diese/nächste Fri
+  const add=daysToFri<=1&&daysToFri!==0?daysToFri+7:daysToFri;
+  d.setDate(d.getDate()+add);
+  return d.toISOString().slice(0,10);
+}
 function openNeu(pf={}){
   _selPrio=pf.prio||null;
   window._aiDebounce=null;
@@ -3364,7 +3375,7 @@ function openNeu(pf={}){
     +[null,'P1','P2','P3'].map(pr=>{const bg=pr==='P1'?'var(--red-bg)':pr==='P2'?'var(--orange-bg)':'var(--gray-bg)';const tc=pr==='P1'?'var(--red)':pr==='P2'?'var(--orange)':'var(--t2)';return'<button id="pbp-'+(pr||'k')+'" onclick="selPrioBtn(this,\''+pr+'\')" style="font-size:12px;padding:4px 11px;border-radius:8px;border:1px solid '+(pr?tc:'var(--bd)')+';background:'+bg+';color:'+tc+';cursor:pointer;font-family:inherit">'+(pr||'kein')+'</button>';}).join('')
     +'</div></div>'
     +'<div class="f2"><div class="fl"><label>Dauer</label><select id="nh">'+SH.map(([h,l])=>'<option value="'+h+'"'+((pf.geplant||1)==h?' selected':'')+'>'+l+'</option>').join('')+'</select></div>'
-    +'<div class="fl"><label>Fällig</label><div style="display:flex;gap:6px;align-items:center"><input type="date" id="ndl" value="'+(pf.dl||'')+'" style="flex:1">'
+    +'<div class="fl"><label>Fällig</label><div style="display:flex;gap:6px;align-items:center"><input type="date" id="ndl" value="'+(pf.dl||getFriday())+'" style="flex:1">'
     +'<button id="dltype-bis" onclick="toggleDlType(\'bis\')" class="btn-toggle on" data-v="bis">bis</button>'
     +'<button id="dltype-am" onclick="toggleDlType(\'am\')" class="btn-toggle" data-v="am">am</button>'
     +'</div></div></div>'
@@ -3388,8 +3399,17 @@ function updateNeuTZ(){
   if(!tzSel)return;
   tzSel.innerHTML='<option value="">— kein Meilenstein —</option>';
   const tza=z?(z.teilziele||[]).filter(t=>!t.erledigt):[];
-  tza.forEach(t=>{tzSel.innerHTML+='<option value="'+t.id+'">'+esc(t.name)+'</option>';});
+  tza.forEach(t=>{
+    const label=esc(t.name)+(t.datum?' · bis '+t.datum.slice(8)+'.'+t.datum.slice(5,7)+'.':'');
+    tzSel.innerHTML+='<option value="'+t.id+'" data-datum="'+(t.datum||'')+'">'+label+'</option>';
+  });
   if(wrap)wrap.style.display=tza.length?'':'none';
+  tzSel.onchange=()=>{
+    const opt=tzSel.options[tzSel.selectedIndex];
+    const mDatum=opt?.dataset?.datum;
+    const dlInput=document.getElementById('ndl');
+    if(mDatum&&dlInput)dlInput.value=mDatum;
+  };
 }
 function aiDebounce(){
   if(window._aiDebounce)clearTimeout(window._aiDebounce);
