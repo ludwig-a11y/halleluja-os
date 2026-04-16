@@ -1075,22 +1075,78 @@ function rKapazitaetBlock(pid){
   const rPct=k.rh>0?Math.min(k.p23h/k.rh,1.4)*100/1.4:0;
   const ft=kapTier(k.fh>0?k.p1h/k.fh:0);
   const rt=kapTier(k.rh>0?k.p23h/k.rh:0);
+
+  // Tages-Verteilung: Stunden pro Wochentag Mo–Fr
+  const TAGE=['Mo','Di','Mi','Do','Fr'];
+  const now=new Date();
+  // Montag dieser Woche
+  const dow=now.getDay()||7; // 1=Mo…7=So
+  const monTag=new Date(now.getFullYear(),now.getMonth(),now.getDate()-(dow-1));
+  // p1 und p23 Stunden pro Tag (index 0=Mo … 4=Fr)
+  const p1Days=[0,0,0,0,0],p23Days=[0,0,0,0,0];
+  S.aufgaben.forEach(a=>{
+    if(a.pid!==pid||a.status==='erledigt'||a.status==='idee'||a.typ==='random')return;
+    if(!a.dl)return;
+    const d=new Date(a.dl+'T12:00:00');
+    const diff=Math.round((d-monTag)/(86400000));
+    if(diff<0||diff>4)return; // nur Mo–Fr diese Woche
+    const h=a.geplant||1;
+    if(a.prio==='P1')p1Days[diff]+=h;
+    else p23Days[diff]+=h;
+  });
+  const todayIdx=Math.min(Math.max(dow-1,0),4); // 0=Mo…4=Fr
+  const maxH=Math.max(...p1Days.map((h,i)=>h+p23Days[i]),k.fh/5||4,1);
+
+  // Tages-Bars rendern
+  let dagBar='<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin-top:8px">';
+  TAGE.forEach((tag,i)=>{
+    const p1h=p1Days[i],p23h=p23Days[i],tot=p1h+p23h;
+    const isToday=i===todayIdx;
+    const isPast=i<todayIdx;
+    const p1Pct=Math.min(p1h/maxH,1)*100;
+    const p23Pct=Math.min(p23h/maxH,1)*100;
+    const alpha=isPast?'0.35':'1';
+    dagBar+='<div style="display:flex;flex-direction:column;align-items:center;gap:2px">';
+    // Bar (gestapelt: p1 unten rot, p23 oben blau)
+    dagBar+='<div style="width:100%;height:32px;background:var(--bd);border-radius:4px;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end;opacity:'+alpha+'">';
+    if(tot>0){
+      dagBar+='<div style="width:100%;height:'+Math.min(p23Pct,100)+'%;background:var(--blue);transition:height .3s"></div>';
+      dagBar+='<div style="width:100%;height:'+Math.min(p1Pct,100)+'%;background:var(--red);transition:height .3s"></div>';
+    }
+    dagBar+='</div>';
+    // Stunden-Label
+    dagBar+='<div style="font-size:9px;color:'+(tot>0?(isPast?'var(--t3)':'var(--t2)'):'var(--t3)')+'font-weight:'+(tot>0?'600':'400')+'">'+(tot>0?tot.toFixed(tot%1?1:0)+'h':'·')+'</div>';
+    // Tag-Label
+    dagBar+='<div style="font-size:9px;font-weight:'+(isToday?'700':'400')+';color:'+(isToday?'var(--text)':'var(--t3)')+'">'+tag+'</div>';
+    dagBar+='</div>';
+  });
+  dagBar+='</div>';
+
   let out='<div style="background:var(--gray-bg);border:1px solid var(--bd);border-radius:12px;padding:12px 14px;margin-bottom:12px">';
   out+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);margin-bottom:10px">Kapazität diese Woche</div>';
+  // P1
   out+='<div style="margin-bottom:8px">';
   out+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">';
   out+='<div style="font-size:11px;font-weight:600;color:var(--t2);display:flex;gap:5px;align-items:center">Fokuszeit <span style="font-size:10px;padding:1px 6px;border-radius:99px;background:var(--red-bg);color:var(--red);font-weight:700">P1</span></div>';
-  out+='<div style="font-size:11px;color:'+ft.color+'"><span style="font-weight:700">'+k.p1h.toFixed(1)+'h</span> committed · <span style="font-weight:600">'+ft.label+'</span></div></div>';
-  out+='<div style="height:6px;background:var(--bd);border-radius:99px;overflow:hidden"><div style="height:100%;border-radius:99px;background:'+ft.bar+';width:'+fPct+'%;transition:width .4s"></div></div>';
-  out+='<div style="font-size:10px;color:var(--t3);margin-top:2px">Zielzone: '+k.fh+'h · diese Woche</div></div>';
-  out+='<div style="margin-bottom:'+(k.rnd>0?'8':'0')+'px">';
+  out+='<div style="font-size:11px;color:'+ft.color+'"><span style="font-weight:700">'+k.p1h.toFixed(1)+'h</span> / '+k.fh+'h · <span style="font-weight:600">'+ft.label+'</span></div></div>';
+  out+='<div style="height:5px;background:var(--bd);border-radius:99px;overflow:hidden"><div style="height:100%;border-radius:99px;background:'+ft.bar+';width:'+fPct+'%;transition:width .4s"></div></div>';
+  out+='</div>';
+  // P2/P3
+  out+='<div style="margin-bottom:6px">';
   out+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">';
   out+='<div style="font-size:11px;font-weight:600;color:var(--t2);display:flex;gap:5px;align-items:center">Restzeit <span style="font-size:10px;padding:1px 6px;border-radius:99px;background:var(--orange-bg);color:var(--orange);font-weight:700">P2</span><span style="font-size:10px;padding:1px 6px;border-radius:99px;background:var(--sf);color:var(--t2);border:1px solid var(--bd);font-weight:600">P3</span></div>';
-  out+='<div style="font-size:11px;color:'+rt.color+'"><span style="font-weight:700">'+k.p23h.toFixed(1)+'h</span> committed · <span style="font-weight:600">'+rt.label+'</span></div></div>';
-  out+='<div style="height:6px;background:var(--bd);border-radius:99px;overflow:hidden"><div style="height:100%;border-radius:99px;background:'+rt.bar+';width:'+rPct+'%;transition:width .4s"></div></div>';
-  out+='<div style="font-size:10px;color:var(--t3);margin-top:2px">Zielzone: '+k.rh+'h · diese Woche</div></div>';
+  out+='<div style="font-size:11px;color:'+rt.color+'"><span style="font-weight:700">'+k.p23h.toFixed(1)+'h</span> / '+k.rh+'h · <span style="font-weight:600">'+rt.label+'</span></div></div>';
+  out+='<div style="height:5px;background:var(--bd);border-radius:99px;overflow:hidden"><div style="height:100%;border-radius:99px;background:'+rt.bar+';width:'+rPct+'%;transition:width .4s"></div></div>';
+  out+='</div>';
+  // Tages-Verteilung
+  out+=dagBar;
+  // Legende
+  out+='<div style="display:flex;gap:10px;margin-top:6px">';
+  out+='<div style="display:flex;gap:4px;align-items:center"><div style="width:8px;height:8px;border-radius:2px;background:var(--red)"></div><span style="font-size:9px;color:var(--t3)">P1</span></div>';
+  out+='<div style="display:flex;gap:4px;align-items:center"><div style="width:8px;height:8px;border-radius:2px;background:var(--blue)"></div><span style="font-size:9px;color:var(--t3)">P2/P3</span></div>';
+  out+='</div>';
   if(k.rnd>0){
-    out+='<div style="display:flex;justify-content:space-between;align-items:center;padding-top:6px;border-top:1px solid var(--bd)">';
+    out+='<div style="display:flex;justify-content:space-between;align-items:center;padding-top:6px;margin-top:4px;border-top:1px solid var(--bd)">';
     out+='<div style="font-size:11px;color:var(--t3)">🎲 Random — wenn Luft ist</div>';
     out+='<div style="font-size:11px;font-weight:600;color:var(--t3);background:var(--sf);border:1px solid var(--bd);padding:2px 8px;border-radius:99px">'+k.rnd+'</div></div>';
   }
