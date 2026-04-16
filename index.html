@@ -2487,8 +2487,14 @@ function rTag(){
       const isEarly=nowH<anchor;
       const earlyH=isEarly?Math.max(0,anchor-nowH):0;
       out+='<div style="background:var(--sf);border:1px solid var(--bd);border-radius:14px;padding:12px 16px;margin-bottom:14px">';
+      const showExtern=localStorage.getItem('gcal_show_extern')!=='0';
       out+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">';
+      out+='<div style="display:flex;align-items:center;gap:8px">';
       out+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t2)">Tagesplan</div>';
+      if(gcalIsConnected()&&S.kalender&&S.kalender.length){
+        out+='<button onclick="localStorage.setItem(\'gcal_show_extern\',\''+(!showExtern?'1':'0')+'\');render()" title="'+(showExtern?'Externe Termine ausblenden':'Externe Termine einblenden')+'" style="background:none;border:none;cursor:pointer;font-size:13px;opacity:'+(showExtern?'1':'.4')+';padding:0;line-height:1" aria-label="Kalender-Events ein/ausblenden">📅</button>';
+      }
+      out+='</div>';
       out+='<div style="font-size:11px;color:var(--t3)">'
         +(gapH>0.5?'<span style="color:var(--red)">'+Math.round(gapH*10)/10+'h ungenutzt</span> · ':'')
         +Math.round(erlH*10)/10+'h erledigt · '+Math.round(offenH*10)/10+'h offen</div>';
@@ -2544,7 +2550,7 @@ function rTag(){
       });
       // meeting overlays from Google Calendar
       window._gcalEvtMap=window._gcalEvtMap||{};
-      (S.kalender||[]).forEach((ev,idx)=>{
+      (showExtern?(S.kalender||[]):[]).forEach((ev,idx)=>{
         if(!ev.start||!ev.end)return;
         const sH=ev.start.getHours()+ev.start.getMinutes()/60;
         const eH=ev.end.getHours()+ev.end.getMinutes()/60;
