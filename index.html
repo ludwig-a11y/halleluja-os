@@ -1133,12 +1133,12 @@ function rKapazitaetBlock(pid){
     const mPct=Math.min(mh/maxH,1)*100;
     const alpha=isPast?'0.35':'1';
     dagBar+='<div style="display:flex;flex-direction:column;align-items:center;gap:2px">';
-    // Bar: meetings (grau oben) + p23 (blau) + p1 (rot unten)
-    dagBar+='<div style="width:100%;height:32px;background:var(--bd);border-radius:4px;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end;opacity:'+alpha+'">';
+    // Bar: p1 (rot oben) + p23 (blau) + meetings (grau) — wächst nach unten
+    dagBar+='<div style="width:100%;height:32px;background:var(--bd);border-radius:4px;overflow:hidden;display:flex;flex-direction:column;opacity:'+alpha+'">';
     if(tot>0){
-      if(mPct>0)dagBar+='<div style="width:100%;height:'+Math.min(mPct,100)+'%;background:var(--t3);transition:height .3s"></div>';
-      dagBar+='<div style="width:100%;height:'+Math.min(p23Pct,100)+'%;background:var(--blue);transition:height .3s"></div>';
       dagBar+='<div style="width:100%;height:'+Math.min(p1Pct,100)+'%;background:var(--red);transition:height .3s"></div>';
+      dagBar+='<div style="width:100%;height:'+Math.min(p23Pct,100)+'%;background:var(--blue);transition:height .3s"></div>';
+      if(mPct>0)dagBar+='<div style="width:100%;height:'+Math.min(mPct,100)+'%;background:var(--t3);transition:height .3s"></div>';
     }
     dagBar+='</div>';
     // Stunden-Label
