@@ -526,6 +526,26 @@ function focusTakeover(){
   setTimeout(()=>{ft.className='focus-takeover hide';},1800);
   setTimeout(()=>{if(ft.parentNode)ft.remove();},2300);
 }
+function celebrateErl(a){
+  // 3-stufige Celebration basierend auf Prio + Ziel
+  const zN=getZielName(a);
+  const isPowerActivity=a.prio==='P1'&&zN;
+  if(isPowerActivity){
+    // Ebene 2: P1 + Ziel → großes Konfetti + Banner
+    celebrate('⚡',zN?'Power Activity! Boot wird schneller!':'Geschafft! 💪');
+    const _teamSlack=S.personen.filter(p=>p.id!==aP&&p.slack_id).map(p=>p.slack_id);
+    notify('aufgabe_erledigt',{prio:a.prio,ziel:zN,aufgabe:a.titel,power_activity:true,team_slack_ids:_teamSlack,actor_slack_id:me()?.slack_id||''});
+  }else{
+    // Ebene 1: P1 ohne Ziel oder P2/P3 → kleines Konfetti, kein Slack
+    celebrate('🎉','Geschafft! Weiter so 💪');
+    if(a.prio==='P1'){
+      // P1 ohne Ziel: internes Feedback, kein Slack
+    } else {
+      const _teamSlack=S.personen.filter(p=>p.id!==aP&&p.slack_id).map(p=>p.slack_id);
+      notify('aufgabe_erledigt',{prio:a.prio,team_slack_ids:_teamSlack,actor_slack_id:me()?.slack_id||''});
+    }
+  }
+}
 function celebrate(emoji,text){
   // Confetti
   let wrap=document.getElementById('cele-wrap');
@@ -850,10 +870,41 @@ async function submitKpi(kpiId,pid){
 }
 
 // bestaetigeAufgabe merged into setPrio (supports null prio)
-async function aufgabeZurueck(id){
+function aufgabeZurueck(id){
   const a=S.aufgaben.find(x=>x.id===id);if(!a||!a.erstelltVon)return;
-  a.pid=a.erstelltVon;a.status='neu';a.prio=null;
-  await dbPatch('aufgaben',id,{pid:a.erstelltVon,status:'neu',prio:null});
+  const grund=prompt('Warum gibst du die Aufgabe zurück? (optional)');
+  if(grund===null)return; // cancelled
+  _doAufgabeZurueck(id,grund);
+}
+async function _doAufgabeZurueck(id,grund){
+  const a=S.aufgaben.find(x=>x.id===id);if(!a)return;
+  const absender=person(a.erstelltVon);
+  a.pid=a.erstelltVon;a.status='zurueckgegeben';a.prio=null;
+  const notizPrefix='↩ Zurückgegeben';
+  a.notiz=(grund?notizPrefix+': '+grund:notizPrefix)+(a.notiz?'\n\n'+a.notiz:'');
+  await dbPatch('aufgaben',id,{pid:a.erstelltVon,status:'zurueckgegeben',prio:null,notiz:a.notiz});
+  if(absender?.slack_id){
+    notify('aufgabe_zurueckgegeben',{
+      aufgabe:a.titel,grund:grund||'',
+      fuer:{id:absender.id,name:absender.name,slack_id:absender.slack_id}
+    });
+  }
+  toast('↩ Aufgabe zurückgegeben');
+  render();
+}
+async function aufgabeZurueckGesehen(id){
+  const a=S.aufgaben.find(x=>x.id===id);if(!a)return;
+  a.status='erledigt';a.notiz=(a.notiz||'').replace(/^↩ Zurückgegeben[^\n]*/,'✓ Zurückgabe gesehen');
+  await dbPatch('aufgaben',id,{status:'erledigt',notiz:a.notiz,updated_at:new Date().toISOString()});
+  render();
+}
+async function aufgabeZurueckNeu(id){
+  const a=S.aufgaben.find(x=>x.id===id);if(!a)return;
+  // Zurück in den Pool als neue Aufgabe
+  a.status='neu';a.prio=null;
+  a.notiz=(a.notiz||'').replace(/^↩ Zurückgegeben[^\n]*/,'');
+  if(a.notiz.startsWith('\n'))a.notiz=a.notiz.replace(/^\n+/,'');
+  await dbPatch('aufgaben',id,{status:'neu',prio:null,notiz:a.notiz||null});
   render();
 }
 function toggleWeiterleiten(id){
@@ -971,8 +1022,8 @@ async function klassifiziereAlsIdee(id){
 function rDelegBlock(pid){
   const delegated=S.aufgaben.filter(a=>a.erstelltVon===pid&&a.pid!==pid&&a.status!=='erledigt');
   if(!delegated.length)return'';
-  const statusMap={neu:'Neu',backlog:'In Pipeline',aktiv:'Läuft',erledigt:'Erledigt',zugewiesen:'Ausstehend',idee:'→ Idee Pool',random:'Random'};
-  const statusColor={neu:'var(--red)',backlog:'var(--t3)',aktiv:'var(--blue)',erledigt:'var(--green)',zugewiesen:'var(--amber)',idee:'var(--blue)',random:'var(--t3)'};
+  const statusMap={neu:'Neu',backlog:'In Pipeline',aktiv:'Läuft',erledigt:'Erledigt',zugewiesen:'Ausstehend',zurueckgegeben:'↩ Zurück',idee:'→ Idee Pool',random:'Random'};
+  const statusColor={neu:'var(--red)',backlog:'var(--t3)',aktiv:'var(--blue)',erledigt:'var(--green)',zugewiesen:'var(--amber)',zurueckgegeben:'var(--orange)',idee:'var(--blue)',random:'var(--t3)'};
   let out='<details style="margin-bottom:12px"><summary style="list-style:none;cursor:pointer;padding:12px 16px;background:var(--sf);border:1px solid var(--bd);border-radius:12px;display:flex;align-items:center;justify-content:space-between">';
   out+='<span style="font-size:13px;font-weight:600">Meine Delegationen</span>';
   out+='<span style="font-size:12px;color:var(--t3)">'+delegated.length+' · anzeigen</span></summary>';
@@ -2121,7 +2172,13 @@ function aufgabeKarte(a){
   let r='<div class="hoverable" style="background:var(--sf);border:1px solid var(--bd);border-radius:10px;padding:10px 14px;margin-bottom:6px;cursor:pointer" onclick="openDetail(\''+a.id+'\')">';
   r+='<div style="font-size:13px;font-weight:500;margin-bottom:4px">'+esc(a.titel)+'</div>';
   r+='<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap" onclick="event.stopPropagation()">'+prioTag(a.prio,a.id,editable);
-  r+=zN?'<span style="font-size:10px;color:var(--t3)">'+esc(zN)+'</span>':'<span onclick="event.stopPropagation();quickAssignZiel(\''+a.id+'\')" style="font-size:10px;color:var(--t3);border:1px dashed var(--bd);padding:1px 6px;border-radius:5px;cursor:pointer">+ Ziel?</span>';
+  if(a.prio==='P1'&&zN){
+    r+='<span style="font-size:10px;font-weight:600;color:var(--red);background:var(--red-bg);padding:1px 7px;border-radius:5px;border:1px solid var(--red-bd)">⚡ '+esc(zN)+'</span>';
+  }else if(zN){
+    r+='<span style="font-size:10px;color:var(--t3)">'+esc(zN)+'</span>';
+  }else{
+    r+='<span onclick="event.stopPropagation();quickAssignZiel(\''+a.id+'\')" style="font-size:10px;color:var(--t3);border:1px dashed var(--bd);padding:1px 6px;border-radius:5px;cursor:pointer">+ Ziel?</span>';
+  }
   r+=dlTag(a.dl);
   r+='<button onclick="event.stopPropagation();startenA(\''+a.id+'\')" style="font-size:11px;padding:4px 12px;border-radius:8px;background:var(--inv);color:var(--inv-t);border:none;font-family:inherit;cursor:pointer;font-weight:600;margin-left:auto">▶ Los</button>';
   r+='</div></div>';
@@ -2129,7 +2186,8 @@ function aufgabeKarte(a){
 }
 function rTag(){
   const zugewiesenA=S.aufgaben.filter(a=>a.pid===aP&&a.status==='zugewiesen');
-  const myA=S.aufgaben.filter(a=>a.pid===aP&&canSee(a)&&a.status!=='zugewiesen');
+  const zurueckA=S.aufgaben.filter(a=>a.pid===aP&&a.status==='zurueckgegeben');
+  const myA=S.aufgaben.filter(a=>a.pid===aP&&canSee(a)&&a.status!=='zugewiesen'&&a.status!=='zurueckgegeben');
   const aktiv=myA.filter(a=>a.status==='aktiv');
   const neu=myA.filter(a=>a.status==='neu'&&!(a.dl_type==='am'&&a.dl>TODAY));
   const bl=myA.filter(a=>a.status==='backlog'&&!(a.dl_type==='am'&&a.dl>TODAY)).sort((a,b)=>{
@@ -2552,7 +2610,7 @@ function rTag(){
 
   // ── Inbox (nur Aufgaben — Wolken/Ideen sind in Wochenansicht) ──
   {
-  const _inboxN=zugewiesenA.length+neu.length;
+  const _inboxN=zugewiesenA.length+neu.length+zurueckA.length;
   if(_inboxN){
     out+='<div style="background:var(--sf);border:1.5px solid var(--blue-bd);border-radius:14px;padding:14px 16px;margin-bottom:10px">';
     out+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><span style="font-size:15px">📬</span><span style="font-size:13px;font-weight:700">Inbox</span><span style="background:var(--blue);color:#fff;font-size:10px;font-weight:700;padding:2px 9px;border-radius:99px;margin-left:auto">'+_inboxN+' neu</span></div>';
@@ -2582,7 +2640,6 @@ function rTag(){
         +(S.ziele.length?'<button onclick="aufgabeZuMeilenstein(\''+a.id+'\')" class="btn-sm" style="border-color:var(--green-bd);background:var(--green-bg);color:var(--green)">→ Meilenstein</button>':'')
         +(a.erstelltVon&&a.erstelltVon!==aP?'<button onclick="aufgabeZurueck(\''+a.id+'\')" class="btn-sm" style="border-color:var(--red-bd);background:var(--red-bg);color:var(--red)">↩ Zurück</button>':'')
         +'<button onclick="toggleWeiterleiten(\''+a.id+'\')" class="btn-sm" style="border-color:var(--purple-bd);background:var(--purple-bg);color:var(--purple)">→ Weiterleiten</button>'
-        +'<button onclick="delAufgabe(\''+a.id+'\')" class="btn-xs">✕</button>'
         +'</div>'
         +'<div id="wl-'+a.id+'" style="display:none;gap:5px;flex-wrap:wrap;margin-top:6px;padding:8px 10px;background:var(--purple-bg);border:1px solid var(--purple-bd);border-radius:8px">'
         +'<span style="font-size:10px;color:var(--purple);font-weight:600;width:100%;margin-bottom:2px">An wen weiterleiten?</span>'
@@ -2614,7 +2671,29 @@ function rTag(){
       out+='<span style="font-size:10px;color:var(--t3)">oder:</span>';
       out+='<button onclick="klassifiziereAlsIdee(\''+a.id+'\')" class="btn-sm" style="border-color:var(--blue-bd);background:var(--blue-bg);color:var(--blue)">→ Ideen-Pool</button>';
       if(S.ziele.length)out+='<button onclick="aufgabeZuMeilenstein(\''+a.id+'\')" class="btn-sm" style="border-color:var(--green-bd);background:var(--green-bg);color:var(--green)">→ Meilenstein</button>';
-      out+='<button onclick="delAufgabe(\''+a.id+'\')" class="btn-xs">✕</button>';
+      out+='</div></div>';
+    });
+    }
+    // ── Zurückgegebene Aufgaben sub-section ──
+    if(zurueckA.length){
+    if(zugewiesenA.length||neu.length)out+='<div style="border-top:1px solid var(--bd);margin:10px 0"></div>';
+    out+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--orange);margin-bottom:6px">↩ Zurückgegeben</div>';
+    zurueckA.forEach(a=>{
+      const zurueckMatch=a.notiz?a.notiz.match(/^↩ Zurückgegeben(?:: (.+?))?(\n|$)/):null;
+      const grund=zurueckMatch?zurueckMatch[1]||'':'';
+      const vonWem=a.erstelltVon&&a.erstelltVon!==aP?person(a.erstelltVon):null;
+      // Wer hat zurückgegeben? Der, dem die Aufgabe zugewiesen war — hier ist pid jetzt der Absender, also der zurückgebende war der vorherige Empfänger
+      out+='<div style="background:var(--orange-bg);border:1px solid var(--orange-bd);border-radius:10px;padding:10px 12px;margin-bottom:8px">';
+      out+='<div style="font-size:13px;font-weight:600;margin-bottom:3px">'+esc(a.titel)+'</div>';
+      if(grund)out+='<div style="font-size:11px;color:var(--orange);margin-bottom:6px;font-style:italic">↩ '+esc(grund)+'</div>';
+      out+='<div style="display:flex;gap:6px;flex-wrap:wrap">';
+      out+='<button onclick="aufgabeZurueckNeu(\''+a.id+'\')" class="btn-sm" style="border-color:var(--blue-bd);background:var(--blue-bg);color:var(--blue)">↻ Neu priorisieren</button>';
+      out+='<button onclick="toggleWeiterleiten(\''+a.id+'\')" class="btn-sm" style="border-color:var(--purple-bd);background:var(--purple-bg);color:var(--purple)">→ Weiterleiten</button>';
+      out+='<button onclick="aufgabeZurueckGesehen(\''+a.id+'\')" class="btn-sm" style="border-color:var(--green-bd);background:var(--green-bg);color:var(--green)">✓ Erledigt</button>';
+      out+='</div>';
+      out+='<div id="wl-'+a.id+'" style="display:none;gap:5px;flex-wrap:wrap;margin-top:6px;padding:8px 10px;background:var(--purple-bg);border:1px solid var(--purple-bd);border-radius:8px">';
+      out+='<span style="font-size:10px;color:var(--purple);font-weight:600;width:100%;margin-bottom:2px">An wen weiterleiten?</span>';
+      out+=S.personen.filter(p=>p.id!==aP).map(p=>'<div onclick="weiterleitenAufgabe(\''+a.id+'\',\''+p.id+'\')" style="cursor:pointer;font-size:11px;font-weight:600;padding:4px 11px;border-radius:99px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);white-space:nowrap;transition:all .15s" onmousedown="this.style.background=\'var(--purple)\';this.style.color=\'#fff\'" onmouseup="this.style.background=\'var(--sf)\';this.style.color=\'var(--t2)\'">'+esc(p.name.split(' ')[0])+'</div>').join('');
       out+='</div></div>';
     });
     }
@@ -2658,6 +2737,16 @@ function rTag(){
 
 async function setPrio(id,pr){
   const a=S.aufgaben.find(x=>x.id===id);if(!a||a._busy)return;
+  // P1-Pflichtfeld: Ziel erforderlich
+  if(pr==='P1'){
+    const zSel=document.getElementById('inbox-ziel-'+id);
+    const zid=zSel?zSel.value:'';
+    if(!zid&&S.ziele.length){
+      if(zSel){zSel.style.outline='2px solid var(--red)';zSel.focus();}
+      toast('⚡ P1 braucht ein Ziel – wähle zuerst das verknüpfte Ziel aus');
+      return;
+    }
+  }
   const prev={prio:a.prio,status:a.status};a._busy=true;
   const p=(!pr||pr==='null')?null:pr;
   try{
@@ -2718,7 +2807,10 @@ async function fertig(id){
       await dbInsert('aufgaben',rec);
     }
     showPaddelCelebration(pid);
+    celebrateErl(a);
     checkP1Done(pid);
+    const restOffen=S.aufgaben.filter(x=>String(x.pid)===String(aP)&&x.status!=='erledigt');
+    if(!restOffen.length)setTimeout(()=>celebrate('🏆','Alle Aufgaben erledigt! 🎉'),1500);
   }catch(e){console.error('fertig',e);a.gebucht=prev.gebucht;a.aktSeit=prev.aktSeit;a.status=prev.status;a.updated_at=prev.updated_at;}
   finally{a._busy=false;try{render();}catch(e){console.error('render@fertig2',e);}}
 }
@@ -2853,8 +2945,7 @@ async function setStatusModal(id,st){
   Object.assign(a,{status:st,aktSeit:st==='aktiv'?Date.now():null,updated_at:now,...(patch.gebucht!==undefined?{gebucht:patch.gebucht}:{})});
   const _teamSlack=S.personen.filter(p=>p.id!==aP&&p.slack_id).map(p=>p.slack_id);
   if(st==='erledigt'){
-    celebrate('🎉','Geschafft! Weiter so 💪');checkP1Done(a.pid);
-    notify('aufgabe_erledigt',{prio:a.prio||null,team_slack_ids:_teamSlack,actor_slack_id:me()?.slack_id||''});
+    celebrateErl(a);checkP1Done(a.pid);
     const restOffen=S.aufgaben.filter(x=>String(x.pid)===String(aP)&&x.status!=='erledigt');
     if(!restOffen.length)setTimeout(()=>celebrate('🏆','Alle Aufgaben erledigt! 🎉'),1500);
   }
@@ -3694,6 +3785,13 @@ function selPrioBtn(btn,pr){
 async function saveNeu(){
   const t=document.getElementById('nt').value.trim();if(!t)return;
   const zielId=document.getElementById('nziel')?.value||null;
+  // P1-Pflichtfeld: Ziel erforderlich
+  if(_selPrio==='P1'&&!zielId){
+    const zSel=document.getElementById('nziel');
+    if(zSel){zSel.style.outline='2px solid var(--red)';zSel.focus();}
+    toast('⚡ P1 braucht ein Ziel – wähle das verknüpfte Ziel aus');
+    return;
+  }
   const tzSel=document.getElementById('ntz');
   const teilzielId=tzSel?tzSel.value||null:null;
   const typ=zielId?'strategisch':'operativ';
