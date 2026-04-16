@@ -2533,6 +2533,15 @@ function rTag(){
       out+='</div>';
       // bar container
       out+='<div style="position:relative">';
+      // Fokuszeit-Streifen über dem Bar
+      if(fzStartH!=null){
+        const fsPctB=Math.min(100,Math.max(0,(fzStartH-dayStart)/barH*100));
+        const feWB=Math.min(100-fsPctB,Math.max(0,(fzEndH-fzStartH)/barH*100));
+        if(feWB>0){
+          const fzNowInB=nowH>=fzStartH&&nowH<fzEndH;
+          out+='<div style="position:absolute;left:'+fsPctB+'%;width:'+feWB+'%;top:-6px;height:3px;background:'+(fzNowInB?'#f59e0b':'rgba(245,158,11,.5)')+';border-radius:2px 2px 0 0;z-index:9"></div>';
+        }
+      }
       // 9:00 anchor line
       if(dayStart<anchor)out+='<div style="position:absolute;left:'+anchorPct+'%;top:0;bottom:0;width:1px;background:var(--text);opacity:.15;z-index:8"></div>';
       // single-row bar
@@ -2578,8 +2587,8 @@ function rTag(){
         const fzW=Math.max(0,feL-fsL);
         if(fzW>0){
           const fzNowIn=nowH>=fzStartH&&nowH<fzEndH;
-          out+='<div title="Fokuszeit '+fzStart+'–'+fzEnd+'" style="position:absolute;left:'+fsL+'%;width:'+fzW+'%;top:0;bottom:0;background:rgba(245,158,11,'+(fzNowIn?'.18':'.1')+');border-left:2px solid rgba(245,158,11,.5);border-right:1px solid rgba(245,158,11,.3);z-index:4;pointer-events:none;box-sizing:border-box">'
-            +'<span style="font-size:8px;color:#b45309;font-weight:700;padding:0 4px;white-space:nowrap;line-height:32px;display:block;overflow:hidden;text-overflow:ellipsis;opacity:.8">🎯 Fokus</span>'
+          out+='<div title="Fokuszeit '+fzStart+'–'+fzEnd+'" style="position:absolute;left:'+fsL+'%;width:'+fzW+'%;top:0;bottom:0;background:rgba(245,158,11,'+(fzNowIn?'.22':'.13')+');border-left:2px solid rgba(245,158,11,'+(fzNowIn?'.8':'.4')+');border-right:1px solid rgba(245,158,11,.2);z-index:4;pointer-events:none;box-sizing:border-box">'
+            +(fzNowIn?'<span style="font-size:8px;color:#b45309;font-weight:700;padding:0 4px;white-space:nowrap;line-height:32px;display:block;overflow:hidden;text-overflow:ellipsis">🎯 Fokus</span>':'')
             +'</div>';
         }
       }
