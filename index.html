@@ -2160,9 +2160,8 @@ function rWoche(){
     out+='<button onclick="openWochenreset()" style="font-size:11px;padding:5px 12px;border-radius:7px;border:1px solid var(--bd);background:var(--gray-bg);color:var(--t2);cursor:pointer;font-family:inherit">✎ Bearbeiten</button>';
     out+='<button onclick="openBlocker(\''+wr.id+'\')" style="font-size:11px;padding:5px 12px;border-radius:7px;border:1px solid var(--red-bd);background:var(--red-bg);color:var(--red);cursor:pointer;font-family:inherit">⚠ Blocker</button>';
     const _offFr2=S.decisionRequests.filter(d=>d.erstellt_von===aP&&['offen','pipeline','in_meeting'].includes(d.status)).length;
-    out+='<button onclick="openOffeneFrage()" style="font-size:11px;padding:5px 12px;border-radius:7px;border:1px dashed var(--gold);background:transparent;color:var(--gold-t);cursor:pointer;font-family:inherit">🔍 Klärung anfragen'
-      +(_offFr2?'<span style="background:var(--gold);color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:99px;margin-left:5px">'+_offFr2+'</span>':'')
-      +'</button>';
+    out+='<button onclick="openOffeneFrage()" style="font-size:11px;padding:5px 12px;border-radius:7px;border:1px dashed var(--gold);background:transparent;color:var(--gold-t);cursor:pointer;font-family:inherit">🔍 Klärung anfragen</button>';
+    if(_offFr2)out+='<span onclick="localStorage.setItem(\'dr_filter\',\'offen\');nav(\'team\')" style="background:var(--gold);color:#fff;font-size:10px;font-weight:700;padding:3px 10px;border-radius:99px;cursor:pointer;display:inline-flex;align-items:center;gap:3px" title="Meine offenen Klärungen ansehen">'+_offFr2+' offen →</span>';
     out+='</div>';
     out+='</div>';
   }else{
@@ -2561,11 +2560,10 @@ function rTag(){
       out+='</div>';
     } else {
       const _offFr=S.decisionRequests.filter(d=>d.erstellt_von===aP&&['offen','pipeline','in_meeting'].includes(d.status)).length;
-      out+='<div style="margin-top:-6px;margin-bottom:12px;display:flex;gap:6px">'
+      out+='<div style="margin-top:-6px;margin-bottom:12px;display:flex;gap:6px;align-items:center">'
         +'<button onclick="openBlocker(\''+wrAktuell.id+'\')" style="font-size:10px;padding:3px 10px;border-radius:6px;border:1px dashed var(--bd);background:transparent;color:var(--t3);cursor:pointer;font-family:inherit">⚠ Blockade melden</button>'
-        +'<button onclick="openOffeneFrage()" style="font-size:10px;padding:3px 10px;border-radius:6px;border:1px dashed var(--gold);background:transparent;color:var(--gold-t);cursor:pointer;font-family:inherit">🔍 Klärung anfragen'
-        +(_offFr?'<span style="background:var(--gold);color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:99px;margin-left:5px">'+_offFr+'</span>':'')
-        +'</button>'
+        +'<button onclick="openOffeneFrage()" style="font-size:10px;padding:3px 10px;border-radius:6px;border:1px dashed var(--gold);background:transparent;color:var(--gold-t);cursor:pointer;font-family:inherit">🔍 Klärung anfragen</button>'
+        +(_offFr?'<span onclick="localStorage.setItem(\'dr_filter\',\'offen\');nav(\'team\')" style="background:var(--gold);color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px;cursor:pointer;display:flex;align-items:center;gap:3px" title="Meine offenen Klärungen ansehen">'+_offFr+' offen →</span>':'')
         +'</div>';
     }
   }
