@@ -2473,10 +2473,22 @@ function rTag(){
       const nowH=now.getHours()+now.getMinutes()/60;
       const erlH=erl.reduce((s,a)=>s+(a.gebucht||a.geplant||0.5),0);
       const offenH=tlTasks.reduce((s,a)=>s+(a.geplant||1),0);
+      // Fokuszeit aus Profil
+      const mePerson=person(aP);
+      let fzStart=null,fzEnd=null,fzStartH=null,fzEndH=null;
+      if(mePerson&&mePerson.fokus_start&&mePerson.fokus_end){
+        const [fsh,fsm]=mePerson.fokus_start.split(':').map(Number);
+        const [feh,fem]=mePerson.fokus_end.split(':').map(Number);
+        fzStartH=fsh+fsm/60;
+        fzEndH=feh+fem/60;
+        fzStart=mePerson.fokus_start;
+        fzEnd=mePerson.fokus_end;
+      }
       // 9:00 is the anchor — always. Early = bonus, late = visible gap
       const anchor=9;
-      let dayStart=Math.min(anchor,Math.floor(nowH));
+      let dayStart=Math.min(anchor,Math.floor(fzStartH!=null?Math.min(nowH,fzStartH):nowH));
       let dayEnd=Math.max(17,Math.ceil(nowH+offenH));
+      if(fzEndH!=null&&fzEndH>dayEnd)dayEnd=Math.ceil(fzEndH);
       const barH=dayEnd-dayStart;
       const erlPct=(erlH/barH*100);
       const gapH=Math.max(0,(nowH-dayStart)-erlH);
@@ -2491,6 +2503,10 @@ function rTag(){
       out+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">';
       out+='<div style="display:flex;align-items:center;gap:8px">';
       out+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t2)">Tagesplan</div>';
+      if(fzStart){
+        const fzNowIn=fzStartH!=null&&nowH>=fzStartH&&nowH<fzEndH;
+        out+='<div style="font-size:10px;font-weight:600;padding:1px 7px;border-radius:99px;background:rgba(245,158,11,.15);color:#b45309;border:1px solid rgba(245,158,11,.3)" title="Fokuszeit '+fzStart+'–'+fzEnd+'">'+(fzNowIn?'🎯 Fokus jetzt':'⚡ Fokus '+fzStart+'–'+fzEnd)+'</div>';
+      }
       if(gcalIsConnected()&&S.kalender&&S.kalender.length){
         out+='<button onclick="localStorage.setItem(\'gcal_show_extern\',\''+(!showExtern?'1':'0')+'\');render()" title="'+(showExtern?'Externe Termine ausblenden':'Externe Termine einblenden')+'" style="background:none;border:none;cursor:pointer;font-size:13px;opacity:'+(showExtern?'1':'.4')+';padding:0;line-height:1" aria-label="Kalender-Events ein/ausblenden">📅</button>';
       }
@@ -2506,6 +2522,13 @@ function rTag(){
         const isAnchor=h===anchor;
         const show=isAnchor||h===12||h===15||h===dayEnd||(h<anchor&&h===dayStart);
         if(show&&pct>=0&&pct<=100)out+='<div style="position:absolute;left:'+pct+'%;font-size:8px;'+(isAnchor?'font-weight:700;color:var(--text)':'color:var(--t3)')+';transform:translateX(-50%)">'+h+(isAnchor?':00':'')+'</div>';
+      }
+      // Fokuszeit-Ticks
+      if(fzStartH!=null){
+        const fsPct=Math.min(100,Math.max(0,(fzStartH-dayStart)/barH*100));
+        const fePct=Math.min(100,Math.max(0,(fzEndH-dayStart)/barH*100));
+        out+='<div style="position:absolute;left:'+fsPct+'%;font-size:8px;font-weight:700;color:#b45309;transform:translateX(-50%);top:0">🎯</div>';
+        if(fePct<100)out+='<div style="position:absolute;left:'+fePct+'%;font-size:8px;color:#b45309;opacity:.6;transform:translateX(-50%);top:0">⬛</div>';
       }
       out+='</div>';
       // bar container
@@ -2548,6 +2571,18 @@ function rTag(){
         out+='<span style="font-size:9px;color:'+tc+';opacity:.5;flex-shrink:0;margin-left:auto">'+fmtH(dur)+'</span>';
         out+='</div>';
       });
+      // Fokuszeit overlay
+      if(fzStartH!=null){
+        const fsL=Math.max(0,(fzStartH-dayStart)/barH*100);
+        const feL=Math.min(100,(fzEndH-dayStart)/barH*100);
+        const fzW=Math.max(0,feL-fsL);
+        if(fzW>0){
+          const fzNowIn=nowH>=fzStartH&&nowH<fzEndH;
+          out+='<div title="Fokuszeit '+fzStart+'–'+fzEnd+'" style="position:absolute;left:'+fsL+'%;width:'+fzW+'%;top:0;bottom:0;background:rgba(245,158,11,'+(fzNowIn?'.18':'.1')+');border-left:2px solid rgba(245,158,11,.5);border-right:1px solid rgba(245,158,11,.3);z-index:4;pointer-events:none;box-sizing:border-box">'
+            +'<span style="font-size:8px;color:#b45309;font-weight:700;padding:0 4px;white-space:nowrap;line-height:32px;display:block;overflow:hidden;text-overflow:ellipsis;opacity:.8">🎯 Fokus</span>'
+            +'</div>';
+        }
+      }
       // meeting overlays from Google Calendar
       window._gcalEvtMap=window._gcalEvtMap||{};
       (showExtern?(S.kalender||[]):[]).forEach((ev,idx)=>{
