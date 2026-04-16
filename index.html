@@ -4615,7 +4615,13 @@ function rTeam(){
   const rankData=S.personen.map(p=>({p,count:getPaddelCount(p.id)})).sort((a,b)=>b.count-a.count).filter(x=>x.count>0);
   if(rankData.length){
     outPR+='<div style="background:var(--amber-bg);border:1px solid var(--amber-bd);border-radius:14px;padding:14px 16px;margin-bottom:16px">';
-    outPR+='<div style="font-size:11px;font-weight:700;color:var(--amber);margin-bottom:10px">🏆 Paddel-Rangliste</div>';
+    outPR+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">';
+    outPR+='<div style="font-size:11px;font-weight:700;color:var(--amber)">🏆 Paddel-Rangliste</div>';
+    outPR+='<div style="margin-left:auto;display:flex;gap:5px;align-items:center">';
+    outPR+='<span style="font-size:9px;padding:1px 6px;border-radius:99px;background:var(--red-bg);color:var(--red);font-weight:700">P1 = 3🏅</span>';
+    outPR+='<span style="font-size:9px;padding:1px 6px;border-radius:99px;background:var(--blue-bg);color:var(--blue);font-weight:700">P2 = 1🏅</span>';
+    outPR+='<span style="font-size:9px;padding:1px 6px;border-radius:99px;background:var(--gray-bg);color:var(--t3);font-weight:700">P3 = 0</span>';
+    outPR+='</div></div>';
     rankData.forEach((x,i)=>{
       const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':'';
       outPR+='<div style="display:flex;align-items:center;gap:10px;padding:5px 0">';
