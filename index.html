@@ -527,23 +527,15 @@ function focusTakeover(){
   setTimeout(()=>{if(ft.parentNode)ft.remove();},2300);
 }
 function celebrateErl(a){
-  // 3-stufige Celebration basierend auf Prio + Ziel
   const zN=getZielName(a);
-  const isPowerActivity=a.prio==='P1'&&zN;
-  if(isPowerActivity){
-    // Ebene 2: P1 + Ziel → großes Konfetti + Banner
-    celebrate('⚡',zN?'Power Activity! Boot wird schneller!':'Geschafft! 💪');
+  if(a.prio==='P1'&&zN){
+    // Power Activity: P1 + Ziel → großes Konfetti + Slack ans Team (nur Ziel)
+    celebrate('⚡','Power Activity! Boot wird schneller!');
     const _teamSlack=S.personen.filter(p=>p.id!==aP&&p.slack_id).map(p=>p.slack_id);
-    notify('aufgabe_erledigt',{prio:a.prio,ziel:zN,aufgabe:a.titel,power_activity:true,team_slack_ids:_teamSlack,actor_slack_id:me()?.slack_id||''});
+    notify('aufgabe_erledigt',{prio:'P1',ziel:zN,power_activity:true,team_slack_ids:_teamSlack,actor_slack_id:me()?.slack_id||''});
   }else{
-    // Ebene 1: P1 ohne Ziel oder P2/P3 → kleines Konfetti, kein Slack
+    // P2/P3 → kleines Konfetti, kein Team-Slack
     celebrate('🎉','Geschafft! Weiter so 💪');
-    if(a.prio==='P1'){
-      // P1 ohne Ziel: internes Feedback, kein Slack
-    } else {
-      const _teamSlack=S.personen.filter(p=>p.id!==aP&&p.slack_id).map(p=>p.slack_id);
-      notify('aufgabe_erledigt',{prio:a.prio,team_slack_ids:_teamSlack,actor_slack_id:me()?.slack_id||''});
-    }
   }
 }
 function celebrate(emoji,text){
