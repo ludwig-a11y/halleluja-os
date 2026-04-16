@@ -2218,7 +2218,7 @@ function rWoche(){
         out+='<div style="display:flex;gap:4px;flex-wrap:wrap">';
         out+='<button onclick="besprechenSignal(\''+s.id+'\')" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--blue-bd);background:var(--blue-bg);color:var(--blue);cursor:pointer;font-family:inherit">💬 Besprechen</button>';
         out+='<button onclick="signalZuKlaerung(\''+s.id+'\')" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--amber-bd,#d97706);background:var(--amber-bg,#fffbeb);color:var(--amber,#b45309);cursor:pointer;font-family:inherit">🔍 Klärung</button>';
-        out+='<button onclick="ideenZuAufgabe(\''+s.id+'\')" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--text);cursor:pointer;font-family:inherit">→ Aufgabe</button>';
+        out+=s._aufgabe_erstellt?'<span style="font-size:10px;color:var(--green);font-weight:600;padding:3px 8px;border:1px solid var(--green-bd);border-radius:6px;background:var(--green-bg)">✓ Aufgabe erstellt</span>':'<button onclick="ideenZuAufgabe(\''+s.id+'\')" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--text);cursor:pointer;font-family:inherit">→ Aufgabe</button>';
         out+='<button onclick="signalGesehen(\''+s.id+'\')" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--green-bd);background:var(--green-bg);color:var(--green);cursor:pointer;font-family:inherit">✓ Gesehen</button>';
         out+='<button onclick="signalBearbeiten(\''+s.id+'\')" style="font-size:10px;padding:3px 7px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);cursor:pointer;font-family:inherit">✏</button>';
         out+='<button onclick="delSignal(\''+s.id+'\')" style="font-size:10px;padding:3px 7px;border-radius:6px;border:1px solid var(--red);background:transparent;color:var(--red);cursor:pointer;font-family:inherit">🗑</button>';
@@ -2393,7 +2393,7 @@ function rWoche(){
         out+='</div>';
         out+='<div style="display:flex;gap:4px;flex-shrink:0">';
         out+='<button onclick="besprechenSignal(\''+s.id+'\')" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--blue-bd);background:var(--blue-bg);color:var(--blue);cursor:pointer;font-family:inherit">💬</button>';
-        out+='<button onclick="ideenZuAufgabe(\''+s.id+'\')" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--text);cursor:pointer;font-family:inherit">→ Aufgabe</button>';
+        out+=s._aufgabe_erstellt?'<span style="font-size:10px;color:var(--green);font-weight:600;padding:3px 8px;border:1px solid var(--green-bd);border-radius:6px;background:var(--green-bg)">✓ Aufgabe erstellt</span>':'<button onclick="ideenZuAufgabe(\''+s.id+'\')" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--text);cursor:pointer;font-family:inherit">→ Aufgabe</button>';
         out+='<button onclick="signalErledigt(\''+s.id+'\')" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--green-bd);background:var(--green-bg);color:var(--green);cursor:pointer;font-family:inherit">✓ Erledigt</button>';
         out+='</div></div>';
       });
@@ -4434,6 +4434,15 @@ async function saveNeu(){
   if(rec.prio==='P1'||rec.dl)gcalCreateEvent(rec);
   if(pid!==aP){const tp=person(pid);notify('aufgabe_zugewiesen',{aufgabe:t,fuer:{id:pid,name:tp?tp.name:'?',slack_id:tp?.slack_id||''},prio:rec.prio,dl:rec.dl});}
   cm();render();
+  // Feedback wenn aus Idee/Wolke erstellt
+  if(window._fromSignalId){
+    const sid=window._fromSignalId;window._fromSignalId=null;
+    const sig=S.signale.find(x=>String(x.id)===String(sid));
+    if(sig){sig._aufgabe_erstellt=true;render();}
+    const typ=sig?.typ==='idee'?'Idee':'Wolke';
+    const wem=rec.pid!==aP?(person(rec.pid)?.name.split(' ')[0]||''):'dir';
+    toast('✓ Aufgabe aus '+typ+' erstellt'+(rec.pid!==aP?' → Inbox von '+wem:''));
+  }
 }
 
 function quickAssignZiel(id){
@@ -4554,7 +4563,7 @@ function rIdeenPool(){
       out+='</div></div>';
       out+='<div style="display:flex;gap:5px;flex-shrink:0">';
       out+='<button onclick="besprechenSignal(\''+s.id+'\')" style="font-size:10px;padding:3px 9px;border-radius:7px;border:1px solid var(--blue-bd);background:var(--blue-bg);color:var(--blue);cursor:pointer;font-family:inherit;white-space:nowrap">💬 Besprechen</button>';
-      if(canConvert)out+='<button onclick="ideenZuAufgabe(\''+s.id+'\')" style="font-size:10px;padding:3px 9px;border-radius:7px;border:1px solid var(--bd);background:var(--sf);color:var(--text);cursor:pointer;font-family:inherit;white-space:nowrap">→ Aufgabe</button>';
+      if(canConvert)out+=s._aufgabe_erstellt?'<span style="font-size:10px;color:var(--green);font-weight:600;padding:3px 9px;border:1px solid var(--green-bd);border-radius:7px;background:var(--green-bg);white-space:nowrap">✓ Erstellt</span>':'<button onclick="ideenZuAufgabe(\''+s.id+'\')" style="font-size:10px;padding:3px 9px;border-radius:7px;border:1px solid var(--bd);background:var(--sf);color:var(--text);cursor:pointer;font-family:inherit;white-space:nowrap">→ Aufgabe</button>';
       if(s.pid===aP||isGF())out+='<button onclick="delSignal(\''+s.id+'\')" style="font-size:10px;padding:3px 7px;border-radius:7px;border:1px solid var(--red-bd);background:var(--red-bg);color:var(--red);cursor:pointer;font-family:inherit">✕</button>';
       out+='</div></div></div>';
     });
@@ -4593,6 +4602,7 @@ async function saveIdee(typ){
 }
 async function ideenZuAufgabe(sid){
   const s=S.signale.find(x=>String(x.id)===String(sid));if(!s)return;
+  window._fromSignalId=sid;
   openNeu({titel:s.was,notiz:s.notiz||''});
 }
 function rTeam(){
