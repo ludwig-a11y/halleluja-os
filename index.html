@@ -2604,7 +2604,9 @@ function rTag(){
         out+='<div style="font-size:10px;color:var(--t3);margin-top:6px">';
         if(inMeeting&&meet)out+='<span style="color:var(--amber,#b45309);font-weight:600">📅 '+esc(meet.titel)+(meet.datum?' · '+meet.datum:'')+'</span>';
         else out+='In Pipeline seit '+(d.pipeline_seit||TODAY);
-        out+='</div></div>';
+        out+='</div>';
+        out+=drActionBar(d);
+        out+='</div>';
       });
       out+='</div>';
     }
@@ -4810,11 +4812,7 @@ function rTeam(){
           if(von2)out+='<div style="font-size:10px;color:var(--t3);margin-top:4px">von '+esc(von2.name)+' · '+d.beantwortet_am.slice(0,10)+'</div>';
           out+='</div>';
         }
-        if(d.status==='offen'){
-          out+='<div style="margin-top:8px;display:flex;gap:6px">';
-          out+='<button onclick="zuPipeline(\''+d.id+'\')" style="font-size:11px;padding:4px 10px;border-radius:8px;border:1px solid var(--amber-bd,#d97706);background:var(--amber-bg,#fffbeb);color:var(--amber,#b45309);cursor:pointer;font-family:inherit">⏳ → Pipeline</button>';
-          out+='</div>';
-        }
+        out+=drActionBar(d);
         out+='</div>';
       });
       if(!gefiltert.length){
@@ -4863,6 +4861,7 @@ function rTeam(){
           geplanteMeetings.forEach(m=>{out+='<option value="'+m.id+'">'+esc(m.titel)+(m.datum?' ('+m.datum+')':'')+'</option>';});
           out+='</select>';
         }
+        out+=drActionBar(d);
         out+='</div>';
       });
     }
@@ -5696,8 +5695,17 @@ async function saveMeeting(){
   const uhrzeit=document.getElementById('mf-uhrzeit').value||null;
   const teilnehmerIds=[...document.querySelectorAll('input[name="mt-teil"]:checked')].map(el=>el.value);
   const selectedFragen=[...document.querySelectorAll('input[name="mt-frage"]:checked')].map(el=>el.value);
+  // Auto-Teilnehmer: Ersteller + Empfänger aller angehakten Fragen automatisch hinzufügen
+  const teilnSet=new Set(teilnehmerIds);
+  teilnSet.add(aP); // Ersteller des Meetings immer dabei
+  for(const drId of selectedFragen){
+    const d=S.decisionRequests.find(x=>x.id===drId);if(!d)continue;
+    if(d.erstellt_von)teilnSet.add(d.erstellt_von);
+    if(d.an_person_id)teilnSet.add(d.an_person_id);
+  }
+  const finalTeiln=[...teilnSet];
   const meetId=nid('mt');
-  const rec={id:meetId,titel,datum,uhrzeit,teilnehmer_ids:teilnehmerIds,meet_link:null,gcal_event_id:null,aufnahme_link:null,status:'geplant',erstellt_von:aP,erstellt_am:new Date().toISOString()};
+  const rec={id:meetId,titel,datum,uhrzeit,teilnehmer_ids:finalTeiln,meet_link:null,gcal_event_id:null,aufnahme_link:null,status:'geplant',erstellt_von:aP,erstellt_am:new Date().toISOString()};
   S.meetings.unshift(rec);
   await dbInsert('meetings',rec);
   for(const drId of selectedFragen){
@@ -5705,7 +5713,7 @@ async function saveMeeting(){
     d.status='in_meeting';d.meeting_id=meetId;
     await dbPatch('decision_requests',drId,{status:'in_meeting',meeting_id:meetId});
   }
-  const teilnNames=teilnehmerIds.map(id=>person(id)?.name||'').filter(Boolean);
+  const teilnNames=finalTeiln.map(id=>person(id)?.name||'').filter(Boolean);
   notify('meeting_erstellt',{titel,datum,teilnehmer_names:teilnNames,fragen_count:selectedFragen.length,actor_slack_id:me()?.slack_id||''});
   cm();
   if(gcalIsConnected())gcalCreateMeetingEvent(rec);
@@ -5788,6 +5796,114 @@ async function meetingAbschliessen(meetId){
   m.status='abgeschlossen';
   await dbPatch('meetings',meetId,{status:'abgeschlossen'});
   render();toast('✅ Meeting abgeschlossen');
+}
+
+// ─── Decision-Request Lifecycle: Löschen, Bearbeiten, Zurück zu Offen ───
+async function drLoeschen(drId){
+  const d=S.decisionRequests.find(x=>x.id===drId);if(!d)return;
+  if(!confirm('Frage wirklich löschen?\n\n"'+d.frage.slice(0,100)+'"\n\nDas kann nicht rückgängig gemacht werden.'))return;
+  const idx=S.decisionRequests.findIndex(x=>x.id===drId);
+  const bak=S.decisionRequests[idx];
+  S.decisionRequests.splice(idx,1);render();
+  const ok=await dbDelete('decision_requests',drId);
+  if(!ok){S.decisionRequests.splice(idx,0,bak);render();toast('⚠️ Löschen fehlgeschlagen');}
+  else toast('🗑 Gelöscht');
+}
+async function drRausAusPipeline(drId){
+  const d=S.decisionRequests.find(x=>x.id===drId);if(!d)return;
+  const prev={status:d.status,pipeline_seit:d.pipeline_seit,meeting_id:d.meeting_id};
+  d.status='offen';d.pipeline_seit=null;d.meeting_id=null;render();
+  const ok=await dbPatch('decision_requests',drId,{status:'offen',pipeline_seit:null,meeting_id:null});
+  if(!ok){Object.assign(d,prev);render();toast('⚠️ Speichern fehlgeschlagen');}
+  else toast('⟲ Zurück zu Offen');
+}
+function drEdit(drId){
+  const d=S.decisionRequests.find(x=>x.id===drId);if(!d)return;
+  const personOpts='<option value="">— optional —</option>'+S.personen.filter(p=>p.id!==aP).map(p=>'<option value="'+p.id+'"'+(p.id===d.an_person_id?' selected':'')+'>'+esc(p.name)+'</option>').join('');
+  const typ=d.typ||'entscheidung';
+  document.getElementById('mb').innerHTML=
+    '<div class="mt">✏ Frage bearbeiten</div>'
+    +'<div class="fl"><label>Typ</label>'
+    +'<div style="display:flex;gap:12px;margin-top:4px;flex-wrap:wrap">'
+    +'<label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer"><input type="radio" name="ed-typ" value="entscheidung"'+(typ==='entscheidung'?' checked':'')+'> ⚖️ Entscheidung</label>'
+    +'<label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer"><input type="radio" name="ed-typ" value="problem"'+(typ==='problem'?' checked':'')+'> ⚠️ Problem</label>'
+    +'<label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer"><input type="radio" name="ed-typ" value="unklarheit"'+(typ==='unklarheit'?' checked':'')+'> ❓ Unklarheit</label>'
+    +'</div></div>'
+    +'<div class="fl"><label>An wen? <span style="color:var(--t3);font-weight:400">(optional)</span></label>'
+    +'<select id="ed-an" style="font-size:13px">'+personOpts+'</select></div>'
+    +'<div class="fl"><label>Frage / Problem <span style="color:var(--red)">*</span></label>'
+    +'<textarea id="ed-frage" rows="2" style="resize:none">'+esc(d.frage)+'</textarea></div>'
+    +'<div class="fl"><label>Kontext <span style="color:var(--t3);font-weight:400">(optional)</span></label>'
+    +'<textarea id="ed-kontext" rows="2" style="resize:none">'+esc(d.kontext||'')+'</textarea></div>'
+    +'<div class="fl"><label>Blockiert <span style="color:var(--t3);font-weight:400">(optional)</span></label>'
+    +'<input type="text" id="ed-blockiert" value="'+esc(d.blockiert||'')+'"></div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
+    +'<div class="fl"><label>Priorität</label><select id="ed-prio" style="font-size:13px">'
+    +['hoch','mittel','niedrig'].map(p=>'<option value="'+p+'"'+(d.prioritaet===p?' selected':'')+'>'+({'hoch':'🔴 Hoch','mittel':'🟡 Mittel','niedrig':'⚪ Niedrig'}[p])+'</option>').join('')
+    +'</select></div>'
+    +'<div class="fl"><label>Deadline <span style="color:var(--t3);font-weight:400">(optional)</span></label>'
+    +'<input type="date" id="ed-deadline" value="'+esc(d.deadline||'')+'"></div>'
+    +'</div>'
+    +'<div class="mf"><button class="btn btn-gr" onclick="cm()">Abbrechen</button>'
+    +'<button class="btn" onclick="drSaveEdit(\''+drId+'\')" style="background:var(--gold);border-color:var(--gold);color:#fff">Speichern</button></div>';
+  document.getElementById('ovl').classList.add('open');
+}
+async function drSaveEdit(drId){
+  const d=S.decisionRequests.find(x=>x.id===drId);if(!d)return;
+  const frage=document.getElementById('ed-frage').value.trim();
+  if(!frage){toast('Bitte Frage eingeben');return;}
+  const patch={
+    frage,
+    typ:document.querySelector('input[name="ed-typ"]:checked')?.value||'entscheidung',
+    an_person_id:document.getElementById('ed-an').value||null,
+    kontext:document.getElementById('ed-kontext').value.trim()||null,
+    blockiert:document.getElementById('ed-blockiert').value.trim()||null,
+    prioritaet:document.getElementById('ed-prio').value,
+    deadline:document.getElementById('ed-deadline').value||null
+  };
+  const prev={frage:d.frage,typ:d.typ,an_person_id:d.an_person_id,kontext:d.kontext,blockiert:d.blockiert,prioritaet:d.prioritaet,deadline:d.deadline};
+  Object.assign(d,patch);
+  const ok=await dbPatch('decision_requests',drId,patch);
+  if(!ok){Object.assign(d,prev);render();toast('⚠️ Speichern fehlgeschlagen');return;}
+  cm();render();toast('✅ Gespeichert');
+}
+// Einheitliche Action-Leiste pro Frage (je nach Status + Rolle)
+function drActionBar(d){
+  const istErsteller=d.erstellt_von===aP;
+  const istEmpfaenger=d.an_person_id===aP;
+  const darfAendern=isGF()||istErsteller;
+  const darfAntworten=isGF()||istEmpfaenger;
+  const bStyle='font-size:11px;padding:4px 10px;border-radius:7px;cursor:pointer;font-family:inherit;border:1px solid var(--bd);background:var(--sf);color:var(--t2)';
+  const amber='font-size:11px;padding:4px 10px;border-radius:7px;cursor:pointer;font-family:inherit;border:1px solid var(--amber-bd,#d97706);background:var(--amber-bg,#fffbeb);color:var(--amber,#b45309)';
+  const gold='font-size:11px;padding:4px 10px;border-radius:7px;border:none;background:var(--gold);color:#fff;cursor:pointer;font-family:inherit;font-weight:600';
+  let btns='';
+  if(d.status==='offen'){
+    if(darfAntworten){
+      btns+='<button onclick="openDecisionAnswer(\''+d.id+'\',\'entscheiden\')" style="'+gold+'">✓ Entscheiden</button>';
+      btns+='<button onclick="openDecisionAnswer(\''+d.id+'\',\'zurueck\')" style="'+bStyle+'">↩ Zurück</button>';
+    }
+    if(darfAendern)btns+='<button onclick="zuPipeline(\''+d.id+'\')" style="'+amber+'">⏳ Pipeline</button>';
+  } else if(d.status==='pipeline'){
+    if(darfAntworten){
+      btns+='<button onclick="openDecisionAnswer(\''+d.id+'\',\'entscheiden\')" style="'+gold+'">✓ Direkt entscheiden</button>';
+      btns+='<button onclick="openDecisionAnswer(\''+d.id+'\',\'zurueck\')" style="'+bStyle+'">↩ Zurückgeben</button>';
+    }
+    if(darfAendern)btns+='<button onclick="drRausAusPipeline(\''+d.id+'\')" style="'+bStyle+'">⟲ Zurück zu Offen</button>';
+  } else if(d.status==='in_meeting'){
+    if(darfAendern)btns+='<button onclick="drRausAusPipeline(\''+d.id+'\')" style="'+bStyle+'">⟲ Raus aus Meeting</button>';
+  } else if(d.status==='zurueckgegeben'){
+    if(istErsteller)btns+='<button onclick="drNeuAnfragen(\''+d.id+'\')" style="'+bStyle+'">🔁 Neu anfragen</button>';
+  }
+  // Bearbeiten (solange nicht entschieden und nicht mid-meeting)
+  if(darfAendern&&(d.status==='offen'||d.status==='pipeline'||d.status==='zurueckgegeben')){
+    btns+='<button onclick="drEdit(\''+d.id+'\')" style="'+bStyle+'" title="Bearbeiten">✏</button>';
+  }
+  // Löschen: Ersteller oder GF; bei 'entschieden' nur GF
+  if(darfAendern||(isGF()&&d.status==='entschieden')){
+    btns+='<button onclick="drLoeschen(\''+d.id+'\')" style="'+bStyle+';color:var(--red);border-color:var(--red)" title="Löschen">🗑</button>';
+  }
+  if(!btns)return'';
+  return'<div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap">'+btns+'</div>';
 }
 
 // ─── Google Calendar Integration ───────────────────────────────
