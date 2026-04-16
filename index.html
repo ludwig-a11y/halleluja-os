@@ -263,7 +263,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;font-size:1
     <div class="logo">Halleluja OS</div>
     <button class="nt on" onclick="nav('tag',this)">Mein Tag</button>
     <button class="nt" id="nav-woche" onclick="nav('woche',this)">Woche</button>
-    <button class="nt" id="nav-ziele" onclick="nav('ziele',this)">Ziele</button>
+    <button class="nt" id="nav-ziele" onclick="nav('ziele',this)">Zielbilder</button>
     <button class="nt" id="nav-team" onclick="nav('team',this)">Team</button>
     <div style="flex:1"></div>
     <div id="fokus-banner" style="display:none;align-items:center;gap:6px;padding:4px 12px;background:var(--red-bg);border:1px solid var(--red-bd);border-radius:8px;font-size:11px;font-weight:600;color:var(--red)">🎯 <span id="fokus-label"></span></div>
@@ -364,9 +364,9 @@ function zieleOptgroups(pid,selId=''){
   const meine=ziele.filter(z=>String(z.verantwortlichId)===String(pid)||(z.teilziele||[]).some(tz=>String(tz.verantwortlichId)===String(pid)));
   const andere=ziele.filter(z=>!meine.find(m=>m.id===z.id));
   const opt=z=>'<option value="'+z.id+'"'+(selId===z.id?' selected':'')+'>'+esc(z.name)+'</option>';
-  let out='<option value="">— kein Ziel / Bereich —</option>';
-  if(meine.length)out+='<optgroup label="Meine Ziele">'+meine.map(opt).join('')+'</optgroup>';
-  if(andere.length)out+='<optgroup label="Andere Ziele">'+andere.map(opt).join('')+'</optgroup>';
+  let out='<option value="">— kein Zielbild / Bereich —</option>';
+  if(meine.length)out+='<optgroup label="Meine Zielbilder">'+meine.map(opt).join('')+'</optgroup>';
+  if(andere.length)out+='<optgroup label="Andere Zielbilder">'+andere.map(opt).join('')+'</optgroup>';
   if(bereiche.length)out+='<optgroup label="📁 Bereiche">'+bereiche.map(z=>'<option value="'+z.id+'"'+(selId===z.id?' selected':'')+'>📁 '+esc(z.name)+'</option>').join('')+'</optgroup>';
   return out;
 }
@@ -1345,9 +1345,17 @@ function openWochenreset(){
   // Ziel-Optionen aufteilen: Meine Ziele, Bereiche, Andere
   let zieleHtml='';
   if(meineZ.length){meineZ.forEach(z=>{zieleHtml+=zBtn(z);});}
-  if(meineBer.length){zieleHtml+='<div style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin:8px 0 4px">📁 Meine Bereiche</div>';meineBer.forEach(z=>{zieleHtml+=zBtn(z);});}
+  if(meineBer.length){
+    zieleHtml+='<div style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin:8px 0 4px">📁 Meine Bereiche</div>';
+    // "Alle meine Bereiche" Sammel-Button
+    if(meineBer.length>1){
+      const allBSel=selZielId==='__alle_bereiche__';
+      zieleHtml+='<div onclick="[...document.querySelectorAll(\'.zw-opt\')].forEach(x=>{x.style.borderColor=\'#e5e5e3\';x.style.color=\'#888\';x.style.background=\'#fff\'});this.style.borderColor=\'var(--text)\';this.style.color=\'var(--text)\';this.style.background=\'var(--gray-bg)\';document.getElementById(\'wr-ziel\').value=\'__alle_bereiche__\';updateWRTZSection()" class="zw-opt" style="cursor:pointer;border:1.5px solid '+(allBSel?'var(--text)':'#e5e5e3')+';border-radius:8px;padding:8px 11px;font-size:12px;font-weight:600;color:'+(allBSel?'var(--text)':'#888')+';background:'+(allBSel?'var(--gray-bg)':'#fff')+';margin-bottom:5px">📁 Alle meine Bereiche</div>';
+    }
+    meineBer.forEach(z=>{zieleHtml+=zBtn(z);});
+  }
   const andereAlle=[...andereZ,...andereBer];
-  if(andereAlle.length){zieleHtml+='<details style="margin-top:6px"><summary style="font-size:11px;color:var(--t3);cursor:pointer;padding:4px 0">▸ Andere Ziele ('+andereAlle.length+')</summary><div style="margin-top:6px">'+andereAlle.map(zBtn).join('')+'</div></details>';}
+  if(andereAlle.length){zieleHtml+='<details style="margin-top:6px"><summary style="font-size:11px;color:var(--t3);cursor:pointer;padding:4px 0">▸ Andere Zielbilder ('+andereAlle.length+')</summary><div style="margin-top:6px">'+andereAlle.map(zBtn).join('')+'</div></details>';}
 
   document.getElementById('mb').innerHTML=
     '<div class="mt">'+(wr?'Big 3 bearbeiten — KW '+kw:'Wochenplanung KW '+nextKw)+'</div>'
@@ -1408,8 +1416,9 @@ function openWochenreset(){
 function updateWRTZSection(){
   const zielId=document.getElementById('wr-ziel')?.value;
   const div=document.getElementById('wr-tz-section');if(!div)return;
-  const z=zielId?S.ziele.find(x=>x.id===zielId):null;
-  const isBereich=z&&z.status==='bereich';
+  const isAlleBereiche=zielId==='__alle_bereiche__';
+  const z=(!isAlleBereiche&&zielId)?S.ziele.find(x=>x.id===zielId):null;
+  const isBereich=isAlleBereiche||(z&&z.status==='bereich');
   const tzArr=(!isBereich&&z)?(z.teilziele||[]).filter(t=>!t.erledigt):[];
   // Update Step 2 label
   const step2Label=document.getElementById('wr-step2-label');
@@ -1418,17 +1427,34 @@ function updateWRTZSection(){
   if(step2Sub)step2Sub.textContent=isBereich?'Was willst du in diesem Bereich diese Woche schaffen?':'Wähle bestehende oder lege neue an (max. 3)';
   let html='';
   if(tzArr.length){
-    html+='<div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Bestehende Meilensteine</div>';
-    html+='<div style="font-size:10px;color:var(--t3);margin-bottom:7px">Anhaken = übernehmen · Abhaken = entfernen</div>';
-    html+='<div style="display:flex;flex-direction:column;gap:5px;margin-bottom:12px">';
-    tzArr.forEach(tz=>{
-      html+='<label onclick="var l=this;requestAnimationFrame(function(){var c=l.querySelector(\'input\');l.style.borderColor=c.checked?\'var(--green)\':\'var(--bd)\';l.style.background=c.checked?\'var(--green-bg)\':\'var(--gray-bg)\'})" style="display:flex;align-items:center;gap:9px;padding:8px 10px;background:var(--gray-bg);border:1.5px solid var(--bd);border-radius:8px;cursor:pointer;transition:all .15s">'
+    const curMon=TODAY.slice(0,7);
+    const monNames=['','Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
+    const curMonName=monNames[parseInt(curMon.slice(5),10)]||'';
+    // Fällige Meilensteine = Datum im aktuellen Monat oder früher (überfällig) oder kein Datum
+    const faellig=tzArr.filter(tz=>!tz.datum||tz.datum.slice(0,7)<=curMon);
+    const spaeter=tzArr.filter(tz=>tz.datum&&tz.datum.slice(0,7)>curMon);
+    const tzRow=tz=>{
+      const ueberf=tz.datum&&tz.datum<TODAY;
+      const dlLabel=tz.datum?('bis '+tz.datum.slice(8)+'.'+tz.datum.slice(5,7)+'.'):'';
+      return '<label onclick="var l=this;requestAnimationFrame(function(){var c=l.querySelector(\'input\');l.style.borderColor=c.checked?\'var(--green)\':\'var(--bd)\';l.style.background=c.checked?\'var(--green-bg)\':\'var(--gray-bg)\'})" style="display:flex;align-items:center;gap:9px;padding:8px 10px;background:var(--gray-bg);border:1.5px solid var(--bd);border-radius:8px;cursor:pointer;transition:all .15s">'
         +'<input type="checkbox" class="wr-tz-check" value="'+tz.id+'" style="width:16px;height:16px;cursor:pointer;flex-shrink:0;accent-color:var(--green)">'
         +'<span style="font-size:12px;font-weight:500;color:var(--text);flex:1">'+esc(tz.name)+'</span>'
-        +'<span style="font-size:10px;color:var(--t3)">Klick zum Wählen/Abwählen</span>'
+        +(dlLabel?'<span style="font-size:10px;color:'+(ueberf?'var(--red)':'var(--t3)')+'">'+dlLabel+(ueberf?' ⚠':'')+'</span>':'<span style="font-size:10px;color:var(--t3)">ohne Datum</span>')
         +'</label>';
-    });
-    html+='</div>';
+    };
+    if(faellig.length){
+      html+='<div style="font-size:11px;font-weight:700;color:var(--text);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">📅 Fällig im '+curMonName+'</div>';
+      html+='<div style="font-size:10px;color:var(--t3);margin-bottom:7px">Diese Meilensteine solltest du diese Woche voranbringen</div>';
+      html+='<div style="display:flex;flex-direction:column;gap:5px;margin-bottom:12px">';
+      faellig.forEach(tz=>{html+=tzRow(tz);});
+      html+='</div>';
+    }
+    if(spaeter.length){
+      html+='<details style="margin-bottom:12px"><summary style="font-size:11px;color:var(--t3);cursor:pointer;padding:4px 0">▸ Später fällig ('+spaeter.length+')</summary>';
+      html+='<div style="display:flex;flex-direction:column;gap:5px;margin-top:6px">';
+      spaeter.forEach(tz=>{html+=tzRow(tz);});
+      html+='</div></details>';
+    }
   }
   const freePlaceholder=isBereich?'Konkretes Ergebnis diese Woche…':'Konkretes Ergebnis bis Freitag…';
   html+='<div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:7px">'+(isBereich?'Deine Big 3 im Bereich':tzArr.length?'Neu anlegen (wird automatisch Meilenstein)':'Meilensteine eingeben')+'</div>';
@@ -1441,7 +1467,7 @@ async function saveWochenreset(){
   const{kw,jahr}=getKW();
   const wr=dieseWocheReset(aP);
   const zielId=document.getElementById('wr-ziel').value||null;
-  const fokusIsBereich=zielId&&istBereich(zielId);
+  const fokusIsBereich=zielId&&(zielId==='__alle_bereiche__'||istBereich(zielId));
   const selTzIds=fokusIsBereich?[]:[...document.querySelectorAll('.wr-tz-check:checked')].map(x=>x.value);
   const newTzTexts=[1,2,3].map(n=>document.getElementById('wr-b'+n)?.value.trim()||'');
   const newTzIds=[];
@@ -1891,7 +1917,7 @@ function rSB(){
   // 2) Goal partners (shared goals, different team) — click opens shared goals view
   const goalPartners=[...myGoalPartnerIds].filter(id=>!shownIds.has(id)&&person(id));
   if(goalPartners.length){
-    h+='<div class="gl" style="margin-top:14px">Gemeinsame Ziele</div>';
+    h+='<div class="gl" style="margin-top:14px">Gemeinsame Zielbilder</div>';
     goalPartners.forEach(id=>{
       shownIds.add(id);
       h+=renderPerson(id,false,'openSharedGoals(\''+id+'\')');
@@ -2030,7 +2056,9 @@ function rWoche(){
     out+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">';
     out+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:'+f.tc+'">Big 3 · KW '+kw+'</div>';
     const fzIsB=fz&&fz.status==='bereich';
-    out+='<span style="font-size:11px;color:'+(big3DowLate?'var(--red)':'var(--t2)')+'">'+big3Done+'/'+big3Total+' ✓'+(fz?' · '+(fzIsB?'📁 ':'')+esc(fz.name):'')+'</span>';
+    const isAlleB=wr.focus_ziel_id==='__alle_bereiche__';
+    const fokusLabel=isAlleB?'📁 Meine Bereiche':fz?(fzIsB?'📁 ':'')+esc(fz.name):'';
+    out+='<span style="font-size:11px;color:'+(big3DowLate?'var(--red)':'var(--t2)')+'">'+big3Done+'/'+big3Total+' ✓'+(fokusLabel?' · '+fokusLabel:'')+'</span>';
     out+='</div>';
     [[1,'big3_1_done'],[2,'big3_2_done'],[3,'big3_3_done']].forEach(([n,doneF],i)=>{
       const txt=wrItemName(wr,n);if(!txt)return;
@@ -2312,7 +2340,7 @@ function aufgabeKarte(a){
   }else if(zN){
     r+='<span style="font-size:10px;color:var(--t3)">'+esc(zN)+'</span>';
   }else{
-    r+='<span onclick="event.stopPropagation();quickAssignZiel(\''+a.id+'\')" style="font-size:10px;color:var(--t3);border:1px dashed var(--bd);padding:1px 6px;border-radius:5px;cursor:pointer">+ Ziel?</span>';
+    r+='<span onclick="event.stopPropagation();quickAssignZiel(\''+a.id+'\')" style="font-size:10px;color:var(--t3);border:1px dashed var(--bd);padding:1px 6px;border-radius:5px;cursor:pointer">+ Zielbild?</span>';
   }
   r+=dlTag(a.dl);
   r+='<button onclick="event.stopPropagation();startenA(\''+a.id+'\')" style="font-size:11px;padding:4px 12px;border-radius:8px;background:var(--inv);color:var(--inv-t);border:none;font-family:inherit;cursor:pointer;font-weight:600;margin-left:auto">▶ Los</button>';
@@ -2899,7 +2927,7 @@ async function setPrio(id,pr){
     const zSel=document.getElementById('inbox-ziel-'+id);
     const zid=zSel?zSel.value:'';
     if(!zid&&S.ziele.length){
-      if(!confirm('P1 ohne Ziel – sicher? Überlege welches Ziel das voranbringt.')){
+      if(!confirm('P1 ohne Zielbild – sicher? Überlege welches Zielbild das voranbringt.')){
         if(zSel){zSel.style.outline='2px solid var(--red)';zSel.focus();}
         return;
       }
@@ -3096,7 +3124,7 @@ function openDetail(id){
     +'<div><label>Geplant (h)</label><input type="number" id="det-geplant" value="'+(a.geplant||'')+'" min="0" step="0.5" placeholder="Std." onblur="saveDetailField(\''+id+'\',\'geplant\',parseFloat(this.value)||null)"></div>'
     +'</div>';
   h+='<div class="fl"><label>Wiederkehrend</label><select id="det-rec" onchange="saveDetailField(\''+id+'\',\'recurring\',this.value||null)" style="font-size:12px"><option value="">Einmalig</option><option value="daily"'+(a.recurring==='daily'?' selected':'')+'>Täglich</option><option value="weekly"'+(a.recurring==='weekly'?' selected':'')+'>Wöchentlich</option><option value="monthly"'+(a.recurring==='monthly'?' selected':'')+'>Monatlich</option></select></div>';
-  h+='<div class="fl"><label>Ziel</label><select id="det-ziel" onchange="saveDetailField(\''+id+'\',\'ziel_id\',this.value||null)"><option value="">— kein Ziel —</option>'+zielOpts+'</select></div>';
+  h+='<div class="fl"><label>Zielbild / Bereich</label><select id="det-ziel" onchange="saveDetailField(\''+id+'\',\'ziel_id\',this.value||null)"><option value="">— kein Zielbild —</option>'+zielOpts+'</select></div>';
   h+='<div class="fl"><label>Status</label><div style="display:flex;gap:5px;flex-wrap:wrap">'
     +[['neu','Neu','var(--red-bg)','var(--red)'],['backlog','Backlog','var(--gray-bg)','var(--t2)'],['aktiv','Aktiv','var(--blue-bg)','var(--blue)'],['erledigt','Erledigt','var(--green-bg)','var(--green)']].map(x=>
       '<button onclick="setStatusModal(\''+id+'\',\''+x[0]+'\')" style="font-size:11px;padding:4px 10px;border-radius:8px;border:'+(a.status===x[0]?'2px':'1px')+' solid '+(a.status===x[0]?'var(--text)':'var(--bd)')+';background:'+(a.status===x[0]?x[2]:'var(--sf)')+';color:'+(a.status===x[0]?x[3]:'var(--t2)')+';cursor:pointer;font-family:inherit;font-weight:'+(a.status===x[0]?600:400)+'">'+x[1]+'</button>'
@@ -3164,8 +3192,8 @@ function rZiele(){
   const vorschlaege=S.ziele.filter(z=>z.status==='vorschlag');
   const meineVorschlaege=vorschlaege.filter(z=>String(z.vorgeschlagen_von)===String(aP));
   let out='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">'
-    +'<div style="font-size:16px;font-weight:700">Ziele'+(isGF()&&vorschlaege.length?' <span style="font-size:11px;background:var(--amber);color:#fff;border-radius:99px;padding:1px 7px;font-weight:700;vertical-align:middle">'+vorschlaege.length+'</span>':'')+'</div>'
-    +(isGF()?'<div style="display:flex;gap:8px"><button class="btn btn-dk" onclick="addZiel()">+ Neues Ziel</button><button class="btn" style="border:1px solid var(--bd);background:var(--gray-bg);color:var(--t2)" onclick="addBereich()">📁 + Bereich</button></div>':'<button class="btn btn-dk" onclick="vorschlagenZiel()">+ Ziel vorschlagen</button>')
+    +'<div style="font-size:16px;font-weight:700">Zielbilder'+(isGF()&&vorschlaege.length?' <span style="font-size:11px;background:var(--amber);color:#fff;border-radius:99px;padding:1px 7px;font-weight:700;vertical-align:middle">'+vorschlaege.length+'</span>':'')+'</div>'
+    +(isGF()?'<div style="display:flex;gap:8px"><button class="btn btn-dk" onclick="addZiel()">+ Neues Zielbild</button><button class="btn" style="border:1px solid var(--bd);background:var(--gray-bg);color:var(--t2)" onclick="addBereich()">📁 + Bereich</button></div>':'<button class="btn btn-dk" onclick="vorschlagenZiel()">+ Zielbild vorschlagen</button>')
     +'</div>';
   if(isGF()&&vorschlaege.length){
     out+='<div style="background:var(--amber-bg);border:1.5px solid var(--amber-bd);border-radius:12px;padding:14px 16px;margin-bottom:20px">';
@@ -3196,39 +3224,41 @@ function rZiele(){
   }
   const alleZiele=S.ziele.filter(z=>(!z.vertraulich||isGF())&&z.status!=='vorschlag'&&z.status!=='bereich');
 
-  // ── Monats-Pillen ──
+  // ── Quartals-Pillen ──
   const curMon=TODAY.slice(0,7);
-  const monNames=['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
   const curYear=new Date().getFullYear();
-  if(!window._zielMonat)window._zielMonat=curMon;
-  out+='<div style="display:flex;gap:4px;margin-bottom:16px;overflow-x:auto;padding:2px 0">';
-  for(let m=0;m<12;m++){
-    const mon=curYear+'-'+(''+(m+1)).padStart(2,'0');
-    const isCur=mon===curMon;
-    const isActive=mon===window._zielMonat;
-    const isPast=mon<curMon;
-    let style='font-size:11px;font-weight:600;padding:5px 12px;border-radius:99px;cursor:pointer;white-space:nowrap;border:1.5px solid ';
+  const curQ=Math.ceil((new Date().getMonth()+1)/3);
+  if(!window._zielQ)window._zielQ=curQ;
+  out+='<div style="display:flex;gap:6px;margin-bottom:16px;padding:2px 0">';
+  [1,2,3,4].forEach(q=>{
+    const qStart=curYear+'-'+(''+(q*3-2)).padStart(2,'0');
+    const qEnd=curYear+'-'+(''+(q*3)).padStart(2,'0');
+    const isActive=window._zielQ===q;
+    const isPast=q<curQ;
+    let style='font-size:12px;font-weight:700;padding:7px 18px;border-radius:99px;cursor:pointer;white-space:nowrap;border:1.5px solid ';
     if(isActive)style+='var(--inv);background:var(--inv);color:var(--inv-t)';
     else if(isPast)style+='var(--green-bd);background:var(--green-bg);color:var(--green)';
     else style+='var(--bd);background:var(--sf);color:var(--t3)';
-    out+='<div onclick="window._zielMonat=\''+mon+'\';rZiele()" style="'+style+'">'+monNames[m]+'</div>';
-  }
-  out+='<div onclick="window._zielMonat=null;rZiele()" style="font-size:11px;font-weight:600;padding:5px 12px;border-radius:99px;cursor:pointer;white-space:nowrap;border:1.5px solid '+(window._zielMonat===null?'var(--inv);background:var(--inv);color:var(--inv-t)':'var(--bd);background:var(--sf);color:var(--t3)')+'">Alle</div>';
+    out+='<div onclick="window._zielQ='+q+';rZiele()" style="'+style+'">Q'+q+'</div>';
+  });
+  out+='<div onclick="window._zielQ=null;rZiele()" style="font-size:12px;font-weight:700;padding:7px 18px;border-radius:99px;cursor:pointer;white-space:nowrap;border:1.5px solid '+(window._zielQ===null?'var(--inv);background:var(--inv);color:var(--inv-t)':'var(--bd);background:var(--sf);color:var(--t3)')+'">Alle</div>';
   out+='</div>';
 
-  const zielImMonat=z=>{
-    if(!window._zielMonat)return true;
+  const zielImQuartal=z=>{
+    if(!window._zielQ)return true;
+    const qStart=curYear+'-'+(''+(window._zielQ*3-2)).padStart(2,'0');
+    const qEnd=curYear+'-'+(''+(window._zielQ*3)).padStart(2,'0');
     const ms=z.monat_start||'';
     const me=z.monat_ende||'';
     if(!ms&&!me)return true;
-    if(ms&&me)return window._zielMonat>=ms&&window._zielMonat<=me;
-    if(ms)return window._zielMonat>=ms;
-    return window._zielMonat<=me;
+    if(ms&&me)return me>=qStart&&ms<=qEnd;
+    if(ms)return ms<=qEnd;
+    return me>=qStart;
   };
 
   const istMeinZiel=z=>isGF()||z.verantwortlichId===aP||(z.teilziele||[]).some(tz=>tz.verantwortlichId===aP);
-  const meineZiele=alleZiele.filter(z=>istMeinZiel(z)&&zielImMonat(z)).sort((a,b)=>(a.verantwortlichId===aP?0:1)-(b.verantwortlichId===aP?0:1));
-  const andereZiele=alleZiele.filter(z=>!istMeinZiel(z)&&zielImMonat(z));
+  const meineZiele=alleZiele.filter(z=>istMeinZiel(z)&&zielImQuartal(z)).sort((a,b)=>(a.verantwortlichId===aP?0:1)-(b.verantwortlichId===aP?0:1));
+  const andereZiele=alleZiele.filter(z=>!istMeinZiel(z)&&zielImQuartal(z));
 
   meineZiele.forEach(z=>{
     const f=FARBEN[z.farbe]||FARBEN[0];
@@ -3343,7 +3373,7 @@ function rZiele(){
   // Andere Ziele
   if(andereZiele.length){
     out+='<div style="margin-top:8px">';
-    out+='<div style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Unternehmensziele</div>';
+    out+='<div style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Unternehmens-Zielbilder</div>';
     andereZiele.forEach(z=>{
       const f=FARBEN[z.farbe]||FARBEN[0],verantw=person(z.verantwortlichId);
       out+='<div style="border-left:3px solid '+f.tc+';padding:0 0 12px 16px;margin-bottom:4px">';
@@ -3445,7 +3475,7 @@ async function delTZ(zid,tzid){
 }
 
 async function addZiel(){
-  const id=nid('z'),rec={id,name:'Neues Ziel',farbe:Math.floor(Math.random()*FARBEN.length),pct:0,verantwortlich_id:null,vertraulich:false};
+  const id=nid('z'),rec={id,name:'Neues Zielbild',farbe:Math.floor(Math.random()*FARBEN.length),pct:0,verantwortlich_id:null,vertraulich:false};
   S.ziele.push({...rec,verantwortlichId:null,kpis:[],teilziele:[]});
   await dbInsert('ziele',rec);rZiele();editZiel(id);
 }
@@ -3477,7 +3507,7 @@ async function saveBereich(zid){
 function editZiel(zid){
   const z=S.ziele.find(x=>x.id===zid);if(!z)return;
   if(z.status==='bereich')return editBereich(zid);
-  document.getElementById('mb').innerHTML='<div class="mt">Ziel bearbeiten</div>'
+  document.getElementById('mb').innerHTML='<div class="mt">Zielbild bearbeiten</div>'
     +'<div class="fl"><label>Name</label><input id="zn" value="'+esc(z.name)+'" autofocus></div>'
     +'<div class="fl"><label>Verantwortlich</label><select id="zver"><option value="">— niemand —</option>'+S.personen.map(p=>'<option value="'+p.id+'"'+(z.verantwortlichId===p.id?' selected':'')+'>'+esc(p.name)+'</option>').join('')+'</select></div>'
     +'<div class="fl"><label style="display:flex;align-items:center;gap:8px;text-transform:none;font-size:13px;font-weight:400"><input type="checkbox" id="zvert" '+(z.vertraulich?'checked':'')+' style="width:auto"> 🔒 Vertraulich</label><div style="font-size:10px;color:var(--t3);margin-top:2px">Sichtbar für: nur Geschäftsführung</div></div>'
@@ -3505,7 +3535,7 @@ async function saveZiel(zid){
   cm();rZiele();
 }
 async function delZiel(zid){
-  if(!confirm('Ziel wirklich löschen?'))return;
+  if(!confirm('Zielbild wirklich löschen?'))return;
   S.aufgaben.forEach(a=>{if(a.zielId===zid){a.zielId=null;a.teilzielId=null;a.typ='operativ';}});
   await supa('aufgaben?ziel_id=eq.'+zid,{method:'PATCH',body:{ziel_id:null,teilziel_id:null,typ:'operativ'},prefer:'return=minimal'});
   const z=zielObj(zid);
@@ -3518,7 +3548,7 @@ async function delZiel(zid){
 }
 
 function vorschlagenZiel(){
-  document.getElementById('mb').innerHTML='<div class="mt">Ziel vorschlagen</div>'
+  document.getElementById('mb').innerHTML='<div class="mt">Zielbild vorschlagen</div>'
     +'<div style="font-size:12px;color:var(--t2);margin-bottom:14px;line-height:1.5">Wird zur Freigabe an die Geschäftsführung gesendet.</div>'
     +'<div class="fl"><label>Zielname</label><input id="vzn" placeholder="z.B. Kundenzufriedenheit bis Q3 steigern" autofocus></div>'
     +'<div class="fl"><label>Farbe</label><div style="display:flex;gap:8px;margin-top:4px">'+FARBEN.map((f,i)=>'<div onclick="selVZF('+i+')" id="vzfc'+i+'" style="width:24px;height:24px;border-radius:50%;background:'+f.tc+';cursor:pointer;border:'+(i===0?'3px':'2px')+' solid '+(i===0?'var(--text)':'transparent')+'"></div>').join('')+'</div></div>'
@@ -3546,7 +3576,7 @@ async function freigebenZiel(id){
   rZiele();
 }
 async function ablehnZiel(id){
-  if(!confirm('Vorschlag ablehnen und löschen?'))return;
+  if(!confirm('Zielbild-Vorschlag ablehnen und löschen?'))return;
   S.ziele=S.ziele.filter(x=>x.id!==id);
   await dbDelete('ziele',id);
   rZiele();
@@ -4271,7 +4301,7 @@ function rTeam(){
 
       // Ziele
       if(alleRelevant.length){
-        out+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t2);margin-bottom:8px">Deine Ziele</div>';
+        out+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t2);margin-bottom:8px">Deine Zielbilder</div>';
         alleRelevant.forEach(({z,rolle})=>{
           const f=FARBEN[z.farbe||0];
           const pct=z.pct||0;
