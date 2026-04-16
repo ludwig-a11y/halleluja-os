@@ -5077,7 +5077,16 @@ async function gcalCreateEvent(a){
   const tz=Intl.DateTimeFormat().resolvedOptions().timeZone;
   const hrs=a.geplant||1;
   const tag=a.dl||TODAY;
-  const startD=new Date(tag+'T09:00:00');
+  // Heute → nächste volle Stunde; Zukunft → 9:00 Uhr
+  let startD;
+  if(tag===TODAY){
+    const now=new Date();
+    startD=new Date(now);
+    startD.setMinutes(0,0,0);
+    startD.setHours(startD.getHours()+1); // nächste volle Stunde
+  }else{
+    startD=new Date(tag+'T09:00:00');
+  }
   const endD=new Date(startD.getTime()+hrs*3600000);
   const zN=getZielName(a);
   // P1: Titel = "⚡ P1 — Zielname" (privat, kein Aufgabentitel nach außen)
