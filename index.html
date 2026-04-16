@@ -582,6 +582,8 @@ const canChangePrio=a=>{
   return false;
 };
 const canManageTZ=zid=>{const z=zielObj(zid);return z&&(isGF()||z.verantwortlichId===aP);};
+function tzLabel(zid,plural){return istBereich(zid)?(plural?'Themen':'Thema'):(plural?'Meilensteine':'Meilenstein');}
+function toggleBereich(zid){if(!window._bereichOpen)window._bereichOpen={};window._bereichOpen[zid]=!window._bereichOpen[zid];rZiele();}
 
 function myTeamIds(){
   const m=me();if(!m)return[];
@@ -1004,39 +1006,59 @@ async function klassifiziereAlsRandom(id){
   await dbPatch('aufgaben',id,{typ:'random',prio:null,status:'backlog'});
   render();
 }
+function _updateMsLabels(){
+  const sel=document.getElementById('ms-ziel');if(!sel)return;const _b=istBereich(sel.value);
+  const t=document.getElementById('ms-title'),d=document.getElementById('ms-desc'),n=document.getElementById('ms-name-lbl'),s=document.getElementById('ms-save-btn');
+  if(t)t.textContent='Als '+(_b?'Thema':'Meilenstein')+' anlegen';
+  if(d)d.textContent='Die Aufgabe wird in '+(_b?'ein Thema':'einen Meilenstein')+' umgewandelt und dem gewählten '+(_b?'Bereich':'Ziel')+' zugeordnet.';
+  if(n)n.textContent=_b?'Thema-Name':'Meilenstein-Name';
+  if(s)s.textContent='→ '+(_b?'Thema':'Meilenstein')+' anlegen';
+}
 function aufgabeZuMeilenstein(id){
   const a=S.aufgaben.find(x=>x.id===id);if(!a)return;
-  const zielOpts=S.ziele.map(z=>'<option value="'+z.id+'">'+esc(z.name)+'</option>').join('');
-  document.getElementById('mb').innerHTML='<div class="mt">Als Meilenstein anlegen</div>'
-    +'<div style="font-size:12px;color:var(--t2);margin:-8px 0 16px;line-height:1.4">Die Aufgabe wird in einen Meilenstein umgewandelt und dem gewählten Ziel zugeordnet.</div>'
-    +'<div class="fl"><label>Gehört zu Ziel</label><select id="ms-ziel">'+zielOpts+'</select></div>'
-    +'<div class="fl"><label>Meilenstein-Name</label><input id="ms-name" value="'+esc(a.titel)+'" placeholder="z.B. ROI-Konzept fertiggestellt" autofocus></div>'
+  const zielOpts=S.ziele.map(z=>'<option value="'+z.id+'">'+(z.status==='bereich'?'📁 ':'')+esc(z.name)+'</option>').join('');
+  document.getElementById('mb').innerHTML='<div class="mt" id="ms-title">Als Meilenstein anlegen</div>'
+    +'<div id="ms-desc" style="font-size:12px;color:var(--t2);margin:-8px 0 16px;line-height:1.4">Die Aufgabe wird in einen Meilenstein umgewandelt und dem gewählten Ziel zugeordnet.</div>'
+    +'<div class="fl"><label>Gehört zu</label><select id="ms-ziel" onchange="_updateMsLabels()">'+zielOpts+'</select></div>'
+    +'<div class="fl"><label id="ms-name-lbl">Meilenstein-Name</label><input id="ms-name" value="'+esc(a.titel)+'" placeholder="z.B. ROI-Konzept fertiggestellt" autofocus></div>'
     +'<div class="f2"><div class="fl"><label>Wer ist verantwortlich?</label><select id="ms-vid">'+S.personen.map(p=>'<option value="'+p.id+'"'+(p.id===aP?' selected':'')+'>'+esc(p.name)+'</option>').join('')+'</select></div>'
-    +'<div class="fl"><label>Bis wann?</label><input type="date" id="ms-datum" value="'+(a.dl||'')+'"></div></div>'
-    +'<div class="mf"><button class="btn btn-gr" onclick="cm()">Abbrechen</button><button class="btn btn-dk" onclick="saveMeilensteinFromAufgabe(\''+id+'\')">→ Meilenstein anlegen</button></div>';
+    +'<div class="fl"><label>Bis wann? <span style="font-weight:400;color:var(--t2)">(optional)</span></label><input type="date" id="ms-datum" value="'+(a.dl||'')+'"></div></div>'
+    +'<div class="mf"><button class="btn btn-gr" onclick="cm()">Abbrechen</button><button class="btn btn-dk" id="ms-save-btn" onclick="saveMeilensteinFromAufgabe(\''+id+'\')">→ Meilenstein anlegen</button></div>';
   document.getElementById('ovl').classList.add('open');
+  _updateMsLabels();
 }
 async function saveMeilensteinFromAufgabe(aufgabeId){
-  const zid=document.getElementById('ms-ziel').value;
-  const name=document.getElementById('ms-name').value.trim();if(!name||!zid)return;
-  const vid=document.getElementById('ms-vid').value;
-  const datum=document.getElementById('ms-datum').value;
-  const z=zielObj(zid);if(!z)return;
-  const id=nid('tz'),rec={id,ziel_id:zid,name,verantwortlich_id:vid,datum:datum||null,erledigt:false};
-  z.teilziele=z.teilziele||[];z.teilziele.push({...rec,zielId:zid,verantwortlichId:vid,datum:datum||''});
-  await dbInsert('teilziele',rec);
-  S.aufgaben=S.aufgaben.filter(x=>x.id!==aufgabeId);
-  await dbDelete('aufgaben',aufgabeId);
-  cm();render();
+  const a=S.aufgaben.find(x=>x.id===aufgabeId);if(a&&a._busy)return;
+  if(a)a._busy=true;
+  try{
+    const zid=document.getElementById('ms-ziel').value;
+    const name=document.getElementById('ms-name').value.trim();if(!name||!zid){if(a)a._busy=false;return;}
+    const vid=document.getElementById('ms-vid').value;
+    const datum=document.getElementById('ms-datum').value;
+    const z=zielObj(zid);if(!z){if(a)a._busy=false;return;}
+    const id=nid('tz'),rec={id,ziel_id:zid,name,verantwortlich_id:vid,datum:datum||null,erledigt:false};
+    z.teilziele=z.teilziele||[];z.teilziele.push({...rec,zielId:zid,verantwortlichId:vid,datum:datum||''});
+    await dbInsert('teilziele',rec);
+    S.aufgaben=S.aufgaben.filter(x=>x.id!==aufgabeId);
+    await dbDelete('aufgaben',aufgabeId);
+    cm();render();
+  }catch(e){console.error('saveMeilensteinFromAufgabe',e);toast('⚠ Fehler beim Umwandeln');}
+  finally{if(a)a._busy=false;}
 }
 async function klassifiziereAlsIdee(id){
-  const a=S.aufgaben.find(x=>x.id===id);if(!a)return;
-  const rec={id:nid('s'),pid:aP,typ:'idee',was:a.titel,warum:'Aus Inbox weitergeleitet (von '+(person(a.erstelltVon)?.name||'?')+')',fuer:null};
-  S.signale.unshift(rec);
-  a.status='idee';
-  await dbInsert('signale',rec);
-  await dbPatch('aufgaben',id,{status:'idee'});
-  render();
+  const a=S.aufgaben.find(x=>x.id===id);if(!a||a._busy)return;
+  a._busy=true;
+  const prevStatus=a.status;
+  try{
+    const rec={id:nid('s'),pid:aP,typ:'idee',was:a.titel,warum:'Aus Inbox weitergeleitet (von '+(person(a.erstelltVon)?.name||'?')+')',fuer:null};
+    a.status='idee';
+    render();
+    await dbInsert('signale',rec);
+    const ok=await dbPatch('aufgaben',id,{status:'idee'});
+    if(!ok){a.status=prevStatus;S.signale=S.signale.filter(s=>s.id!==rec.id);toast('⚠ Fehler beim Speichern');}
+    else{S.signale.unshift(rec);toast('💡 In Ideen-Pool verschoben');}
+  }catch(e){console.error('klassifiziereAlsIdee',e);a.status=prevStatus;toast('⚠ Fehler');}
+  finally{a._busy=false;render();}
 }
 function rDelegBlock(pid){
   const delegated=S.aufgaben.filter(a=>a.erstelltVon===pid&&a.pid!==pid&&a.status!=='erledigt');
@@ -2865,7 +2887,7 @@ function rTag(){
       out+='<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">';
       out+='<span style="font-size:10px;color:var(--t3)">oder:</span>';
       out+='<button onclick="klassifiziereAlsIdee(\''+a.id+'\')" class="btn-sm" style="border-color:var(--blue-bd);background:var(--blue-bg);color:var(--blue)">→ Ideen-Pool</button>';
-      if(S.ziele.length)out+='<button onclick="aufgabeZuMeilenstein(\''+a.id+'\')" class="btn-sm" style="border-color:var(--green-bd);background:var(--green-bg);color:var(--green)">→ Meilenstein</button>';
+      if(S.ziele.length)out+='<button onclick="aufgabeZuMeilenstein(\''+a.id+'\')" class="btn-sm" style="border-color:var(--green-bd);background:var(--green-bg);color:var(--green)">→ '+(a.zielId&&istBereich(a.zielId)?'Thema':'Meilenstein')+'</button>';
       out+='</div></div>';
     });
     }
@@ -2963,7 +2985,7 @@ async function setPrio(id,pr){
       }
     }
   }
-  const prev={prio:a.prio,status:a.status};a._busy=true;
+  const prev={prio:a.prio,status:a.status,zielId:a.zielId,teilzielId:a.teilzielId};a._busy=true;
   const p=(!pr||pr==='null')?null:pr;
   try{
     const zielSel=document.getElementById('inbox-ziel-'+id);
@@ -2974,9 +2996,9 @@ async function setPrio(id,pr){
     const patch={prio:p,status:a.status};
     if(zid){patch.ziel_id=zid;patch.teilziel_id=null;}
     const ok=await dbPatch('aufgaben',id,patch);
-    if(!ok){a.prio=prev.prio;a.status=prev.status;}
+    if(!ok){a.prio=prev.prio;a.status=prev.status;a.zielId=prev.zielId;a.teilzielId=prev.teilzielId;toast('⚠️ Prio-Speichern fehlgeschlagen','var(--red)');}
     else if(p==='P1')gcalCreateEvent(a); // P1 → sofort in Kalender
-  }catch(e){console.error('setPrio',e);a.prio=prev.prio;a.status=prev.status;}
+  }catch(e){console.error('setPrio',e);a.prio=prev.prio;a.status=prev.status;a.zielId=prev.zielId;a.teilzielId=prev.teilzielId;}
   finally{a._busy=false;try{render();}catch(e){console.error('render@setPrio2',e);}}
 }
 function focusModus(id){
@@ -3072,20 +3094,35 @@ function nextRecurringDate(fromDate,freq){
   return localDate(d);
 }
 async function toggleStep(id,i){
-  const a=S.aufgaben.find(x=>x.id===id);if(!a||!a.ua||!a.ua[i])return;
+  const a=S.aufgaben.find(x=>x.id===id);if(!a||a._busy||!a.ua||!a.ua[i])return;
+  a._busy=true;
   const wasDone=a.ua[i].d;
-  a.ua[i].d=!a.ua[i].d;
-  const allDone=a.ua.every(u=>u.d)&&a.ua.length;
-  if(allDone){a.status='erledigt';a.aktSeit=null;showPaddelCelebration(a.pid);checkP1Done(a.pid);}
-  // mini celebration for single step check-off
-  if(!wasDone&&a.ua[i].d&&!allDone){
-    const row=document.getElementById('sr-'+id+'-'+i);
-    if(row){row.classList.add('done-flash');const cb=row.querySelector('.sc');if(cb)cb.classList.add('pop');}
+  const prevStatus=a.status;const prevAktSeit=a.aktSeit;const prevGebucht=a.gebucht;
+  try{
+    a.ua[i].d=!a.ua[i].d;
+    const allDone=a.ua.every(u=>u.d)&&a.ua.length;
+    const patch={ua:a.ua};
+    if(allDone){
+      // Zeitbuchung wie bei fertig()
+      if(a.status==='aktiv'){a.gebucht=Math.round(((a.gebucht||0)+(Date.now()-(a.aktSeit||Date.now()))/3600000)*100)/100;patch.gebucht=a.gebucht;}
+      a.status='erledigt';a.aktSeit=null;a.updated_at=new Date().toISOString();
+      patch.status='erledigt';patch.akt_seit=null;patch.updated_at=a.updated_at;
+    }
+    // mini celebration for single step check-off
+    if(!wasDone&&a.ua[i].d&&!allDone){
+      const row=document.getElementById('sr-'+id+'-'+i);
+      if(row){row.classList.add('done-flash');const cb=row.querySelector('.sc');if(cb)cb.classList.add('pop');}
+    }
+    const ok=await dbPatch('aufgaben',id,patch);
+    if(!ok){a.ua[i].d=wasDone;a.status=prevStatus;a.aktSeit=prevAktSeit;a.gebucht=prevGebucht;toast('⚠ Fehler beim Speichern');}
+    else if(allDone){showPaddelCelebration(a.pid);checkP1Done(a.pid);}
+  }catch(e){console.error('toggleStep',e);a.ua[i].d=wasDone;a.status=prevStatus;a.aktSeit=prevAktSeit;a.gebucht=prevGebucht;}
+  finally{
+    a._busy=false;
+    if(a.status==='erledigt'&&prevStatus!=='erledigt'){cm();render();}
+    else if(document.getElementById('ovl')?.classList.contains('open')){openDetail(id);}
+    else{render();}
   }
-  await dbPatch('aufgaben',id,{ua:a.ua,status:a.status,akt_seit:null});
-  if(allDone){cm();render();}
-  else if(document.getElementById('ovl')?.classList.contains('open')){openDetail(id);}
-  else{render();}
 }
 async function addStep(id){
   const inp=document.getElementById('si-'+id);if(!inp)return;
@@ -3159,7 +3196,8 @@ function openDetail(id){
     +[['neu','Neu','var(--red-bg)','var(--red)'],['backlog','Backlog','var(--gray-bg)','var(--t2)'],['aktiv','Aktiv','var(--blue-bg)','var(--blue)'],['erledigt','Erledigt','var(--green-bg)','var(--green)']].map(x=>
       '<button onclick="setStatusModal(\''+id+'\',\''+x[0]+'\')" style="font-size:11px;padding:4px 10px;border-radius:8px;border:'+(a.status===x[0]?'2px':'1px')+' solid '+(a.status===x[0]?'var(--text)':'var(--bd)')+';background:'+(a.status===x[0]?x[2]:'var(--sf)')+';color:'+(a.status===x[0]?x[3]:'var(--t2)')+';cursor:pointer;font-family:inherit;font-weight:'+(a.status===x[0]?600:400)+'">'+x[1]+'</button>'
     ).join('')+'</div></div>';
-  h+='<div class="fl"><label>Teilziel</label><select id="det-tz" onchange="setTeilziel(\''+id+'\',this.value)"><option value="">— kein Meilenstein —</option>'+(a.zielId?(zielObj(a.zielId)?.teilziele||[]).map(tz=>'<option value="'+tz.id+'"'+(a.teilzielId===tz.id?' selected':'')+'>'+esc(tz.name)+'</option>').join(''):'')+'</select></div>';
+  const _detTzLbl=a.zielId&&istBereich(a.zielId)?'Thema':'Meilenstein';
+  h+='<div class="fl"><label>'+_detTzLbl+'</label><select id="det-tz" onchange="setTeilziel(\''+id+'\',this.value)"><option value="">— kein '+_detTzLbl+' —</option>'+(a.zielId?(zielObj(a.zielId)?.teilziele||[]).map(tz=>'<option value="'+tz.id+'"'+(a.teilzielId===tz.id?' selected':'')+'>'+esc(tz.name)+'</option>').join(''):'')+'</select></div>';
   h+='<div class="fl"><label style="display:flex;align-items:center;gap:8px;text-transform:none;font-size:13px;font-weight:400;cursor:pointer"><input type="checkbox" id="det-vert"'+(a.vertraulich?' checked':'')+' style="width:auto" onchange="saveDetailField(\''+id+'\',\'vertraulich\',this.checked)"> 🔒 Vertraulich</label>'+(a.vertraulich?'<div style="font-size:11px;color:var(--t3);margin-top:2px">Sichtbar für: Geschäftsführung, Zuständiger &amp; Ersteller</div>':'')+'</div>';
   h+='<div class="fl"><label>Schritte</label>'+stepsHtml(a,true)+'</div>';
   h+='</div></details>';
@@ -3186,20 +3224,29 @@ async function saveDetailField(id,field,val){
   render();
 }
 async function setStatusModal(id,st){
-  const a=S.aufgaben.find(x=>x.id===id);if(!a)return;
-  const now=new Date().toISOString();
-  let patch={status:st,updated_at:now};
-  if(st==='aktiv')patch.akt_seit=now;
-  else if(a.status==='aktiv'){patch.gebucht=Math.round(((a.gebucht||0)+(Date.now()-(a.aktSeit||Date.now()))/3600000)*100)/100;patch.akt_seit=null;}
-  Object.assign(a,{status:st,aktSeit:st==='aktiv'?Date.now():null,updated_at:now,...(patch.gebucht!==undefined?{gebucht:patch.gebucht}:{})});
-  const _teamSlack=S.personen.filter(p=>p.id!==aP&&p.slack_id).map(p=>p.slack_id);
-  if(st==='erledigt'){
-    celebrateErl(a);checkP1Done(a.pid);
-    const restOffen=S.aufgaben.filter(x=>String(x.pid)===String(aP)&&x.status!=='erledigt');
-    if(!restOffen.length)setTimeout(()=>celebrate('🏆','Alle Aufgaben erledigt! 🎉'),1500);
-  }
-  if(st==='aktiv')notify('aufgabe_gestartet',{prio:a.prio||null,team_slack_ids:_teamSlack,actor_slack_id:me()?.slack_id||''});
-  await dbPatch('aufgaben',id,patch);cm();render();
+  const a=S.aufgaben.find(x=>x.id===id);if(!a||a._busy)return;
+  a._busy=true;
+  const prev={status:a.status,aktSeit:a.aktSeit,gebucht:a.gebucht,updated_at:a.updated_at};
+  try{
+    const now=new Date().toISOString();
+    let patch={status:st,updated_at:now};
+    if(st==='aktiv')patch.akt_seit=now;
+    else if(a.status==='aktiv'){patch.gebucht=Math.round(((a.gebucht||0)+(Date.now()-(a.aktSeit||Date.now()))/3600000)*100)/100;patch.akt_seit=null;}
+    Object.assign(a,{status:st,aktSeit:st==='aktiv'?Date.now():null,updated_at:now,...(patch.gebucht!==undefined?{gebucht:patch.gebucht}:{})});
+    try{render();}catch(e){console.error('render@setStatusModal',e);}
+    const ok=await dbPatch('aufgaben',id,patch);
+    if(!ok){a.status=prev.status;a.aktSeit=prev.aktSeit;a.gebucht=prev.gebucht;a.updated_at=prev.updated_at;toast('⚠️ Speichern fehlgeschlagen','var(--red)');}
+    else{
+      const _teamSlack=S.personen.filter(p=>p.id!==aP&&p.slack_id).map(p=>p.slack_id);
+      if(st==='erledigt'){
+        celebrateErl(a);checkP1Done(a.pid);
+        const restOffen=S.aufgaben.filter(x=>String(x.pid)===String(aP)&&x.status!=='erledigt');
+        if(!restOffen.length)setTimeout(()=>celebrate('🏆','Alle Aufgaben erledigt! 🎉'),1500);
+      }
+      if(st==='aktiv')notify('aufgabe_gestartet',{prio:a.prio||null,team_slack_ids:_teamSlack,actor_slack_id:me()?.slack_id||''});
+    }
+  }catch(e){console.error('setStatusModal',e);a.status=prev.status;a.aktSeit=prev.aktSeit;a.gebucht=prev.gebucht;a.updated_at=prev.updated_at;toast('⚠️ Fehler beim Statuswechsel','var(--red)');}
+  finally{a._busy=false;cm();try{render();}catch(e){console.error('render@setStatusModal2',e);}}
 }
 async function setTeilziel(id,tzid){
   const a=S.aufgaben.find(x=>x.id===id);if(!a)return;
@@ -3425,17 +3472,77 @@ function rZiele(){
     alleBereiche.forEach(z=>{
       const f=FARBEN[z.farbe]||FARBEN[0];
       const verantw=person(z.verantwortlichId);
-      const bAufg=S.aufgaben.filter(a=>a.zielId===z.id&&a.status!=='erledigt'&&canSee(a));
-      out+='<div style="background:'+f.bg+';border:1px solid '+f.bd+';border-left:3px solid '+f.tc+';border-radius:0 8px 8px 0;padding:12px 16px;margin-bottom:8px;display:flex;align-items:center;gap:12px">';
+      const bAufgAll=S.aufgaben.filter(a=>a.zielId===z.id&&canSee(a));
+      const bAufg=bAufgAll.filter(a=>a.status!=='erledigt');
+      const myTZB=(z.teilziele||[]).filter(tz=>(!tz.vertraulich||isGF()||tz.verantwortlichId===aP));
+      const isOpen=(window._bereichOpen||{})[z.id];
+      out+='<div style="border:1px solid '+f.bd+';border-left:3px solid '+f.tc+';border-radius:0 10px 10px 0;margin-bottom:10px;overflow:hidden;background:'+f.bg+'">';
+      // Header (always visible)
+      out+='<div onclick="toggleBereich(\''+z.id+'\')" style="display:flex;align-items:center;gap:10px;padding:12px 16px;cursor:pointer;transition:background .1s" onmouseenter="this.style.background=\'rgba(0,0,0,.03)\'" onmouseleave="this.style.background=\'transparent\'">';
+      out+='<span style="font-size:9px;color:'+f.tc+';transition:transform .2s;transform:rotate('+(isOpen?'90':'0')+'deg);flex-shrink:0">▶</span>';
       out+='<div style="flex:1;min-width:0">';
       out+='<div style="font-size:14px;font-weight:700;color:var(--text)">📁 '+esc(z.name)+'</div>';
       const meta=[];
       if(verantw)meta.push(esc(verantw.name));
-      if(bAufg.length)meta.push(bAufg.length+' offene Aufgabe'+(bAufg.length>1?'n':''));
+      if(myTZB.length)meta.push(myTZB.length+' Themen');
+      if(bAufg.length)meta.push(bAufg.length+' offen');
       if(meta.length)out+='<div style="font-size:11px;color:var(--t3);margin-top:2px">'+meta.join(' · ')+'</div>';
       out+='</div>';
-      out+='<button onclick="openNeu({zielId:\''+z.id+'\'})" style="font-size:11px;padding:5px 12px;border-radius:7px;border:1px solid '+f.bd+';background:var(--sf);color:'+f.tc+';cursor:pointer;font-family:inherit;font-weight:500;flex-shrink:0">+ Aufgabe</button>';
-      if(isGF())out+='<button onclick="editZiel(\''+z.id+'\')" style="font-size:11px;padding:5px 10px;border-radius:7px;border:1px solid var(--bd);background:var(--gray-bg);color:var(--t2);cursor:pointer;font-family:inherit;flex-shrink:0">···</button>';
+      out+='<div style="display:flex;gap:6px;flex-shrink:0" onclick="event.stopPropagation()">';
+      if(canManageTZ(z.id))out+='<button onclick="openAddTZ(\''+z.id+'\')" style="font-size:11px;padding:5px 12px;border-radius:7px;border:1px solid '+f.bd+';background:var(--sf);color:'+f.tc+';cursor:pointer;font-family:inherit;font-weight:500">+ Thema</button>';
+      out+='<button onclick="openNeu({zielId:\''+z.id+'\'})" style="font-size:11px;padding:5px 12px;border-radius:7px;border:1px solid '+f.bd+';background:var(--sf);color:'+f.tc+';cursor:pointer;font-family:inherit;font-weight:500">+ Aufgabe</button>';
+      if(isGF())out+='<button onclick="editZiel(\''+z.id+'\')" style="font-size:11px;padding:5px 10px;border-radius:7px;border:1px solid var(--bd);background:var(--gray-bg);color:var(--t2);cursor:pointer;font-family:inherit">···</button>';
+      out+='</div></div>';
+      // Expanded content
+      if(isOpen){
+        out+='<div style="padding:0 16px 12px">';
+        // Themen
+        myTZB.forEach(tz=>{
+          const tzA=bAufgAll.filter(a=>a.teilzielId===tz.id&&a.status!=='erledigt');
+          out+='<div style="border:1px solid '+f.bd+';border-radius:10px;margin-bottom:8px;overflow:hidden;'+(tz.erledigt?'opacity:.5;':'')+'background:var(--sf)">';
+          out+='<div style="display:flex;align-items:center;gap:10px;padding:10px 12px">';
+          if(canManageTZ(z.id))out+='<input type="checkbox" '+(tz.erledigt?'checked':'')+' onclick="toggleTZ(\''+z.id+'\',\''+tz.id+'\')" style="flex-shrink:0;margin:0;width:15px;height:15px;accent-color:'+f.tc+'">';
+          out+='<div style="flex:1;min-width:0;cursor:pointer" onclick="'+(canManageTZ(z.id)?'editTZ(\''+z.id+'\',\''+tz.id+'\')':'')+'">';
+          out+='<div style="font-size:13px;font-weight:600;color:var(--text);'+(tz.erledigt?'text-decoration:line-through;':'')+'">'+esc(tz.name)+'</div>';
+          const tzV=person(tz.verantwortlichId),tzMeta=[];
+          if(tzV)tzMeta.push(tzV.name);
+          if(tz.datum){const _m=['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];tzMeta.push('bis '+_m[parseInt(tz.datum.slice(5,7),10)-1]);}
+          if(tzMeta.length)out+='<div style="font-size:10px;color:var(--t2);margin-top:1px">'+tzMeta.join(' · ')+'</div>';
+          out+='</div>';
+          if(tzA.length)out+='<span style="font-size:10px;color:'+f.tc+';background:'+f.bg+';border:1px solid '+f.bd+';padding:1px 7px;border-radius:99px;flex-shrink:0;font-weight:600">'+tzA.length+'</span>';
+          out+='</div>';
+          if(tzA.length){tzA.forEach(a=>{
+            const p2=person(a.pid);
+            out+='<div onclick="openDetail(\''+a.id+'\')" style="display:flex;align-items:center;gap:8px;padding:8px 12px 8px '+(canManageTZ(z.id)?'37':'12')+'px;border-top:1px solid '+f.bd+';cursor:pointer;background:var(--sf)" onmouseenter="this.style.background=\''+f.bg+'\'" onmouseleave="this.style.background=\'var(--sf)\'">';
+            out+='<span style="font-size:8px;color:'+(a.status==='aktiv'?'var(--blue)':'var(--t3)')+'">●</span>';
+            out+='<span style="flex:1;font-size:12px;color:var(--text)">'+esc(a.titel)+'</span>';
+            if(p2)out+='<span style="font-size:10px;color:var(--t2)">'+p2.name+'</span>';
+            out+=prioTag(a.prio,null,false);
+            out+='</div>';
+          });}
+          out+='<div style="padding:7px 12px;border-top:1px solid '+f.bd+';background:'+f.bg+'">';
+          out+='<button onclick="openNeu({zielId:\''+z.id+'\',teilzielId:\''+tz.id+'\'})" style="font-size:11px;padding:3px 10px;border-radius:6px;border:1px solid '+f.bd+';background:var(--sf);color:'+f.tc+';font-weight:500;cursor:pointer;font-family:inherit">+ Aufgabe</button>';
+          out+='</div></div>';
+        });
+        // Tasks without Thema
+        const aOhneTZB=bAufg.filter(a=>!a.teilzielId);
+        if(aOhneTZB.length){
+          out+='<div style="margin-top:'+(myTZB.length?'4':'0')+'px">';
+          if(myTZB.length)out+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);margin-bottom:6px">Weitere Aufgaben</div>';
+          aOhneTZB.forEach(a=>{
+            const p2=person(a.pid);
+            out+='<div onclick="openDetail(\''+a.id+'\')" style="display:flex;align-items:center;gap:6px;padding:5px 10px;border-radius:7px;border:1px solid '+f.bd+';background:var(--sf);cursor:pointer;margin-bottom:3px" onmouseenter="this.style.background=\'var(--gray-bg)\'" onmouseleave="this.style.background=\'var(--sf)\'">';
+            out+='<span style="font-size:8px;color:'+(a.status==='aktiv'?'var(--blue)':'var(--t3)')+'">●</span>';
+            out+='<span style="flex:1;font-size:11px">'+esc(a.titel)+'</span>';
+            if(p2)out+='<span style="font-size:10px;color:var(--t3)">'+p2.name+'</span>';
+            out+=prioTag(a.prio,null,false);
+            out+='</div>';
+          });
+          out+='</div>';
+        }
+        if(!myTZB.length&&!aOhneTZB.length)out+='<div style="font-size:12px;color:var(--t3);padding:4px 0">Noch keine Themen oder Aufgaben.</div>';
+        out+='</div>';
+      }
       out+='</div>';
     });
     if(!alleBereiche.length)out+='<div style="font-size:12px;color:var(--t3);padding:8px 0">Noch keine Bereiche erstellt.</div>';
@@ -3450,24 +3557,26 @@ async function toggleTZ(zid,tzid){
   const tz=(z.teilziele||[]).find(t=>t.id===tzid);if(!tz)return;
   tz.erledigt=!tz.erledigt;
   await dbPatch('teilziele',tzid,{erledigt:tz.erledigt});
-  if(tz.erledigt){celebrate('🎯','Meilenstein erreicht!');notify('meilenstein_erledigt',{meilenstein:tz.name,ziel:z.name});}
+  if(tz.erledigt){celebrate('🎯',istBereich(zid)?'Thema abgeschlossen!':'Meilenstein erreicht!');notify('meilenstein_erledigt',{meilenstein:tz.name,ziel:z.name});}
   rZiele();
 }
 function openAddTZ(zid){
-  document.getElementById('mb').innerHTML='<div class="mt">Meilenstein hinzufügen</div>'
-    +'<div class="fl"><label>Name</label><input id="tzn" placeholder="z.B. Messe München vorbereitet" autofocus></div>'
+  const _isB=istBereich(zid),_lbl=_isB?'Thema':'Meilenstein',_ph=_isB?'z.B. Wartung & TÜV, IT-Sicherheit…':'z.B. Messe München vorbereitet';
+  document.getElementById('mb').innerHTML='<div class="mt">'+_lbl+' hinzufügen</div>'
+    +'<div class="fl"><label>Name</label><input id="tzn" placeholder="'+_ph+'" autofocus></div>'
     +'<div class="f2"><div class="fl"><label>Verantwortlich</label><select id="tzv">'+S.personen.map(p=>'<option value="'+p.id+'">'+esc(p.name)+'</option>').join('')+'</select></div>'
-    +'<div class="fl"><label>Bis wann</label><input type="date" id="tzd"></div></div>'
+    +'<div class="fl"><label>Bis wann <span style="font-weight:400;color:var(--t2)">(optional)</span></label><input type="date" id="tzd"></div></div>'
     +'<div class="mf"><button class="btn btn-gr" onclick="cm()">Abbrechen</button><button class="btn btn-dk" onclick="saveTZ(\''+zid+'\',null)">Speichern</button></div>';
   document.getElementById('ovl').classList.add('open');
 }
 function editTZ(zid,tzid){
   const z=zielObj(zid);if(!z)return;
   const tz=(z.teilziele||[]).find(t=>t.id===tzid);if(!tz)return;
-  const zielOpts=S.ziele.map(zl=>'<option value="'+zl.id+'"'+(zl.id===zid?' selected':'')+'>'+esc(zl.name)+'</option>').join('');
-  document.getElementById('mb').innerHTML='<div class="mt">Meilenstein bearbeiten</div>'
+  const _isB=istBereich(zid),_lbl=_isB?'Thema':'Meilenstein';
+  const zielOpts=S.ziele.map(zl=>'<option value="'+zl.id+'"'+(zl.id===zid?' selected':'')+'>'+(zl.status==='bereich'?'📁 ':'')+esc(zl.name)+'</option>').join('');
+  document.getElementById('mb').innerHTML='<div class="mt">'+_lbl+' bearbeiten</div>'
     +'<div class="fl"><label>Name</label><input id="tzn" value="'+esc(tz.name)+'" autofocus></div>'
-    +'<div class="fl"><label>Gehört zu Ziel</label><select id="tzz">'+zielOpts+'</select></div>'
+    +'<div class="fl"><label>Gehört zu</label><select id="tzz">'+zielOpts+'</select></div>'
     +'<div class="f2"><div class="fl"><label>Verantwortlich</label><select id="tzv">'+S.personen.map(p=>'<option value="'+p.id+'"'+(tz.verantwortlichId===p.id?' selected':'')+'>'+esc(p.name)+'</option>').join('')+'</select></div>'
     +'<div class="fl"><label>Bis wann</label><input type="date" id="tzd" value="'+(tz.datum||'')+'"></div></div>'
     +(isGF()?'<div class="fl"><label style="display:flex;align-items:center;gap:8px;text-transform:none;font-size:13px;font-weight:400"><input type="checkbox" id="tzvert" '+(tz.vertraulich?'checked':'')+' style="width:auto"> 🔒 Vertraulich</label><div style="font-size:10px;color:var(--t3);margin-top:2px">Sichtbar für: Geschäftsführung &amp; Verantwortlicher</div></div>':'')
@@ -3497,7 +3606,7 @@ async function saveTZ(zid,tzid){
   cm();rZiele();
 }
 async function delTZ(zid,tzid){
-  if(!confirm('Meilenstein löschen?'))return;
+  if(!confirm(istBereich(zid)?'Thema löschen?':'Meilenstein löschen?'))return;
   const z=zielObj(zid);if(!z)return;
   z.teilziele=(z.teilziele||[]).filter(t=>t.id!==tzid);
   S.aufgaben.forEach(a=>{if(a.teilzielId===tzid)a.teilzielId=null;});
@@ -3715,7 +3824,10 @@ function updateNeuTZ(){
   const z=zielObj(zSel.value),tzSel=document.getElementById('ntz');
   const wrap=document.getElementById('neu-tz-wrap');
   if(!tzSel)return;
-  tzSel.innerHTML='<option value="">— kein Meilenstein —</option>';
+  const _isB=z&&istBereich(z.id),_lbl=_isB?'Thema':'Meilenstein';
+  const wrapLabel=wrap?.querySelector('label');
+  if(wrapLabel)wrapLabel.innerHTML=_lbl+' <span style="font-weight:400;color:var(--t2)">(optional)</span>';
+  tzSel.innerHTML='<option value="">— kein '+_lbl+' —</option>';
   const tza=z?(z.teilziele||[]).filter(t=>!t.erledigt):[];
   tza.forEach(t=>{
     const label=esc(t.name)+(t.datum?' · bis '+t.datum.slice(8)+'.'+t.datum.slice(5,7)+'.':'');
@@ -4172,8 +4284,11 @@ function updateQZTZ(aid){
   const sel=document.getElementById('qz-ntz');
   if(!wrap||!sel)return;
   const z=zielId?S.ziele.find(x=>x.id===zielId):null;
+  const _isB=z&&istBereich(z.id),_lbl=_isB?'Thema':'Meilenstein';
+  const wrapLabel=wrap.querySelector('label');
+  if(wrapLabel)wrapLabel.innerHTML=_lbl+' <span style="font-weight:400;color:var(--t2)">(optional)</span>';
   const tza=z?(z.teilziele||[]).filter(t=>!t.erledigt):[];
-  sel.innerHTML='<option value="">— kein Meilenstein —</option>'+tza.map(t=>'<option value="'+t.id+'">'+esc(t.name)+'</option>').join('');
+  sel.innerHTML='<option value="">— kein '+_lbl+' —</option>'+tza.map(t=>'<option value="'+t.id+'">'+esc(t.name)+'</option>').join('');
   wrap.style.display=tza.length?'':'none';
 }
 async function saveQuickZiel(id){
@@ -4181,7 +4296,7 @@ async function saveQuickZiel(id){
   const tzSel=document.getElementById('qz-ntz');
   const teilzielId=tzSel?tzSel.value||null:null;
   const a=S.aufgaben.find(x=>x.id===id);if(!a)return;
-  a.ziel_id=zielId;a.teilziel_id=teilzielId;a.typ=zielId?'strategisch':'operativ';
+  a.zielId=zielId;a.teilzielId=teilzielId;a.typ=(zielId&&!istBereich(zielId))?'strategisch':'operativ';
   await dbPatch('aufgaben',id,{ziel_id:zielId,teilziel_id:teilzielId,typ:a.typ});
   cm();render();
 }
@@ -4347,7 +4462,7 @@ function rTeam(){
           if(!isOwn&&verantw)out+='<span style="font-size:10px;color:var(--t3)">'+esc(verantw.name)+'</span>';
           out+='<span style="font-size:10px;padding:1px 6px;border-radius:99px;background:'+(isOwn?'var(--green-bg)':'var(--blue-bg)')+';color:'+(isOwn?'var(--green)':'var(--blue)')+'">'+(isOwn?'Verantwortlich':'Mitwirkend')+'</span>';
           if(meineTasks)out+='<span style="font-size:10px;color:var(--t3)">'+meineTasks+' offene Aufgabe'+(meineTasks>1?'n':'')+'</span>';
-          if(tzOffen)out+='<span style="font-size:10px;color:var(--t3)">'+tzOffen+' Meilenstein'+(tzOffen>1?'e':'')+' offen</span>';
+          if(tzOffen)out+='<span style="font-size:10px;color:var(--t3)">'+tzOffen+' '+(z.status==='bereich'?'Themen':(tzOffen>1?'Meilensteine':'Meilenstein'))+' offen</span>';
           out+='</div></div>';
           // Progress bar
           out+='<div style="width:40px;text-align:right"><div style="font-size:11px;font-weight:700;color:'+f.tc+'">'+pct+'%</div>';
