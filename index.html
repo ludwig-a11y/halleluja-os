@@ -2875,6 +2875,7 @@ function rTag(){
       out+='</div>';
       out+='<div id="wl-'+a.id+'" style="display:none;gap:5px;flex-wrap:wrap;margin-top:6px;padding:8px 10px;background:var(--purple-bg);border:1px solid var(--purple-bd);border-radius:8px">';
       out+='<span style="font-size:10px;color:var(--purple);font-weight:600;width:100%;margin-bottom:2px">An wen weiterleiten?</span>';
+      out+='<input id="wl-grund-'+a.id+'" placeholder="Grund (Pflicht) …" style="width:100%;box-sizing:border-box;font-size:12px;padding:6px 10px;border-radius:6px;border:1px solid var(--purple-bd);background:var(--sf);color:var(--text);font-family:inherit;margin-bottom:6px">';
       out+=S.personen.filter(p=>p.id!==aP).map(p=>'<div onclick="weiterleitenAufgabe(\''+a.id+'\',\''+p.id+'\')" style="cursor:pointer;font-size:11px;font-weight:600;padding:4px 11px;border-radius:99px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);white-space:nowrap;transition:all .15s" onmousedown="this.style.background=\'var(--purple)\';this.style.color=\'#fff\'" onmouseup="this.style.background=\'var(--sf)\';this.style.color=\'var(--t2)\'">'+esc(p.name.split(' ')[0])+'</div>').join('');
       out+='</div></div>';
     });
