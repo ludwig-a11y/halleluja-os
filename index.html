@@ -5521,6 +5521,7 @@ async function saveOffeneFrage(){
   const anPersonId=document.getElementById('of-an').value||null;
   const deadline=document.getElementById('of-deadline').value||null;
   const rec={
+    id:nid('dr'),
     frage,
     typ,
     kontext:document.getElementById('of-kontext').value.trim()||null,
@@ -5539,8 +5540,7 @@ async function saveOffeneFrage(){
     toast('⚠️ Speichern fehlgeschlagen — DB-Migration ausgeführt? (Supabase → SQL Editor)');
     return;
   }
-  // Supabase gibt die gespeicherte Zeile zurück (mit echter ID)
-  const saved=Array.isArray(result)?result[0]:rec;
+  const saved=Array.isArray(result)&&result[0]?result[0]:rec;
   S.decisionRequests.unshift(saved);
   const anP=S.personen.find(p=>p.id===anPersonId);
   const gfSlackIds=S.personen.filter(p=>p.stufe==='gf'&&p.id!==aP&&p.id!==anPersonId&&p.slack_id).map(p=>p.slack_id);
