@@ -666,11 +666,12 @@ function p1Count(pid){return S.aufgaben.filter(x=>x.pid===pid&&x.prio==='P1'&&x.
 async function changePrio(e,aid,newPrio){
   e.stopPropagation();
   const a=S.aufgaben.find(x=>x.id===aid);if(!a||a._busy)return;
-  // P1-Limit: max 3 aktive P1s
+  // P1-Limit: warnen, nicht blockieren
   if(newPrio==='P1'&&a.prio!=='P1'&&p1Count(a.pid)>=3){
-    document.querySelectorAll('.prio-dd.open').forEach(d=>d.classList.remove('open'));
-    toast('⚠ Bereits 3 P1-Aufgaben offen — erst eine abschließen.');
-    return;
+    if(!confirm('Du hast bereits '+p1Count(a.pid)+' offene P1-Aufgaben. Trotzdem als P1 setzen?')){
+      document.querySelectorAll('.prio-dd.open').forEach(d=>d.classList.remove('open'));
+      return;
+    }
   }
   const prev=a.prio;a._busy=true;
   try{
@@ -3981,19 +3982,19 @@ function selPrioBtn(btn,pr){
 async function saveNeu(){
   const t=document.getElementById('nt').value.trim();if(!t)return;
   const zielId=document.getElementById('nziel')?.value||null;
-  // P1-Pflichtfeld: Ziel erforderlich
+  // P1 ohne Ziel: warnen, nicht blockieren
   if(_selPrio==='P1'&&!zielId){
-    const m=document.getElementById('neu-mehr');if(m)m.style.display='block';
-    const zSel=document.getElementById('nziel');
-    if(zSel){zSel.style.outline='2px solid var(--red)';zSel.focus();}
-    toast('⚡ P1 braucht ein Ziel – wähle das verknüpfte Ziel aus');
-    return;
+    if(!confirm('P1 ohne Ziel – sicher? Überlege welches Ziel das voranbringt.')){
+      const m=document.getElementById('neu-mehr');if(m)m.style.display='block';
+      const zSel=document.getElementById('nziel');
+      if(zSel){zSel.style.outline='2px solid var(--red)';zSel.focus();}
+      return;
+    }
   }
   // P1-Limit
   const _pidNeu=document.getElementById('np')?.value||aP;
   if(_selPrio==='P1'&&p1Count(_pidNeu)>=3){
-    toast('⚠ Bereits 3 P1-Aufgaben offen — erst eine abschließen.');
-    return;
+    if(!confirm('Du hast bereits '+p1Count(_pidNeu)+' offene P1-Aufgaben. Trotzdem als P1 anlegen?'))return;
   }
   const tzSel=document.getElementById('ntz');
   const teilzielId=tzSel?tzSel.value||null:null;
