@@ -1660,21 +1660,22 @@ function openMeinProfil(){
     // Google Calendar
     +(()=>{
       const gcalConn=gcalIsConnected();
+      const gcalTokenExpired=localStorage.getItem('gcal_ever_connected')==='1'&&(!localStorage.getItem('gcal_token')||Date.now()>parseInt(localStorage.getItem('gcal_token_expiry')||'0'));
       let s='<div style="background:var(--gray-bg);border-radius:10px;padding:12px 14px;margin-bottom:8px">';
       s+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">';
       s+='<span style="font-size:16px">📅</span>';
       s+='<div style="flex:1"><div style="font-size:12px;font-weight:600">Google Kalender</div>';
       s+='<div style="font-size:10px;color:var(--t2)">Meetings in der Tagesplan-Zeitleiste</div></div>';
-      s+=gcalConn?'<span style="font-size:11px;color:var(--green);font-weight:600">✅ Verbunden</span>':'<span style="font-size:11px;color:var(--t3)">Nicht verbunden</span>';
+      s+=gcalConn&&!gcalTokenExpired?'<span style="font-size:11px;color:var(--green);font-weight:600">✅ Verbunden</span>':gcalTokenExpired?'<span style="font-size:11px;color:var(--orange);font-weight:600">⚠ Token abgelaufen</span>':'<span style="font-size:11px;color:var(--t3)">Nicht verbunden</span>';
       s+='</div>';
-      if(gcalConn){
+      if(gcalConn&&!gcalTokenExpired){
         s+='<div style="display:flex;gap:8px">';
         s+='<button onclick="gcalFetchToday();toast(\'↻ Aktualisiert\');openMeinProfil()" class="btn btn-gr" style="flex:1;font-size:11px">↻ Aktualisieren</button>';
         s+='<button onclick="gcalDisconnect();openMeinProfil()" class="btn btn-red" style="font-size:11px">Trennen</button>';
         s+='</div>';
         s+='<div style="font-size:10px;color:var(--t3);margin-top:6px">'+(S.kalender.length)+' Termin'+(S.kalender.length!==1?'e':'')+' heute · Toast 10 Min vor jedem Meeting · Aufgaben mit Datum → Kalender</div>';
       }else{
-        s+='<button onclick="gcalConnect()" class="btn btn-gr" style="width:100%;font-size:11px">🗓 Mit Google Kalender verbinden</button>';
+        s+='<button onclick="gcalConnect();openMeinProfil()" class="btn btn-gr" style="width:100%;font-size:11px">'+(gcalTokenExpired?'🔄 Neu verbinden':'🗓 Mit Google Kalender verbinden')+'</button>';
         s+='<div style="font-size:10px;color:var(--t3);margin-top:6px">Meetings in der Tagesplan-Zeitleiste · Aufgaben mit Datum im Kalender</div>';
       }
       s+='</div>';
@@ -5386,15 +5387,26 @@ window.addEventListener('keydown',e=>{
     if(!aP)return;
     try{const raw=localStorage.getItem('h_session');if(!raw){logout();return;}const s=JSON.parse(raw);if(!s||!s.ts||Date.now()-s.ts>30*24*60*60*1000){logout();}}catch(e){logout();}
   },60000);
-  // GCal: wenn früher verbunden → sofort still erneuern (Token könnte abgelaufen sein)
+  // GCal: beim Start Token prüfen — kein Auto-Popup (würde Browser-Blocker triggern)
   if(localStorage.getItem('gcal_ever_connected')==='1'){
-    setTimeout(gcalSilentRefresh,2000); // 2s warten bis GIS-Library geladen
+    const _t=localStorage.getItem('gcal_token');
+    const _e=parseInt(localStorage.getItem('gcal_token_expiry')||'0');
+    if(_t&&Date.now()<_e-60000){
+      // Token noch gültig → direkt Daten laden, kein Popup nötig
+      setTimeout(gcalFetchToday,1500);
+    }
+    // Token abgelaufen → User muss selbst auf "GCal verbinden" klicken (user-initiated)
   }
-  // GCal Token Auto-Refresh: alle 5 Min prüfen, 15 Min vor Ablauf erneuern
+  // GCal Token Auto-Refresh: nur wenn Tab aktiv UND User-Interaktion stattfand
+  let _gcalLastInteraction=Date.now();
+  document.addEventListener('click',()=>_gcalLastInteraction=Date.now(),{passive:true});
   setInterval(()=>{
     if(!aP||!localStorage.getItem('gcal_ever_connected'))return;
     const expiry=parseInt(localStorage.getItem('gcal_token_expiry')||'0');
-    if(Date.now()>expiry-15*60*1000)gcalSilentRefresh();
+    // Nur refreshen wenn Token abläuft UND User war in letzten 10 Min aktiv
+    if(Date.now()>expiry-15*60*1000&&Date.now()-_gcalLastInteraction<10*60*1000){
+      gcalSilentRefresh();
+    }
   },5*60*1000);
 })();
 </script>
