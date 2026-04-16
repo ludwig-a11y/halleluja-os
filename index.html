@@ -4939,9 +4939,15 @@ function drNeuAnfragen(drId){
 }
 // ─── Google Calendar Integration ───────────────────────────────
 function gcalIsConnected(){
-  const token=localStorage.getItem('gcal_token');
-  const expiry=parseInt(localStorage.getItem('gcal_token_expiry')||'0');
-  return !!(token&&Date.now()<expiry);
+  // "Verbunden" wenn Token aktiv ODER wenn User früher verbunden hat (silent refresh läuft)
+  if(localStorage.getItem('gcal_ever_connected')==='1'){
+    const expiry=parseInt(localStorage.getItem('gcal_token_expiry')||'0');
+    // Token noch gültig → definitiv verbunden
+    if(localStorage.getItem('gcal_token')&&Date.now()<expiry)return true;
+    // Token abgelaufen aber User hat sich früher verbunden → als verbunden zeigen, refresh läuft
+    return true;
+  }
+  return false;
 }
 const GCAL_DEFAULT_CLIENT_ID='72621178595-l3kjb0a7u8khba1dt61lgu5gfs0daorb.apps.googleusercontent.com';
 const GCAL_SCOPE='https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events';
@@ -4961,6 +4967,7 @@ function _gcalInitClient(onSuccess,silent=false){
       if(resp.access_token){
         localStorage.setItem('gcal_token',resp.access_token);
         localStorage.setItem('gcal_token_expiry',String(Date.now()+(resp.expires_in||3600)*1000));
+        localStorage.setItem('gcal_ever_connected','1'); // persistent flag
         if(!silent)toast('✅ Google Kalender verbunden');
         gcalFetchToday();render();
       } else if(!silent){
@@ -4977,13 +4984,18 @@ function _gcalInitClient(onSuccess,silent=false){
 function gcalConnect(){_gcalInitClient(null,false);}
 
 function gcalSilentRefresh(){
-  // Token abgelaufen → still erneuern (kein Popup, kein Redirect)
+  // GIS-Library noch nicht geladen → warten und nochmal versuchen
+  if(!window.google?.accounts?.oauth2){
+    setTimeout(gcalSilentRefresh,1000);
+    return;
+  }
   _gcalInitClient(null,true);
 }
 
 function gcalDisconnect(){
   localStorage.removeItem('gcal_token');
   localStorage.removeItem('gcal_token_expiry');
+  localStorage.removeItem('gcal_ever_connected');
   S.kalender=[];
   if(window._gcalNotifIv)clearInterval(window._gcalNotifIv);
   if(window.google?.accounts?.oauth2&&_gcalTokenClient){
@@ -5213,12 +5225,16 @@ window.addEventListener('keydown',e=>{
     if(!aP)return;
     try{const raw=localStorage.getItem('h_session');if(!raw){logout();return;}const s=JSON.parse(raw);if(!s||!s.ts||Date.now()-s.ts>30*24*60*60*1000){logout();}}catch(e){logout();}
   },60000);
-  // GCal Token Auto-Refresh: alle 45 Min still erneuern (Token läuft nach 60 Min ab)
+  // GCal: wenn früher verbunden → sofort still erneuern (Token könnte abgelaufen sein)
+  if(localStorage.getItem('gcal_ever_connected')==='1'){
+    setTimeout(gcalSilentRefresh,2000); // 2s warten bis GIS-Library geladen
+  }
+  // GCal Token Auto-Refresh: alle 5 Min prüfen, 15 Min vor Ablauf erneuern
   setInterval(()=>{
-    if(!aP||!localStorage.getItem('gcal_token'))return;
+    if(!aP||!localStorage.getItem('gcal_ever_connected'))return;
     const expiry=parseInt(localStorage.getItem('gcal_token_expiry')||'0');
-    if(Date.now()>expiry-15*60*1000)gcalSilentRefresh(); // 15 Min vor Ablauf
-  },5*60*1000); // prüfen alle 5 Minuten
+    if(Date.now()>expiry-15*60*1000)gcalSilentRefresh();
+  },5*60*1000);
 })();
 </script>
 <script>
