@@ -872,9 +872,10 @@ async function submitKpi(kpiId,pid){
 // bestaetigeAufgabe merged into setPrio (supports null prio)
 function aufgabeZurueck(id){
   const a=S.aufgaben.find(x=>x.id===id);if(!a||!a.erstelltVon)return;
-  const grund=prompt('Warum gibst du die Aufgabe zurück? (optional)');
-  if(grund===null)return; // cancelled
-  _doAufgabeZurueck(id,grund);
+  const grund=prompt('Warum gibst du die Aufgabe zurück? (Pflichtfeld)');
+  if(grund===null)return; // abgebrochen
+  if(!grund.trim()){toast('⚠ Bitte Grund angeben');return;}
+  _doAufgabeZurueck(id,grund.trim());
 }
 async function _doAufgabeZurueck(id,grund){
   const a=S.aufgaben.find(x=>x.id===id);if(!a)return;
@@ -913,24 +914,25 @@ function toggleWeiterleiten(id){
 }
 async function weiterleitenAufgabe(id,newPid){
   const a=S.aufgaben.find(x=>x.id===id);if(!a||a.pid===newPid)return;
+  const grundEl=document.getElementById('wl-grund-'+id);
+  const grund=grundEl?grundEl.value.trim():'';
+  if(!grund){toast('⚠ Bitte Grund angeben');if(grundEl)grundEl.focus();return;}
   const neuePerson=person(newPid);
   const absender=person(a.erstelltVon);
-  // Aufgabe weiterleiten
   a.pid=newPid;a.status='zugewiesen';a.erstelltVon=a.erstelltVon||aP;
   await dbPatch('aufgaben',id,{pid:newPid,status:'zugewiesen',erstellt_von:a.erstelltVon});
-  // Neue Person benachrichtigen
   notify('aufgabe_zugewiesen',{
-    aufgabe:a.titel,prio:a.prio,dl:a.dl,
+    aufgabe:a.titel,prio:a.prio,dl:a.dl,notiz:grund,
     fuer:neuePerson?{id:neuePerson.id,name:neuePerson.name,slack_id:neuePerson.slack_id}:null
   });
-  // Absender benachrichtigen dass weitergeleitet wurde
   if(absender&&absender.id!==aP){
     notify('aufgabe_weitergeleitet',{
-      aufgabe:a.titel,
+      aufgabe:a.titel,notiz:grund,
       weitergeleitet_an:neuePerson?neuePerson.name:'?',
       fuer:absender.slack_id?{id:absender.id,name:absender.name,slack_id:absender.slack_id}:null
     });
   }
+  toast('→ Weitergeleitet an '+((neuePerson?.name||'?').split(' ')[0]));
   render();
 }
 function signalGesehen(id){
@@ -2759,15 +2761,18 @@ function rTag(){
       }).join('');
       out+='</div></div>';
       // Ablehnen-Optionen
-      out+='<div id="ibx-abl-'+a.id+'" style="display:none;display:none">';
-      out+='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">';
-      out+='<button onclick="aufgabeZurueck(\''+a.id+'\')" class="btn-sm" style="border-color:var(--red-bd);background:var(--red-bg);color:var(--red)">↩ Zurück an '+esc((from?.name||'').split(' ')[0])+'</button>';
+      out+='<div id="ibx-abl-'+a.id+'" style="display:none">';
+      out+='<textarea id="abl-grund-'+a.id+'" placeholder="Grund (Pflicht) …" rows="2" style="width:100%;box-sizing:border-box;font-size:12px;padding:7px 10px;border-radius:8px;border:1px solid var(--bd);background:var(--sf);color:var(--text);font-family:inherit;resize:none;margin-top:6px;margin-bottom:6px"></textarea>';
+      out+='<div style="display:flex;gap:6px;flex-wrap:wrap">';
+      out+='<button onclick="(function(){const g=document.getElementById(\'abl-grund-'+a.id+'\').value.trim();if(!g){document.getElementById(\'abl-grund-'+a.id+'\').focus();toast(\'⚠ Bitte Grund angeben\');return;}_doAufgabeZurueck(\''+a.id+'\',g)})()" class="btn-sm" style="border-color:var(--red-bd);background:var(--red-bg);color:var(--red)">↩ Zurück an '+esc((from?.name||'').split(' ')[0])+'</button>';
       out+='<button onclick="toggleWeiterleiten(\''+a.id+'\')" class="btn-sm" style="border-color:var(--purple-bd);background:var(--purple-bg);color:var(--purple)">→ Weiterleiten</button>';
-      out+='<button onclick="klassifiziereAlsIdee(\''+a.id+'\')" class="btn-sm" style="border-color:var(--blue-bd);background:var(--blue-bg);color:var(--blue)">→ Ideen-Pool</button>';
       out+='</div>';
       out+='<div id="wl-'+a.id+'" style="display:none;gap:5px;flex-wrap:wrap;margin-top:6px;padding:8px 10px;background:var(--purple-bg);border:1px solid var(--purple-bd);border-radius:8px">'
-        +'<span style="font-size:10px;color:var(--purple);font-weight:600;width:100%;margin-bottom:2px">An wen weiterleiten?</span>'
-        +S.personen.filter(p=>p.id!==aP).map(p=>'<div onclick="weiterleitenAufgabe(\''+a.id+'\',\''+p.id+'\')" style="cursor:pointer;font-size:11px;font-weight:600;padding:4px 11px;border-radius:99px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);white-space:nowrap" >'+esc(p.name.split(' ')[0])+'</div>').join('')
+        +'<span style="font-size:10px;color:var(--purple);font-weight:600;width:100%;margin-bottom:4px">An wen weiterleiten?</span>'
+        +'<input id="wl-grund-'+a.id+'" placeholder="Grund (Pflicht) …" style="width:100%;box-sizing:border-box;font-size:12px;padding:6px 10px;border-radius:6px;border:1px solid var(--purple-bd);background:var(--sf);color:var(--text);font-family:inherit;margin-bottom:6px">'
+        +'<div style="display:flex;gap:5px;flex-wrap:wrap">'
+        +S.personen.filter(p=>p.id!==aP).map(p=>'<div onclick="weiterleitenAufgabe(\''+a.id+'\',\''+p.id+'\')" style="cursor:pointer;font-size:11px;font-weight:600;padding:4px 11px;border-radius:99px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);white-space:nowrap">'+esc(p.name.split(' ')[0])+'</div>').join('')
+        +'</div>'
         +'</div>';
       out+='</div></div>';
     });
