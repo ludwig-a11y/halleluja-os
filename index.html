@@ -599,7 +599,7 @@ function visiblePersonIds(viewAs){
 }
 function tzObj(zid,tzid){const z=zielObj(zid);return z?(z.teilziele||[]).find(t=>t.id===tzid):null;}
 function getTZName(a){if(a.teilzielId&&a.zielId){const tz=tzObj(a.zielId,a.teilzielId);return tz?tz.name:null;}return null;}
-function getZielName(a){if(a.zielId){const z=zielObj(a.zielId);return z?z.name:null;}return null;}
+function getZielName(a){if(a.zielId){const z=zielObj(a.zielId);return z?(z.status==='bereich'?'📁 '+z.name:z.name):null;}return null;}
 const typInfo=a=>TYP_INFO[a.typ]||TYP_INFO.operativ;
 
 function zielPct(z){
