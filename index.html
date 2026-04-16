@@ -721,6 +721,8 @@ async function _saveKpi(kpiId,pid,val){
   S.kpiVals[mKey]={val,datum:TODAY};
   // Monatssumme aktualisieren: alten Tageswert ersetzen, neuen addieren
   S.kpiValsMonth[mKey]=(S.kpiValsMonth[mKey]||0)-oldVal+val;
+  // Wochensumme ebenfalls live aktualisieren (heute ist immer in dieser Woche)
+  S.kpiValsWeek[mKey]=(S.kpiValsWeek[mKey]||0)-oldVal+val;
   if(existing&&existing.datum===TODAY){
     await supa('kpi_vals?pid=eq.'+pid+'&kpi_id=eq.'+kpiId+'&datum=eq.'+TODAY,{method:'PATCH',body:{val},prefer:'return=minimal'});
   }else{
@@ -1704,7 +1706,9 @@ function getPaddelCount(pid){
   // Aufgaben dieser Woche: P1=3, P2=1, P3=0
   const aufgabenPts=S.aufgaben.filter(a=>{
     if(a.pid!==pid||a.status!=='erledigt'||!a.updated_at)return false;
-    const d=localDate(new Date(a.updated_at));
+    const dt=new Date(a.updated_at);
+    if(isNaN(dt.getTime()))return false;
+    const d=localDate(dt);
     return d>=monday&&d<=sunday;
   }).reduce((sum,a)=>sum+(a.prio==='P1'?3:a.prio==='P2'?1:0),0);
   // Sonder-KPIs dieser Woche: Verkauf/Sauna=5pts, Termin/andere=3pts
@@ -2510,8 +2514,8 @@ function rTag(){
   // ── Freitags-Paddel-Banner (ab 15 Uhr) ──
   if(isFridayAward()){
     const{kw,jahr}=getKW();
-    const bereitsVergeben=S.paddelGewinner.find(g=>g.kw===kw&&g.jahr===jahr);
-    const rd=S.personen.map(p=>({p,count:getPaddelCount(p.id)})).sort((a,b)=>b.count-a.count).filter(x=>x.count>0);
+    const bereitsVergeben=(S.paddelGewinner||[]).find(g=>g.kw===kw&&g.jahr===jahr);
+    const rd=(S.personen||[]).map(p=>({p,count:getPaddelCount(p.id)})).sort((a,b)=>b.count-a.count).filter(x=>x.count>0);
     if(rd.length||bereitsVergeben){
       out+='<div style="background:var(--amber-bg);border:1.5px solid var(--amber);border-radius:14px;padding:14px 16px;margin-bottom:16px">';
       out+='<div style="font-size:11px;font-weight:700;color:var(--amber);margin-bottom:8px">🏆 Freitags-Paddel · KW '+kw+'</div>';
@@ -4698,7 +4702,7 @@ function rTeam(){
   // ── Paddel-Rangliste ──
   const{kw:prKw,jahr:prJahr}=getKW();
   const rankData=S.personen.map(p=>({p,count:getPaddelCount(p.id)})).sort((a,b)=>b.count-a.count).filter(x=>x.count>0);
-  const bereitsVergebenTeam=S.paddelGewinner.find(g=>g.kw===prKw&&g.jahr===prJahr);
+  const bereitsVergebenTeam=(S.paddelGewinner||[]).find(g=>g.kw===prKw&&g.jahr===prJahr);
   {
     const showBanner=isFridayAward()&&(rankData.length||bereitsVergebenTeam);
     outPR+='<div style="background:var(--amber-bg);border:1px solid var(--amber-bd);border-radius:14px;padding:14px 16px;margin-bottom:16px">';
@@ -5149,14 +5153,15 @@ async function vergabePaddel(pid){
   const{kw,jahr}=getKW();
   const pts=getPaddelCount(pid);
   const p=person(pid);if(!p)return;
-  const bereitsVergeben=S.paddelGewinner.find(g=>g.kw===kw&&g.jahr===jahr);
+  const bereitsVergeben=(S.paddelGewinner||[]).find(g=>g.kw===kw&&g.jahr===jahr);
   if(bereitsVergeben){toast('⚠️ Paddel KW '+kw+' bereits vergeben an '+(person(bereitsVergeben.pid)?.name||'?'));return;}
   const rec={id:p.id+'-'+kw+'-'+jahr,pid:p.id,kw,jahr,punkte:pts};
-  await dbInsert('paddel_gewinner',rec);
-  S.paddelGewinner=[...S.paddelGewinner,rec];
+  const res=await dbInsert('paddel_gewinner',rec);
+  if(!res){toast('❌ Fehler beim Speichern — bitte nochmal versuchen');return;}
+  S.paddelGewinner=[...(S.paddelGewinner||[]),rec];
   notify('paddel_vergeben',{name:p.name,kw,punkte:pts});
-  showPaddelCelebration(p.id);
   render();
+  showPaddelCelebration(p.id);
   toast('🏆 Paddel KW '+kw+' → '+esc(p.name)+'!');
 }
 function copyCardLink(id){
