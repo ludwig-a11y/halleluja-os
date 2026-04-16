@@ -1326,6 +1326,34 @@ async function delSignal(id){
   S.signale=S.signale.filter(s=>s.id!==id);
   await dbDelete('signale',id);render();
 }
+function signalBearbeiten(id){
+  const s=S.signale.find(x=>String(x.id)===String(id));if(!s)return;
+  const badge=s.typ==='idee'?'💡 Idee':'☁ Wolke';
+  document.getElementById('mb').innerHTML=
+    '<div class="mt">✏ '+badge+' bearbeiten</div>'
+    +'<div class="fl"><label>Inhalt <span style="color:var(--red)">*</span></label>'
+    +'<textarea id="sb-was" rows="2" style="resize:none" autofocus>'+esc(s.was)+'</textarea></div>'
+    +'<div class="fl"><label>Notiz <span style="color:var(--t3);font-weight:400">(optional)</span></label>'
+    +'<input type="text" id="sb-notiz" value="'+esc(s.notiz||'')+'"></div>'
+    +'<div class="mf"><button class="btn btn-gr" onclick="cm()">Abbrechen</button>'
+    +'<button class="btn btn-dk" onclick="signalSaveEdit(\''+id+'\')">Speichern</button></div>';
+  document.getElementById('ovl').classList.add('open');
+}
+async function signalSaveEdit(id){
+  const s=S.signale.find(x=>String(x.id)===String(id));if(!s)return;
+  const was=document.getElementById('sb-was').value.trim();if(!was){toast('Bitte Inhalt eingeben');return;}
+  const notiz=document.getElementById('sb-notiz').value.trim()||null;
+  const prev={was:s.was,notiz:s.notiz};
+  s.was=was;s.notiz=notiz;
+  const ok=await dbPatch('signale',id,{was,notiz});
+  if(!ok){Object.assign(s,prev);render();toast('⚠️ Speichern fehlgeschlagen');return;}
+  cm();render();toast('✅ Gespeichert');
+}
+function signalZuKlaerung(id){
+  const s=S.signale.find(x=>String(x.id)===String(id));if(!s)return;
+  const typ=s.typ==='idee'?'unklarheit':'problem';
+  openOffeneFrage({kontext:s.was+(s.notiz?'\n\n'+s.notiz:''),typ});
+}
 async function toggleFokusZiel(id){
   for(const z of S.ziele.filter(z=>z.focus&&z.id!==id)){z.focus=false;await dbPatch('ziele',z.id,{focus:false});}
   const z=S.ziele.find(x=>x.id===id);if(!z)return;
@@ -2127,7 +2155,7 @@ function rWoche(){
     out+='<div style="display:flex;gap:6px;margin-top:10px">';
     out+='<button onclick="openWochenreset()" style="font-size:11px;padding:5px 12px;border-radius:7px;border:1px solid var(--bd);background:var(--gray-bg);color:var(--t2);cursor:pointer;font-family:inherit">✎ Bearbeiten</button>';
     out+='<button onclick="openBlocker(\''+wr.id+'\')" style="font-size:11px;padding:5px 12px;border-radius:7px;border:1px solid var(--red-bd);background:var(--red-bg);color:var(--red);cursor:pointer;font-family:inherit">⚠ Blocker</button>';
-    out+='<button onclick="openDecisionForm()" style="font-size:11px;padding:5px 12px;border-radius:7px;border:1px dashed var(--gold);background:transparent;color:var(--gold-t);cursor:pointer;font-family:inherit">⚖️ Entscheidung</button>';
+    out+='<button onclick="openOffeneFrage()" style="font-size:11px;padding:5px 12px;border-radius:7px;border:1px dashed var(--gold);background:transparent;color:var(--gold-t);cursor:pointer;font-family:inherit">🔍 Klärung anfragen</button>';
     out+='</div>';
     out+='</div>';
   }else{
@@ -2175,11 +2203,14 @@ function rWoche(){
         if(s.notiz)out+='<div style="font-size:11px;color:var(--t2);font-style:italic;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(s.notiz)+'</div>';
         if(von)out+='<div style="font-size:10px;color:var(--t3)">von '+esc(von.name)+'</div>';
         out+='</div>';
-        out+='<div style="display:flex;gap:4px;flex-shrink:0">';
+        out+='<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:6px">';
         out+='<button onclick="besprechenSignal(\''+s.id+'\')" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--blue-bd);background:var(--blue-bg);color:var(--blue);cursor:pointer;font-family:inherit">💬</button>';
+        out+='<button onclick="signalZuKlaerung(\''+s.id+'\')" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--amber-bd,#d97706);background:var(--amber-bg,#fffbeb);color:var(--amber,#b45309);cursor:pointer;font-family:inherit" title="Als Klärungsbedarf melden">🔍</button>';
         out+='<button onclick="ideenZuAufgabe(\''+s.id+'\')" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--text);cursor:pointer;font-family:inherit">→ Aufgabe</button>';
         out+='<button onclick="signalGesehen(\''+s.id+'\')" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--green-bd);background:var(--green-bg);color:var(--green);cursor:pointer;font-family:inherit">✓ Gesehen</button>';
-        out+='<button onclick="wolkeZurueck(\''+s.id+'\')" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--red-bd);background:var(--red-bg);color:var(--red);cursor:pointer;font-family:inherit">↩</button>';
+        out+='<button onclick="wolkeZurueck(\''+s.id+'\')" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);cursor:pointer;font-family:inherit">↩</button>';
+        out+='<button onclick="signalBearbeiten(\''+s.id+'\')" style="font-size:10px;padding:3px 7px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);cursor:pointer;font-family:inherit" title="Bearbeiten">✏</button>';
+        out+='<button onclick="delSignal(\''+s.id+'\')" style="font-size:10px;padding:3px 7px;border-radius:6px;border:1px solid var(--red);background:transparent;color:var(--red);cursor:pointer;font-family:inherit" title="Löschen">🗑</button>';
         out+='</div></div>';
       });
       out+='</div></details>';
@@ -4598,9 +4629,13 @@ function rTeam(){
           if(s.notiz)out+='<div style="font-size:11px;color:var(--t2);margin-top:2px;font-style:italic">'+esc(s.notiz)+'</div>';
           out+='<div style="font-size:10px;color:var(--t3);margin-top:2px">'+(von?'von '+esc(von.name)+' · ':'')+(s.created_at?s.created_at.slice(0,10):'')+'</div>';
           out+='</div>';
-          out+='<div style="display:flex;gap:4px;flex-shrink:0">';
+          out+='</div>';
+          out+='<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px">';
           out+='<button onclick="besprechenSignal(\''+s.id+'\')" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--blue-bd);background:var(--blue-bg);color:var(--blue);cursor:pointer;font-family:inherit">💬 Besprechen</button>';
+          out+='<button onclick="signalZuKlaerung(\''+s.id+'\')" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--amber-bd,#d97706);background:var(--amber-bg,#fffbeb);color:var(--amber,#b45309);cursor:pointer;font-family:inherit">🔍 Klärung anfragen</button>';
           out+='<button onclick="ideenZuAufgabe(\''+s.id+'\')" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--text);cursor:pointer;font-family:inherit">→ Aufgabe</button>';
+          out+='<button onclick="signalBearbeiten(\''+s.id+'\')" style="font-size:10px;padding:3px 7px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);cursor:pointer;font-family:inherit" title="Bearbeiten">✏</button>';
+          out+='<button onclick="delSignal(\''+s.id+'\')" style="font-size:10px;padding:3px 7px;border-radius:6px;border:1px solid var(--red);background:transparent;color:var(--red);cursor:pointer;font-family:inherit" title="Löschen">🗑</button>';
           out+='</div></div>';
         });
       }
@@ -5477,21 +5512,22 @@ function openOffeneFrage(opts={}){
   const typ=opts.typ||'entscheidung';
   const personOpts='<option value="">— optional —</option>'+S.personen.filter(p=>p.id!==aP).map(p=>'<option value="'+p.id+'">'+esc(p.name)+'</option>').join('');
   document.getElementById('mb').innerHTML=
-    '<div class="mt">❓ Offene Frage stellen</div>'
-    +'<div class="fl"><label>Typ</label>'
+    '<div class="mt">🔍 Klärungsbedarf melden</div>'
+    +'<div style="font-size:11px;color:var(--t3);margin:-6px 0 14px;line-height:1.5">Wird direkt beantwortet — oder bei Bedarf in ein Meeting aufgenommen.</div>'
+    +'<div class="fl"><label>Art der Klärung</label>'
     +'<div style="display:flex;gap:12px;margin-top:4px;flex-wrap:wrap">'
-    +'<label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer"><input type="radio" name="of-typ" value="entscheidung"'+(typ==='entscheidung'?' checked':'')+'>  ⚖️ Entscheidung</label>'
-    +'<label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer"><input type="radio" name="of-typ" value="problem"'+(typ==='problem'?' checked':'')+'>  ⚠️ Problem</label>'
-    +'<label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer"><input type="radio" name="of-typ" value="unklarheit"'+(typ==='unklarheit'?' checked':'')+'>  ❓ Unklarheit</label>'
+    +'<label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer"><input type="radio" name="of-typ" value="entscheidung"'+(typ==='entscheidung'?' checked':'')+'>  ⚖️ Entscheidung nötig</label>'
+    +'<label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer"><input type="radio" name="of-typ" value="problem"'+(typ==='problem'?' checked':'')+'>  ⚠️ Problem / Blocker</label>'
+    +'<label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer"><input type="radio" name="of-typ" value="unklarheit"'+(typ==='unklarheit'?' checked':'')+'>  ❓ Offene Frage</label>'
     +'</div></div>'
     +'<div class="fl"><label>An wen? <span style="color:var(--t3);font-weight:400">(optional)</span></label>'
     +'<select id="of-an" style="font-size:13px">'+personOpts+'</select></div>'
-    +'<div class="fl"><label>Frage / Problem <span style="color:var(--red)">*</span></label>'
-    +'<textarea id="of-frage" rows="2" placeholder="z.B. Sollen wir Lieferant X wechseln?" style="resize:none"></textarea></div>'
+    +'<div class="fl"><label>Was muss geklärt werden? <span style="color:var(--red)">*</span></label>'
+    +'<textarea id="of-frage" rows="2" placeholder="z.B. Sollen wir Lieferant X wechseln?" style="resize:none" autofocus></textarea></div>'
     +'<div class="fl"><label>Kontext <span style="color:var(--t3);font-weight:400">(optional)</span></label>'
-    +'<textarea id="of-kontext" rows="2" placeholder="Hintergrundinformationen, die helfen…" style="resize:none">'+esc(opts.kontext||'')+'</textarea></div>'
-    +'<div class="fl"><label>Was steht ohne Antwort still? <span style="color:var(--t3);font-weight:400">(optional)</span></label>'
-    +'<input type="text" id="of-blockiert" placeholder="z.B. Angebot kann nicht versendet werden"></div>'
+    +'<textarea id="of-kontext" rows="2" placeholder="Hintergrund, der bei der Entscheidung hilft…" style="resize:none">'+esc(opts.kontext||'')+'</textarea></div>'
+    +'<div class="fl"><label>Blockiert <span style="color:var(--t3);font-weight:400">(optional — was steht ohne Antwort still?)</span></label>'
+    +'<input type="text" id="of-blockiert" placeholder="z.B. Angebot kann nicht raus"></div>'
     +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
     +'<div class="fl"><label>Priorität</label>'
     +'<select id="of-prio" style="font-size:13px">'
@@ -5502,12 +5538,12 @@ function openOffeneFrage(opts={}){
     +'<div class="fl"><label>Deadline <span style="color:var(--t3);font-weight:400">(optional)</span></label>'
     +'<input type="date" id="of-deadline"></div>'
     +'</div>'
-    +'<div class="fl"><label>Sichtbarkeit nach Entscheidung</label>'
-    +'<div style="display:flex;gap:8px;margin-top:4px">'
+    +'<div class="fl"><label style="font-size:11px;color:var(--t3);font-weight:400">Beschluss sichtbar für</label>'
+    +'<div style="display:flex;gap:12px;margin-top:4px">'
     +'<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer"><input type="radio" name="of-sicht" value="gf_only" checked> Nur GF</label>'
     +'<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer"><input type="radio" name="of-sicht" value="team"> Ganzes Team</label>'
     +'</div></div>'
-    +'<div class="mf"><button class="btn btn-gr" onclick="cm()">Abbrechen</button><button class="btn" onclick="saveOffeneFrage()" style="background:var(--gold);border-color:var(--gold);color:#fff">Frage stellen</button></div>';
+    +'<div class="mf"><button class="btn btn-gr" onclick="cm()">Abbrechen</button><button class="btn" onclick="saveOffeneFrage()" style="background:var(--gold);border-color:var(--gold);color:#fff">Klärung anfragen</button></div>';
   document.getElementById('ovl').classList.add('open');
 }
 function openDecisionForm(){openOffeneFrage();}
