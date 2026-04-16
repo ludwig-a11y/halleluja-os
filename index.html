@@ -3980,6 +3980,12 @@ function selPrioBtn(btn,pr){
   _selPrio=(!pr||pr==='null')?null:pr;
   document.querySelectorAll('[id^="pbp-"]').forEach(b=>b.style.outline='none');
   btn.style.outline='2px solid var(--text)';
+  // P1 → Mehr aufklappen + Ziel nudgen
+  if(pr==='P1'){
+    const m=document.getElementById('neu-mehr');if(m)m.style.display='block';
+    const z=document.getElementById('nziel');
+    if(z&&!z.value){z.style.outline='2px solid var(--red)';z.focus();setTimeout(()=>{z.style.outline='';},2000);}
+  }
 }
 async function saveNeu(){
   const t=document.getElementById('nt').value.trim();if(!t)return;
