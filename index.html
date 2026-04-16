@@ -640,15 +640,15 @@ function typTag(a){const t=typInfo(a);return`<span class="tag" style="background
 
 function prioTag(p,aid,editable){
   if(!p)return'';
-  const bg=p==='P1'?'var(--red-bg)':p==='P2'?'var(--orange-bg)':'var(--gray-bg)';
-  const tc=p==='P1'?'var(--red)':p==='P2'?'var(--orange)':'var(--t2)';
+  const bg=p==='P1'?'var(--red-bg)':p==='P2'?'var(--blue-bg)':'var(--gray-bg)';
+  const tc=p==='P1'?'var(--red)':p==='P2'?'var(--blue)':'var(--t2)';
   const tip=p==='P1'?'P1 — Konsequenzen heute.':p==='P2'?'P2 — Wichtig, kein Feuer.':'P3 — Wenn Zeit ist.';
   if(editable&&aid){
     return`<span class="prio-wrap">
       <span class="tag" style="background:${bg};color:${tc};cursor:pointer" title="${tip}" onclick="togglePrioDD(event,'${aid}')">${p} ▾</span>
       <div class="prio-dd" id="pdd-${aid}">
         <div class="prio-dd-item" style="color:var(--red)" onclick="changePrio(event,'${aid}','P1')">P1 — Konsequenzen heute</div>
-        <div class="prio-dd-item" style="color:var(--orange)" onclick="changePrio(event,'${aid}','P2')">P2 — Wichtig, kein Feuer</div>
+        <div class="prio-dd-item" style="color:var(--blue)" onclick="changePrio(event,'${aid}','P2')">P2 — Wichtig, kein Feuer</div>
         <div class="prio-dd-item" style="color:var(--t2)" onclick="changePrio(event,'${aid}','P3')">P3 — Wenn Zeit ist</div>
       </div>
     </span>`;
@@ -1103,7 +1103,7 @@ function rKapazitaetBlock(pid){
     meetH+=Math.max(0,(ev.end.getTime()-ev.start.getTime())/3600000);
   });
   meetH=Math.round(meetH*10)/10;
-  const maxH=Math.max(...p1Days.map((h,i)=>h+p23Days[i])+(meetH?[meetH]:[]),k.fh/5||4,1);
+  const maxH=Math.max(...p1Days.map((h,i)=>h+p23Days[i]),...(meetH?[meetH]:[]),k.fh/5||4,1);
 
   // Tages-Bars rendern
   let dagBar='<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin-top:8px">';
@@ -1127,7 +1127,7 @@ function rKapazitaetBlock(pid){
     }
     dagBar+='</div>';
     // Stunden-Label
-    dagBar+='<div style="font-size:9px;color:'+(tot>0?(isPast?'var(--t3)':'var(--t2)'):'var(--t3)')+'font-weight:'+(tot>0?'600':'400')+'">'+(tot>0?tot.toFixed(tot%1?1:0)+'h':'·')+'</div>';
+    dagBar+='<div style="font-size:9px;color:'+(tot>0?(isPast?'var(--t3)':'var(--t2)'):'var(--t3)')+';font-weight:'+(tot>0?'600':'400')+'">'+(tot>0?tot.toFixed(tot%1?1:0)+'h':'·')+'</div>';
     // Tag-Label
     dagBar+='<div style="font-size:9px;font-weight:'+(isToday?'700':'400')+';color:'+(isToday?'var(--text)':'var(--t3)')+'">'+tag+'</div>';
     dagBar+='</div>';
@@ -1709,6 +1709,9 @@ function logout(){
   if(_dataPoll){clearInterval(_dataPoll);_dataPoll=null;}
   if(_sonderPoll){clearInterval(_sonderPoll);_sonderPoll=null;}
   if(timIv){clearInterval(timIv);timIv=null;}
+  if(window._gcalNotifIv){clearInterval(window._gcalNotifIv);window._gcalNotifIv=null;}
+  if(window._fmTimer){clearInterval(window._fmTimer);window._fmTimer=null;}
+  const fov=document.getElementById('fokus-ov');if(fov)fov.remove();
   removeBackBtn();
   document.getElementById('app').style.display='none';
   document.getElementById('login-screen').style.display='flex';
@@ -2557,7 +2560,7 @@ function rTag(){
       }
       // gap = untracked/lost time (visible pressure when late)
       if(gapH>0.1){
-        out+='<div style="width:'+gapPct+'%;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:repeating-linear-gradient(90deg,transparent,transparent 4px,rgba(0,0,0,.03) 4px,rgba(0,0,0,.03) 8px)">';
+        out+='<div style="width:'+gapPct+'%;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:repeating-linear-gradient(90deg,transparent,transparent 4px,rgba(128,128,128,.08) 4px,rgba(128,128,128,.08) 8px)">';
         if(gapH>0.5)out+='<span style="font-size:8px;color:var(--t3);white-space:nowrap">'+Math.round(gapH*10)/10+'h</span>';
         out+='</div>';
       }
@@ -2671,7 +2674,7 @@ function rTag(){
     out+='<div style="font-size:10px;font-weight:700;opacity:.4;letter-spacing:.8px;text-transform:uppercase;margin-bottom:8px">Nächster Schritt</div>';
     out+='<div style="font-size:clamp(17px,4.5vw,22px);font-weight:700;margin-bottom:6px;line-height:1.3;cursor:pointer" onclick="openDetail(\''+naechste.id+'\')">'+esc(naechste.titel)+'</div>';
     out+='<div style="display:flex;gap:8px;align-items:center;margin-bottom:16px;flex-wrap:wrap">';
-    if(naechste.prio)out+='<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:6px;background:rgba(255,255,255,.12);color:'+(naechste.prio==='P1'?'#fca5a5':naechste.prio==='P2'?'var(--orange-bd)':'rgba(255,255,255,.5)')+'">'+naechste.prio+'</span>';
+    if(naechste.prio)out+='<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:6px;background:rgba(255,255,255,.12);color:'+(naechste.prio==='P1'?'#fca5a5':naechste.prio==='P2'?'#93c5fd':'rgba(255,255,255,.5)')+'">'+naechste.prio+'</span>';
     if(zN)out+='<span style="font-size:11px;opacity:.5">'+zN+'</span>';
     if(tzN)out+='<span style="font-size:11px;color:#c4b5fd">'+tzN+'</span>';
     if(naechste.dl){const d=dli(naechste.dl);if(d)out+='<span style="font-size:11px;opacity:.5">'+d.l+'</span>';}
@@ -2731,8 +2734,8 @@ function rTag(){
         +zielOptsI.replace('PLACEHOLDER',a.id)
         +['P1','P2','P3','null'].map(p=>{
           const lbl=p==='null'?'Kein Prio':p;
-          const bg=p==='P1'?'var(--red-bg)':p==='P2'?'var(--orange-bg)':p==='P3'?'var(--gray-bg)':'var(--sf)';
-          const tc=p==='P1'?'var(--red)':p==='P2'?'var(--orange)':p==='P3'?'var(--t2)':'var(--t3)';
+          const bg=p==='P1'?'var(--red-bg)':p==='P2'?'var(--blue-bg)':p==='P3'?'var(--gray-bg)':'var(--sf)';
+          const tc=p==='P1'?'var(--red)':p==='P2'?'var(--blue)':p==='P3'?'var(--t2)':'var(--t3)';
           const suggested=p===a.prio||(p==='null'&&!a.prio);
           return'<button onclick="setPrio(\''+a.id+'\',\''+p+'\')" class="btn-prio'+(suggested?' btn-prio-on':'')+'" style="background:'+bg+';color:'+tc+'">'+lbl+'</button>';
         }).join('')
@@ -2765,8 +2768,8 @@ function rTag(){
       out+=zielOptsN.replace('PLACEHOLDER',a.id);
       out+=(['P1','P2','P3','null'].map(pr=>{
         const lbl=pr==='null'?'Kein Prio':pr;
-        const bg=pr==='P1'?'var(--red-bg)':pr==='P2'?'var(--orange-bg)':pr==='P3'?'var(--gray-bg)':'var(--sf)';
-        const tc=pr==='P1'?'var(--red)':pr==='P2'?'var(--orange)':pr==='P3'?'var(--t2)':'var(--t3)';
+        const bg=pr==='P1'?'var(--red-bg)':pr==='P2'?'var(--blue-bg)':pr==='P3'?'var(--gray-bg)':'var(--sf)';
+        const tc=pr==='P1'?'var(--red)':pr==='P2'?'var(--blue)':pr==='P3'?'var(--t2)':'var(--t3)';
         return'<button onclick="setPrio(\''+a.id+'\',\''+(pr==='null'?null:pr)+'\')" class="btn-prio" style="background:'+bg+';color:'+tc+'">'+lbl+'</button>';
       }).join(''));
       out+='</div>';
@@ -3514,7 +3517,7 @@ function openNeu(pf={}){
     +'<div class="fl"><label>Ziel <span style="font-weight:400;color:var(--t2)">(optional)</span></label><select id="nziel" onchange="updateNeuTZ()">'+zieleOpts+'</select></div></div>'
     +'<div id="neu-tz-wrap" class="fl" style="display:none"><label>Meilenstein <span style="font-weight:400;color:var(--t2)">(optional)</span></label><select id="ntz"><option value="">— kein Meilenstein —</option></select></div>'
     +'<div class="fl"><label>Priorität</label><div style="display:flex;gap:6px;margin-top:2px">'
-    +[null,'P1','P2','P3'].map(pr=>{const bg=pr==='P1'?'var(--red-bg)':pr==='P2'?'var(--orange-bg)':'var(--gray-bg)';const tc=pr==='P1'?'var(--red)':pr==='P2'?'var(--orange)':'var(--t2)';return'<button id="pbp-'+(pr||'k')+'" onclick="selPrioBtn(this,\''+pr+'\')" style="font-size:12px;padding:4px 11px;border-radius:8px;border:1px solid '+(pr?tc:'var(--bd)')+';background:'+bg+';color:'+tc+';cursor:pointer;font-family:inherit">'+(pr||'kein')+'</button>';}).join('')
+    +[null,'P1','P2','P3'].map(pr=>{const bg=pr==='P1'?'var(--red-bg)':pr==='P2'?'var(--blue-bg)':'var(--gray-bg)';const tc=pr==='P1'?'var(--red)':pr==='P2'?'var(--blue)':'var(--t2)';return'<button id="pbp-'+(pr||'k')+'" onclick="selPrioBtn(this,\''+pr+'\')" style="font-size:12px;padding:4px 11px;border-radius:8px;border:1px solid '+(pr?tc:'var(--bd)')+';background:'+bg+';color:'+tc+';cursor:pointer;font-family:inherit">'+(pr||'kein')+'</button>';}).join('')
     +'</div></div>'
     +'<div class="f2"><div class="fl"><label>Dauer</label><select id="nh">'+SH.map(([h,l])=>'<option value="'+h+'"'+((pf.geplant||1)==h?' selected':'')+'>'+l+'</option>').join('')+'</select></div>'
     +'<div class="fl"><label>Fällig</label><div style="display:flex;gap:6px;align-items:center"><input type="date" id="ndl" value="'+(pf.dl||getFriday())+'" style="flex:1">'
@@ -5101,15 +5104,10 @@ function drNeuAnfragen(drId){
 }
 // ─── Google Calendar Integration ───────────────────────────────
 function gcalIsConnected(){
-  // "Verbunden" wenn Token aktiv ODER wenn User früher verbunden hat (silent refresh läuft)
-  if(localStorage.getItem('gcal_ever_connected')==='1'){
-    const expiry=parseInt(localStorage.getItem('gcal_token_expiry')||'0');
-    // Token noch gültig → definitiv verbunden
-    if(localStorage.getItem('gcal_token')&&Date.now()<expiry)return true;
-    // Token abgelaufen aber User hat sich früher verbunden → als verbunden zeigen, refresh läuft
-    return true;
-  }
-  return false;
+  if(localStorage.getItem('gcal_ever_connected')!=='1')return false;
+  const token=localStorage.getItem('gcal_token');
+  const expiry=parseInt(localStorage.getItem('gcal_token_expiry')||'0');
+  return !!(token&&Date.now()<expiry);
 }
 const GCAL_DEFAULT_CLIENT_ID='72621178595-l3kjb0a7u8khba1dt61lgu5gfs0daorb.apps.googleusercontent.com';
 const GCAL_SCOPE='https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events';
@@ -5224,10 +5222,10 @@ function gcalStartNotifications(){
     (S.kalender||[]).forEach(ev=>{
       if(!ev.start)return;
       const diff=(ev.start.getTime()-now)/60000;
-      if(diff>9&&diff<=10)toast('📅 '+ev.titel+' in 10 Min');
-      else if(diff>-1&&diff<=0&&!ev._notifFired){ev._notifFired=true;toast('📅 '+ev.titel+' startet jetzt!');}
+      if(diff>0&&diff<=10&&!ev._notif10){ev._notif10=true;toast('📅 '+esc(ev.titel)+' in '+Math.round(diff)+' Min');}
+      else if(diff>-1&&diff<=0&&!ev._notifFired){ev._notifFired=true;toast('📅 '+esc(ev.titel)+' startet jetzt!');}
     });
-  },60000);
+  },30000);
 }
 function gcalShowEvent(id){
   const ev=(window._gcalEvtMap||{})[id];if(!ev)return;
