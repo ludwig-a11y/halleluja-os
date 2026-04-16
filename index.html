@@ -1165,6 +1165,42 @@ function rKapazitaetBlock(pid){
   out+='<div style="display:flex;gap:4px;align-items:center"><div style="width:8px;height:8px;border-radius:2px;background:var(--blue)"></div><span style="font-size:9px;color:var(--t3)">P2/P3</span></div>';
   if(meetH>0)out+='<div style="display:flex;gap:4px;align-items:center"><div style="width:8px;height:8px;border-radius:2px;background:var(--t3)"></div><span style="font-size:9px;color:var(--t3)">Meetings '+meetH.toFixed(1)+'h</span></div>';
   out+='</div>';
+  // Schätzgenauigkeit: erledigte Aufgaben diese Woche — geplant vs. gebucht
+  {
+    const monTagStr=localDate(new Date(now.getFullYear(),now.getMonth(),now.getDate()-(dow-1)));
+    const erlDieseWoche=S.aufgaben.filter(a=>
+      a.pid===pid&&a.status==='erledigt'&&a.updated_at&&
+      localDate(new Date(a.updated_at))>=monTagStr&&
+      (a.geplant||a.gebucht)
+    );
+    if(erlDieseWoche.length>=2){
+      const totGeplant=erlDieseWoche.reduce((s,a)=>s+(a.geplant||0),0);
+      const totGebucht=erlDieseWoche.reduce((s,a)=>s+(a.gebucht||a.geplant||0),0);
+      if(totGeplant>0&&totGebucht>0){
+        const diff=totGebucht-totGeplant;
+        const pctOff=Math.round(Math.abs(diff)/totGeplant*100);
+        const sign=diff>0?'+':diff<0?'–':'';
+        const col=pctOff<=10?'var(--green)':pctOff<=25?'var(--orange)':'var(--red)';
+        const label=pctOff<=10?'Trifft genau':diff>0?pctOff+'% zu lang':pctOff+'% zu kurz';
+        out+='<div style="display:flex;justify-content:space-between;align-items:center;padding-top:8px;margin-top:6px;border-top:1px solid var(--bd)">';
+        out+='<div style="font-size:11px;color:var(--t3)">Schätzgenauigkeit <span style="color:var(--t2)">('+erlDieseWoche.length+' Tasks)</span></div>';
+        out+='<div style="font-size:11px;font-weight:700;color:'+col+'">'+(pctOff<=10?'✓ Triff genau':sign+pctOff+'% '+(diff>0?'zu lang':'zu kurz'))+'</div>';
+        out+='</div>';
+        // Mini-Balken: geplant vs gebucht
+        const maxB=Math.max(totGeplant,totGebucht);
+        out+='<div style="display:flex;gap:6px;align-items:center;margin-top:4px">';
+        out+='<div style="font-size:9px;color:var(--t3);width:44px">Geplant</div>';
+        out+='<div style="flex:1;height:5px;background:var(--bd);border-radius:3px;overflow:hidden"><div style="height:100%;background:var(--t3);width:'+(totGeplant/maxB*100)+'%"></div></div>';
+        out+='<div style="font-size:9px;color:var(--t3);width:28px;text-align:right">'+totGeplant.toFixed(1)+'h</div>';
+        out+='</div>';
+        out+='<div style="display:flex;gap:6px;align-items:center;margin-top:2px">';
+        out+='<div style="font-size:9px;color:var(--t3);width:44px">Real</div>';
+        out+='<div style="flex:1;height:5px;background:var(--bd);border-radius:3px;overflow:hidden"><div style="height:100%;background:'+col+';width:'+(totGebucht/maxB*100)+'%"></div></div>';
+        out+='<div style="font-size:9px;font-weight:600;color:'+col+';width:28px;text-align:right">'+totGebucht.toFixed(1)+'h</div>';
+        out+='</div>';
+      }
+    }
+  }
   if(k.rnd>0){
     out+='<div style="display:flex;justify-content:space-between;align-items:center;padding-top:6px;margin-top:4px;border-top:1px solid var(--bd)">';
     out+='<div style="font-size:11px;color:var(--t3)">🎲 Random — wenn Luft ist</div>';
@@ -2695,37 +2731,45 @@ function rTag(){
   if(_inboxN){
     out+='<div style="background:var(--sf);border:1.5px solid var(--blue-bd);border-radius:14px;padding:14px 16px;margin-bottom:10px">';
     out+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><span style="font-size:15px">📬</span><span style="font-size:13px;font-weight:700">Inbox</span><span style="background:var(--blue);color:#fff;font-size:10px;font-weight:700;padding:2px 9px;border-radius:99px;margin-left:auto">'+_inboxN+' neu</span></div>';
-    // ── Zugewiesene Aufgaben sub-section ──
+    // ── Zugewiesene Aufgaben — Schritt 1: Annehmen / Ablehnen ──
     if(zugewiesenA.length){
-    out+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--blue);margin-bottom:6px">📋 Bestätige mit Priorität</div>';
-    const zielOptsI=S.ziele.length?'<select id="inbox-ziel-PLACEHOLDER" style="font-size:11px;padding:3px 8px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);font-family:inherit;max-width:180px"><option value="">— Ziel —</option>'+S.ziele.map(z=>'<option value="'+z.id+'">'+esc(z.name).slice(0,30)+'</option>').join('')+'</select>':'';
+    out+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--blue);margin-bottom:6px">📋 Von dir erwartet</div>';
+    const zielOptsI=S.ziele.length?'<select id="inbox-ziel-PLACEHOLDER" style="font-size:11px;padding:3px 8px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);font-family:inherit;max-width:180px"><option value="">— Ziel zuordnen —</option>'+S.ziele.map(z=>'<option value="'+z.id+'">'+esc(z.name).slice(0,30)+'</option>').join('')+'</select>':'';
     zugewiesenA.forEach(a=>{
       const from=person(a.erstelltVon);
-      out+='<div style="background:var(--gray-bg);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;margin-bottom:8px">'
-        +'<input value="'+esc(a.titel)+'" onblur="saveDetailField(\''+a.id+'\',\'titel\',this.value)" onkeydown="if(event.key===\'Enter\')this.blur()" style="font-size:13px;font-weight:600;margin-bottom:3px;width:100%;border:none;border-bottom:1px dashed var(--bd);background:transparent;color:var(--text);font-family:inherit;padding:0 0 2px;box-sizing:border-box;outline:none">'
-        +(from?'<div style="font-size:11px;color:var(--t2);margin-bottom:4px">von '+esc(from.name)+(a.prio?' · Vorschlag: <strong>'+a.prio+'</strong>':'')+'</div>':'')
-        +(a.notiz?'<div style="font-size:11px;color:var(--t2);margin-bottom:8px;font-style:italic;line-height:1.4">💬 '+esc(a.notiz).slice(0,150)+(a.notiz.length>150?'…':'')+'</div>':'')
-        +'<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px">'
-        +zielOptsI.replace('PLACEHOLDER',a.id)
-        +['P1','P2','P3','null'].map(p=>{
-          const lbl=p==='null'?'Kein Prio':p;
-          const bg=p==='P1'?'var(--red-bg)':p==='P2'?'var(--blue-bg)':p==='P3'?'var(--gray-bg)':'var(--sf)';
-          const tc=p==='P1'?'var(--red)':p==='P2'?'var(--blue)':p==='P3'?'var(--t2)':'var(--t3)';
-          const suggested=p===a.prio||(p==='null'&&!a.prio);
-          return'<button onclick="setPrio(\''+a.id+'\',\''+p+'\')" class="btn-prio'+(suggested?' btn-prio-on':'')+'" style="background:'+bg+';color:'+tc+'">'+lbl+'</button>';
-        }).join('')
-        +'</div>'
-        +'<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">'
-        +'<span style="font-size:10px;color:var(--t3)">oder:</span>'
-        +'<button onclick="klassifiziereAlsIdee(\''+a.id+'\')" class="btn-sm" style="border-color:var(--blue-bd);background:var(--blue-bg);color:var(--blue)">→ Ideen-Pool</button>'
-        +(S.ziele.length?'<button onclick="aufgabeZuMeilenstein(\''+a.id+'\')" class="btn-sm" style="border-color:var(--green-bd);background:var(--green-bg);color:var(--green)">→ Meilenstein</button>':'')
-        +(a.erstelltVon&&a.erstelltVon!==aP?'<button onclick="aufgabeZurueck(\''+a.id+'\')" class="btn-sm" style="border-color:var(--red-bd);background:var(--red-bg);color:var(--red)">↩ Zurück</button>':'')
-        +'<button onclick="toggleWeiterleiten(\''+a.id+'\')" class="btn-sm" style="border-color:var(--purple-bd);background:var(--purple-bg);color:var(--purple)">→ Weiterleiten</button>'
-        +'</div>'
-        +'<div id="wl-'+a.id+'" style="display:none;gap:5px;flex-wrap:wrap;margin-top:6px;padding:8px 10px;background:var(--purple-bg);border:1px solid var(--purple-bd);border-radius:8px">'
+      out+='<div style="background:var(--gray-bg);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;margin-bottom:8px">';
+      out+='<div style="font-size:13px;font-weight:600;margin-bottom:3px">'+esc(a.titel)+'</div>';
+      if(from)out+='<div style="font-size:11px;color:var(--t2);margin-bottom:4px">von '+esc(from.name)+(a.prio?' · Vorschlag: <strong style="color:'+(a.prio==='P1'?'var(--red)':'var(--blue)')+'">'+a.prio+'</strong>':'')+'</div>';
+      if(a.notiz)out+='<div style="font-size:11px;color:var(--t2);margin-bottom:8px;font-style:italic;line-height:1.4">💬 '+esc(a.notiz).slice(0,120)+(a.notiz.length>120?'…':'')+'</div>';
+      // Schritt 1: zwei Buttons
+      out+='<div id="ibx-s1-'+a.id+'" style="display:flex;gap:8px">';
+      out+='<button onclick="document.getElementById(\'ibx-s1-'+a.id+'\').style.display=\'none\';document.getElementById(\'ibx-s2-'+a.id+'\').style.display=\'block\'" style="flex:1;padding:8px;border-radius:8px;background:var(--hero);color:#fff;border:none;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer">✓ Annehmen</button>';
+      out+='<button onclick="document.getElementById(\'ibx-s1-'+a.id+'\').style.display=\'none\';document.getElementById(\'ibx-abl-'+a.id+'\').style.display=\'block\'" style="flex:1;padding:8px;border-radius:8px;background:var(--gray-bg);color:var(--t2);border:1px solid var(--bd);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer">↩ Ablehnen</button>';
+      out+='</div>';
+      // Schritt 2: Prio wählen (nach Annehmen)
+      out+='<div id="ibx-s2-'+a.id+'" style="display:none">';
+      out+='<div style="font-size:10px;color:var(--t3);margin-bottom:6px;margin-top:2px">Welche Priorität hat das für dich?</div>';
+      out+='<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px">';
+      out+=zielOptsI.replace('PLACEHOLDER',a.id);
+      out+=['P1','P2','P3'].map(p=>{
+        const bg=p==='P1'?'var(--red-bg)':p==='P2'?'var(--blue-bg)':'var(--gray-bg)';
+        const tc=p==='P1'?'var(--red)':p==='P2'?'var(--blue)':'var(--t2)';
+        const suggested=p===a.prio;
+        return'<button onclick="setPrio(\''+a.id+'\',\''+p+'\')" class="btn-prio'+(suggested?' btn-prio-on':'')+'" style="background:'+bg+';color:'+tc+'">'+p+'</button>';
+      }).join('');
+      out+='</div></div>';
+      // Ablehnen-Optionen
+      out+='<div id="ibx-abl-'+a.id+'" style="display:none;display:none">';
+      out+='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">';
+      out+='<button onclick="aufgabeZurueck(\''+a.id+'\')" class="btn-sm" style="border-color:var(--red-bd);background:var(--red-bg);color:var(--red)">↩ Zurück an '+esc((from?.name||'').split(' ')[0])+'</button>';
+      out+='<button onclick="toggleWeiterleiten(\''+a.id+'\')" class="btn-sm" style="border-color:var(--purple-bd);background:var(--purple-bg);color:var(--purple)">→ Weiterleiten</button>';
+      out+='<button onclick="klassifiziereAlsIdee(\''+a.id+'\')" class="btn-sm" style="border-color:var(--blue-bd);background:var(--blue-bg);color:var(--blue)">→ Ideen-Pool</button>';
+      out+='</div>';
+      out+='<div id="wl-'+a.id+'" style="display:none;gap:5px;flex-wrap:wrap;margin-top:6px;padding:8px 10px;background:var(--purple-bg);border:1px solid var(--purple-bd);border-radius:8px">'
         +'<span style="font-size:10px;color:var(--purple);font-weight:600;width:100%;margin-bottom:2px">An wen weiterleiten?</span>'
-        +S.personen.filter(p=>p.id!==aP).map(p=>'<div onclick="weiterleitenAufgabe(\''+a.id+'\',\''+p.id+'\')" style="cursor:pointer;font-size:11px;font-weight:600;padding:4px 11px;border-radius:99px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);white-space:nowrap;transition:all .15s" onmousedown="this.style.background=\'var(--purple)\';this.style.color=\'#fff\'" onmouseup="this.style.background=\'var(--sf)\';this.style.color=\'var(--t2)\'">'+esc(p.name.split(' ')[0])+'</div>').join('')
-        +'</div></div>';
+        +S.personen.filter(p=>p.id!==aP).map(p=>'<div onclick="weiterleitenAufgabe(\''+a.id+'\',\''+p.id+'\')" style="cursor:pointer;font-size:11px;font-weight:600;padding:4px 11px;border-radius:99px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);white-space:nowrap" >'+esc(p.name.split(' ')[0])+'</div>').join('')
+        +'</div>';
+      out+='</div></div>';
     });
     }
     // ── Neue Aufgaben sub-section ──
