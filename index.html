@@ -1759,7 +1759,7 @@ function tryLogin(){
     try{localStorage.setItem('h_session',JSON.stringify({pid:loginSel,ts:Date.now()}));}catch(e){}
     document.getElementById('login-screen').style.display='none';
     document.getElementById('app').style.display='flex';
-    updateBadge();render();startSonderPoller();startDataPoller();handleDeepLink();
+    updateBadge();render();startSonderPoller();startDataPoller();handleDeepLink();checkDeepLink();
     gcalFetchToday();
   } else {
     document.getElementById('login-err').textContent='Falsche PIN.';pinIn='';updDots();
@@ -2436,6 +2436,13 @@ function rTag(){
   });
   const erl=myA.filter(a=>a.status==='erledigt'&&a.updated_at&&localDate(new Date(a.updated_at))===TODAY);
   const offene=[...neu,...bl].sort((a,b)=>{const po={'P1':0,'P2':1,'P3':2};return(po[a.prio]??3)-(po[b.prio]??3);});
+  // ── Fokus: explizit gewählte Aufgabe nach oben ──
+  let fokusId=localStorage.getItem('fokus_id_'+aP);
+  if(fokusId){
+    const fi=offene.findIndex(a=>a.id===fokusId);
+    if(fi>0){const[ft]=offene.splice(fi,1);offene.unshift(ft);}
+    else if(fi<0){localStorage.removeItem('fokus_id_'+aP);fokusId=null;}
+  }
   const naechste=aktiv.length?null:(offene[0]||null);
   const alleGeschafft=!aktiv.length&&!neu.length&&!bl.length;
   let out='';
@@ -2493,7 +2500,10 @@ function rTag(){
       const zNn=getZielName(naechste),tzNn=getTZName(naechste);
       const fromN=naechste.erstelltVon&&naechste.erstelltVon!==aP?person(naechste.erstelltVon):null;
       hero+='<div style="background:var(--hero);border-radius:18px;padding:clamp(16px,4vw,24px);margin-bottom:16px;color:#fff">';
-      hero+='<div style="font-size:10px;font-weight:700;opacity:.4;letter-spacing:.8px;text-transform:uppercase;margin-bottom:8px">Nächster Schritt</div>';
+      hero+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">';
+      hero+='<div style="font-size:10px;font-weight:700;opacity:.4;letter-spacing:.8px;text-transform:uppercase">'+(fokusId?'🎯 Mein Fokus':'Nächster Schritt')+'</div>';
+      if(fokusId)hero+='<button onclick="clearFokus()" style="font-size:9px;padding:2px 8px;border-radius:99px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.1);color:rgba(255,255,255,.6);cursor:pointer;font-family:inherit;margin-left:auto">× Auto</button>';
+      hero+='</div>';
       hero+='<div style="font-size:clamp(17px,4.5vw,22px);font-weight:700;margin-bottom:6px;line-height:1.3;cursor:pointer" onclick="openDetail(\''+naechste.id+'\')">'+esc(naechste.titel)+'</div>';
       hero+='<div style="display:flex;gap:8px;align-items:center;margin-bottom:16px;flex-wrap:wrap">';
       if(naechste.prio)hero+='<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:6px;background:rgba(255,255,255,.12);color:'+(naechste.prio==='P1'?'#fca5a5':naechste.prio==='P2'?'#93c5fd':'rgba(255,255,255,.5)')+'">'+naechste.prio+'</span>';
@@ -2523,6 +2533,19 @@ function rTag(){
       hero+='</div>';
     }
     out+=hero;
+    // ── Fokus-Wähler: andere P1s als Chips (nur wenn kein aktiver Task) ──
+    if(!aktiv.length&&naechste){
+      const andereP1=offene.filter((a,i)=>i>0&&a.prio==='P1');
+      if(andereP1.length){
+        out+='<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:-8px 0 14px;padding:0 2px">';
+        out+='<span style="font-size:10px;color:var(--t3);white-space:nowrap">Andere P1:</span>';
+        andereP1.forEach(a=>{
+          const isF=a.id===fokusId;
+          out+='<button onclick="setFokus(\''+a.id+'\')" style="font-size:11px;padding:4px 11px;border-radius:99px;border:1px solid '+(isF?'var(--gold)':'var(--bd)')+';background:'+(isF?'var(--gold)':'var(--sf)')+';color:'+(isF?'#fff':'var(--text)')+';cursor:pointer;font-family:inherit;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px">▶ '+esc(a.titel.length>22?a.titel.slice(0,22)+'…':a.titel)+'</button>';
+        });
+        out+='</div>';
+      }
+    }
   }
 
   // ── Big 3 Wochenkompass ──
@@ -3143,6 +3166,8 @@ async function fertig(id){
       S.aufgaben.push(normalizeAufgabe(rec));
       await dbInsert('aufgaben',rec);
     }
+    // Fokus aufräumen wenn diese Aufgabe der aktive Fokus war
+    if(localStorage.getItem('fokus_id_'+aP)===id)localStorage.removeItem('fokus_id_'+aP);
     showPaddelCelebration(pid);
     celebrateErl(a);
     checkP1Done(pid);
@@ -4574,6 +4599,23 @@ function rTeam(){
   let teams=isGF()?[...S.teams].sort((a,b)=>a.id==='gf'?-1:b.id==='gf'?1:0):S.teams.filter(t=>(me()?.teams||[]).includes(t.id)||t.members.includes(aP));
   if(!teams.length)teams=[...S.teams]; // Fallback: zeige alle Teams wenn User keinem zugeordnet
   let out='<div style="margin-bottom:20px"><div style="font-size:16px;font-weight:700">Team</div><div style="font-size:12px;color:var(--t3);margin-top:2px">Wer macht was</div></div>';
+  let outPR='',outDL='',outMP='',outMT='',outOV='',outTC='';
+
+  // ── Paddel-Rangliste ──
+  const rankData=S.personen.map(p=>({p,count:getPaddelCount(p.id)})).sort((a,b)=>b.count-a.count).filter(x=>x.count>0);
+  if(rankData.length){
+    outPR+='<div style="background:var(--amber-bg);border:1px solid var(--amber-bd);border-radius:14px;padding:14px 16px;margin-bottom:16px">';
+    outPR+='<div style="font-size:11px;font-weight:700;color:var(--amber);margin-bottom:10px">🏆 Paddel-Rangliste</div>';
+    rankData.forEach((x,i)=>{
+      const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':'';
+      outPR+='<div style="display:flex;align-items:center;gap:10px;padding:5px 0">';
+      outPR+=av(x.p,28,10);
+      outPR+='<span style="flex:1;font-size:13px;font-weight:'+(i===0?700:400)+'">'+esc(x.p.name)+'</span>';
+      outPR+='<span style="font-size:13px">'+medal+' <strong>'+x.count+'</strong> 🏅</span>';
+      outPR+='</div>';
+    });
+    outPR+='</div>';
+  }
 
   // ── Deine Übersicht: Ziele + Für dich ──
   {
@@ -4583,12 +4625,12 @@ function rTeam(){
     const beteiligt=sichtbarZ.filter(z=>myTaskZielIds.has(z.id)&&!meineZ.find(m=>m.id===z.id));
     const alleRelevant=[...meineZ.map(z=>({z,rolle:'verantwortlich'})),...beteiligt.map(z=>({z,rolle:'mitwirkend'}))];
     if(alleRelevant.length){
-      out+='<div style="background:var(--sf);border:1px solid var(--bd);border-radius:14px;padding:16px;margin-bottom:16px">';
-      out+='<div style="font-size:13px;font-weight:700;margin-bottom:12px">Deine Übersicht</div>';
+      outOV+='<div style="background:var(--sf);border:1px solid var(--bd);border-radius:14px;padding:16px;margin-bottom:16px">';
+      outOV+='<div style="font-size:13px;font-weight:700;margin-bottom:12px">Deine Übersicht</div>';
 
       // Ziele
       if(alleRelevant.length){
-        out+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t2);margin-bottom:8px">Deine Ziele</div>';
+        outOV+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t2);margin-bottom:8px">Deine Ziele</div>';
         alleRelevant.forEach(({z,rolle})=>{
           const f=FARBEN[z.farbe||0];
           const pct=z.pct||0;
@@ -4596,40 +4638,25 @@ function rTeam(){
           const meineTasks=S.aufgaben.filter(a=>a.pid===aP&&a.zielId===z.id&&a.status!=='erledigt').length;
           const tzOffen=(z.teilziele||[]).filter(t=>!t.erledigt).length;
           const isOwn=String(z.verantwortlichId)===String(aP);
-          out+='<div onclick="nav(\'ziele\')" style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--bd);border-radius:10px;margin-bottom:6px;cursor:pointer;background:var(--bg);transition:transform .1s" onmousedown="this.style.transform=\'scale(.98)\'" onmouseup="this.style.transform=\'scale(1)\'">';
-          out+='<div style="width:10px;height:10px;border-radius:99px;background:'+f.tc+';flex-shrink:0"></div>';
-          out+='<div style="flex:1;min-width:0">';
-          out+='<div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(z.name)+'</div>';
-          out+='<div style="display:flex;gap:6px;margin-top:3px;flex-wrap:wrap">';
-          if(!isOwn&&verantw)out+='<span style="font-size:10px;color:var(--t3)">'+esc(verantw.name)+'</span>';
-          out+='<span style="font-size:10px;padding:1px 6px;border-radius:99px;background:'+(isOwn?'var(--green-bg)':'var(--blue-bg)')+';color:'+(isOwn?'var(--green)':'var(--blue)')+'">'+(isOwn?'Verantwortlich':'Mitwirkend')+'</span>';
-          if(meineTasks)out+='<span style="font-size:10px;color:var(--t3)">'+meineTasks+' offene Aufgabe'+(meineTasks>1?'n':'')+'</span>';
-          if(tzOffen)out+='<span style="font-size:10px;color:var(--t3)">'+tzOffen+' '+(z.status==='bereich'?'Themen':(tzOffen>1?'Meilensteine':'Meilenstein'))+' offen</span>';
-          out+='</div></div>';
+          outOV+='<div onclick="nav(\'ziele\')" style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--bd);border-radius:10px;margin-bottom:6px;cursor:pointer;background:var(--bg);transition:transform .1s" onmousedown="this.style.transform=\'scale(.98)\'" onmouseup="this.style.transform=\'scale(1)\'">';
+          outOV+='<div style="width:10px;height:10px;border-radius:99px;background:'+f.tc+';flex-shrink:0"></div>';
+          outOV+='<div style="flex:1;min-width:0">';
+          outOV+='<div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(z.name)+'</div>';
+          outOV+='<div style="display:flex;gap:6px;margin-top:3px;flex-wrap:wrap">';
+          if(!isOwn&&verantw)outOV+='<span style="font-size:10px;color:var(--t3)">'+esc(verantw.name)+'</span>';
+          outOV+='<span style="font-size:10px;padding:1px 6px;border-radius:99px;background:'+(isOwn?'var(--green-bg)':'var(--blue-bg)')+';color:'+(isOwn?'var(--green)':'var(--blue)')+'">'+(isOwn?'Verantwortlich':'Mitwirkend')+'</span>';
+          if(meineTasks)outOV+='<span style="font-size:10px;color:var(--t3)">'+meineTasks+' offene Aufgabe'+(meineTasks>1?'n':'')+'</span>';
+          if(tzOffen)outOV+='<span style="font-size:10px;color:var(--t3)">'+tzOffen+' '+(z.status==='bereich'?'Themen':(tzOffen>1?'Meilensteine':'Meilenstein'))+' offen</span>';
+          outOV+='</div></div>';
           // Progress bar
-          out+='<div style="width:40px;text-align:right"><div style="font-size:11px;font-weight:700;color:'+f.tc+'">'+pct+'%</div>';
-          out+='<div style="width:40px;height:4px;border-radius:99px;background:var(--bd);margin-top:2px"><div style="width:'+Math.min(pct,100)+'%;height:100%;border-radius:99px;background:'+f.tc+'"></div></div></div>';
-          out+='</div>';
+          outOV+='<div style="width:40px;text-align:right"><div style="font-size:11px;font-weight:700;color:'+f.tc+'">'+pct+'%</div>';
+          outOV+='<div style="width:40px;height:4px;border-radius:99px;background:var(--bd);margin-top:2px"><div style="width:'+Math.min(pct,100)+'%;height:100%;border-radius:99px;background:'+f.tc+'"></div></div></div>';
+          outOV+='</div>';
         });
       }
 
-      out+='</div>';
+      outOV+='</div>';
     }
-  }
-
-  const rankData=S.personen.map(p=>({p,count:getPaddelCount(p.id)})).sort((a,b)=>b.count-a.count).filter(x=>x.count>0);
-  if(rankData.length){
-    out+='<div style="background:var(--amber-bg);border:1px solid var(--amber-bd);border-radius:14px;padding:14px 16px;margin-bottom:16px">';
-    out+='<div style="font-size:11px;font-weight:700;color:var(--amber);margin-bottom:10px">🏆 Paddel-Rangliste</div>';
-    rankData.forEach((x,i)=>{
-      const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':'';
-      out+='<div style="display:flex;align-items:center;gap:10px;padding:5px 0">';
-      out+=av(x.p,28,10);
-      out+='<span style="flex:1;font-size:13px;font-weight:'+(i===0?700:400)+'">'+esc(x.p.name)+'</span>';
-      out+='<span style="font-size:13px">'+medal+' <strong>'+x.count+'</strong> 🏅</span>';
-      out+='</div>';
-    });
-    out+='</div>';
   }
   teams.forEach(t=>{
     const mids=t.members;
@@ -4640,54 +4667,54 @@ function rTeam(){
     // Wolken/Ideen für dieses Team
     const teamNames=mids.map(id=>{const p=person(id);return p?p.name:'';}).filter(Boolean);
     const teamSignale=S.signale.filter(s=>(s.typ==='wolke'||s.typ==='idee')&&teamNames.includes(s.bereich)&&(!s.vertraulich||isGF()));
-    out+='<div class="team-block"><div class="team-block-head">'
+    outTC+='<div class="team-block"><div class="team-block-head">'
       +'<div style="flex:1"><div style="font-size:14px;font-weight:700">'+esc(t.name)+'</div></div>'
       +'<div style="display:flex;gap:6px;flex-shrink:0">'+mids.map(id=>{const p=person(id);return p?av(p,28,10):'';}).join('')+'</div></div>';
     // Ziele des Teams anzeigen
     if(teamZiele.length){
-      out+='<div style="padding:8px 16px 4px;display:flex;gap:5px;flex-wrap:wrap">';
+      outTC+='<div style="padding:8px 16px 4px;display:flex;gap:5px;flex-wrap:wrap">';
       teamZiele.forEach(z=>{
         const f=FARBEN[z.farbe||0];
-        out+='<span style="font-size:10px;padding:2px 8px;border-radius:99px;background:'+f.bg+';color:'+f.tc+';font-weight:600;border:1px solid '+f.tc+'20">🎯 '+esc(z.name.length>25?z.name.slice(0,25)+'…':z.name)+'</span>';
+        outTC+='<span style="font-size:10px;padding:2px 8px;border-radius:99px;background:'+f.bg+';color:'+f.tc+';font-weight:600;border:1px solid '+f.tc+'20">🎯 '+esc(z.name.length>25?z.name.slice(0,25)+'…':z.name)+'</span>';
       });
-      out+='</div>';
+      outTC+='</div>';
     }
     if(aktiv.length){
-      out+='<div style="padding:10px 16px 2px;font-size:10px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.5px">Läuft gerade</div>';
+      outTC+='<div style="padding:10px 16px 2px;font-size:10px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.5px">Läuft gerade</div>';
       aktiv.forEach(a=>{
         const p2=person(a.pid),ti=typInfo(a);
-        out+='<div class="team-h-row"><div class="dot" style="background:var(--blue);flex-shrink:0"></div>'
+        outTC+='<div class="team-h-row"><div class="dot" style="background:var(--blue);flex-shrink:0"></div>'
           +'<div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(a.titel)+(a.vertraulich?'<span class="lock" style="margin-left:5px">🔒</span>':'')+'</div>'
           +'<div style="display:flex;gap:5px;margin-top:2px">'+(p2?'<span style="font-size:10px;color:var(--t3)">'+esc(p2.name)+'</span>':'')+'<span style="font-size:10px;color:'+ti.tc+'">· '+ti.label+'</span>'+(a.zielId?'<span style="font-size:10px;color:var(--t2)">· '+esc(getZielName(a)||'')+'</span>':'')+'</div></div>'+prioTag(a.prio,null,false)+'</div>';
       });
     }
     if(pipeline.length){
-      out+='<div style="padding:10px 16px 2px;font-size:10px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px">Nächste Prioritäten</div>';
+      outTC+='<div style="padding:10px 16px 2px;font-size:10px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px">Nächste Prioritäten</div>';
       pipeline.forEach(a=>{
         const p2=person(a.pid),ti=typInfo(a);
-        out+='<div class="team-h-row"><div class="dot" style="background:var(--bd);flex-shrink:0"></div>'
+        outTC+='<div class="team-h-row"><div class="dot" style="background:var(--bd);flex-shrink:0"></div>'
           +'<div style="flex:1;min-width:0"><div style="font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(a.titel)+(a.vertraulich?'<span class="lock" style="margin-left:5px">🔒</span>':'')+'</div>'
           +'<div style="display:flex;gap:5px;margin-top:2px">'+(p2?'<span style="font-size:10px;color:var(--t3)">'+esc(p2.name)+'</span>':'')+'<span style="font-size:10px;color:'+ti.tc+'">· '+ti.label+'</span>'+(a.zielId?'<span style="font-size:10px;color:var(--t2)">· '+esc(getZielName(a)||'')+'</span>':'')+'</div></div>'+prioTag(a.prio,null,false)+'</div>';
       });
     }
-    if(!aktiv.length&&!pipeline.length)out+='<div style="padding:14px 16px;font-size:12px;color:var(--t3);font-style:italic">Keine aktiven Aufgaben</div>';
+    if(!aktiv.length&&!pipeline.length)outTC+='<div style="padding:14px 16px;font-size:12px;color:var(--t3);font-style:italic">Keine aktiven Aufgaben</div>';
     // Wolken/Ideen für Team-Mitglieder
     if(teamSignale.length){
-      out+='<div style="padding:8px 16px 4px;font-size:10px;font-weight:700;color:var(--purple);text-transform:uppercase;letter-spacing:.5px">Wolken & Ideen</div>';
+      outTC+='<div style="padding:8px 16px 4px;font-size:10px;font-weight:700;color:var(--purple);text-transform:uppercase;letter-spacing:.5px">Wolken & Ideen</div>';
       teamSignale.slice(0,3).forEach(s=>{
         const von=person(s.pid);
         const badge=s.typ==='idee'?'💡':'☁';
-        out+='<div style="padding:4px 16px 6px;display:flex;gap:8px;align-items:flex-start">';
-        out+='<span style="font-size:12px;flex-shrink:0">'+badge+'</span>';
-        out+='<div style="flex:1;min-width:0"><div style="font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(s.was)+'</div>';
-        out+='<div style="font-size:10px;color:var(--t3)">'+(von?'von '+esc(von.name):'')+(s.bereich?' → '+esc(s.bereich):'')+'</div></div></div>';
+        outTC+='<div style="padding:4px 16px 6px;display:flex;gap:8px;align-items:flex-start">';
+        outTC+='<span style="font-size:12px;flex-shrink:0">'+badge+'</span>';
+        outTC+='<div style="flex:1;min-width:0"><div style="font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(s.was)+'</div>';
+        outTC+='<div style="font-size:10px;color:var(--t3)">'+(von?'von '+esc(von.name):'')+(s.bereich?' → '+esc(s.bereich):'')+'</div></div></div>';
       });
-      if(teamSignale.length>3)out+='<div style="padding:2px 16px 6px;font-size:10px;color:var(--t3)">+ '+(teamSignale.length-3)+' weitere</div>';
+      if(teamSignale.length>3)outTC+='<div style="padding:2px 16px 6px;font-size:10px;color:var(--t3)">+ '+(teamSignale.length-3)+' weitere</div>';
     }
-    out+='<div style="height:4px"></div></div>';
+    outTC+='<div style="height:4px"></div></div>';
   });
-  out+=rIdeenPool();
-  out+=rSignaleTeam();
+  outTC+=rIdeenPool();
+  outTC+=rSignaleTeam();
   // ── Big 3 Team-Überblick ──
   {
     const{kw,jahr}=getKW();
@@ -4695,33 +4722,33 @@ function rTeam(){
     const teamMids=new Set();teams.forEach(t=>t.members.forEach(m=>teamMids.add(m)));
     const sichtbarePers=isGF()?S.personen.filter(p=>p.stufe!=='gf'):S.personen.filter(p=>teamMids.has(p.id)&&p.id!==aP);
     if(sichtbarePers.length){
-    out+='<div style="margin-top:28px">';
-    out+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t2);margin-bottom:12px">Big 3 im Team · KW '+kw+'</div>';
+    outTC+='<div style="margin-top:28px">';
+    outTC+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t2);margin-bottom:12px">Big 3 im Team · KW '+kw+'</div>';
     sichtbarePers.forEach(p=>{
       const r=dieseWoche.find(x=>String(x.pid)===String(p.id));
       const f=FARBEN[p.ci||0];
       const done=[r?.big3_1_done,r?.big3_2_done,r?.big3_3_done].filter(Boolean).length;
       const total=[r?.big3_1,r?.big3_2,r?.big3_3].filter(Boolean).length;
-      out+='<div style="border:1px solid var(--bd);border-radius:10px;margin-bottom:8px;overflow:hidden">';
-      out+='<div style="display:flex;align-items:center;gap:9px;padding:10px 14px;background:var(--gray-bg)">';
-      out+=av(p,28,10);
-      out+='<div style="font-size:13px;font-weight:600;flex:1">'+esc(p.name)+'</div>';
-      if(r&&total>0)out+='<span style="font-size:12px;font-weight:700;color:'+(done===total?'var(--green)':'var(--orange)')+'">'+done+'/'+total+' ✓</span>';
-      if(!r)out+='<span style="font-size:11px;color:var(--gold);font-weight:600">⏳ Ausstehend</span>';
-      out+='</div>';
+      outTC+='<div style="border:1px solid var(--bd);border-radius:10px;margin-bottom:8px;overflow:hidden">';
+      outTC+='<div style="display:flex;align-items:center;gap:9px;padding:10px 14px;background:var(--gray-bg)">';
+      outTC+=av(p,28,10);
+      outTC+='<div style="font-size:13px;font-weight:600;flex:1">'+esc(p.name)+'</div>';
+      if(r&&total>0)outTC+='<span style="font-size:12px;font-weight:700;color:'+(done===total?'var(--green)':'var(--orange)')+'">'+done+'/'+total+' ✓</span>';
+      if(!r)outTC+='<span style="font-size:11px;color:var(--gold);font-weight:600">⏳ Ausstehend</span>';
+      outTC+='</div>';
       if(r){
-        if(r.blockiert)out+='<div style="padding:7px 14px;font-size:12px;border-top:1px solid var(--bd);background:var(--amber-bg)"><span style="font-weight:700;color:var(--orange)">⚠ </span>'+esc(r.blockiert)+'</div>';
+        if(r.blockiert)outTC+='<div style="padding:7px 14px;font-size:12px;border-top:1px solid var(--bd);background:var(--amber-bg)"><span style="font-weight:700;color:var(--orange)">⚠ </span>'+esc(r.blockiert)+'</div>';
         [[r.big3_1,r.big3_1_done],[r.big3_2,r.big3_2_done],[r.big3_3,r.big3_3_done]].forEach(([txt,done])=>{
           if(!txt)return;
-          out+='<div style="display:flex;align-items:center;gap:8px;padding:6px 14px;font-size:12px;border-top:1px solid var(--bd)">';
-          out+='<div style="width:14px;height:14px;border-radius:3px;flex-shrink:0;'+(done?'background:var(--green);display:flex;align-items:center;justify-content:center':'border:1.5px solid var(--bd)')+'">'+(done?'<span style="color:#fff;font-size:8px;font-weight:800">✓</span>':'')+'</div>';
-          out+='<span style="'+(done?'color:var(--t3);text-decoration:line-through':'color:var(--text)')+'">'+txt+'</span>';
-          out+='</div>';
+          outTC+='<div style="display:flex;align-items:center;gap:8px;padding:6px 14px;font-size:12px;border-top:1px solid var(--bd)">';
+          outTC+='<div style="width:14px;height:14px;border-radius:3px;flex-shrink:0;'+(done?'background:var(--green);display:flex;align-items:center;justify-content:center':'border:1.5px solid var(--bd)')+'">'+(done?'<span style="color:#fff;font-size:8px;font-weight:800">✓</span>':'')+'</div>';
+          outTC+='<span style="'+(done?'color:var(--t3);text-decoration:line-through':'color:var(--text)')+'">'+txt+'</span>';
+          outTC+='</div>';
         });
       }
-      out+='</div>';
+      outTC+='</div>';
     });
-    out+='</div>';
+    outTC+='</div>';
   }}
 
   // ── Wiederkehrende Aufgaben — GF Optimierungs-Insight ──
@@ -4730,39 +4757,39 @@ function rTeam(){
     if(recTasks.length){
       const FREQ={daily:'Täglich',weekly:'Wöchentlich',monthly:'Monatlich'};
       const totalH=recTasks.reduce((s,a)=>s+(a.geplant||1),0);
-      out+='<div style="margin-top:24px">';
-      out+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">';
-      out+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t2)">🔄 Wiederkehrende Aufgaben</div>';
-      out+='<div style="font-size:11px;color:var(--t3)">'+recTasks.length+' aktiv · ~'+Math.round(totalH*10)/10+'h/Zyklus</div>';
-      out+='</div>';
+      outTC+='<div style="margin-top:24px">';
+      outTC+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">';
+      outTC+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t2)">🔄 Wiederkehrende Aufgaben</div>';
+      outTC+='<div style="font-size:11px;color:var(--t3)">'+recTasks.length+' aktiv · ~'+Math.round(totalH*10)/10+'h/Zyklus</div>';
+      outTC+='</div>';
       recTasks.forEach(a=>{
         const p=person(a.pid);
-        out+='<div onclick="openDetail(\''+a.id+'\')" class="hover-lift" style="display:flex;align-items:center;gap:10px;padding:9px 12px;border:1px solid var(--bd);border-radius:10px;margin-bottom:6px;cursor:pointer;background:var(--sf)">';
-        out+='<span style="font-size:11px;color:var(--blue);font-weight:600;flex-shrink:0">'+FREQ[a.recurring]+'</span>';
-        out+='<span style="font-size:12px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(a.titel)+'</span>';
-        if(p)out+='<span style="font-size:10px;color:var(--t3)">'+esc(p.name)+'</span>';
-        out+='<span style="font-size:10px;color:var(--t3)">'+fmtH(a.geplant)+'</span>';
-        out+='</div>';
+        outTC+='<div onclick="openDetail(\''+a.id+'\')" class="hover-lift" style="display:flex;align-items:center;gap:10px;padding:9px 12px;border:1px solid var(--bd);border-radius:10px;margin-bottom:6px;cursor:pointer;background:var(--sf)">';
+        outTC+='<span style="font-size:11px;color:var(--blue);font-weight:600;flex-shrink:0">'+FREQ[a.recurring]+'</span>';
+        outTC+='<span style="font-size:12px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(a.titel)+'</span>';
+        if(p)outTC+='<span style="font-size:10px;color:var(--t3)">'+esc(p.name)+'</span>';
+        outTC+='<span style="font-size:10px;color:var(--t3)">'+fmtH(a.geplant)+'</span>';
+        outTC+='</div>';
       });
-      out+='<div style="font-size:10px;color:var(--t3);font-style:italic;margin-top:6px;padding:0 4px">Können diese Aufgaben automatisiert oder optimiert werden?</div>';
-      out+='</div>';
+      outTC+='<div style="font-size:10px;color:var(--t3);font-style:italic;margin-top:6px;padding:0 4px">Können diese Aufgaben automatisiert oder optimiert werden?</div>';
+      outTC+='</div>';
     }
   }
 
   // ── Sales Insights Feed (GF) ──
   if(isGF()&&S.beobachtungen.length){
     const TYPEN={einwand:{icon:'⚡',color:'var(--orange)'},frage:{icon:'❓',color:'var(--blue)'},insight:{icon:'💡',color:'var(--green)'},lob:{icon:'⭐',color:'var(--amber)'}};
-    out+='<div style="margin-top:24px">';
-    out+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t2);margin-bottom:10px">Sales Insights</div>';
+    outTC+='<div style="margin-top:24px">';
+    outTC+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t2);margin-bottom:10px">Sales Insights</div>';
     S.beobachtungen.slice(0,25).forEach(b=>{
       const p=person(b.pid),t=TYPEN[b.typ]||TYPEN.insight;
-      out+='<div style="display:flex;gap:10px;padding:9px 0;border-bottom:1px solid var(--bd)">';
-      out+='<span style="font-size:15px;flex-shrink:0">'+t.icon+'</span>';
-      out+='<div style="flex:1"><div style="font-size:12px;color:var(--text)">'+esc(b.text)+'</div>';
-      out+='<div style="font-size:10px;color:var(--t3);margin-top:2px">'+(p?esc(p.name)+' · ':'')+b.created_at.slice(0,10)+'</div></div>';
-      out+='</div>';
+      outTC+='<div style="display:flex;gap:10px;padding:9px 0;border-bottom:1px solid var(--bd)">';
+      outTC+='<span style="font-size:15px;flex-shrink:0">'+t.icon+'</span>';
+      outTC+='<div style="flex:1"><div style="font-size:12px;color:var(--text)">'+esc(b.text)+'</div>';
+      outTC+='<div style="font-size:10px;color:var(--t3);margin-top:2px">'+(p?esc(p.name)+' · ':'')+b.created_at.slice(0,10)+'</div></div>';
+      outTC+='</div>';
     });
-    out+='</div>';
+    outTC+='</div>';
   }
 
   // ── Decision Log (nur GF) ──
@@ -4771,16 +4798,16 @@ function rTeam(){
     if(allDR.length){
       const filterDR=localStorage.getItem('dr_filter')||'alle';
       const gefiltert=filterDR==='alle'?allDR:allDR.filter(d=>d.status===filterDR);
-      out+='<div style="margin-top:28px">';
-      out+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">';
-      out+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t2)">⚖️ Decision Log</div>';
-      out+='<div style="display:flex;gap:4px;margin-left:auto">';
+      outDL+='<div style="margin-bottom:16px">';
+      outDL+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">';
+      outDL+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t2)">⚖️ Decision Log</div>';
+      outDL+='<div style="display:flex;gap:4px;margin-left:auto">';
       ['alle','offen','pipeline','in_meeting','entschieden','zurueckgegeben'].forEach(f=>{
         const lbl={'alle':'Alle','offen':'Offen','pipeline':'Pipeline','in_meeting':'Im Meeting','entschieden':'Entschieden','zurueckgegeben':'Zurückgegeben'}[f];
         const active=filterDR===f;
-        out+='<button onclick="localStorage.setItem(\'dr_filter\',\''+f+'\');render()" style="font-size:10px;padding:3px 9px;border-radius:99px;border:1px solid '+(active?'var(--text)':'var(--bd)')+';background:'+(active?'var(--text)':'var(--sf)')+';color:'+(active?'var(--inv-t)':'var(--t2)')+';cursor:pointer;font-family:inherit">'+lbl+'</button>';
+        outDL+='<button onclick="localStorage.setItem(\'dr_filter\',\''+f+'\');render()" style="font-size:10px;padding:3px 9px;border-radius:99px;border:1px solid '+(active?'var(--text)':'var(--bd)')+';background:'+(active?'var(--text)':'var(--sf)')+';color:'+(active?'var(--inv-t)':'var(--t2)')+';cursor:pointer;font-family:inherit">'+lbl+'</button>';
       });
-      out+='</div></div>';
+      outDL+='</div></div>';
       gefiltert.forEach(d=>{
         const von=S.personen.find(p=>p.id===d.erstellt_von);
         const von2=d.beantwortet_von?S.personen.find(p=>p.id===d.beantwortet_von):null;
@@ -4789,47 +4816,48 @@ function rTeam(){
         const stCol=d.status==='entschieden'?'var(--green)':d.status==='zurueckgegeben'?'var(--blue)':d.status==='pipeline'||d.status==='in_meeting'?'var(--amber,#b45309)':'var(--gold-t)';
         const stTxt={'offen':'Offen','pipeline':'Pipeline','in_meeting':'Im Meeting','entschieden':'Entschieden','zurueckgegeben':'Zurückgegeben'}[d.status]||d.status;
         const isGray=d.status!=='offen';
-        out+='<div style="border:1px solid var(--bd);border-radius:12px;padding:12px 14px;margin-bottom:8px;'+(isGray?'opacity:.7':'')+'">';
-        out+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">';
-        out+='<span style="font-size:10px;font-weight:700;color:'+prioCol+';padding:1px 7px;border-radius:99px;border:1px solid '+prioCol+'">'+d.prioritaet+'</span>';
-        out+='<span style="font-size:14px;font-weight:700;flex:1;line-height:1.3">'+esc(d.frage)+'</span>';
-        out+='<span style="font-size:10px;font-weight:600;color:'+stCol+';background:'+stBg+';padding:2px 9px;border-radius:99px">'+stTxt+'</span>';
-        out+='</div>';
-        if(d.kontext)out+='<div style="font-size:11px;color:var(--t2);margin-bottom:4px;line-height:1.4">'+esc(d.kontext)+'</div>';
-        if(d.blockiert)out+='<div style="font-size:11px;color:var(--red);margin-bottom:4px">⛔ '+esc(d.blockiert)+'</div>';
-        out+='<div style="font-size:10px;color:var(--t3);display:flex;gap:8px;flex-wrap:wrap;margin-bottom:'+(d.beschluss?'8':'0')+'px">';
-        out+=(von?'<span>von '+esc(von.name)+'</span>':'');
+        outDL+='<div id="card-'+d.id+'" style="border:1px solid var(--bd);border-radius:12px;padding:12px 14px;margin-bottom:8px;'+(isGray?'opacity:.7':'')+'">';
+        outDL+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">';
+        outDL+='<span style="font-size:10px;font-weight:700;color:'+prioCol+';padding:1px 7px;border-radius:99px;border:1px solid '+prioCol+'">'+d.prioritaet+'</span>';
+        outDL+='<span style="font-size:14px;font-weight:700;flex:1;line-height:1.3">'+esc(d.frage)+'</span>';
+        outDL+='<button onclick="copyCardLink(\''+d.id+'\')" title="Link kopieren" style="font-size:11px;padding:2px 6px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--t3);cursor:pointer;font-family:inherit;flex-shrink:0;line-height:1">🔗</button>';
+        outDL+='<span style="font-size:10px;font-weight:600;color:'+stCol+';background:'+stBg+';padding:2px 9px;border-radius:99px">'+stTxt+'</span>';
+        outDL+='</div>';
+        if(d.kontext)outDL+='<div style="font-size:11px;color:var(--t2);margin-bottom:4px;line-height:1.4">'+esc(d.kontext)+'</div>';
+        if(d.blockiert)outDL+='<div style="font-size:11px;color:var(--red);margin-bottom:4px">⛔ '+esc(d.blockiert)+'</div>';
+        outDL+='<div style="font-size:10px;color:var(--t3);display:flex;gap:8px;flex-wrap:wrap;margin-bottom:'+(d.beschluss?'8':'0')+'px">';
+        outDL+=(von?'<span>von '+esc(von.name)+'</span>':'');
         const anPlog=S.personen.find(p=>p.id===d.an_person_id);
-        if(anPlog)out+='<span>→ '+esc(anPlog.name)+'</span>';
-        out+='<span>'+d.erstellt_am.slice(0,10)+'</span>';
-        if(d.deadline)out+='<span>fällig '+d.deadline+'</span>';
-        if(d.sichtbarkeit==='team')out+='<span style="color:var(--blue)">Team sichtbar</span>';
-        out+='</div>';
+        if(anPlog)outDL+='<span>→ '+esc(anPlog.name)+'</span>';
+        outDL+='<span>'+d.erstellt_am.slice(0,10)+'</span>';
+        if(d.deadline)outDL+='<span>fällig '+d.deadline+'</span>';
+        if(d.sichtbarkeit==='team')outDL+='<span style="color:var(--blue)">Team sichtbar</span>';
+        outDL+='</div>';
         if(d.beschluss){
-          out+='<div style="border-top:1px solid var(--bd);padding-top:8px;margin-top:4px">';
-          out+='<div style="font-size:11px;font-weight:700;color:var(--green);margin-bottom:3px">✓ Beschluss</div>';
-          out+='<div style="font-size:12px;color:var(--text);line-height:1.5;margin-bottom:4px">'+esc(d.beschluss)+'</div>';
-          if(d.warum)out+='<div style="font-size:11px;color:var(--t2);line-height:1.4"><span style="font-weight:600">Warum:</span> '+esc(d.warum)+'</div>';
-          if(von2)out+='<div style="font-size:10px;color:var(--t3);margin-top:4px">entschieden von '+esc(von2.name)+' · '+d.beantwortet_am.slice(0,10)+'</div>';
-          out+='</div>';
+          outDL+='<div style="border-top:1px solid var(--bd);padding-top:8px;margin-top:4px">';
+          outDL+='<div style="font-size:11px;font-weight:700;color:var(--green);margin-bottom:3px">✓ Beschluss</div>';
+          outDL+='<div style="font-size:12px;color:var(--text);line-height:1.5;margin-bottom:4px">'+esc(d.beschluss)+'</div>';
+          if(d.warum)outDL+='<div style="font-size:11px;color:var(--t2);line-height:1.4"><span style="font-weight:600">Warum:</span> '+esc(d.warum)+'</div>';
+          if(von2)outDL+='<div style="font-size:10px;color:var(--t3);margin-top:4px">entschieden von '+esc(von2.name)+' · '+d.beantwortet_am.slice(0,10)+'</div>';
+          outDL+='</div>';
         }
         if(d.rueckgabe_begruendung){
-          out+='<div style="border-top:1px solid var(--bd);padding-top:8px;margin-top:4px">';
-          out+='<div style="font-size:11px;font-weight:700;color:var(--blue);margin-bottom:3px">↩ Zurückgegeben</div>';
-          out+='<div style="font-size:12px;color:var(--text);line-height:1.5">'+esc(d.rueckgabe_begruendung)+'</div>';
-          if(von2)out+='<div style="font-size:10px;color:var(--t3);margin-top:4px">von '+esc(von2.name)+' · '+d.beantwortet_am.slice(0,10)+'</div>';
-          out+='</div>';
+          outDL+='<div style="border-top:1px solid var(--bd);padding-top:8px;margin-top:4px">';
+          outDL+='<div style="font-size:11px;font-weight:700;color:var(--blue);margin-bottom:3px">↩ Zurückgegeben</div>';
+          outDL+='<div style="font-size:12px;color:var(--text);line-height:1.5">'+esc(d.rueckgabe_begruendung)+'</div>';
+          if(von2)outDL+='<div style="font-size:10px;color:var(--t3);margin-top:4px">von '+esc(von2.name)+' · '+d.beantwortet_am.slice(0,10)+'</div>';
+          outDL+='</div>';
         }
-        out+=drActionBar(d);
-        out+='</div>';
+        outDL+=drActionBar(d);
+        outDL+='</div>';
       });
       if(!gefiltert.length){
         const filterLabel={'alle':'','offen':'Offen','pipeline':'Pipeline','in_meeting':'Im Meeting','entschieden':'Entschieden','zurueckgegeben':'Zurückgegeben'}[filterDR]||'';
-        out+='<div style="font-size:12px;color:var(--t3);padding:8px 0">Keine Einträge'+(filterLabel?' für „'+filterLabel+'"':'')+' '
+        outDL+='<div style="font-size:12px;color:var(--t3);padding:8px 0">Keine Einträge'+(filterLabel?' für „'+filterLabel+'"':'')+' '
           +(filterDR!=='alle'?'· <button onclick="localStorage.setItem(\'dr_filter\',\'alle\');render()" style="font-size:11px;color:var(--blue);background:none;border:none;cursor:pointer;font-family:inherit;text-decoration:underline">Alle anzeigen</button>':'')
           +'</div>';
       }
-      out+='</div>';
+      outDL+='</div>';
     }
   }
 
@@ -4841,39 +4869,39 @@ function rTeam(){
       return d.erstellt_von===aP||d.an_person_id===aP;
     });
     const geplanteMeetings=S.meetings.filter(m=>m.status==='geplant');
-    out+='<div style="margin-top:28px">';
-    out+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">';
-    out+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t2)">🗓 Meeting-Pipeline</div>';
-    out+='<button onclick="openMeetingForm([])" style="font-size:11px;padding:4px 12px;border-radius:8px;border:1px solid var(--blue-bd);background:var(--blue-bg);color:var(--blue);cursor:pointer;font-family:inherit;margin-left:auto">+ Meeting</button>';
-    out+='</div>';
+    outMP+='<div style="margin-top:28px">';
+    outMP+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">';
+    outMP+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t2)">🗓 Meeting-Pipeline</div>';
+    outMP+='<button onclick="openMeetingForm([])" style="font-size:11px;padding:4px 12px;border-radius:8px;border:1px solid var(--blue-bd);background:var(--blue-bg);color:var(--blue);cursor:pointer;font-family:inherit;margin-left:auto">+ Meeting</button>';
+    outMP+='</div>';
     if(!pipelineDR.length){
-      out+='<div style="font-size:12px;color:var(--t3);font-style:italic;padding:8px 0">Keine Fragen in der Pipeline — alles wird async gelöst 🎉</div>';
+      outMP+='<div style="font-size:12px;color:var(--t3);font-style:italic;padding:8px 0">Keine Fragen in der Pipeline — alles wird async gelöst 🎉</div>';
     }else{
       pipelineDR.forEach(d=>{
         const tIcon={'entscheidung':'⚖️','problem':'⚠️','unklarheit':'❓'}[d.typ||'entscheidung']||'❓';
         const vonP=person(d.erstellt_von);
         const prioCol=d.prioritaet==='hoch'?'var(--red)':d.prioritaet==='mittel'?'var(--amber,#b45309)':'var(--t3)';
-        out+='<div style="border:1px solid var(--amber-bd,#d97706);border-radius:10px;padding:10px 12px;margin-bottom:8px;background:var(--amber-bg,#fffbeb)">';
-        out+='<div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:4px">';
-        out+='<span style="font-size:13px;flex-shrink:0">'+tIcon+'</span>';
-        out+='<div style="flex:1;font-size:13px;font-weight:600;line-height:1.3">'+esc(d.frage)+'</div>';
-        out+='<span style="font-size:10px;font-weight:700;color:'+prioCol+';border:1px solid '+prioCol+';padding:1px 7px;border-radius:99px;flex-shrink:0">'+esc(d.prioritaet)+'</span>';
-        out+='</div>';
-        out+='<div style="display:flex;align-items:center;gap:8px;font-size:10px;color:var(--t3);margin-bottom:6px">';
-        if(vonP)out+='<span>von '+esc(vonP.name.split(' ')[0])+'</span>';
-        if(d.pipeline_seit)out+='<span>· seit '+esc(d.pipeline_seit)+'</span>';
-        out+='</div>';
+        outMP+='<div style="border:1px solid var(--amber-bd,#d97706);border-radius:10px;padding:10px 12px;margin-bottom:8px;background:var(--amber-bg,#fffbeb)">';
+        outMP+='<div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:4px">';
+        outMP+='<span style="font-size:13px;flex-shrink:0">'+tIcon+'</span>';
+        outMP+='<div style="flex:1;font-size:13px;font-weight:600;line-height:1.3">'+esc(d.frage)+'</div>';
+        outMP+='<span style="font-size:10px;font-weight:700;color:'+prioCol+';border:1px solid '+prioCol+';padding:1px 7px;border-radius:99px;flex-shrink:0">'+esc(d.prioritaet)+'</span>';
+        outMP+='</div>';
+        outMP+='<div style="display:flex;align-items:center;gap:8px;font-size:10px;color:var(--t3);margin-bottom:6px">';
+        if(vonP)outMP+='<span>von '+esc(vonP.name.split(' ')[0])+'</span>';
+        if(d.pipeline_seit)outMP+='<span>· seit '+esc(d.pipeline_seit)+'</span>';
+        outMP+='</div>';
         if(geplanteMeetings.length){
-          out+='<select onchange="fragenZuMeetingZuweisen(\''+d.id+'\',this.value);this.value=\'\'" style="font-size:11px;padding:4px 8px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);font-family:inherit;max-width:100%">';
-          out+='<option value="">→ Zu Meeting zuweisen…</option>';
-          geplanteMeetings.forEach(m=>{out+='<option value="'+m.id+'">'+esc(m.titel)+(m.datum?' ('+m.datum+')':'')+'</option>';});
-          out+='</select>';
+          outMP+='<select onchange="fragenZuMeetingZuweisen(\''+d.id+'\',this.value);this.value=\'\'" style="font-size:11px;padding:4px 8px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);font-family:inherit;max-width:100%">';
+          outMP+='<option value="">→ Zu Meeting zuweisen…</option>';
+          geplanteMeetings.forEach(m=>{outMP+='<option value="'+m.id+'">'+esc(m.titel)+(m.datum?' ('+m.datum+')':'')+'</option>';});
+          outMP+='</select>';
         }
-        out+=drActionBar(d);
-        out+='</div>';
+        outMP+=drActionBar(d);
+        outMP+='</div>';
       });
     }
-    out+='</div>';
+    outMP+='</div>';
   }
 
   // ── Meetings ──
@@ -4883,15 +4911,15 @@ function rTeam(){
       return(m.teilnehmer_ids||[]).includes(aP);
     }).sort((a,b)=>(b.erstellt_am||'').localeCompare(a.erstellt_am||''));
     if(sichtbareMeetings.length||(isLead()||isGF())){
-      out+='<div style="margin-top:28px">';
-      out+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">';
-      out+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t2)">📋 Meetings</div>';
+      outMT+='<div style="margin-top:28px">';
+      outMT+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">';
+      outMT+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t2)">📋 Meetings</div>';
       if(isLead()||isGF()){
-        out+='<button onclick="openMeetingForm([])" style="font-size:11px;padding:4px 12px;border-radius:8px;border:1px solid var(--blue-bd);background:var(--blue-bg);color:var(--blue);cursor:pointer;font-family:inherit;margin-left:auto">+ Meeting</button>';
+        outMT+='<button onclick="openMeetingForm([])" style="font-size:11px;padding:4px 12px;border-radius:8px;border:1px solid var(--blue-bd);background:var(--blue-bg);color:var(--blue);cursor:pointer;font-family:inherit;margin-left:auto">+ Meeting</button>';
       }
-      out+='</div>';
+      outMT+='</div>';
       if(!sichtbareMeetings.length){
-        out+='<div style="font-size:12px;color:var(--t3);font-style:italic;padding:8px 0">Noch keine Meetings</div>';
+        outMT+='<div style="font-size:12px;color:var(--t3);font-style:italic;padding:8px 0">Noch keine Meetings</div>';
       }else{
         sichtbareMeetings.forEach(m=>{
           const mStBg=m.status==='abgeschlossen'?'var(--green-bg)':m.status==='stattgefunden'?'var(--blue-bg)':'var(--amber-bg,#fffbeb)';
@@ -4900,66 +4928,100 @@ function rTeam(){
           const agenda=S.decisionRequests.filter(d=>d.meeting_id===m.id);
           const alleEntschieden=agenda.length>0&&agenda.every(d=>d.status==='entschieden');
           const teilnStr=(m.teilnehmer_ids||[]).map(id=>person(id)?.name.split(' ')[0]||'').filter(Boolean).join(', ');
-          out+='<div style="border:1px solid var(--bd);border-radius:12px;padding:14px 16px;margin-bottom:10px;background:var(--sf)">';
+          outMT+='<div id="card-'+m.id+'" style="border:1px solid var(--bd);border-radius:12px;padding:14px 16px;margin-bottom:10px;background:var(--sf)">';
           // Header
-          out+='<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:8px">';
-          out+='<div style="flex:1">';
-          out+='<div style="font-size:14px;font-weight:700;margin-bottom:2px">'+esc(m.titel)+'</div>';
-          out+='<div style="font-size:11px;color:var(--t3)">';
-          if(m.datum)out+=m.datum.split('-').reverse().join('.');
-          if(m.uhrzeit)out+=' · '+(m.uhrzeit||'').slice(0,5)+' Uhr';
-          if(teilnStr)out+=' · '+esc(teilnStr);
-          out+='</div></div>';
-          out+='<span style="font-size:10px;font-weight:600;color:'+mStCol+';background:'+mStBg+';padding:3px 10px;border-radius:99px;flex-shrink:0;white-space:nowrap">'+mStTxt+'</span>';
-          out+='</div>';
+          outMT+='<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:8px">';
+          outMT+='<div style="flex:1">';
+          outMT+='<div style="font-size:14px;font-weight:700;margin-bottom:2px">'+esc(m.titel)+'</div>';
+          outMT+='<div style="font-size:11px;color:var(--t3)">';
+          if(m.datum)outMT+=m.datum.split('-').reverse().join('.');
+          if(m.uhrzeit)outMT+=' · '+(m.uhrzeit||'').slice(0,5)+' Uhr';
+          if(teilnStr)outMT+=' · '+esc(teilnStr);
+          outMT+='</div></div>';
+          outMT+='<button onclick="copyCardLink(\''+m.id+'\')" title="Link kopieren" style="font-size:11px;padding:2px 6px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--t3);cursor:pointer;font-family:inherit;flex-shrink:0;line-height:1">🔗</button>';
+          outMT+='<span style="font-size:10px;font-weight:600;color:'+mStCol+';background:'+mStBg+';padding:3px 10px;border-radius:99px;flex-shrink:0;white-space:nowrap">'+mStTxt+'</span>';
+          outMT+='</div>';
           // Links
-          if(m.meet_link)out+='<a href="'+esc(m.meet_link)+'" target="_blank" style="display:inline-flex;align-items:center;gap:5px;font-size:11px;padding:4px 12px;border-radius:8px;border:1px solid var(--green-bd);background:var(--green-bg);color:var(--green);text-decoration:none;margin-bottom:8px;margin-right:6px">🎥 Meet</a>';
-          if(m.aufnahme_link)out+='<a href="'+esc(m.aufnahme_link)+'" target="_blank" style="display:inline-flex;align-items:center;gap:5px;font-size:11px;padding:4px 12px;border-radius:8px;border:1px solid var(--blue-bd);background:var(--blue-bg);color:var(--blue);text-decoration:none;margin-bottom:8px">▶ Aufnahme</a>';
+          if(m.meet_link)outMT+='<a href="'+esc(m.meet_link)+'" target="_blank" style="display:inline-flex;align-items:center;gap:5px;font-size:11px;padding:4px 12px;border-radius:8px;border:1px solid var(--green-bd);background:var(--green-bg);color:var(--green);text-decoration:none;margin-bottom:8px;margin-right:6px">🎥 Meet</a>';
+          if(m.aufnahme_link)outMT+='<a href="'+esc(m.aufnahme_link)+'" target="_blank" style="display:inline-flex;align-items:center;gap:5px;font-size:11px;padding:4px 12px;border-radius:8px;border:1px solid var(--blue-bd);background:var(--blue-bg);color:var(--blue);text-decoration:none;margin-bottom:8px">▶ Aufnahme</a>';
           // Agenda
           if(agenda.length){
-            out+='<div style="font-size:10px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Agenda ('+agenda.length+')</div>';
+            outMT+='<div style="font-size:10px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Agenda ('+agenda.length+')</div>';
             agenda.forEach(d=>{
               const tIcon={'entscheidung':'⚖️','problem':'⚠️','unklarheit':'❓'}[d.typ||'entscheidung']||'❓';
               const isDone=d.status==='entschieden';
-              out+='<div style="border:1px solid var(--bd);border-radius:8px;padding:8px 10px;margin-bottom:6px;background:var(--gray-bg)'+(isDone?';opacity:.7':'')+'">';
-              out+='<div style="display:flex;align-items:flex-start;gap:6px;margin-bottom:'+(isDone?'4':'0')+'px">';
-              out+='<span style="font-size:12px;flex-shrink:0">'+tIcon+'</span>';
-              out+='<span style="font-size:12px;flex:1;line-height:1.4;'+(isDone?'text-decoration:line-through;color:var(--t3)':'font-weight:500')+'">'+esc(d.frage)+'</span>';
-              if(isDone)out+='<span style="font-size:11px;color:var(--green);flex-shrink:0;font-weight:700">✓</span>';
-              out+='</div>';
-              if(isDone&&d.beschluss)out+='<div style="font-size:11px;color:var(--green);font-weight:600;padding-left:20px">→ '+esc(d.beschluss)+'</div>';
+              outMT+='<div style="border:1px solid var(--bd);border-radius:8px;padding:8px 10px;margin-bottom:6px;background:var(--gray-bg)'+(isDone?';opacity:.7':'')+'">';
+              outMT+='<div style="display:flex;align-items:flex-start;gap:6px;margin-bottom:'+(isDone?'4':'0')+'px">';
+              outMT+='<span style="font-size:12px;flex-shrink:0">'+tIcon+'</span>';
+              outMT+='<span style="font-size:12px;flex:1;line-height:1.4;'+(isDone?'text-decoration:line-through;color:var(--t3)':'font-weight:500')+'">'+esc(d.frage)+'</span>';
+              if(isDone)outMT+='<span style="font-size:11px;color:var(--green);flex-shrink:0;font-weight:700">✓</span>';
+              outMT+='</div>';
+              if(isDone&&d.beschluss)outMT+='<div style="font-size:11px;color:var(--green);font-weight:600;padding-left:20px">→ '+esc(d.beschluss)+'</div>';
               if(m.status==='stattgefunden'&&!isDone&&(isLead()||isGF())){
-                out+='<button onclick="setBeschluss(\''+d.id+'\',\''+m.id+'\')" style="font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid var(--gold);background:transparent;color:var(--gold-t);cursor:pointer;font-family:inherit;margin-top:4px">✓ Beschluss</button>';
+                outMT+='<button onclick="setBeschluss(\''+d.id+'\',\''+m.id+'\')" style="font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid var(--gold);background:transparent;color:var(--gold-t);cursor:pointer;font-family:inherit;margin-top:4px">✓ Beschluss</button>';
               }
-              out+='</div>';
+              outMT+='</div>';
             });
           }else{
-            out+='<div style="font-size:12px;color:var(--t3);font-style:italic;padding:4px 0">Keine Fragen zugewiesen</div>';
+            outMT+='<div style="font-size:12px;color:var(--t3);font-style:italic;padding:4px 0">Keine Fragen zugewiesen</div>';
           }
           // Actions
           if(isLead()||isGF()){
-            out+='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px solid var(--bd)">';
+            outMT+='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px solid var(--bd)">';
             if(m.status==='geplant'){
-              out+='<button onclick="meetingAufnahme(\''+m.id+'\')" style="font-size:11px;padding:5px 12px;border-radius:8px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);cursor:pointer;font-family:inherit">🎥 Aufnahme</button>';
-              out+='<button onclick="openMeeting()" style="font-size:11px;padding:5px 12px;border-radius:8px;border:1px solid var(--purple-bd);background:var(--purple-bg);color:var(--purple);cursor:pointer;font-family:inherit">📝 Dump</button>';
-              out+='<button onclick="setMeetingStatus(\''+m.id+'\',\'stattgefunden\')" style="font-size:11px;padding:5px 12px;border-radius:8px;border:1px solid var(--blue-bd);background:var(--blue-bg);color:var(--blue);cursor:pointer;font-family:inherit">✓ Hat stattgefunden</button>';
+              outMT+='<button onclick="meetingAufnahme(\''+m.id+'\')" style="font-size:11px;padding:5px 12px;border-radius:8px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);cursor:pointer;font-family:inherit">🎥 Aufnahme</button>';
+              outMT+='<button onclick="openMeeting()" style="font-size:11px;padding:5px 12px;border-radius:8px;border:1px solid var(--purple-bd);background:var(--purple-bg);color:var(--purple);cursor:pointer;font-family:inherit">📝 Dump</button>';
+              outMT+='<button onclick="setMeetingStatus(\''+m.id+'\',\'stattgefunden\')" style="font-size:11px;padding:5px 12px;border-radius:8px;border:1px solid var(--blue-bd);background:var(--blue-bg);color:var(--blue);cursor:pointer;font-family:inherit">✓ Hat stattgefunden</button>';
             }
             if(m.status==='stattgefunden'){
-              out+='<button onclick="meetingAufnahme(\''+m.id+'\')" style="font-size:11px;padding:5px 12px;border-radius:8px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);cursor:pointer;font-family:inherit">🎥 Aufnahme</button>';
-              if(alleEntschieden)out+='<button onclick="meetingAbschliessen(\''+m.id+'\')" style="font-size:11px;padding:5px 12px;border-radius:8px;border:1px solid var(--green-bd);background:var(--green-bg);color:var(--green);cursor:pointer;font-family:inherit;font-weight:600">✅ Abschließen</button>';
+              outMT+='<button onclick="meetingAufnahme(\''+m.id+'\')" style="font-size:11px;padding:5px 12px;border-radius:8px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);cursor:pointer;font-family:inherit">🎥 Aufnahme</button>';
+              if(alleEntschieden)outMT+='<button onclick="meetingAbschliessen(\''+m.id+'\')" style="font-size:11px;padding:5px 12px;border-radius:8px;border:1px solid var(--green-bd);background:var(--green-bg);color:var(--green);cursor:pointer;font-family:inherit;font-weight:600">✅ Abschließen</button>';
             }
-            out+='</div>';
+            outMT+='</div>';
           }
-          out+='</div>';
+          outMT+='</div>';
         });
       }
-      out+='</div>';
+      outMT+='</div>';
     }
   }
 
-  document.getElementById('main').innerHTML=out;
+  document.getElementById('main').innerHTML=out+outPR+outDL+outMP+outMT+outOV+outTC;
 }
 
+function setFokus(id){
+  localStorage.setItem('fokus_id_'+aP,id);
+  render();
+  const a=S.aufgaben.find(x=>x.id===id);
+  if(a)toast('▶ Fokus: '+esc(a.titel.length>40?a.titel.slice(0,40)+'…':a.titel));
+}
+function clearFokus(){
+  localStorage.removeItem('fokus_id_'+aP);
+  render();
+  toast('Auto-Modus — Reihenfolge nach Priorität');
+}
+function copyCardLink(id){
+  const url=location.origin+location.pathname+'#card='+id;
+  if(navigator.clipboard){navigator.clipboard.writeText(url).then(()=>toast('🔗 Link kopiert!'));}
+  else{const ta=document.createElement('textarea');ta.value=url;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);toast('🔗 Link kopiert!');}
+}
+function checkDeepLink(){
+  const hash=location.hash;
+  if(!hash||!hash.startsWith('#card='))return;
+  const id=hash.slice(6);
+  // Determine tab: DR ids start with 'dr', meeting ids start with 'mt' or 'me'
+  const tab=id.startsWith('dr')?'team':id.startsWith('mt')||id.startsWith('me')?'team':'team';
+  nav(tab);
+  setTimeout(()=>{
+    const el=document.getElementById('card-'+id);
+    if(!el)return;
+    el.scrollIntoView({behavior:'smooth',block:'center'});
+    el.style.transition='outline .1s';
+    el.style.outline='3px solid var(--gold)';
+    el.style.borderRadius='12px';
+    setTimeout(()=>{el.style.outline='';},2000);
+  },400);
+}
 function openSettings(){
   let h='<div class="mt">Einstellungen</div>';
   h+='<div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Personen</div>';
@@ -6196,7 +6258,7 @@ window.addEventListener('keydown',e=>{
         const ls=document.getElementById('login-screen'),ap=document.getElementById('app');
         if(ls)ls.style.display='none';
         if(ap)ap.style.display='flex';
-        updateBadge();render();startSonderPoller();startDataPoller();handleDeepLink();
+        updateBadge();render();startSonderPoller();startDataPoller();handleDeepLink();checkDeepLink();
         gcalFetchToday();
       } else localStorage.removeItem('h_session');
     }
