@@ -2874,14 +2874,18 @@ function rTag(){
 
 async function setPrio(id,pr){
   const a=S.aufgaben.find(x=>x.id===id);if(!a||a._busy)return;
-  // P1-Pflichtfeld: Ziel erforderlich
+  // P1: Empfänger managed seine Kapazität — warnen, nicht blockieren
   if(pr==='P1'){
+    if(p1Count(a.pid)>=3){
+      if(!confirm('Du hast bereits '+p1Count(a.pid)+' offene P1-Aufgaben. Trotzdem als P1 annehmen?'))return;
+    }
     const zSel=document.getElementById('inbox-ziel-'+id);
     const zid=zSel?zSel.value:'';
     if(!zid&&S.ziele.length){
-      if(zSel){zSel.style.outline='2px solid var(--red)';zSel.focus();}
-      toast('⚡ P1 braucht ein Ziel – wähle zuerst das verknüpfte Ziel aus');
-      return;
+      if(!confirm('P1 ohne Ziel – sicher? Überlege welches Ziel das voranbringt.')){
+        if(zSel){zSel.style.outline='2px solid var(--red)';zSel.focus();}
+        return;
+      }
     }
   }
   const prev={prio:a.prio,status:a.status};a._busy=true;
@@ -3982,20 +3986,8 @@ function selPrioBtn(btn,pr){
 async function saveNeu(){
   const t=document.getElementById('nt').value.trim();if(!t)return;
   const zielId=document.getElementById('nziel')?.value||null;
-  // P1 ohne Ziel: warnen, nicht blockieren
-  if(_selPrio==='P1'&&!zielId){
-    if(!confirm('P1 ohne Ziel – sicher? Überlege welches Ziel das voranbringt.')){
-      const m=document.getElementById('neu-mehr');if(m)m.style.display='block';
-      const zSel=document.getElementById('nziel');
-      if(zSel){zSel.style.outline='2px solid var(--red)';zSel.focus();}
-      return;
-    }
-  }
-  // P1-Limit
+  // Ersteller darf immer anlegen — Kapazität managed der Empfänger in seiner Inbox
   const _pidNeu=document.getElementById('np')?.value||aP;
-  if(_selPrio==='P1'&&p1Count(_pidNeu)>=3){
-    if(!confirm('Du hast bereits '+p1Count(_pidNeu)+' offene P1-Aufgaben. Trotzdem als P1 anlegen?'))return;
-  }
   const tzSel=document.getElementById('ntz');
   const teilzielId=tzSel?tzSel.value||null:null;
   const typ=zielId?'strategisch':'operativ';
