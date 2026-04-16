@@ -1089,27 +1089,39 @@ function rKapazitaetBlock(pid){
     if(!a.dl)return;
     const d=new Date(a.dl+'T12:00:00');
     const diff=Math.round((d-monTag)/(86400000));
-    if(diff<0||diff>4)return; // nur Mo–Fr diese Woche
+    if(diff<0||diff>4)return;
     const h=a.geplant||1;
     if(a.prio==='P1')p1Days[diff]+=h;
     else p23Days[diff]+=h;
   });
-  const todayIdx=Math.min(Math.max(dow-1,0),4); // 0=Mo…4=Fr
-  const maxH=Math.max(...p1Days.map((h,i)=>h+p23Days[i]),k.fh/5||4,1);
+  const todayIdx=Math.min(Math.max(dow-1,0),4);
+  // Meeting-Stunden heute aus GCal (nur externe Events, nicht unsere eigenen P1-Einträge)
+  let meetH=0;
+  (S.kalender||[]).forEach(ev=>{
+    if(!ev.start||!ev.end)return;
+    if(ev.titel&&ev.titel.startsWith('⚡ P1'))return; // eigene Power Activities überspringen
+    meetH+=Math.max(0,(ev.end.getTime()-ev.start.getTime())/3600000);
+  });
+  meetH=Math.round(meetH*10)/10;
+  const maxH=Math.max(...p1Days.map((h,i)=>h+p23Days[i])+(meetH?[meetH]:[]),k.fh/5||4,1);
 
   // Tages-Bars rendern
   let dagBar='<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin-top:8px">';
   TAGE.forEach((tag,i)=>{
-    const p1h=p1Days[i],p23h=p23Days[i],tot=p1h+p23h;
+    const p1h=p1Days[i],p23h=p23Days[i];
+    const mh=i===todayIdx?meetH:0; // Meetings nur heute bekannt
+    const tot=p1h+p23h+mh;
     const isToday=i===todayIdx;
     const isPast=i<todayIdx;
     const p1Pct=Math.min(p1h/maxH,1)*100;
     const p23Pct=Math.min(p23h/maxH,1)*100;
+    const mPct=Math.min(mh/maxH,1)*100;
     const alpha=isPast?'0.35':'1';
     dagBar+='<div style="display:flex;flex-direction:column;align-items:center;gap:2px">';
-    // Bar (gestapelt: p1 unten rot, p23 oben blau)
+    // Bar: meetings (grau oben) + p23 (blau) + p1 (rot unten)
     dagBar+='<div style="width:100%;height:32px;background:var(--bd);border-radius:4px;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end;opacity:'+alpha+'">';
     if(tot>0){
+      if(mPct>0)dagBar+='<div style="width:100%;height:'+Math.min(mPct,100)+'%;background:var(--t3);transition:height .3s"></div>';
       dagBar+='<div style="width:100%;height:'+Math.min(p23Pct,100)+'%;background:var(--blue);transition:height .3s"></div>';
       dagBar+='<div style="width:100%;height:'+Math.min(p1Pct,100)+'%;background:var(--red);transition:height .3s"></div>';
     }
@@ -1144,6 +1156,7 @@ function rKapazitaetBlock(pid){
   out+='<div style="display:flex;gap:10px;margin-top:6px">';
   out+='<div style="display:flex;gap:4px;align-items:center"><div style="width:8px;height:8px;border-radius:2px;background:var(--red)"></div><span style="font-size:9px;color:var(--t3)">P1</span></div>';
   out+='<div style="display:flex;gap:4px;align-items:center"><div style="width:8px;height:8px;border-radius:2px;background:var(--blue)"></div><span style="font-size:9px;color:var(--t3)">P2/P3</span></div>';
+  if(meetH>0)out+='<div style="display:flex;gap:4px;align-items:center"><div style="width:8px;height:8px;border-radius:2px;background:var(--t3)"></div><span style="font-size:9px;color:var(--t3)">Meetings '+meetH.toFixed(1)+'h</span></div>';
   out+='</div>';
   if(k.rnd>0){
     out+='<div style="display:flex;justify-content:space-between;align-items:center;padding-top:6px;margin-top:4px;border-top:1px solid var(--bd)">';
