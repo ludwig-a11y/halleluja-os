@@ -2751,6 +2751,7 @@ async function setPrio(id,pr){
     if(zid){patch.ziel_id=zid;patch.teilziel_id=null;}
     const ok=await dbPatch('aufgaben',id,patch);
     if(!ok){a.prio=prev.prio;a.status=prev.status;}
+    else if(p==='P1')gcalCreateEvent(a); // P1 → sofort in Kalender
   }catch(e){console.error('setPrio',e);a.prio=prev.prio;a.status=prev.status;}
   finally{a._busy=false;try{render();}catch(e){console.error('render@setPrio2',e);}}
 }
@@ -3807,7 +3808,8 @@ async function saveNeu(){
     erstellt_von:aP};
   S.aufgaben.push(normalizeAufgabe(rec));
   await dbInsert('aufgaben',rec);
-  if(rec.dl)gcalCreateEvent(rec);
+  // P1 immer in Kalender, P2/P3 nur mit Deadline
+  if(rec.prio==='P1'||rec.dl)gcalCreateEvent(rec);
   if(pid!==aP){const tp=person(pid);notify('aufgabe_zugewiesen',{aufgabe:t,fuer:{id:pid,name:tp?tp.name:'?',slack_id:tp?.slack_id||''},prio:rec.prio,dl:rec.dl});}
   cm();render();
 }
@@ -5026,17 +5028,24 @@ function gcalGetEvtId(aufgabeId){return localStorage.getItem('gcal_evt_'+aufgabe
 function gcalSetEvtId(aufgabeId,gcalId){if(gcalId)localStorage.setItem('gcal_evt_'+aufgabeId,gcalId);else localStorage.removeItem('gcal_evt_'+aufgabeId);}
 function gcalNextDay(dateStr){const d=new Date(dateStr+'T12:00:00');d.setDate(d.getDate()+1);return localDate(d);}
 async function gcalCreateEvent(a){
-  if(!gcalIsConnected()||!a.dl||String(a.pid)!==String(aP))return;
+  if(!gcalIsConnected()||String(a.pid)!==String(aP))return;
+  // P1 immer in Kalender (auch ohne dl); P2/P3 nur mit dl
+  if(a.prio!=='P1'&&!a.dl)return;
   if(gcalGetEvtId(a.id))return;
   const token=localStorage.getItem('gcal_token');
-  const colorMap={'P1':'11','P2':'6','P3':'8'};
   const tz=Intl.DateTimeFormat().resolvedOptions().timeZone;
   const hrs=a.geplant||1;
-  const startD=new Date(a.dl+'T09:00:00');
+  const tag=a.dl||TODAY;
+  const startD=new Date(tag+'T09:00:00');
   const endD=new Date(startD.getTime()+hrs*3600000);
+  const zN=getZielName(a);
+  // P1: klarer Titel ohne Prio-Prefix, Ziel als Beschreibung
+  const summary=a.prio==='P1'?a.titel:'['+a.prio+'] '+a.titel;
+  const description=a.prio==='P1'&&zN?'⚡ Ziel: '+zN+'\n\nHalleluja OS':'Halleluja OS';
+  const colorMap={'P1':'11','P2':'6','P3':'8'};
   const body={
-    summary:(a.prio?'['+a.prio+'] ':'')+a.titel,
-    description:'Halleluja OS',
+    summary,
+    description,
     colorId:colorMap[a.prio||'P3']||'8',
     start:{dateTime:startD.toISOString(),timeZone:tz},
     end:{dateTime:endD.toISOString(),timeZone:tz}
