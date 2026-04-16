@@ -11,6 +11,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="H'OS">
 <link rel="apple-touch-icon" href="icon-192.png">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -4943,26 +4944,57 @@ function gcalIsConnected(){
   return !!(token&&Date.now()<expiry);
 }
 const GCAL_DEFAULT_CLIENT_ID='72621178595-l3kjb0a7u8khba1dt61lgu5gfs0daorb.apps.googleusercontent.com';
-function gcalConnect(){
+const GCAL_SCOPE='https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events';
+let _gcalTokenClient=null;
+
+function _gcalInitClient(onSuccess,silent=false){
   const clientId=(localStorage.getItem('gcal_client_id')||GCAL_DEFAULT_CLIENT_ID).trim();
-  const scope='https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events';
-  const redirectUri=location.origin+location.pathname;
-  location.href='https://accounts.google.com/o/oauth2/v2/auth'
-    +'?client_id='+encodeURIComponent(clientId)
-    +'&redirect_uri='+encodeURIComponent(redirectUri)
-    +'&response_type=token'
-    +'&scope='+encodeURIComponent(scope)
-    +'&prompt=consent';
+  if(!window.google?.accounts?.oauth2){
+    if(!silent)toast('GCal: Bitte kurz warten und nochmal versuchen');
+    return;
+  }
+  _gcalTokenClient=google.accounts.oauth2.initTokenClient({
+    client_id:clientId,
+    scope:GCAL_SCOPE,
+    prompt:silent?'':'consent',
+    callback:(resp)=>{
+      if(resp.access_token){
+        localStorage.setItem('gcal_token',resp.access_token);
+        localStorage.setItem('gcal_token_expiry',String(Date.now()+(resp.expires_in||3600)*1000));
+        if(!silent)toast('✅ Google Kalender verbunden');
+        gcalFetchToday();render();
+      } else if(!silent){
+        toast('GCal: Verbindung fehlgeschlagen');
+      }
+    },
+    error_callback:(err)=>{
+      if(!silent)toast('GCal: '+( err?.type||'Fehler'));
+    }
+  });
+  _gcalTokenClient.requestAccessToken({prompt:silent?'none':undefined});
 }
+
+function gcalConnect(){_gcalInitClient(null,false);}
+
+function gcalSilentRefresh(){
+  // Token abgelaufen → still erneuern (kein Popup, kein Redirect)
+  _gcalInitClient(null,true);
+}
+
 function gcalDisconnect(){
   localStorage.removeItem('gcal_token');
   localStorage.removeItem('gcal_token_expiry');
   S.kalender=[];
   if(window._gcalNotifIv)clearInterval(window._gcalNotifIv);
+  if(window.google?.accounts?.oauth2&&_gcalTokenClient){
+    try{google.accounts.oauth2.revoke(localStorage.getItem('gcal_token')||'',()=>{});}catch(e){}
+  }
   toast('Google Kalender getrennt');
   render();
 }
+
 function gcalHandleCallback(){
+  // Legacy-Handler für alten Implicit-Flow-Redirect (falls noch im Hash)
   if(!location.hash.includes('access_token'))return;
   const params=new URLSearchParams(location.hash.replace(/^#/,''));
   const token=params.get('access_token');
@@ -4975,9 +5007,13 @@ function gcalHandleCallback(){
   }
 }
 async function gcalFetchToday(){
-  const token=localStorage.getItem('gcal_token');
   const expiry=parseInt(localStorage.getItem('gcal_token_expiry')||'0');
-  if(!token||Date.now()>expiry){S.kalender=[];return;}
+  // Token abgelaufen → erst still erneuern, dann weitermachen
+  if(Date.now()>expiry&&localStorage.getItem('gcal_token')){
+    gcalSilentRefresh();return; // gcalSilentRefresh ruft gcalFetchToday nach Erfolg
+  }
+  const token=localStorage.getItem('gcal_token');
+  if(!token){S.kalender=[];return;}
   const d=new Date();
   const start=new Date(d.getFullYear(),d.getMonth(),d.getDate(),0,0,0).toISOString();
   const end=new Date(d.getFullYear(),d.getMonth(),d.getDate(),23,59,59).toISOString();
@@ -4987,7 +5023,12 @@ async function gcalFetchToday(){
       +'&timeMax='+encodeURIComponent(end)
       +'&singleEvents=true&orderBy=startTime&maxResults=25',
       {headers:{Authorization:'Bearer '+token}});
-    if(resp.status===401){localStorage.removeItem('gcal_token');S.kalender=[];render();return;}
+    if(resp.status===401){
+      // Token ungültig → still erneuern statt rauswerfen
+      localStorage.removeItem('gcal_token');
+      gcalSilentRefresh();
+      return;
+    }
     const data=await resp.json();
     window._gcalEvtMap={};
     S.kalender=(data.items||[])
@@ -5059,9 +5100,9 @@ async function gcalCreateEvent(a){
       toast('📅 Im Kalender eingetragen');
     } else if(resp.status===401){
       localStorage.removeItem('gcal_token');
-      toast('GCal: Bitte neu verbinden');
+      gcalSilentRefresh(); // still erneuern, nächste Aktion klappt dann
     } else if(resp.status===403){
-      toast('GCal: Schreibrechte fehlen — bitte neu verbinden');
+      toast('GCal: Schreibrechte fehlen — bitte einmal neu verbinden');
       localStorage.removeItem('gcal_token');
     } else {
       const err=await resp.json().catch(()=>({}));
@@ -5163,6 +5204,12 @@ window.addEventListener('keydown',e=>{
     if(!aP)return;
     try{const raw=localStorage.getItem('h_session');if(!raw){logout();return;}const s=JSON.parse(raw);if(!s||!s.ts||Date.now()-s.ts>30*24*60*60*1000){logout();}}catch(e){logout();}
   },60000);
+  // GCal Token Auto-Refresh: alle 45 Min still erneuern (Token läuft nach 60 Min ab)
+  setInterval(()=>{
+    if(!aP||!localStorage.getItem('gcal_token'))return;
+    const expiry=parseInt(localStorage.getItem('gcal_token_expiry')||'0');
+    if(Date.now()>expiry-15*60*1000)gcalSilentRefresh(); // 15 Min vor Ablauf
+  },5*60*1000); // prüfen alle 5 Minuten
 })();
 </script>
 <script>
