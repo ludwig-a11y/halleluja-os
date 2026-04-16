@@ -908,6 +908,12 @@ async function aufgabeZurueckNeu(id){
   await dbPatch('aufgaben',id,{status:'neu',prio:null,notiz:a.notiz||null});
   render();
 }
+function inboxAblehnenZurueck(id){
+  const ta=document.getElementById('abl-grund-'+id);
+  const g=(ta?ta.value:'').trim();
+  if(!g){toast('⚠ Bitte Grund angeben');if(ta)ta.focus();return;}
+  _doAufgabeZurueck(id,g);
+}
 function toggleWeiterleiten(id){
   const el=document.getElementById('wl-'+id);
   if(el)el.style.display=el.style.display==='none'?'flex':'none';
@@ -2745,8 +2751,8 @@ function rTag(){
       if(a.notiz)out+='<div style="font-size:11px;color:var(--t2);margin-bottom:8px;font-style:italic;line-height:1.4">💬 '+esc(a.notiz).slice(0,120)+(a.notiz.length>120?'…':'')+'</div>';
       // Schritt 1: zwei Buttons
       out+='<div id="ibx-s1-'+a.id+'" style="display:flex;gap:8px">';
-      out+='<button onclick="document.getElementById(\'ibx-s1-'+a.id+'\').style.display=\'none\';document.getElementById(\'ibx-s2-'+a.id+'\').style.display=\'block\'" style="flex:1;padding:8px;border-radius:8px;background:var(--hero);color:#fff;border:none;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer">✓ Annehmen</button>';
-      out+='<button onclick="document.getElementById(\'ibx-s1-'+a.id+'\').style.display=\'none\';document.getElementById(\'ibx-abl-'+a.id+'\').style.display=\'block\'" style="flex:1;padding:8px;border-radius:8px;background:var(--gray-bg);color:var(--t2);border:1px solid var(--bd);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer">↩ Ablehnen</button>';
+      out+='<button onclick="document.getElementById(\'ibx-s1-'+a.id+'\').style.display=\'none\';document.getElementById(\'ibx-s2-'+a.id+'\').style.display=\'block\'" style="padding:6px 16px;border-radius:8px;background:var(--hero);color:#fff;border:none;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer">✓ Annehmen</button>';
+      out+='<button onclick="document.getElementById(\'ibx-s1-'+a.id+'\').style.display=\'none\';document.getElementById(\'ibx-abl-'+a.id+'\').style.display=\'block\'" style="padding:6px 14px;border-radius:8px;background:var(--gray-bg);color:var(--t2);border:1px solid var(--bd);font-family:inherit;font-size:12px;font-weight:600;cursor:pointer">↩ Ablehnen</button>';
       out+='</div>';
       // Schritt 2: Prio wählen (nach Annehmen)
       out+='<div id="ibx-s2-'+a.id+'" style="display:none">';
@@ -2764,7 +2770,7 @@ function rTag(){
       out+='<div id="ibx-abl-'+a.id+'" style="display:none">';
       out+='<textarea id="abl-grund-'+a.id+'" placeholder="Grund (Pflicht) …" rows="2" style="width:100%;box-sizing:border-box;font-size:12px;padding:7px 10px;border-radius:8px;border:1px solid var(--bd);background:var(--sf);color:var(--text);font-family:inherit;resize:none;margin-top:6px;margin-bottom:6px"></textarea>';
       out+='<div style="display:flex;gap:6px;flex-wrap:wrap">';
-      out+='<button onclick="(function(){const g=document.getElementById(\'abl-grund-'+a.id+'\').value.trim();if(!g){document.getElementById(\'abl-grund-'+a.id+'\').focus();toast(\'⚠ Bitte Grund angeben\');return;}_doAufgabeZurueck(\''+a.id+'\',g)})()" class="btn-sm" style="border-color:var(--red-bd);background:var(--red-bg);color:var(--red)">↩ Zurück an '+esc((from?.name||'').split(' ')[0])+'</button>';
+      out+='<button onclick="inboxAblehnenZurueck(\''+a.id+'\')" class="btn-sm" style="border-color:var(--red-bd);background:var(--red-bg);color:var(--red)">↩ Zurück an '+esc((from?.name||'').split(' ')[0])+'</button>';
       out+='<button onclick="toggleWeiterleiten(\''+a.id+'\')" class="btn-sm" style="border-color:var(--purple-bd);background:var(--purple-bg);color:var(--purple)">→ Weiterleiten</button>';
       out+='</div>';
       out+='<div id="wl-'+a.id+'" style="display:none;gap:5px;flex-wrap:wrap;margin-top:6px;padding:8px 10px;background:var(--purple-bg);border:1px solid var(--purple-bd);border-radius:8px">'
@@ -3537,17 +3543,20 @@ function openNeu(pf={}){
     +(hasAI?'<button onclick="aiAnalyze()" style="font-size:11px;padding:5px 10px;border-radius:7px;border:1px solid var(--bd);background:var(--gray-bg);color:var(--t2);cursor:pointer;font-family:inherit;flex-shrink:0;white-space:nowrap" title="KI-Hebel-Analyse starten">✨ KI</button>':'')
     +'</div></div>'
     +'<div id="ai-suggestion" style="display:none"></div>'
-    +'<div class="f2"><div class="fl"><label>Wer?</label><input type="hidden" id="np" value="'+defaultPid+'"><div style="display:flex;flex-wrap:wrap;gap:5px">'+S.personen.map(p=>'<div onclick="this.parentNode.querySelectorAll(\'.pp\').forEach(x=>{x.style.background=\'var(--sf)\';x.style.color=\'var(--t2)\';x.style.borderColor=\'var(--bd)\'});this.style.background=\'var(--inv)\';this.style.color=\'var(--inv-t)\';this.style.borderColor=\'var(--inv)\';document.getElementById(\'np\').value=\''+p.id+'\'" class="pp" style="cursor:pointer;font-size:12px;font-weight:600;padding:5px 12px;border-radius:99px;border:1.5px solid '+(p.id===defaultPid?'var(--inv)':'var(--bd)')+';background:'+(p.id===defaultPid?'var(--inv)':'var(--sf)')+';color:'+(p.id===defaultPid?'var(--inv-t)':'var(--t2)')+';white-space:nowrap">'+esc(p.name.split(' ')[0])+'</div>').join('')+'</div></div>'
-    +'<div class="fl"><label>Ziel <span style="font-weight:400;color:var(--t2)">(optional)</span></label><select id="nziel" onchange="updateNeuTZ()">'+zieleOpts+'</select></div></div>'
-    +'<div id="neu-tz-wrap" class="fl" style="display:none"><label>Meilenstein <span style="font-weight:400;color:var(--t2)">(optional)</span></label><select id="ntz"><option value="">— kein Meilenstein —</option></select></div>'
+    +'<div class="fl"><label>Wer?</label><input type="hidden" id="np" value="'+defaultPid+'"><div style="display:flex;flex-wrap:wrap;gap:5px">'+S.personen.map(p=>'<div onclick="this.parentNode.querySelectorAll(\'.pp\').forEach(x=>{x.style.background=\'var(--sf)\';x.style.color=\'var(--t2)\';x.style.borderColor=\'var(--bd)\'});this.style.background=\'var(--inv)\';this.style.color=\'var(--inv-t)\';this.style.borderColor=\'var(--inv)\';document.getElementById(\'np\').value=\''+p.id+'\'" class="pp" style="cursor:pointer;font-size:12px;font-weight:600;padding:5px 12px;border-radius:99px;border:1.5px solid '+(p.id===defaultPid?'var(--inv)':'var(--bd)')+';background:'+(p.id===defaultPid?'var(--inv)':'var(--sf)')+';color:'+(p.id===defaultPid?'var(--inv-t)':'var(--t2)')+';white-space:nowrap">'+esc(p.name.split(' ')[0])+'</div>').join('')+'</div></div>'
     +'<div class="fl"><label>Priorität</label><div style="display:flex;gap:6px;margin-top:2px">'
     +[null,'P1','P2','P3'].map(pr=>{const bg=pr==='P1'?'var(--red-bg)':pr==='P2'?'var(--blue-bg)':'var(--gray-bg)';const tc=pr==='P1'?'var(--red)':pr==='P2'?'var(--blue)':'var(--t2)';return'<button id="pbp-'+(pr||'k')+'" onclick="selPrioBtn(this,\''+pr+'\')" style="font-size:12px;padding:4px 11px;border-radius:8px;border:1px solid '+(pr?tc:'var(--bd)')+';background:'+bg+';color:'+tc+';cursor:pointer;font-family:inherit">'+(pr||'kein')+'</button>';}).join('')
     +'</div></div>'
-    +'<div class="f2"><div class="fl"><label>Dauer</label><select id="nh">'+SH.map(([h,l])=>'<option value="'+h+'"'+((pf.geplant||1)==h?' selected':'')+'>'+l+'</option>').join('')+'</select></div>'
+    +'<div class="mf" style="margin-bottom:8px"><button class="btn btn-gr" onclick="cm()">Abbrechen</button><button class="btn btn-dk" onclick="saveNeu()">Speichern</button></div>'
+    +'<div style="text-align:center;margin-bottom:4px"><button onclick="const m=document.getElementById(\'neu-mehr\');const open=m.style.display!==\'none\';m.style.display=open?\'none\':\'block\';this.textContent=open?\'Mehr ↓\':\'Weniger ↑\'" style="font-size:11px;color:var(--t3);background:none;border:none;cursor:pointer;font-family:inherit;padding:2px 8px">Mehr ↓</button></div>'
+    +'<div id="neu-mehr" style="display:none">'
+    +'<div class="f2"><div class="fl"><label>Ziel <span style="font-weight:400;color:var(--t2)">(optional)</span></label><select id="nziel" onchange="updateNeuTZ()">'+zieleOpts+'</select></div>'
+    +'<div class="fl"><label>Dauer</label><select id="nh">'+SH.map(([h,l])=>'<option value="'+h+'"'+((pf.geplant||1)==h?' selected':'')+'>'+l+'</option>').join('')+'</select></div></div>'
+    +'<div id="neu-tz-wrap" class="fl" style="display:none"><label>Meilenstein <span style="font-weight:400;color:var(--t2)">(optional)</span></label><select id="ntz"><option value="">— kein Meilenstein —</option></select></div>'
     +'<div class="fl"><label>Fällig</label><div style="display:flex;gap:6px;align-items:center"><input type="date" id="ndl" value="'+(pf.dl||getFriday())+'" style="flex:1">'
     +'<button id="dltype-bis" onclick="toggleDlType(\'bis\')" class="btn-toggle on" data-v="bis">bis</button>'
     +'<button id="dltype-am" onclick="toggleDlType(\'am\')" class="btn-toggle" data-v="am">am</button>'
-    +'</div></div></div>'
+    +'</div></div>'
     +'<div class="fl" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">'
     +'<label style="display:flex;align-items:center;gap:6px;text-transform:none;font-size:12px;font-weight:400;color:var(--t3);cursor:pointer;margin:0"><select id="nrec" style="width:auto;padding:4px 8px;font-size:11px;border:1px solid var(--bd);border-radius:6px;color:var(--t2);background:var(--sf)"><option value="">Einmalig</option><option value="daily">🔄 Täglich</option><option value="weekly">🔄 Wöchentlich</option><option value="monthly">🔄 Monatlich</option></select></label>'
     +'<label style="display:flex;align-items:center;gap:6px;text-transform:none;font-size:12px;font-weight:400;color:var(--t3);cursor:pointer;margin:0"><input type="checkbox" id="nvert" style="width:auto" onchange="document.getElementById(\'nvert-hint\').style.display=this.checked?\'block\':\'none\'"> 🔒 Vertraulich</label><div id="nvert-hint" style="display:none;font-size:10px;color:var(--t3);margin-top:2px">Sichtbar für: Geschäftsführung, Zuständiger &amp; Ersteller</div>'
@@ -3555,9 +3564,13 @@ function openNeu(pf={}){
     +'<div class="fl"><label>Schritte</label><div id="neu-steps"></div>'
     +'<div style="display:flex;gap:6px"><input class="asi" id="neu-step-input" placeholder="+ Schritt…" onkeydown="if(event.key===\'Enter\'){event.preventDefault();addNeuStep()}" style="font-size:12px;padding:6px 10px"><button onclick="addNeuStep()" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);cursor:pointer">+</button></div></div>'
     +'<div class="fl"><label>Notiz</label><input id="nno" value="'+(pf.notiz||'')+'" placeholder="Optional…"></div>'
-    +'<div class="mf"><button class="btn btn-gr" onclick="cm()">Abbrechen</button><button class="btn btn-dk" onclick="saveNeu()">Speichern</button></div>';
+    +'</div>';
   window._neuSteps=[];
   document.getElementById('ovl').classList.add('open');
+  // Auto-open "Mehr" if pre-filled values exist in that section
+  if(pf.zielId||pf.dl||pf.notiz||pf.teilzielId){
+    const m=document.getElementById('neu-mehr');if(m)m.style.display='block';
+  }
   if(pf.zielId)setTimeout(()=>{const s=document.getElementById('nziel');if(s){s.value=pf.zielId;updateNeuTZ();}},50);
   if(pf.teilzielId)setTimeout(()=>{const s=document.getElementById('ntz');if(s)s.value=pf.teilzielId;},100);
 }
@@ -3970,6 +3983,7 @@ async function saveNeu(){
   const zielId=document.getElementById('nziel')?.value||null;
   // P1-Pflichtfeld: Ziel erforderlich
   if(_selPrio==='P1'&&!zielId){
+    const m=document.getElementById('neu-mehr');if(m)m.style.display='block';
     const zSel=document.getElementById('nziel');
     if(zSel){zSel.style.outline='2px solid var(--red)';zSel.focus();}
     toast('⚡ P1 braucht ein Ziel – wähle das verknüpfte Ziel aus');
