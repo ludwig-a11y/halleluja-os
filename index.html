@@ -470,8 +470,13 @@ async function loadData(){
       dbPatch('aufgaben',a.id,{pid:matched.id,status:'zugewiesen',erstellt_von:a.erstelltVon});
     }
   });
-  S.kpiVals={};
-  (kpiVals||[]).forEach(v=>{const k=v.pid+'-'+v.kpi_id;if(!S.kpiVals[k]||v.datum>S.kpiVals[k].datum)S.kpiVals[k]={val:v.val,datum:v.datum};});
+  S.kpiVals={};S.kpiValsMonth={};
+  const _thisMonth=TODAY.slice(0,7);
+  (kpiVals||[]).forEach(v=>{
+    const k=v.pid+'-'+v.kpi_id;
+    if(!S.kpiVals[k]||v.datum>S.kpiVals[k].datum)S.kpiVals[k]={val:v.val,datum:v.datum};
+    if((v.datum||'').startsWith(_thisMonth)){S.kpiValsMonth[k]=(S.kpiValsMonth[k]||0)+v.val;}
+  });
   S.checkins={};
   (checkins||[]).forEach(c=>{if(!S.checkins[c.pid]||c.datum>S.checkins[c.pid].date)S.checkins[c.pid]={date:c.datum,morgen:c.morgen,abend:c.abend};});
   S.signale=(signale||[]);
@@ -698,7 +703,11 @@ function saveKpiTodayVal(kpiId,pid,val){
 async function _saveKpi(kpiId,pid,val){
   saveKpiTodayVal(kpiId,pid,val);
   const existing=S.kpiVals[pid+'-'+kpiId];
-  S.kpiVals[pid+'-'+kpiId]={val,datum:TODAY};
+  const mKey=pid+'-'+kpiId;
+  const oldVal=(existing&&existing.datum===TODAY)?existing.val:0;
+  S.kpiVals[mKey]={val,datum:TODAY};
+  // Monatssumme aktualisieren: alten Tageswert ersetzen, neuen addieren
+  S.kpiValsMonth[mKey]=(S.kpiValsMonth[mKey]||0)-oldVal+val;
   if(existing&&existing.datum===TODAY){
     await supa('kpi_vals?pid=eq.'+pid+'&kpi_id=eq.'+kpiId+'&datum=eq.'+TODAY,{method:'PATCH',body:{val},prefer:'return=minimal'});
   }else{
@@ -833,14 +842,18 @@ function rKpiBlock(pid){
   let out='<div class="kpi-block"><div class="kpi-block-label">Meine KPIs</div><div class="kpi-grid">';
   myKpis.forEach(k=>{
     const fällig=isFällig(k.freq);
+    const isTaeglich=k.typ==='täglich';
     const todayVal=getKpiTodayVal(k.id,pid);
-    const displayVal=todayVal!==null?todayVal:kpiVal(k);
+    // täglich: heute-Wert anzeigen (0 wenn noch nicht eingetragen); kumulativ: laufender Wert
+    const displayVal=isTaeglich?(todayVal!==null?todayVal:(S.kpiVals[pid+'-'+k.id]?.datum===TODAY?S.kpiVals[pid+'-'+k.id].val:0)):(todayVal!==null?todayVal:kpiVal(k));
+    // täglich: Ziel = Tagesziel; kumulativ: Monatsziel
     const ok=k.inv?displayVal<=k.ziel:displayVal>=k.ziel*0.85;
     const pct=Math.min(100,Math.round((k.inv?Math.max(0,k.ziel-displayVal+k.ziel):displayVal)/(k.ziel||1)*100));
     const showBtn=fällig||k.sonder;
     out+='<div class="kpi-item '+(k.sonder?'sonder':fällig?'fällig':'inaktiv')+'">';
-    out+='<div class="kpi-name">'+k.label+(k.unit?'<span style="font-weight:400"> · '+k.unit+'</span>':'')+'</div>';
+    out+='<div class="kpi-name">'+k.label+(k.unit?'<span style="font-weight:400"> · '+k.unit+'</span>':'')+(isTaeglich?'<span style="font-size:9px;margin-left:5px;padding:1px 5px;border-radius:99px;background:var(--blue-bg);color:var(--blue);font-weight:600">täglich</span>':'')+'</div>';
     out+='<div class="kpi-goal-ref">→ '+k.zielName+'</div>';
+    if(isTaeglich){const monthSum=S.kpiValsMonth[pid+'-'+k.id]||0;out+='<div style="font-size:10px;color:var(--t3);margin-bottom:2px">Monat: <strong style="color:var(--text)">'+monthSum+'</strong> eingetragen</div>';}
     out+='<div style="display:flex;align-items:baseline;gap:4px">';
     out+='<div class="kpi-val '+(ok?'ok':'nok')+'">'+displayVal+'</div>';
     out+='<div class="kpi-soll">/ '+k.ziel+'</div>';
@@ -1676,8 +1689,10 @@ function getPaddelCount(pid){
     return sum+(a.prio==='P1'?3:a.prio==='P2'?1:0);
   },0);
   // Sonder-KPIs: Verkauf/Sauna=5pts pro Einheit, Termin/alles andere=3pts pro Einheit
+  // täglich-KPIs: Monatssumme verwenden; kumulativ: aktuellen Wert verwenden
   const kpiPts=S.ziele.flatMap(z=>z.kpis||[]).filter(k=>String(k.pid)===String(pid)&&k.sonder).reduce((sum,k)=>{
-    const v=Math.max(0,kpiVal(k)||0);
+    const isTaeglich=k.typ==='täglich';
+    const v=Math.max(0,isTaeglich?(S.kpiValsMonth[pid+'-'+k.id]||0):(kpiVal(k)||0));
     const lbl=(k.label||'').toLowerCase();
     const pts=(lbl.includes('verkauf')||lbl.includes('sauna'))?5:3;
     return sum+v*pts;
@@ -3922,6 +3937,10 @@ function editKpiDef(zid,kid){
     +'<div class="f2"><div class="fl"><label>Einheit</label><input id="ku" value="'+(k.unit||'')+'" placeholder="%, Stk…"></div><div class="fl"><label>Rhythmus</label><select id="kf">'+FREQ.map(f=>'<option'+(k.freq===f?' selected':'')+'>'+f+'</option>').join('')+'</select></div></div>'
     +'<div class="fl"><label>Verantwortlich</label><select id="kp">'+S.personen.map(p=>'<option value="'+p.id+'"'+(String(k.pid)===String(p.id)?' selected':'')+'>'+esc(p.name)+'</option>').join('')+'</select></div>'
     +'<div class="fl"><label style="text-transform:none;font-size:13px;font-weight:400;display:flex;align-items:center;gap:8px"><input type="checkbox" id="kinv"'+(k.inv?' checked':'')+' style="width:auto"> Niedriger ist besser</label></div>'
+    +'<div class="fl"><label>Zählweise</label><div style="display:flex;gap:8px">'
+    +'<label style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:400;cursor:pointer"><input type="radio" name="ktyp" id="ktyp-kum" value="kumulativ"'+((!k.typ||k.typ==='kumulativ')?' checked':'')+' style="width:auto"> Kumulativ <span style="font-size:10px;color:var(--t3)">(laufender Wert)</span></label>'
+    +'<label style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:400;cursor:pointer"><input type="radio" name="ktyp" id="ktyp-tag" value="täglich"'+(k.typ==='täglich'?' checked':'')+' style="width:auto"> Täglich <span style="font-size:10px;color:var(--t3)">(jeden Tag neu, Summe im Monat)</span></label>'
+    +'</div></div>'
     +'<div class="fl"><label style="text-transform:none;font-size:13px;font-weight:400;display:flex;align-items:center;gap:8px"><input type="checkbox" id="ksonder"'+(k.sonder?' checked':'')+' style="width:auto"> 🔔 Sonder-KPI (Glocken-Celebration für GF)</label></div>'
     +'<div class="mf"><button class="btn btn-red" onclick="delKpi(\''+zid+'\',\''+kid+'\')">Löschen</button><button class="btn btn-gr" onclick="cm()">Abbrechen</button><button class="btn btn-dk" onclick="saveKpi(\''+zid+'\',\''+kid+'\')">Speichern</button></div>';
   document.getElementById('ovl').classList.add('open');
@@ -3938,8 +3957,9 @@ async function saveKpi(zid,kid){
   k.pid=S.personen.find(p=>String(p.id)===rawPid)?.id??rawPid;
   k.inv=document.getElementById('kinv').checked;
   k.sonder=document.getElementById('ksonder').checked;
+  k.typ=document.querySelector('input[name="ktyp"]:checked')?.value||'kumulativ';
   // sonder im selben PATCH wie alles andere — kein separater Call mehr
-  const kpiPatch={label:k.label,ist:k.ist,ziel:k.ziel,unit:k.unit,freq:k.freq,pid:k.pid,inv:k.inv,sonder:!!k.sonder};
+  const kpiPatch={label:k.label,ist:k.ist,ziel:k.ziel,unit:k.unit,freq:k.freq,pid:k.pid,inv:k.inv,sonder:!!k.sonder,typ:k.typ};
   await dbPatch('kpis',kid,kpiPatch);
   // _sonderSeen für neu aktivierte Sonder-KPIs initialisieren
   if(k.sonder&&_sonderSeen[kid]===undefined){
