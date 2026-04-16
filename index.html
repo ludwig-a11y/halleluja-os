@@ -1417,7 +1417,7 @@ function updateWRTZSection(){
   }
   html+='<div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:7px">'+(tzArr.length?'Neu anlegen (wird automatisch Meilenstein)':'Meilensteine eingeben')+'</div>';
   html+='<div style="display:grid;gap:7px">';
-  [1,2,3].forEach(n=>{html+='<div style="display:flex;align-items:center;gap:9px;background:var(--gray-bg);border:1px solid var(--bd);border-radius:9px;padding:9px 11px"><span style="font-size:13px;font-weight:800;color:var(--green);width:14px;flex-shrink:0">'+n+'</span><input id="wr-b'+n+'" type="text" placeholder="'+(n<3?'Meilenstein '+n+'…':'Optional…')+'" style="border:none;background:transparent;font-family:inherit;font-size:13px;color:var(--text);outline:none;flex:1"></div>';});
+  [1,2,3].forEach(n=>{html+='<div style="display:flex;align-items:center;gap:9px;background:var(--gray-bg);border:1px solid var(--bd);border-radius:9px;padding:9px 11px"><span style="font-size:13px;font-weight:800;color:var(--green);width:14px;flex-shrink:0">'+n+'</span><input id="wr-b'+n+'" type="text" placeholder="'+(n<3?'Konkretes Ergebnis bis Freitag…':'Optional…')+'" style="border:none;background:transparent;font-family:inherit;font-size:13px;color:var(--text);outline:none;flex:1"></div>';});
   html+='</div>';
   div.innerHTML=html;
 }
@@ -2003,10 +2003,15 @@ function rWoche(){
   if(wr&&(wr.big3_1||wr.big3_2)){
     const fz=S.ziele.find(z=>z.id===wr.focus_ziel_id);
     const f=fz?FARBEN[fz.farbe||0]:FARBEN[0];
-    out+='<div style="background:var(--sf);border:1px solid '+f.bd+';border-left:3px solid '+f.tc+';border-radius:0 12px 12px 0;padding:14px 16px;margin-bottom:14px">';
+    const big3Done=[wr.big3_1_done,wr.big3_2_done,wr.big3_3_done].filter(Boolean).length;
+    const big3Total=[wr.big3_1,wr.big3_2,wr.big3_3].filter(Boolean).length;
+    const big3DowLate=(new Date().getDay()>=4)&&big3Done===0&&big3Total>0;
+    const big3Bd=big3DowLate?'var(--red-bd)':f.bd;
+    const big3Left=big3DowLate?'var(--red)':f.tc;
+    out+='<div style="background:var(--sf);border:1px solid '+big3Bd+';border-left:3px solid '+big3Left+';border-radius:0 12px 12px 0;padding:14px 16px;margin-bottom:14px">';
     out+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">';
     out+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:'+f.tc+'">Big 3 · KW '+kw+'</div>';
-    if(fz)out+='<span style="font-size:11px;color:var(--t2)">→ '+esc(fz.name)+'</span>';
+    out+='<span style="font-size:11px;color:'+(big3DowLate?'var(--red)':'var(--t2)')+'">'+big3Done+'/'+big3Total+' ✓'+(fz?' · '+esc(fz.name):'')+'</span>';
     out+='</div>';
     [[1,'big3_1_done'],[2,'big3_2_done'],[3,'big3_3_done']].forEach(([n,doneF],i)=>{
       const txt=wrItemName(wr,n);if(!txt)return;
@@ -2723,9 +2728,9 @@ function rTag(){
   }
 
   const weitere=bl.filter(a=>a.id!==naechste?.id);
-  const weitereSichtbar=weitere.slice(0,2);
-  const weitereRest=weitere.slice(2);
-  weitereSichtbar.forEach(a=>{out+=aufgabeKarte(a);});
+  const mitZiel=weitere.filter(a=>a.ziel_id);
+  const ohneZiel=weitere.filter(a=>!a.ziel_id);
+  mitZiel.forEach(a=>{out+=aufgabeKarte(a);});
 
   // ── Inbox (nur Aufgaben — Wolken/Ideen sind in Wochenansicht) ──
   {
@@ -2831,13 +2836,13 @@ function rTag(){
   }
   }
 
-  // ── Backlog (einklappbar) ──
-  if(weitereRest.length){
-    out+='<details style="margin-bottom:12px"><summary style="list-style:none;cursor:pointer;padding:12px 16px;background:var(--sf);border:1px solid var(--bd);border-radius:12px;display:flex;align-items:center;justify-content:space-between">';
-    out+='<span style="font-size:13px;font-weight:600">Backlog</span>';
-    out+='<span style="font-size:12px;color:var(--t3)">'+weitereRest.length+' weitere</span></summary>';
+  // ── Weitere (ohne Ziel — operativ) ──
+  if(ohneZiel.length){
+    out+='<details style="margin-bottom:12px"><summary style="list-style:none;cursor:pointer;padding:10px 16px;background:var(--sf);border:1px solid var(--bd);border-radius:12px;display:flex;align-items:center;justify-content:space-between">';
+    out+='<span style="font-size:12px;color:var(--t2)">Weitere</span>';
+    out+='<span style="font-size:12px;color:var(--t3)">'+ohneZiel.length+'</span></summary>';
     out+='<div style="margin-top:8px">';
-    weitereRest.forEach(a=>{out+=aufgabeKarte(a);});
+    ohneZiel.forEach(a=>{out+=aufgabeKarte(a);});
     out+='</div></details>';
   }
 
