@@ -1334,15 +1334,20 @@ function openWochenreset(){
       rueckblickHtml+='<span style="font-size:11px;'+(done?'background:var(--green-bg);border:1px solid var(--green-bd);color:var(--green)':'background:var(--orange-bg);border:1px solid var(--orange-bd);color:var(--orange)')+';padding:2px 8px;border-radius:99px;font-weight:600">'+(done?'✓ ':'✗ ')+txt+'</span>';
     });
   }
-  const aktZiele=S.ziele.filter(z=>z.status!=='vorschlag');
+  const aktZiele=S.ziele.filter(z=>z.status!=='vorschlag'&&z.status!=='bereich');
+  const aktBereiche=S.ziele.filter(z=>z.status==='bereich');
   const meineZ=aktZiele.filter(z=>String(z.verantwortlichId)===String(aP)||(z.teilziele||[]).some(tz=>String(tz.verantwortlichId)===String(aP)));
   const andereZ=aktZiele.filter(z=>!meineZ.find(m=>m.id===z.id));
+  const meineBer=aktBereiche.filter(z=>String(z.verantwortlichId)===String(aP));
+  const andereBer=aktBereiche.filter(z=>!meineBer.find(m=>m.id===z.id));
   const selZielId=wr?.focus_ziel_id||'';
-  const zBtn=z=>{const f=FARBEN[z.farbe||0];const sel=z.id===selZielId;return '<div onclick="[...document.querySelectorAll(\'.zw-opt\')].forEach(x=>{x.style.borderColor=\'#e5e5e3\';x.style.color=\'#888\';x.style.background=\'#fff\'});this.style.borderColor=\''+f.tc+'\';this.style.color=\''+f.tc+'\';this.style.background=\''+f.bg+'\';document.getElementById(\'wr-ziel\').value=\''+z.id+'\';updateWRTZSection()" class="zw-opt" style="cursor:pointer;border:1.5px solid '+(sel?f.tc:'#e5e5e3')+';border-radius:8px;padding:8px 11px;font-size:12px;font-weight:600;color:'+(sel?f.tc:'#888')+';background:'+(sel?f.bg:'#fff')+';margin-bottom:5px">'+esc(z.name)+'</div>';};
-  // Ziel-Optionen aufteilen: Meine sichtbar, Andere eingeklappt
+  const zBtn=z=>{const f=FARBEN[z.farbe||0];const sel=z.id===selZielId;const isB=z.status==='bereich';return '<div onclick="[...document.querySelectorAll(\'.zw-opt\')].forEach(x=>{x.style.borderColor=\'#e5e5e3\';x.style.color=\'#888\';x.style.background=\'#fff\'});this.style.borderColor=\''+f.tc+'\';this.style.color=\''+f.tc+'\';this.style.background=\''+f.bg+'\';document.getElementById(\'wr-ziel\').value=\''+z.id+'\';updateWRTZSection()" class="zw-opt" style="cursor:pointer;border:1.5px solid '+(sel?f.tc:'#e5e5e3')+';border-radius:8px;padding:8px 11px;font-size:12px;font-weight:600;color:'+(sel?f.tc:'#888')+';background:'+(sel?f.bg:'#fff')+';margin-bottom:5px">'+(isB?'📁 ':'')+esc(z.name)+'</div>';};
+  // Ziel-Optionen aufteilen: Meine Ziele, Bereiche, Andere
   let zieleHtml='';
   if(meineZ.length){meineZ.forEach(z=>{zieleHtml+=zBtn(z);});}
-  if(andereZ.length){zieleHtml+='<details style="margin-top:6px"><summary style="font-size:11px;color:var(--t3);cursor:pointer;padding:4px 0">Andere Ziele ('+andereZ.length+')</summary><div style="margin-top:6px">'+andereZ.map(zBtn).join('')+'</div></details>';}
+  if(meineBer.length){zieleHtml+='<div style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin:8px 0 4px">📁 Meine Bereiche</div>';meineBer.forEach(z=>{zieleHtml+=zBtn(z);});}
+  const andereAlle=[...andereZ,...andereBer];
+  if(andereAlle.length){zieleHtml+='<details style="margin-top:6px"><summary style="font-size:11px;color:var(--t3);cursor:pointer;padding:4px 0">▸ Andere Ziele ('+andereAlle.length+')</summary><div style="margin-top:6px">'+andereAlle.map(zBtn).join('')+'</div></details>';}
 
   document.getElementById('mb').innerHTML=
     '<div class="mt">'+(wr?'Big 3 bearbeiten — KW '+kw:'Wochenplanung KW '+nextKw)+'</div>'
@@ -1354,9 +1359,9 @@ function openWochenreset(){
     // ── Step 1: Fokus-Ziel ──
     +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">'
     +'<span style="background:var(--inv);color:var(--inv-t);font-size:12px;font-weight:800;width:24px;height:24px;border-radius:99px;display:flex;align-items:center;justify-content:center;flex-shrink:0">1</span>'
-    +'<span style="font-size:16px;font-weight:700;color:var(--text)">Fokus-Ziel wählen</span>'
+    +'<span style="font-size:16px;font-weight:700;color:var(--text)">Fokus wählen</span>'
     +'</div>'
-    +'<div style="font-size:12px;color:var(--t2);margin-bottom:10px;margin-left:34px">Welches Ziel treibst du diese Woche voran?</div>'
+    +'<div style="font-size:12px;color:var(--t2);margin-bottom:10px;margin-left:34px">Welches Ziel oder welchen Bereich treibst du diese Woche voran?</div>'
     +'<input type="hidden" id="wr-ziel" value="'+selZielId+'">'
     +(wr?'<textarea id="wr-blockiert" style="display:none">'+esc(wr.blockiert||'')+'</textarea>':'')
     +'<div style="margin-left:34px">'+zieleHtml+'</div>'
@@ -1364,9 +1369,9 @@ function openWochenreset(){
     // ── Step 2: Meilensteine ──
     +'<div style="display:flex;align-items:center;gap:10px;margin-top:18px;margin-bottom:6px">'
     +'<span style="background:'+(selZielId?'var(--inv)':'var(--bd)')+';color:'+(selZielId?'var(--inv-t)':'var(--t3)')+';font-size:12px;font-weight:800;width:24px;height:24px;border-radius:99px;display:flex;align-items:center;justify-content:center;flex-shrink:0">2</span>'
-    +'<span style="font-size:16px;font-weight:700;color:'+(selZielId?'var(--text)':'var(--t3)')+'">Meilensteine für diese Woche</span>'
+    +'<span id="wr-step2-label" style="font-size:16px;font-weight:700;color:'+(selZielId?'var(--text)':'var(--t3)')+'">Meilensteine für diese Woche</span>'
     +'</div>'
-    +(selZielId?'<div style="font-size:12px;color:var(--t2);margin-bottom:8px;margin-left:34px">Wähle bestehende oder lege neue an (max. 3)</div>':'<div style="font-size:12px;color:var(--t3);margin-bottom:8px;margin-left:34px">Zuerst ein Ziel oben auswählen</div>')
+    +(selZielId?'<div id="wr-step2-sub" style="font-size:12px;color:var(--t2);margin-bottom:8px;margin-left:34px">Wähle bestehende oder lege neue an (max. 3)</div>':'<div id="wr-step2-sub" style="font-size:12px;color:var(--t3);margin-bottom:8px;margin-left:34px">Zuerst ein Ziel oder Bereich oben auswählen</div>')
     +'<div id="wr-tz-section" style="margin-left:34px"></div>'
 
     // ── Step 3: Wenn-Dann-Plan ──
@@ -1404,7 +1409,13 @@ function updateWRTZSection(){
   const zielId=document.getElementById('wr-ziel')?.value;
   const div=document.getElementById('wr-tz-section');if(!div)return;
   const z=zielId?S.ziele.find(x=>x.id===zielId):null;
-  const tzArr=z?(z.teilziele||[]).filter(t=>!t.erledigt):[];
+  const isBereich=z&&z.status==='bereich';
+  const tzArr=(!isBereich&&z)?(z.teilziele||[]).filter(t=>!t.erledigt):[];
+  // Update Step 2 label
+  const step2Label=document.getElementById('wr-step2-label');
+  if(step2Label)step2Label.textContent=isBereich?'Big 3 für diese Woche':'Meilensteine für diese Woche';
+  const step2Sub=document.getElementById('wr-step2-sub');
+  if(step2Sub)step2Sub.textContent=isBereich?'Was willst du in diesem Bereich diese Woche schaffen?':'Wähle bestehende oder lege neue an (max. 3)';
   let html='';
   if(tzArr.length){
     html+='<div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Bestehende Meilensteine</div>';
@@ -1419,9 +1430,10 @@ function updateWRTZSection(){
     });
     html+='</div>';
   }
-  html+='<div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:7px">'+(tzArr.length?'Neu anlegen (wird automatisch Meilenstein)':'Meilensteine eingeben')+'</div>';
+  const freePlaceholder=isBereich?'Konkretes Ergebnis diese Woche…':'Konkretes Ergebnis bis Freitag…';
+  html+='<div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:7px">'+(isBereich?'Deine Big 3 im Bereich':tzArr.length?'Neu anlegen (wird automatisch Meilenstein)':'Meilensteine eingeben')+'</div>';
   html+='<div style="display:grid;gap:7px">';
-  [1,2,3].forEach(n=>{html+='<div style="display:flex;align-items:center;gap:9px;background:var(--gray-bg);border:1px solid var(--bd);border-radius:9px;padding:9px 11px"><span style="font-size:13px;font-weight:800;color:var(--green);width:14px;flex-shrink:0">'+n+'</span><input id="wr-b'+n+'" type="text" placeholder="'+(n<3?'Konkretes Ergebnis bis Freitag…':'Optional…')+'" style="border:none;background:transparent;font-family:inherit;font-size:13px;color:var(--text);outline:none;flex:1"></div>';});
+  [1,2,3].forEach(n=>{html+='<div style="display:flex;align-items:center;gap:9px;background:var(--gray-bg);border:1px solid var(--bd);border-radius:9px;padding:9px 11px"><span style="font-size:13px;font-weight:800;color:var(--green);width:14px;flex-shrink:0">'+n+'</span><input id="wr-b'+n+'" type="text" placeholder="'+(n<3?freePlaceholder:'Optional…')+'" style="border:none;background:transparent;font-family:inherit;font-size:13px;color:var(--text);outline:none;flex:1"></div>';});
   html+='</div>';
   div.innerHTML=html;
 }
@@ -1429,12 +1441,14 @@ async function saveWochenreset(){
   const{kw,jahr}=getKW();
   const wr=dieseWocheReset(aP);
   const zielId=document.getElementById('wr-ziel').value||null;
-  const selTzIds=[...document.querySelectorAll('.wr-tz-check:checked')].map(x=>x.value);
+  const fokusIsBereich=zielId&&istBereich(zielId);
+  const selTzIds=fokusIsBereich?[]:[...document.querySelectorAll('.wr-tz-check:checked')].map(x=>x.value);
   const newTzTexts=[1,2,3].map(n=>document.getElementById('wr-b'+n)?.value.trim()||'');
   const newTzIds=[];
   for(const txt of newTzTexts){
     if(!txt){newTzIds.push(null);continue;}
-    if(zielId){
+    // Bei Bereichen: keine Meilensteine erstellen, nur freie Big 3
+    if(zielId&&!fokusIsBereich){
       const tzId=nid('tz');
       const tzRec={id:tzId,ziel_id:zielId,name:txt,verantwortlich_id:String(aP),datum:'',erledigt:false};
       const z=S.ziele.find(x=>x.id===zielId);
@@ -2015,7 +2029,8 @@ function rWoche(){
     out+='<div style="background:var(--sf);border:1px solid '+big3Bd+';border-left:3px solid '+big3Left+';border-radius:0 12px 12px 0;padding:14px 16px;margin-bottom:14px">';
     out+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">';
     out+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:'+f.tc+'">Big 3 · KW '+kw+'</div>';
-    out+='<span style="font-size:11px;color:'+(big3DowLate?'var(--red)':'var(--t2)')+'">'+big3Done+'/'+big3Total+' ✓'+(fz?' · '+esc(fz.name):'')+'</span>';
+    const fzIsB=fz&&fz.status==='bereich';
+    out+='<span style="font-size:11px;color:'+(big3DowLate?'var(--red)':'var(--t2)')+'">'+big3Done+'/'+big3Total+' ✓'+(fz?' · '+(fzIsB?'📁 ':'')+esc(fz.name):'')+'</span>';
     out+='</div>';
     [[1,'big3_1_done'],[2,'big3_2_done'],[3,'big3_3_done']].forEach(([n,doneF],i)=>{
       const txt=wrItemName(wr,n);if(!txt)return;
