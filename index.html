@@ -5521,7 +5521,6 @@ async function saveOffeneFrage(){
   const anPersonId=document.getElementById('of-an').value||null;
   const deadline=document.getElementById('of-deadline').value||null;
   const rec={
-    id:nid('dr'),
     frage,
     typ,
     kontext:document.getElementById('of-kontext').value.trim()||null,
@@ -5534,14 +5533,20 @@ async function saveOffeneFrage(){
     erstellt_am:new Date().toISOString(),
     status:'offen'
   };
-  S.decisionRequests.unshift(rec);
-  await dbInsert('decision_requests',rec);
+  // Kein optimistic insert — erst DB prüfen, dann UI
+  const result=await dbInsert('decision_requests',rec);
+  if(!result){
+    toast('⚠️ Speichern fehlgeschlagen — DB-Migration ausgeführt? (Supabase → SQL Editor)');
+    return;
+  }
+  // Supabase gibt die gespeicherte Zeile zurück (mit echter ID)
+  const saved=Array.isArray(result)?result[0]:rec;
+  S.decisionRequests.unshift(saved);
   const anP=S.personen.find(p=>p.id===anPersonId);
   const gfSlackIds=S.personen.filter(p=>p.stufe==='gf'&&p.id!==aP&&p.id!==anPersonId&&p.slack_id).map(p=>p.slack_id);
-  notify('entscheidung_angefragt',{frage:rec.frage,typ,prioritaet:rec.prioritaet,deadline:rec.deadline,blockiert:rec.blockiert,an_slack_id:anP?.slack_id||'',gf_slack_ids:gfSlackIds,actor_slack_id:me()?.slack_id||''});
+  notify('entscheidung_angefragt',{frage:saved.frage,typ,prioritaet:saved.prioritaet,deadline:saved.deadline,blockiert:saved.blockiert,an_slack_id:anP?.slack_id||'',gf_slack_ids:gfSlackIds,actor_slack_id:me()?.slack_id||''});
   cm();render();
-  const slackName=anP?.name?.split(' ')[0]||'';
-  toast('✅ Gesendet'+(slackName&&anP?.slack_id?' · 💬 Slack DM an '+slackName:''));
+  toast('✅ Frage gestellt'+(anP?' → '+anP.name.split(' ')[0]:''));
 }
 async function saveDecisionRequest(){return saveOffeneFrage();}
 function openDecisionAnswer(id,mode){
