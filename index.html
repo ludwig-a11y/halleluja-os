@@ -2511,26 +2511,38 @@ function rTag(){
         +(gapH>0.5?'<span style="color:var(--red)">'+Math.round(gapH*10)/10+'h ungenutzt</span> · ':'')
         +Math.round(erlH*10)/10+'h erledigt · '+Math.round(offenH*10)/10+'h offen</div>';
       out+='</div>';
-      // time markers
-      out+='<div style="position:relative;height:12px;margin-bottom:2px">';
+      // time markers + Fokuszeit-Klammer
+      const fzRow=fzStartH!=null;
+      out+='<div style="position:relative;height:'+(fzRow?'22':'12')+'px;margin-bottom:2px">';
+      // Fokuszeit-Klammer (oben)
+      if(fzRow){
+        const fsPctB=Math.min(100,Math.max(0,(fzStartH-dayStart)/barH*100));
+        const fePctB=Math.min(100,Math.max(0,(fzEndH-dayStart)/barH*100));
+        const feWB=Math.max(0,fePctB-fsPctB);
+        const fzNowIn=nowH>=fzStartH&&nowH<fzEndH;
+        const clr=fzNowIn?'var(--red)':'rgba(185,28,28,.35)';
+        if(feWB>0){
+          // Linie
+          out+='<div style="position:absolute;left:'+fsPctB+'%;width:'+feWB+'%;top:5px;height:1px;background:'+clr+'"></div>';
+          // linke Kappe
+          out+='<div style="position:absolute;left:'+fsPctB+'%;top:3px;width:1px;height:5px;background:'+clr+'"></div>';
+          // rechte Kappe
+          out+='<div style="position:absolute;left:'+fePctB+'%;top:3px;width:1px;height:5px;background:'+clr+';transform:translateX(-1px)"></div>';
+          // Label "Fokus" zentriert
+          const midPct=(fsPctB+fePctB)/2;
+          out+='<div style="position:absolute;left:'+midPct+'%;top:0;transform:translateX(-50%);font-size:8px;font-weight:700;color:'+clr+';letter-spacing:.3px;white-space:nowrap">Fokus</div>';
+        }
+      }
+      // Stunden-Ticks (unten in der Zeile)
       for(let h=dayStart;h<=dayEnd;h++){
         const pct=((h-dayStart)/barH*100);
         const isAnchor=h===anchor;
         const show=isAnchor||h===12||h===15||h===dayEnd||(h<anchor&&h===dayStart);
-        if(show&&pct>=0&&pct<=100)out+='<div style="position:absolute;left:'+pct+'%;font-size:8px;'+(isAnchor?'font-weight:700;color:var(--text)':'color:var(--t3)')+';transform:translateX(-50%)">'+h+(isAnchor?':00':'')+'</div>';
+        if(show&&pct>=0&&pct<=100)out+='<div style="position:absolute;left:'+pct+'%;'+(fzRow?'bottom:0':'top:0')+';font-size:8px;'+(isAnchor?'font-weight:700;color:var(--text)':'color:var(--t3)')+';transform:translateX(-50%)">'+h+(isAnchor?':00':'')+'</div>';
       }
       out+='</div>';
       // bar container
       out+='<div style="position:relative">';
-      // Fokuszeit-Streifen über dem Bar
-      if(fzStartH!=null){
-        const fsPctB=Math.min(100,Math.max(0,(fzStartH-dayStart)/barH*100));
-        const feWB=Math.min(100-fsPctB,Math.max(0,(fzEndH-fzStartH)/barH*100));
-        if(feWB>0){
-          const fzNowInB=nowH>=fzStartH&&nowH<fzEndH;
-          out+='<div style="position:absolute;left:'+fsPctB+'%;width:'+feWB+'%;top:-6px;height:3px;background:'+(fzNowInB?'#f59e0b':'rgba(245,158,11,.5)')+';border-radius:2px 2px 0 0;z-index:9"></div>';
-        }
-      }
       // 9:00 anchor line
       if(dayStart<anchor)out+='<div style="position:absolute;left:'+anchorPct+'%;top:0;bottom:0;width:1px;background:var(--text);opacity:.15;z-index:8"></div>';
       // single-row bar
