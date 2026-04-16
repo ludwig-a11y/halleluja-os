@@ -583,7 +583,7 @@ const canChangePrio=a=>{
 };
 const canManageTZ=zid=>{const z=zielObj(zid);return z&&(isGF()||z.verantwortlichId===aP);};
 function tzLabel(zid,plural){return istBereich(zid)?(plural?'Themen':'Thema'):(plural?'Meilensteine':'Meilenstein');}
-function toggleBereich(zid){if(!window._bereichOpen)window._bereichOpen={};window._bereichOpen[zid]=!window._bereichOpen[zid];rZiele();}
+function toggleBereich(zid){if(!window._bereichOpen)window._bereichOpen={};window._bereichOpen[zid]=!window._bereichOpen[zid];const _y=window.scrollY;rZiele();requestAnimationFrame(()=>window.scrollTo(0,_y));}
 
 function myTeamIds(){
   const m=me();if(!m)return[];
@@ -1016,7 +1016,7 @@ function _updateMsLabels(){
 }
 function aufgabeZuMeilenstein(id){
   const a=S.aufgaben.find(x=>x.id===id);if(!a)return;
-  const zielOpts=S.ziele.map(z=>'<option value="'+z.id+'">'+(z.status==='bereich'?'📁 ':'')+esc(z.name)+'</option>').join('');
+  const zielOpts=S.ziele.filter(z=>z.status!=='vorschlag').map(z=>'<option value="'+z.id+'">'+(z.status==='bereich'?'📁 ':'')+esc(z.name)+'</option>').join('');
   document.getElementById('mb').innerHTML='<div class="mt" id="ms-title">Als Meilenstein anlegen</div>'
     +'<div id="ms-desc" style="font-size:12px;color:var(--t2);margin:-8px 0 16px;line-height:1.4">Die Aufgabe wird in einen Meilenstein umgewandelt und dem gewählten Ziel zugeordnet.</div>'
     +'<div class="fl"><label>Gehört zu</label><select id="ms-ziel" onchange="_updateMsLabels()">'+zielOpts+'</select></div>'
@@ -1036,8 +1036,8 @@ async function saveMeilensteinFromAufgabe(aufgabeId){
     const vid=document.getElementById('ms-vid').value;
     const datum=document.getElementById('ms-datum').value;
     const z=zielObj(zid);if(!z){if(a)a._busy=false;return;}
-    const id=nid('tz'),rec={id,ziel_id:zid,name,verantwortlich_id:vid,datum:datum||null,erledigt:false};
-    z.teilziele=z.teilziele||[];z.teilziele.push({...rec,zielId:zid,verantwortlichId:vid,datum:datum||''});
+    const id=nid('tz'),rec={id,ziel_id:zid,name,verantwortlich_id:vid,datum:datum||null,erledigt:false,status:'aktiv'};
+    z.teilziele=z.teilziele||[];z.teilziele.push({...rec,zielId:zid,verantwortlichId:vid,datum:datum||'',status:'aktiv'});
     await dbInsert('teilziele',rec);
     S.aufgaben=S.aufgaben.filter(x=>x.id!==aufgabeId);
     await dbDelete('aufgaben',aufgabeId);
@@ -1515,7 +1515,9 @@ async function saveWochenreset(){
       newTzIds.push(null);
     }
   }
-  const allIds=[...selTzIds,...newTzIds.filter(Boolean)].slice(0,3);
+  const allIdsRaw=[...selTzIds,...newTzIds.filter(Boolean)];
+  if(allIdsRaw.length>3){toast('⚠️ Maximal 3 Big-3-Einträge — bitte weniger auswählen.');return;}
+  const allIds=allIdsRaw.slice(0,3);
   while(allIds.length<3)allIds.push(null);
   const allTZ=S.ziele.flatMap(z=>z.teilziele||[]);
   const tzName=id=>id?(allTZ.find(t=>t.id===id)?.name||null):null;
@@ -2118,7 +2120,7 @@ function rWoche(){
           out+='</div>';
         }
       }
-      out+='<div style="padding-left:28px;padding-bottom:7px"><button onclick="openNeu({zielId:\''+wr.focus_ziel_id+'\''+(tzId?',teilzielId:\''+tzId+'\'':'')+',dl:\''+TODAY+'\'})" style="font-size:11px;padding:3px 10px;border-radius:6px;border:1px dashed var(--bd);background:transparent;color:'+f.tc+';cursor:pointer;font-family:inherit">+ Aufgabe</button></div>';
+      out+='<div style="padding-left:28px;padding-bottom:7px"><button onclick="openNeu({'+(wr.focus_ziel_id?'zielId:\''+wr.focus_ziel_id+'\',':('' ))+(tzId?'teilzielId:\''+tzId+'\',':'')+'dl:\''+TODAY+'\'})" style="font-size:11px;padding:3px 10px;border-radius:6px;border:1px dashed var(--bd);background:transparent;color:'+f.tc+';cursor:pointer;font-family:inherit">+ Aufgabe</button></div>';
       out+='</div>';
     });
     out+='<div style="display:flex;gap:6px;margin-top:10px">';
@@ -3191,7 +3193,7 @@ function openDetail(id){
       '<button onclick="setStatusModal(\''+id+'\',\''+x[0]+'\')" style="font-size:11px;padding:4px 10px;border-radius:8px;border:'+(a.status===x[0]?'2px':'1px')+' solid '+(a.status===x[0]?'var(--text)':'var(--bd)')+';background:'+(a.status===x[0]?x[2]:'var(--sf)')+';color:'+(a.status===x[0]?x[3]:'var(--t2)')+';cursor:pointer;font-family:inherit;font-weight:'+(a.status===x[0]?600:400)+'">'+x[1]+'</button>'
     ).join('')+'</div></div>';
   const _detTzLbl=a.zielId&&istBereich(a.zielId)?'Thema':'Meilenstein';
-  h+='<div class="fl"><label>'+_detTzLbl+'</label><select id="det-tz" onchange="setTeilziel(\''+id+'\',this.value)"><option value="">— kein '+_detTzLbl+' —</option>'+(a.zielId?(zielObj(a.zielId)?.teilziele||[]).map(tz=>'<option value="'+tz.id+'"'+(a.teilzielId===tz.id?' selected':'')+'>'+esc(tz.name)+'</option>').join(''):'')+'</select></div>';
+  h+='<div class="fl"><label>'+_detTzLbl+'</label><select id="det-tz" onchange="setTeilziel(\''+id+'\',this.value)"><option value="">— kein '+_detTzLbl+' —</option>'+(a.zielId?(zielObj(a.zielId)?.teilziele||[]).filter(tz=>(tz.status||'aktiv')==='aktiv').map(tz=>'<option value="'+tz.id+'"'+(a.teilzielId===tz.id?' selected':'')+'>'+esc(tz.name)+'</option>').join(''):'')+'</select></div>';
   h+='<div class="fl"><label style="display:flex;align-items:center;gap:8px;text-transform:none;font-size:13px;font-weight:400;cursor:pointer"><input type="checkbox" id="det-vert"'+(a.vertraulich?' checked':'')+' style="width:auto" onchange="saveDetailField(\''+id+'\',\'vertraulich\',this.checked)"> 🔒 Vertraulich</label>'+(a.vertraulich?'<div style="font-size:11px;color:var(--t3);margin-top:2px">Sichtbar für: Geschäftsführung, Zuständiger &amp; Ersteller</div>':'')+'</div>';
   h+='<div class="fl"><label>Schritte</label>'+stepsHtml(a,true)+'</div>';
   h+='</div></details>';
@@ -3373,7 +3375,7 @@ function rZiele(){
     }
 
     // Meilensteine
-    const myTZ=(z.teilziele||[]).filter(tz=>(!tz.vertraulich||isGF()||tz.verantwortlichId===aP));
+    const myTZ=(z.teilziele||[]).filter(tz=>(!tz.vertraulich||isGF()||tz.verantwortlichId===aP)&&(tz.status||'aktiv')==='aktiv');
     if(myTZ.length||isGF()){
       out+='<div style="border-top:1px solid '+f.bd+';padding-top:12px">';
       out+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:'+f.tc+';margin-bottom:8px">Meilensteine</div>';
@@ -3499,12 +3501,8 @@ function rZiele(){
           out+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--orange);margin-bottom:8px">⚡ Power-Aktivitäten — wartet auf Freigabe</div>';
           paVorschlaege.forEach(tz=>{
             const pVon=person(tz.verantwortlichId);
-            // Name enthält ggf. " — Beschreibung", splitten
-            const nameParts=tz.name.split(' — ');
-            const paName=nameParts[0];const paDesc=nameParts.slice(1).join(' — ');
             out+='<div style="background:var(--sf);border:1px solid var(--amber-bd);border-radius:8px;padding:9px 11px;margin-bottom:6px;display:flex;align-items:flex-start;gap:10px">';
-            out+='<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600">⚡ '+esc(paName)+'</div>';
-            if(paDesc)out+='<div style="font-size:11px;color:var(--t2);margin-top:2px">'+esc(paDesc)+'</div>';
+            out+='<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600">⚡ '+esc(tz.name)+'</div>';
             if(pVon)out+='<div style="font-size:10px;color:var(--t3);margin-top:2px">von '+esc(pVon.name)+'</div>';
             out+='</div>';
             if(isGF()){
@@ -3601,7 +3599,7 @@ function editTZ(zid,tzid){
   const z=zielObj(zid);if(!z)return;
   const tz=(z.teilziele||[]).find(t=>t.id===tzid);if(!tz)return;
   const _isB=istBereich(zid),_lbl=_isB?'Thema':'Meilenstein';
-  const zielOpts=S.ziele.map(zl=>'<option value="'+zl.id+'"'+(zl.id===zid?' selected':'')+'>'+(zl.status==='bereich'?'📁 ':'')+esc(zl.name)+'</option>').join('');
+  const zielOpts=S.ziele.filter(zl=>zl.status!=='vorschlag').map(zl=>'<option value="'+zl.id+'"'+(zl.id===zid?' selected':'')+'>'+(zl.status==='bereich'?'📁 ':'')+esc(zl.name)+'</option>').join('');
   document.getElementById('mb').innerHTML='<div class="mt">'+_lbl+' bearbeiten</div>'
     +'<div class="fl"><label>Name</label><input id="tzn" value="'+esc(tz.name)+'" autofocus></div>'
     +'<div class="fl"><label>Gehört zu</label><select id="tzz">'+zielOpts+'</select></div>'
@@ -3657,12 +3655,13 @@ async function savePowerAktivitaet(zid){
   const vid=document.getElementById('pav').value;
   const z=zielObj(zid);if(!z)return;
   const id=nid('tz');
-  const rec={id,ziel_id:zid,name:desc?name+' — '+desc:name,verantwortlich_id:vid,datum:null,erledigt:false,vertraulich:false,status:'vorschlag'};
-  z.teilziele=z.teilziele||[];z.teilziele.push({...rec,zielId:zid,verantwortlichId:vid,datum:'',status:'vorschlag'});
+  // Name sauber speichern — Beschreibung nur in Slack-Notification, nicht im DB-Feld
+  const rec={id,ziel_id:zid,name,verantwortlich_id:vid,datum:null,erledigt:false,vertraulich:false,status:'vorschlag'};
+  z.teilziele=z.teilziele||[];z.teilziele.push({...rec,zielId:zid,verantwortlichId:vid,datum:'',status:'vorschlag',_desc:desc});
   await dbInsert('teilziele',rec);
-  // GF benachrichtigen
+  // GF benachrichtigen (Beschreibung geht in die Notification)
   const gfSlack=S.personen.filter(p=>p.stufe==='gf'&&p.slack_id).map(p=>p.slack_id);
-  if(gfSlack.length)notify('power_aktivitaet_vorschlag',{name,bereich:z.name,von:me()?.name||'?',gf_slack_ids:gfSlack});
+  if(gfSlack.length)notify('power_aktivitaet_vorschlag',{name,beschreibung:desc,bereich:z.name,von:me()?.name||'?',gf_slack_ids:gfSlack});
   cm();rZiele();
   toast('⚡ Vorschlag gesendet — wartet auf GF-Freigabe');
 }
@@ -3680,8 +3679,11 @@ async function approvePowerAkt(zid,tzid){
 async function rejectPowerAkt(zid,tzid){
   if(!confirm('Power-Aktivität ablehnen und löschen?'))return;
   const z=zielObj(zid);if(!z)return;
+  const tz=(z.teilziele||[]).find(t=>t.id===tzid);
   z.teilziele=(z.teilziele||[]).filter(t=>t.id!==tzid);
   await dbDelete('teilziele',tzid);
+  // Bereichsleiter informieren
+  if(tz){const verantw=person(tz.verantwortlichId);if(verantw?.slack_id)notify('power_aktivitaet_abgelehnt',{name:tz.name,bereich:z.name,an_slack_id:verantw.slack_id,actor_slack_id:me()?.slack_id||''});}
   rZiele();
   toast('Power-Aktivität abgelehnt');
 }
@@ -3901,7 +3903,7 @@ function updateNeuTZ(){
   const wrapLabel=wrap?.querySelector('label');
   if(wrapLabel)wrapLabel.innerHTML=_lbl+' <span style="font-weight:400;color:var(--t2)">(optional)</span>';
   tzSel.innerHTML='<option value="">— kein '+_lbl+' —</option>';
-  const tza=z?(z.teilziele||[]).filter(t=>!t.erledigt):[];
+  const tza=z?(z.teilziele||[]).filter(t=>!t.erledigt&&(t.status||'aktiv')==='aktiv'):[];
   tza.forEach(t=>{
     const label=esc(t.name)+(t.datum?' · bis '+t.datum.slice(8)+'.'+t.datum.slice(5,7)+'.':'');
     tzSel.innerHTML+='<option value="'+t.id+'" data-datum="'+(t.datum||'')+'">'+label+'</option>';
@@ -4360,7 +4362,7 @@ function updateQZTZ(aid){
   const _isB=z&&istBereich(z.id),_lbl=_isB?'Thema':'Meilenstein';
   const wrapLabel=wrap.querySelector('label');
   if(wrapLabel)wrapLabel.innerHTML=_lbl+' <span style="font-weight:400;color:var(--t2)">(optional)</span>';
-  const tza=z?(z.teilziele||[]).filter(t=>!t.erledigt):[];
+  const tza=z?(z.teilziele||[]).filter(t=>!t.erledigt&&(t.status||'aktiv')==='aktiv'):[];
   sel.innerHTML='<option value="">— kein '+_lbl+' —</option>'+tza.map(t=>'<option value="'+t.id+'">'+esc(t.name)+'</option>').join('');
   wrap.style.display=tza.length?'':'none';
 }
