@@ -1671,10 +1671,18 @@ function rSignaleTeam(){
 }
 
 function getPaddelCount(pid){
-  // Gewichtet: P1=3 Punkte, P2=1 Punkt, P3/sonstige=0 (zählen nicht)
-  return S.aufgaben.filter(a=>a.pid===pid&&a.status==='erledigt').reduce((sum,a)=>{
+  // Aufgaben: P1=3, P2=1, P3=0
+  const aufgabenPts=S.aufgaben.filter(a=>a.pid===pid&&a.status==='erledigt').reduce((sum,a)=>{
     return sum+(a.prio==='P1'?3:a.prio==='P2'?1:0);
   },0);
+  // Sonder-KPIs: Verkauf/Sauna=5pts pro Einheit, Termin/alles andere=3pts pro Einheit
+  const kpiPts=S.ziele.flatMap(z=>z.kpis||[]).filter(k=>String(k.pid)===String(pid)&&k.sonder).reduce((sum,k)=>{
+    const v=Math.max(0,kpiVal(k)||0);
+    const lbl=(k.label||'').toLowerCase();
+    const pts=(lbl.includes('verkauf')||lbl.includes('sauna'))?5:3;
+    return sum+v*pts;
+  },0);
+  return aufgabenPts+kpiPts;
 }
 function showKonfetti(){
   const canvas=document.createElement('canvas');
@@ -4630,6 +4638,8 @@ function rTeam(){
     outPR+='<span style="font-size:9px;padding:1px 6px;border-radius:99px;background:var(--red-bg);color:var(--red);font-weight:700">P1 = 3🏅</span>';
     outPR+='<span style="font-size:9px;padding:1px 6px;border-radius:99px;background:var(--blue-bg);color:var(--blue);font-weight:700">P2 = 1🏅</span>';
     outPR+='<span style="font-size:9px;padding:1px 6px;border-radius:99px;background:var(--gray-bg);color:var(--t3);font-weight:700">P3 = 0</span>';
+    outPR+='<span style="font-size:9px;padding:1px 6px;border-radius:99px;background:var(--amber-bg);color:var(--amber);font-weight:700">Termin = 3🏅</span>';
+    outPR+='<span style="font-size:9px;padding:1px 6px;border-radius:99px;background:var(--amber-bg);color:var(--amber);font-weight:700">Verkauf = 5🏅</span>';
     outPR+='</div></div>';
     rankData.forEach((x,i)=>{
       const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':'';
