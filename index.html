@@ -393,6 +393,15 @@ function letzteWocheReset(pid){
   const prevJahr=kw===1?jahr-1:jahr;
   return(S.wochenresets||[]).find(r=>String(r.pid)===String(pid)&&r.kw===prevKw&&r.jahr===prevJahr);
 }
+function getWeekRange(){
+  const now=new Date();
+  const dow=(now.getDay()+6)%7; // 0=Mo, 6=So
+  const mon=new Date(now); mon.setHours(0,0,0,0); mon.setDate(now.getDate()-dow);
+  const sun=new Date(mon); sun.setDate(mon.getDate()+6);
+  const fmt=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  return{monday:fmt(mon),sunday:fmt(sun)};
+}
+function isFridayAward(){const n=new Date();return n.getDay()===5&&n.getHours()>=15;}
 const FREQ=['täglich','wöchentlich','monatlich'];
 const SH=[['0.08','5min'],['0.25','15min'],['0.5','30min'],['0.75','45min'],['1','1h'],['1.5','1h30'],['2','2h'],['3','3h'],['4','4h'],['5','5h'],['8','8h']];
 const TYP_INFO={
@@ -426,7 +435,7 @@ function checkP1Done(pid){
   if(p1.length>0&&p1.every(a=>a.status==='erledigt'))setTimeout(showQuote,400);
 }
 
-let S={personen:[],teams:[],ziele:[],aufgaben:[],kpiVals:{},checkins:{},kpiToday:{},signale:[],wochenresets:[],beobachtungen:[],kontext:[],kalender:[],decisionRequests:[],meetings:[]};
+let S={personen:[],teams:[],ziele:[],aufgaben:[],kpiVals:{},kpiValsMonth:{},kpiValsWeek:{},checkins:{},kpiToday:{},signale:[],wochenresets:[],beobachtungen:[],kontext:[],kalender:[],decisionRequests:[],meetings:[],paddelGewinner:[]};
 let aP=null,realMe=null,aV='tag',timIv=null,_selPrio=null;
 let _kid=Date.now();
 const nid=p=>p+(++_kid);
@@ -439,7 +448,7 @@ function normalizeAufgabe(a){
     erstelltVon:a.erstellt_von||null};
 }
 async function loadData(){
-  const [personen,teams,ziele,kpis,teilziele,aufgaben,kpiVals,checkins,signale,wochenresets,beobachtungen,kontextFeed,decisionRequests,meetings]=await Promise.all([
+  const [personen,teams,ziele,kpis,teilziele,aufgaben,kpiVals,checkins,signale,wochenresets,beobachtungen,kontextFeed,decisionRequests,meetings,paddelGewinner]=await Promise.all([
     dbGet('personen','select=*&order=ci'),dbGet('teams','select=*'),
     dbGet('ziele','select=*&order=created_at'),dbGet('kpis','select=*'),
     dbGet('teilziele','select=*&order=created_at'),dbGet('aufgaben','select=*&order=created_at'),
@@ -450,6 +459,7 @@ async function loadData(){
     dbGet('kontext_feed','select=*&order=created_at.desc&limit=50'),
     dbGet('decision_requests','select=*&order=erstellt_am.desc'),
     dbGet('meetings','select=*&order=erstellt_am.desc'),
+    dbGet('paddel_gewinner','select=*&order=erstellt_am.desc'),
   ]);
   S.personen=personen||[];
   S.teams=(teams||[]).map(t=>({...t,members:t.members||[]}));
@@ -470,13 +480,16 @@ async function loadData(){
       dbPatch('aufgaben',a.id,{pid:matched.id,status:'zugewiesen',erstellt_von:a.erstelltVon});
     }
   });
-  S.kpiVals={};S.kpiValsMonth={};
+  S.kpiVals={};S.kpiValsMonth={};S.kpiValsWeek={};
   const _thisMonth=TODAY.slice(0,7);
+  const{monday:_wMon,sunday:_wSun}=getWeekRange();
   (kpiVals||[]).forEach(v=>{
     const k=v.pid+'-'+v.kpi_id;
     if(!S.kpiVals[k]||v.datum>S.kpiVals[k].datum)S.kpiVals[k]={val:v.val,datum:v.datum};
     if((v.datum||'').startsWith(_thisMonth)){S.kpiValsMonth[k]=(S.kpiValsMonth[k]||0)+v.val;}
+    if(v.datum>=_wMon&&v.datum<=_wSun){S.kpiValsWeek[k]=(S.kpiValsWeek[k]||0)+v.val;}
   });
+  S.paddelGewinner=(paddelGewinner||[]);
   S.checkins={};
   (checkins||[]).forEach(c=>{if(!S.checkins[c.pid]||c.datum>S.checkins[c.pid].date)S.checkins[c.pid]={date:c.datum,morgen:c.morgen,abend:c.abend};});
   S.signale=(signale||[]);
@@ -757,7 +770,7 @@ function startDataPoller(){
   _dataHash=_aufgabenHash(S.aufgaben);
   _kpiHash=_kpiHashFn(S.ziele.flatMap(z=>z.kpis||[]));
   _dataPoll=setInterval(async()=>{
-    const [aufgaben,signale,kpis,wochenresets,beobachtungen,kontextFeed,decisionRequests,meetings]=await Promise.all([
+    const [aufgaben,signale,kpis,wochenresets,beobachtungen,kontextFeed,decisionRequests,meetings,paddelGewinner]=await Promise.all([
       dbGet('aufgaben','select=*&order=created_at'),
       dbGet('signale','select=*&order=created_at.desc'),
       dbGet('kpis','select=*'),
@@ -765,10 +778,12 @@ function startDataPoller(){
       dbGet('beobachtungen','select=*&order=created_at.desc'),
       dbGet('kontext_feed','select=*&order=created_at.desc&limit=50'),
       dbGet('decision_requests','select=*&order=erstellt_am.desc'),
-      dbGet('meetings','select=*&order=erstellt_am.desc')
+      dbGet('meetings','select=*&order=erstellt_am.desc'),
+      dbGet('paddel_gewinner','select=*&order=erstellt_am.desc'),
     ]);
     if(decisionRequests)S.decisionRequests=decisionRequests;
     if(meetings)S.meetings=meetings.map(m=>({...m,teilnehmer_ids:m.teilnehmer_ids||[]}));
+    if(paddelGewinner)S.paddelGewinner=paddelGewinner;
     if(kontextFeed)S.kontext=kontextFeed;
     let changed=false;
     if(aufgaben){
@@ -1684,15 +1699,19 @@ function rSignaleTeam(){
 }
 
 function getPaddelCount(pid){
-  // Aufgaben: P1=3, P2=1, P3=0
-  const aufgabenPts=S.aufgaben.filter(a=>a.pid===pid&&a.status==='erledigt').reduce((sum,a)=>{
-    return sum+(a.prio==='P1'?3:a.prio==='P2'?1:0);
-  },0);
-  // Sonder-KPIs: Verkauf/Sauna=5pts pro Einheit, Termin/alles andere=3pts pro Einheit
-  // täglich-KPIs: Monatssumme verwenden; kumulativ: aktuellen Wert verwenden
+  // Nur diese Woche (Mo–So)
+  const{monday,sunday}=getWeekRange();
+  // Aufgaben dieser Woche: P1=3, P2=1, P3=0
+  const aufgabenPts=S.aufgaben.filter(a=>{
+    if(a.pid!==pid||a.status!=='erledigt'||!a.updated_at)return false;
+    const d=localDate(new Date(a.updated_at));
+    return d>=monday&&d<=sunday;
+  }).reduce((sum,a)=>sum+(a.prio==='P1'?3:a.prio==='P2'?1:0),0);
+  // Sonder-KPIs dieser Woche: Verkauf/Sauna=5pts, Termin/andere=3pts
+  // täglich → Wochensumme; kumulativ → aktueller Wert
   const kpiPts=S.ziele.flatMap(z=>z.kpis||[]).filter(k=>String(k.pid)===String(pid)&&k.sonder).reduce((sum,k)=>{
     const isTaeglich=k.typ==='täglich';
-    const v=Math.max(0,isTaeglich?(S.kpiValsMonth[pid+'-'+k.id]||0):(kpiVal(k)||0));
+    const v=Math.max(0,isTaeglich?(S.kpiValsWeek[pid+'-'+k.id]||0):(kpiVal(k)||0));
     const lbl=(k.label||'').toLowerCase();
     const pts=(lbl.includes('verkauf')||lbl.includes('sauna'))?5:3;
     return sum+v*pts;
@@ -2486,6 +2505,34 @@ function rTag(){
     out+='<div style="font-size:15px;font-weight:700;color:var(--text)">'+wt+'</div>';
     out+='<div style="font-size:12px;color:var(--t2)">'+tag+'. '+mon+(_stk>=2?' · <span style="color:var(--orange)">🔥 '+_stk+' Tage Streak</span>':'')+'</div>';
     out+='</div>';
+  }
+
+  // ── Freitags-Paddel-Banner (ab 15 Uhr) ──
+  if(isFridayAward()){
+    const{kw,jahr}=getKW();
+    const bereitsVergeben=S.paddelGewinner.find(g=>g.kw===kw&&g.jahr===jahr);
+    const rd=S.personen.map(p=>({p,count:getPaddelCount(p.id)})).sort((a,b)=>b.count-a.count).filter(x=>x.count>0);
+    if(rd.length||bereitsVergeben){
+      out+='<div style="background:var(--amber-bg);border:1.5px solid var(--amber);border-radius:14px;padding:14px 16px;margin-bottom:16px">';
+      out+='<div style="font-size:11px;font-weight:700;color:var(--amber);margin-bottom:8px">🏆 Freitags-Paddel · KW '+kw+'</div>';
+      if(bereitsVergeben){
+        const gP=person(bereitsVergeben.pid);
+        out+='<div style="display:flex;align-items:center;gap:10px">';
+        if(gP)out+=av(gP,32,12);
+        out+='<div><div style="font-size:14px;font-weight:700">'+esc(gP?.name||'?')+' 🏅</div>';
+        out+='<div style="font-size:11px;color:var(--t2)">'+bereitsVergeben.punkte+' Punkte · Paddel vergeben ✓</div></div>';
+        out+='</div>';
+      } else if(rd.length){
+        const leader=rd[0];
+        out+='<div style="display:flex;align-items:center;gap:10px">';
+        out+=av(leader.p,32,12);
+        out+='<div style="flex:1"><div style="font-size:14px;font-weight:700">'+esc(leader.p.name)+'</div>';
+        out+='<div style="font-size:11px;color:var(--t2)">'+leader.count+' Punkte · Führt die KW ab</div></div>';
+        if(isGF())out+='<button onclick="vergabePaddel(\''+leader.p.id+'\')" style="font-size:12px;padding:7px 14px;border-radius:99px;border:none;background:var(--amber);color:#fff;font-weight:700;cursor:pointer;font-family:inherit">🏅 Vergeben</button>';
+        out+='</div>';
+      }
+      out+='</div>';
+    }
   }
 
   // ── Hero: Aktiv / Nächster Schritt — kommt zuerst ──
@@ -4649,11 +4696,14 @@ function rTeam(){
   let outPR='',outDL='',outMP='',outMT='',outOV='',outTC='';
 
   // ── Paddel-Rangliste ──
+  const{kw:prKw,jahr:prJahr}=getKW();
   const rankData=S.personen.map(p=>({p,count:getPaddelCount(p.id)})).sort((a,b)=>b.count-a.count).filter(x=>x.count>0);
-  if(rankData.length){
+  const bereitsVergebenTeam=S.paddelGewinner.find(g=>g.kw===prKw&&g.jahr===prJahr);
+  {
+    const showBanner=isFridayAward()&&(rankData.length||bereitsVergebenTeam);
     outPR+='<div style="background:var(--amber-bg);border:1px solid var(--amber-bd);border-radius:14px;padding:14px 16px;margin-bottom:16px">';
     outPR+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">';
-    outPR+='<div style="font-size:11px;font-weight:700;color:var(--amber)">🏆 Paddel-Rangliste</div>';
+    outPR+='<div style="font-size:11px;font-weight:700;color:var(--amber)">🏆 Paddel-Rangliste · KW '+prKw+'</div>';
     outPR+='<div style="margin-left:auto;display:flex;gap:5px;align-items:center">';
     outPR+='<span style="font-size:9px;padding:1px 6px;border-radius:99px;background:var(--red-bg);color:var(--red);font-weight:700">P1 = 3🏅</span>';
     outPR+='<span style="font-size:9px;padding:1px 6px;border-radius:99px;background:var(--blue-bg);color:var(--blue);font-weight:700">P2 = 1🏅</span>';
@@ -4661,14 +4711,53 @@ function rTeam(){
     outPR+='<span style="font-size:9px;padding:1px 6px;border-radius:99px;background:var(--amber-bg);color:var(--amber);font-weight:700">Termin = 3🏅</span>';
     outPR+='<span style="font-size:9px;padding:1px 6px;border-radius:99px;background:var(--amber-bg);color:var(--amber);font-weight:700">Verkauf = 5🏅</span>';
     outPR+='</div></div>';
-    rankData.forEach((x,i)=>{
-      const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':'';
-      outPR+='<div style="display:flex;align-items:center;gap:10px;padding:5px 0">';
-      outPR+=av(x.p,28,10);
-      outPR+='<span style="flex:1;font-size:13px;font-weight:'+(i===0?700:400)+'">'+esc(x.p.name)+'</span>';
-      outPR+='<span style="font-size:13px">'+medal+' <strong>'+x.count+'</strong> 🏅</span>';
+    // Freitags-Banner: Paddel vergeben oder Vergabe-Button
+    if(showBanner){
+      if(bereitsVergebenTeam){
+        const gP=person(bereitsVergebenTeam.pid);
+        outPR+='<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--amber);border-radius:10px;margin-bottom:10px">';
+        if(gP)outPR+=av(gP,26,9).replace('background:','background:');
+        outPR+='<span style="font-size:13px;font-weight:700;color:#fff">'+esc(gP?.name||'?')+' 🏅 Paddel KW '+prKw+'</span>';
+        outPR+='<span style="font-size:11px;color:rgba(255,255,255,.75);margin-left:auto">'+bereitsVergebenTeam.punkte+' Punkte</span>';
+        outPR+='</div>';
+      } else if(rankData.length&&isGF()){
+        const leader=rankData[0];
+        outPR+='<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:rgba(255,165,0,.12);border:1.5px dashed var(--amber);border-radius:10px;margin-bottom:10px">';
+        outPR+=av(leader.p,26,9);
+        outPR+='<div style="flex:1"><div style="font-size:12px;font-weight:700">'+esc(leader.p.name)+' führt — '+leader.count+' Punkte</div>';
+        outPR+='<div style="font-size:10px;color:var(--t3)">Paddel KW '+prKw+' noch nicht vergeben</div></div>';
+        outPR+='<button onclick="vergabePaddel(\''+leader.p.id+'\')" style="font-size:11px;padding:6px 13px;border-radius:99px;border:none;background:var(--amber);color:#fff;font-weight:700;cursor:pointer;font-family:inherit">🏅 Vergeben</button>';
+        outPR+='</div>';
+      }
+    }
+    if(rankData.length){
+      rankData.forEach((x,i)=>{
+        const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':'';
+        outPR+='<div style="display:flex;align-items:center;gap:10px;padding:5px 0">';
+        outPR+=av(x.p,28,10);
+        outPR+='<span style="flex:1;font-size:13px;font-weight:'+(i===0?700:400)+'">'+esc(x.p.name)+'</span>';
+        outPR+='<span style="font-size:13px">'+medal+' <strong>'+x.count+'</strong> 🏅</span>';
+        if(isGF()&&!bereitsVergebenTeam&&isFridayAward()&&i>0)outPR+='<button onclick="vergabePaddel(\''+x.p.id+'\')" style="font-size:10px;padding:3px 8px;border-radius:99px;border:1px solid var(--amber);background:transparent;color:var(--amber);cursor:pointer;font-family:inherit">Vergeben</button>';
+        outPR+='</div>';
+      });
+    } else {
+      outPR+='<div style="font-size:12px;color:var(--t3);padding:4px 0">Noch keine Punkte diese Woche.</div>';
+    }
+    // Paddel-Chronik
+    if(S.paddelGewinner.length){
+      outPR+='<div style="margin-top:12px;border-top:1px solid var(--amber-bd);padding-top:10px">';
+      outPR+='<div style="font-size:10px;font-weight:700;color:var(--amber);margin-bottom:6px">📜 Paddel-Chronik</div>';
+      [...S.paddelGewinner].sort((a,b)=>b.jahr-a.jahr||b.kw-a.kw).forEach(g=>{
+        const gp=person(g.pid);
+        outPR+='<div style="display:flex;align-items:center;gap:8px;padding:3px 0">';
+        if(gp)outPR+=av(gp,20,7);
+        outPR+='<span style="font-size:11px;color:var(--t3);min-width:60px">KW '+g.kw+' / '+g.jahr+'</span>';
+        outPR+='<span style="font-size:12px;font-weight:600;flex:1">'+esc(gp?.name||'?')+'</span>';
+        outPR+='<span style="font-size:11px;color:var(--amber)">'+g.punkte+' 🏅</span>';
+        outPR+='</div>';
+      });
       outPR+='</div>';
-    });
+    }
     outPR+='</div>';
   }
 
@@ -5054,6 +5143,21 @@ function clearFokus(){
   localStorage.removeItem('fokus_id_'+aP);
   render();
   toast('Auto-Modus — Reihenfolge nach Priorität');
+}
+async function vergabePaddel(pid){
+  if(!isGF())return;
+  const{kw,jahr}=getKW();
+  const pts=getPaddelCount(pid);
+  const p=person(pid);if(!p)return;
+  const bereitsVergeben=S.paddelGewinner.find(g=>g.kw===kw&&g.jahr===jahr);
+  if(bereitsVergeben){toast('⚠️ Paddel KW '+kw+' bereits vergeben an '+(person(bereitsVergeben.pid)?.name||'?'));return;}
+  const rec={id:p.id+'-'+kw+'-'+jahr,pid:p.id,kw,jahr,punkte:pts};
+  await dbInsert('paddel_gewinner',rec);
+  S.paddelGewinner=[...S.paddelGewinner,rec];
+  notify('paddel_vergeben',{name:p.name,kw,punkte:pts});
+  showPaddelCelebration(p.id);
+  render();
+  toast('🏆 Paddel KW '+kw+' → '+esc(p.name)+'!');
 }
 function copyCardLink(id){
   const url=location.origin+location.pathname+'#card='+id;
