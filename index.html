@@ -426,7 +426,7 @@ function checkP1Done(pid){
   if(p1.length>0&&p1.every(a=>a.status==='erledigt'))setTimeout(showQuote,400);
 }
 
-let S={personen:[],teams:[],ziele:[],aufgaben:[],kpiVals:{},checkins:{},kpiToday:{},signale:[],wochenresets:[],beobachtungen:[],kontext:[],kalender:[],decisionRequests:[]};
+let S={personen:[],teams:[],ziele:[],aufgaben:[],kpiVals:{},checkins:{},kpiToday:{},signale:[],wochenresets:[],beobachtungen:[],kontext:[],kalender:[],decisionRequests:[],meetings:[]};
 let aP=null,realMe=null,aV='tag',timIv=null,_selPrio=null;
 let _kid=Date.now();
 const nid=p=>p+(++_kid);
@@ -439,7 +439,7 @@ function normalizeAufgabe(a){
     erstelltVon:a.erstellt_von||null};
 }
 async function loadData(){
-  const [personen,teams,ziele,kpis,teilziele,aufgaben,kpiVals,checkins,signale,wochenresets,beobachtungen,kontextFeed,decisionRequests]=await Promise.all([
+  const [personen,teams,ziele,kpis,teilziele,aufgaben,kpiVals,checkins,signale,wochenresets,beobachtungen,kontextFeed,decisionRequests,meetings]=await Promise.all([
     dbGet('personen','select=*&order=ci'),dbGet('teams','select=*'),
     dbGet('ziele','select=*&order=created_at'),dbGet('kpis','select=*'),
     dbGet('teilziele','select=*&order=created_at'),dbGet('aufgaben','select=*&order=created_at'),
@@ -449,6 +449,7 @@ async function loadData(){
     dbGet('beobachtungen','select=*&order=created_at.desc'),
     dbGet('kontext_feed','select=*&order=created_at.desc&limit=50'),
     dbGet('decision_requests','select=*&order=erstellt_am.desc'),
+    dbGet('meetings','select=*&order=erstellt_am.desc'),
   ]);
   S.personen=personen||[];
   S.teams=(teams||[]).map(t=>({...t,members:t.members||[]}));
@@ -478,6 +479,7 @@ async function loadData(){
   S.beobachtungen=(beobachtungen||[]);
   S.kontext=(kontextFeed||[]);
   S.decisionRequests=(decisionRequests||[]);
+  S.meetings=(meetings||[]).map(m=>({...m,teilnehmer_ids:m.teilnehmer_ids||[]}));
   try{S.kpiToday=JSON.parse(localStorage.getItem('kpiToday_'+TODAY)||'{}');}catch(e){S.kpiToday={};}
 }
 
@@ -746,16 +748,18 @@ function startDataPoller(){
   _dataHash=_aufgabenHash(S.aufgaben);
   _kpiHash=_kpiHashFn(S.ziele.flatMap(z=>z.kpis||[]));
   _dataPoll=setInterval(async()=>{
-    const [aufgaben,signale,kpis,wochenresets,beobachtungen,kontextFeed,decisionRequests]=await Promise.all([
+    const [aufgaben,signale,kpis,wochenresets,beobachtungen,kontextFeed,decisionRequests,meetings]=await Promise.all([
       dbGet('aufgaben','select=*&order=created_at'),
       dbGet('signale','select=*&order=created_at.desc'),
       dbGet('kpis','select=*'),
       dbGet('wochenresets','select=*&order=created_at.desc'),
       dbGet('beobachtungen','select=*&order=created_at.desc'),
       dbGet('kontext_feed','select=*&order=created_at.desc&limit=50'),
-      dbGet('decision_requests','select=*&order=erstellt_am.desc')
+      dbGet('decision_requests','select=*&order=erstellt_am.desc'),
+      dbGet('meetings','select=*&order=erstellt_am.desc')
     ]);
     if(decisionRequests)S.decisionRequests=decisionRequests;
+    if(meetings)S.meetings=meetings.map(m=>({...m,teilnehmer_ids:m.teilnehmer_ids||[]}));
     if(kontextFeed)S.kontext=kontextFeed;
     let changed=false;
     if(aufgaben){
@@ -1565,10 +1569,7 @@ function blockerZuAufgabe(wrId,pid){
 }
 function blockerBesprechen(wrId){
   const wr=S.wochenresets.find(r=>r.id===wrId);if(!wr)return;
-  const p=person(wr.pid);
-  notify('diskussion',{thema:'Blocker: '+wr.blockiert,typ:'⚠ Blocker',bereich:'team',notiz:'Gemeldet von '+(p?.name||'?'),von:me()?.name||''});
-  const btn=event?.target;
-  if(btn){btn.textContent='✓ In Slack';btn.style.background='var(--green-bg)';btn.style.color='var(--green)';btn.style.borderColor='var(--green-bd)';setTimeout(()=>{btn.textContent='💬 Besprechen';btn.style.background='var(--blue-bg)';btn.style.color='var(--blue)';btn.style.borderColor='var(--blue-bd)';},2500);}
+  openOffeneFrage({kontext:'Blocker: '+wr.blockiert,typ:'problem'});
 }
 async function blockerLoesen(wrId){
   const wr=S.wochenresets.find(r=>r.id===wrId);if(!wr)return;
@@ -2518,7 +2519,7 @@ function rTag(){
     } else {
       out+='<div style="margin-top:-6px;margin-bottom:12px;display:flex;gap:6px">'
         +'<button onclick="openBlocker(\''+wrAktuell.id+'\')" style="font-size:10px;padding:3px 10px;border-radius:6px;border:1px dashed var(--bd);background:transparent;color:var(--t3);cursor:pointer;font-family:inherit">⚠ Blockade melden</button>'
-        +'<button onclick="openDecisionForm()" style="font-size:10px;padding:3px 10px;border-radius:6px;border:1px dashed var(--gold);background:transparent;color:var(--gold-t);cursor:pointer;font-family:inherit">⚖️ Entscheidung anfragen</button>'
+        +'<button onclick="openOffeneFrage()" style="font-size:10px;padding:3px 10px;border-radius:6px;border:1px dashed var(--gold);background:transparent;color:var(--gold-t);cursor:pointer;font-family:inherit">❓ Offene Frage</button>'
         +'</div>';
     }
   }
@@ -2568,10 +2569,42 @@ function rTag(){
           out+='<button onclick="openDecisionAnswer(\''+d.id+'\',\'entscheiden\')" style="flex:1 1 100%;font-size:11px;padding:6px 12px;border-radius:8px;border:none;background:var(--gold);color:#fff;cursor:pointer;font-family:inherit;font-weight:600">✓ Entscheiden</button>';
           out+='<button onclick="openDecisionAnswer(\''+d.id+'\',\'weiterleiten\')" style="font-size:11px;padding:6px 10px;border-radius:8px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);cursor:pointer;font-family:inherit">→ Weiterleiten</button>';
           out+='<button onclick="openDecisionAnswer(\''+d.id+'\',\'zurueck\')" style="font-size:11px;padding:6px 10px;border-radius:8px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);cursor:pointer;font-family:inherit">↩ Zurück</button>';
+          out+='<button onclick="zuPipeline(\''+d.id+'\')" style="font-size:11px;padding:6px 10px;border-radius:8px;border:1px solid var(--amber-bd,#d97706);background:var(--amber-bg,#fffbeb);color:var(--amber,#b45309);cursor:pointer;font-family:inherit">⏳ Pipeline</button>';
           if(von?.slack_id)out+='<a href="https://slack.com/app_redirect?channel='+esc(von.slack_id)+'" target="_blank" style="font-size:11px;padding:6px 10px;border-radius:8px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);cursor:pointer;text-decoration:none;display:flex;align-items:center">💬</a>';
+          out+='</div>';
+        } else if(d.erstellt_von===aP){
+          out+='<div style="display:flex;gap:6px;flex-wrap:wrap">';
+          out+='<button onclick="zuPipeline(\''+d.id+'\')" style="font-size:11px;padding:6px 10px;border-radius:8px;border:1px solid var(--amber-bd,#d97706);background:var(--amber-bg,#fffbeb);color:var(--amber,#b45309);cursor:pointer;font-family:inherit">⏳ → Pipeline</button>';
           out+='</div>';
         }
         out+='</div>';
+      });
+      out+='</div>';
+    }
+  }
+  // ── Meine Fragen in der Pipeline (Wochenansicht) ──
+  {
+    const meinePipeline=S.decisionRequests.filter(d=>d.erstellt_von===aP&&(d.status==='pipeline'||d.status==='in_meeting'));
+    if(meinePipeline.length){
+      out+='<div style="background:var(--sf);border:1.5px solid var(--amber-bd,#d97706);border-radius:14px;padding:14px 16px;margin-bottom:14px">';
+      out+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">';
+      out+='<span style="font-size:15px">⏳</span>';
+      out+='<span style="font-size:13px;font-weight:700">Wartet auf Meeting</span>';
+      out+='<span style="background:var(--amber,#b45309);color:#fff;font-size:10px;font-weight:700;padding:2px 9px;border-radius:99px;margin-left:auto">'+meinePipeline.length+'</span>';
+      out+='</div>';
+      meinePipeline.forEach(d=>{
+        const tIcon={'entscheidung':'⚖️','problem':'⚠️','unklarheit':'❓'}[d.typ||'entscheidung']||'❓';
+        const inMeeting=d.status==='in_meeting';
+        const meet=inMeeting?S.meetings.find(x=>x.id===d.meeting_id):null;
+        out+='<div style="border:1px solid var(--amber-bd,#d97706);border-radius:10px;padding:10px 12px;margin-bottom:8px;background:var(--amber-bg,#fffbeb)">';
+        out+='<div style="display:flex;align-items:flex-start;gap:8px">';
+        out+='<span style="font-size:13px;flex-shrink:0">'+tIcon+'</span>';
+        out+='<div style="flex:1;font-size:13px;font-weight:600;line-height:1.3">'+esc(d.frage)+'</div>';
+        out+='</div>';
+        out+='<div style="font-size:10px;color:var(--t3);margin-top:6px">';
+        if(inMeeting&&meet)out+='<span style="color:var(--amber,#b45309);font-weight:600">📅 '+esc(meet.titel)+(meet.datum?' · '+meet.datum:'')+'</span>';
+        else out+='In Pipeline seit '+(d.pipeline_seit||TODAY);
+        out+='</div></div>';
       });
       out+='</div>';
     }
@@ -4732,8 +4765,8 @@ function rTeam(){
       out+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">';
       out+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t2)">⚖️ Decision Log</div>';
       out+='<div style="display:flex;gap:4px;margin-left:auto">';
-      ['alle','offen','entschieden','zurueckgegeben'].forEach(f=>{
-        const lbl={'alle':'Alle','offen':'Offen','entschieden':'Entschieden','zurueckgegeben':'Zurückgegeben'}[f];
+      ['alle','offen','pipeline','in_meeting','entschieden','zurueckgegeben'].forEach(f=>{
+        const lbl={'alle':'Alle','offen':'Offen','pipeline':'Pipeline','in_meeting':'Im Meeting','entschieden':'Entschieden','zurueckgegeben':'Zurückgegeben'}[f];
         const active=filterDR===f;
         out+='<button onclick="localStorage.setItem(\'dr_filter\',\''+f+'\');render()" style="font-size:10px;padding:3px 9px;border-radius:99px;border:1px solid '+(active?'var(--text)':'var(--bd)')+';background:'+(active?'var(--text)':'var(--sf)')+';color:'+(active?'var(--inv-t)':'var(--t2)')+';cursor:pointer;font-family:inherit">'+lbl+'</button>';
       });
@@ -4742,9 +4775,9 @@ function rTeam(){
         const von=S.personen.find(p=>p.id===d.erstellt_von);
         const von2=d.beantwortet_von?S.personen.find(p=>p.id===d.beantwortet_von):null;
         const prioCol=d.prioritaet==='hoch'?'var(--red)':d.prioritaet==='mittel'?'var(--gold-t)':'var(--t3)';
-        const stBg=d.status==='entschieden'?'var(--green-bg)':d.status==='zurueckgegeben'?'var(--blue-bg)':'#fffbeb';
-        const stCol=d.status==='entschieden'?'var(--green)':d.status==='zurueckgegeben'?'var(--blue)':'var(--gold-t)';
-        const stTxt={'offen':'Offen','entschieden':'Entschieden','zurueckgegeben':'Zurückgegeben'}[d.status]||d.status;
+        const stBg=d.status==='entschieden'?'var(--green-bg)':d.status==='zurueckgegeben'?'var(--blue-bg)':d.status==='pipeline'||d.status==='in_meeting'?'var(--amber-bg,#fffbeb)':'#fffbeb';
+        const stCol=d.status==='entschieden'?'var(--green)':d.status==='zurueckgegeben'?'var(--blue)':d.status==='pipeline'||d.status==='in_meeting'?'var(--amber,#b45309)':'var(--gold-t)';
+        const stTxt={'offen':'Offen','pipeline':'Pipeline','in_meeting':'Im Meeting','entschieden':'Entschieden','zurueckgegeben':'Zurückgegeben'}[d.status]||d.status;
         const isGray=d.status!=='offen';
         out+='<div style="border:1px solid var(--bd);border-radius:12px;padding:12px 14px;margin-bottom:8px;'+(isGray?'opacity:.7':'')+'">';
         out+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">';
@@ -4777,13 +4810,141 @@ function rTeam(){
           if(von2)out+='<div style="font-size:10px;color:var(--t3);margin-top:4px">von '+esc(von2.name)+' · '+d.beantwortet_am.slice(0,10)+'</div>';
           out+='</div>';
         }
+        if(d.status==='offen'){
+          out+='<div style="margin-top:8px;display:flex;gap:6px">';
+          out+='<button onclick="zuPipeline(\''+d.id+'\')" style="font-size:11px;padding:4px 10px;border-radius:8px;border:1px solid var(--amber-bd,#d97706);background:var(--amber-bg,#fffbeb);color:var(--amber,#b45309);cursor:pointer;font-family:inherit">⏳ → Pipeline</button>';
+          out+='</div>';
+        }
         out+='</div>';
       });
       if(!gefiltert.length){
-        const filterLabel={'alle':'','offen':'Offen','entschieden':'Entschieden','zurueckgegeben':'Zurückgegeben'}[filterDR]||'';
+        const filterLabel={'alle':'','offen':'Offen','pipeline':'Pipeline','in_meeting':'Im Meeting','entschieden':'Entschieden','zurueckgegeben':'Zurückgegeben'}[filterDR]||'';
         out+='<div style="font-size:12px;color:var(--t3);padding:8px 0">Keine Einträge'+(filterLabel?' für „'+filterLabel+'"':'')+' '
           +(filterDR!=='alle'?'· <button onclick="localStorage.setItem(\'dr_filter\',\'alle\');render()" style="font-size:11px;color:var(--blue);background:none;border:none;cursor:pointer;font-family:inherit;text-decoration:underline">Alle anzeigen</button>':'')
           +'</div>';
+      }
+      out+='</div>';
+    }
+  }
+
+  // ── Meeting-Pipeline (Lead + GF) ──
+  if(isLead()||isGF()){
+    const pipelineDR=S.decisionRequests.filter(d=>{
+      if(d.status!=='pipeline')return false;
+      if(isGF())return true;
+      return d.erstellt_von===aP||d.an_person_id===aP;
+    });
+    const geplanteMeetings=S.meetings.filter(m=>m.status==='geplant');
+    out+='<div style="margin-top:28px">';
+    out+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">';
+    out+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t2)">🗓 Meeting-Pipeline</div>';
+    out+='<button onclick="openMeetingForm([])" style="font-size:11px;padding:4px 12px;border-radius:8px;border:1px solid var(--blue-bd);background:var(--blue-bg);color:var(--blue);cursor:pointer;font-family:inherit;margin-left:auto">+ Meeting</button>';
+    out+='</div>';
+    if(!pipelineDR.length){
+      out+='<div style="font-size:12px;color:var(--t3);font-style:italic;padding:8px 0">Keine Fragen in der Pipeline — alles wird async gelöst 🎉</div>';
+    }else{
+      pipelineDR.forEach(d=>{
+        const tIcon={'entscheidung':'⚖️','problem':'⚠️','unklarheit':'❓'}[d.typ||'entscheidung']||'❓';
+        const vonP=person(d.erstellt_von);
+        const prioCol=d.prioritaet==='hoch'?'var(--red)':d.prioritaet==='mittel'?'var(--amber,#b45309)':'var(--t3)';
+        out+='<div style="border:1px solid var(--amber-bd,#d97706);border-radius:10px;padding:10px 12px;margin-bottom:8px;background:var(--amber-bg,#fffbeb)">';
+        out+='<div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:4px">';
+        out+='<span style="font-size:13px;flex-shrink:0">'+tIcon+'</span>';
+        out+='<div style="flex:1;font-size:13px;font-weight:600;line-height:1.3">'+esc(d.frage)+'</div>';
+        out+='<span style="font-size:10px;font-weight:700;color:'+prioCol+';border:1px solid '+prioCol+';padding:1px 7px;border-radius:99px;flex-shrink:0">'+esc(d.prioritaet)+'</span>';
+        out+='</div>';
+        out+='<div style="display:flex;align-items:center;gap:8px;font-size:10px;color:var(--t3);margin-bottom:6px">';
+        if(vonP)out+='<span>von '+esc(vonP.name.split(' ')[0])+'</span>';
+        if(d.pipeline_seit)out+='<span>· seit '+esc(d.pipeline_seit)+'</span>';
+        out+='</div>';
+        if(geplanteMeetings.length){
+          out+='<select onchange="fragenZuMeetingZuweisen(\''+d.id+'\',this.value);this.value=\'\'" style="font-size:11px;padding:4px 8px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);font-family:inherit;max-width:100%">';
+          out+='<option value="">→ Zu Meeting zuweisen…</option>';
+          geplanteMeetings.forEach(m=>{out+='<option value="'+m.id+'">'+esc(m.titel)+(m.datum?' ('+m.datum+')':'')+'</option>';});
+          out+='</select>';
+        }
+        out+='</div>';
+      });
+    }
+    out+='</div>';
+  }
+
+  // ── Meetings ──
+  {
+    const sichtbareMeetings=S.meetings.filter(m=>{
+      if(isLead()||isGF())return true;
+      return(m.teilnehmer_ids||[]).includes(aP);
+    }).sort((a,b)=>(b.erstellt_am||'').localeCompare(a.erstellt_am||''));
+    if(sichtbareMeetings.length||(isLead()||isGF())){
+      out+='<div style="margin-top:28px">';
+      out+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">';
+      out+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t2)">📋 Meetings</div>';
+      if(isLead()||isGF()){
+        out+='<button onclick="openMeetingForm([])" style="font-size:11px;padding:4px 12px;border-radius:8px;border:1px solid var(--blue-bd);background:var(--blue-bg);color:var(--blue);cursor:pointer;font-family:inherit;margin-left:auto">+ Meeting</button>';
+      }
+      out+='</div>';
+      if(!sichtbareMeetings.length){
+        out+='<div style="font-size:12px;color:var(--t3);font-style:italic;padding:8px 0">Noch keine Meetings</div>';
+      }else{
+        sichtbareMeetings.forEach(m=>{
+          const mStBg=m.status==='abgeschlossen'?'var(--green-bg)':m.status==='stattgefunden'?'var(--blue-bg)':'var(--amber-bg,#fffbeb)';
+          const mStCol=m.status==='abgeschlossen'?'var(--green)':m.status==='stattgefunden'?'var(--blue)':'var(--amber,#b45309)';
+          const mStTxt={'geplant':'Geplant','stattgefunden':'Stattgefunden','abgeschlossen':'Abgeschlossen'}[m.status]||m.status;
+          const agenda=S.decisionRequests.filter(d=>d.meeting_id===m.id);
+          const alleEntschieden=agenda.length>0&&agenda.every(d=>d.status==='entschieden');
+          const teilnStr=(m.teilnehmer_ids||[]).map(id=>person(id)?.name.split(' ')[0]||'').filter(Boolean).join(', ');
+          out+='<div style="border:1px solid var(--bd);border-radius:12px;padding:14px 16px;margin-bottom:10px;background:var(--sf)">';
+          // Header
+          out+='<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:8px">';
+          out+='<div style="flex:1">';
+          out+='<div style="font-size:14px;font-weight:700;margin-bottom:2px">'+esc(m.titel)+'</div>';
+          out+='<div style="font-size:11px;color:var(--t3)">';
+          if(m.datum)out+=m.datum.split('-').reverse().join('.');
+          if(m.uhrzeit)out+=' · '+(m.uhrzeit||'').slice(0,5)+' Uhr';
+          if(teilnStr)out+=' · '+esc(teilnStr);
+          out+='</div></div>';
+          out+='<span style="font-size:10px;font-weight:600;color:'+mStCol+';background:'+mStBg+';padding:3px 10px;border-radius:99px;flex-shrink:0;white-space:nowrap">'+mStTxt+'</span>';
+          out+='</div>';
+          // Links
+          if(m.meet_link)out+='<a href="'+esc(m.meet_link)+'" target="_blank" style="display:inline-flex;align-items:center;gap:5px;font-size:11px;padding:4px 12px;border-radius:8px;border:1px solid var(--green-bd);background:var(--green-bg);color:var(--green);text-decoration:none;margin-bottom:8px;margin-right:6px">🎥 Meet</a>';
+          if(m.aufnahme_link)out+='<a href="'+esc(m.aufnahme_link)+'" target="_blank" style="display:inline-flex;align-items:center;gap:5px;font-size:11px;padding:4px 12px;border-radius:8px;border:1px solid var(--blue-bd);background:var(--blue-bg);color:var(--blue);text-decoration:none;margin-bottom:8px">▶ Aufnahme</a>';
+          // Agenda
+          if(agenda.length){
+            out+='<div style="font-size:10px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Agenda ('+agenda.length+')</div>';
+            agenda.forEach(d=>{
+              const tIcon={'entscheidung':'⚖️','problem':'⚠️','unklarheit':'❓'}[d.typ||'entscheidung']||'❓';
+              const isDone=d.status==='entschieden';
+              out+='<div style="border:1px solid var(--bd);border-radius:8px;padding:8px 10px;margin-bottom:6px;background:var(--gray-bg)'+(isDone?';opacity:.7':'')+'">';
+              out+='<div style="display:flex;align-items:flex-start;gap:6px;margin-bottom:'+(isDone?'4':'0')+'px">';
+              out+='<span style="font-size:12px;flex-shrink:0">'+tIcon+'</span>';
+              out+='<span style="font-size:12px;flex:1;line-height:1.4;'+(isDone?'text-decoration:line-through;color:var(--t3)':'font-weight:500')+'">'+esc(d.frage)+'</span>';
+              if(isDone)out+='<span style="font-size:11px;color:var(--green);flex-shrink:0;font-weight:700">✓</span>';
+              out+='</div>';
+              if(isDone&&d.beschluss)out+='<div style="font-size:11px;color:var(--green);font-weight:600;padding-left:20px">→ '+esc(d.beschluss)+'</div>';
+              if(m.status==='stattgefunden'&&!isDone&&(isLead()||isGF())){
+                out+='<button onclick="setBeschluss(\''+d.id+'\',\''+m.id+'\')" style="font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid var(--gold);background:transparent;color:var(--gold-t);cursor:pointer;font-family:inherit;margin-top:4px">✓ Beschluss</button>';
+              }
+              out+='</div>';
+            });
+          }else{
+            out+='<div style="font-size:12px;color:var(--t3);font-style:italic;padding:4px 0">Keine Fragen zugewiesen</div>';
+          }
+          // Actions
+          if(isLead()||isGF()){
+            out+='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px solid var(--bd)">';
+            if(m.status==='geplant'){
+              out+='<button onclick="meetingAufnahme(\''+m.id+'\')" style="font-size:11px;padding:5px 12px;border-radius:8px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);cursor:pointer;font-family:inherit">🎥 Aufnahme</button>';
+              out+='<button onclick="openMeeting()" style="font-size:11px;padding:5px 12px;border-radius:8px;border:1px solid var(--purple-bd);background:var(--purple-bg);color:var(--purple);cursor:pointer;font-family:inherit">📝 Dump</button>';
+              out+='<button onclick="setMeetingStatus(\''+m.id+'\',\'stattgefunden\')" style="font-size:11px;padding:5px 12px;border-radius:8px;border:1px solid var(--blue-bd);background:var(--blue-bg);color:var(--blue);cursor:pointer;font-family:inherit">✓ Hat stattgefunden</button>';
+            }
+            if(m.status==='stattgefunden'){
+              out+='<button onclick="meetingAufnahme(\''+m.id+'\')" style="font-size:11px;padding:5px 12px;border-radius:8px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);cursor:pointer;font-family:inherit">🎥 Aufnahme</button>';
+              if(alleEntschieden)out+='<button onclick="meetingAbschliessen(\''+m.id+'\')" style="font-size:11px;padding:5px 12px;border-radius:8px;border:1px solid var(--green-bd);background:var(--green-bg);color:var(--green);cursor:pointer;font-family:inherit;font-weight:600">✅ Abschließen</button>';
+            }
+            out+='</div>';
+          }
+          out+='</div>';
+        });
       }
       out+='</div>';
     }
@@ -5296,73 +5457,77 @@ function cm(){
   if(ovl)ovl.classList.remove('open');
   if(_dataPending){_dataPending=false;_dataHash=_aufgabenHash(S.aufgaben);render();}
 }
-// ─── Decision Requests ─────────────────────────────────────────
-// SQL zum Anlegen der Tabelle (einmalig in Supabase ausführen):
-// CREATE TABLE decision_requests (
+// ─── Offene Fragen / Decision Requests / Meeting-Pipeline ────────
+// DB-Migrationen (einmalig in Supabase ausführen):
+// ALTER TABLE decision_requests
+//   ADD COLUMN IF NOT EXISTS typ text DEFAULT 'entscheidung',
+//   ADD COLUMN IF NOT EXISTS meeting_id uuid,
+//   ADD COLUMN IF NOT EXISTS pipeline_seit date;
+// ALTER TABLE decision_requests ALTER COLUMN deadline DROP NOT NULL;
+// CREATE TABLE IF NOT EXISTS meetings (
 //   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-//   frage text NOT NULL,
-//   kontext text,
-//   blockiert text,
-//   slack_link text,
-//   prioritaet text DEFAULT 'mittel',
-//   deadline date NOT NULL,
-//   sichtbarkeit text DEFAULT 'gf_only',
+//   titel text NOT NULL, datum date, uhrzeit time,
+//   teilnehmer_ids uuid[], meet_link text, gcal_event_id text,
+//   aufnahme_link text, status text DEFAULT 'geplant',
 //   erstellt_von uuid REFERENCES personen(id),
-//   erstellt_am timestamptz DEFAULT now(),
-//   status text DEFAULT 'offen',
-//   beschluss text,
-//   warum text,
-//   beantwortet_am timestamptz,
-//   beantwortet_von uuid REFERENCES personen(id),
-//   rueckgabe_begruendung text
+//   erstellt_am timestamptz DEFAULT now()
 // );
 
-function openDecisionForm(){
+function openOffeneFrage(opts={}){
   const m=me();if(!m)return;
-  const gfDefault=S.personen.find(p=>p.stufe==='gf'&&p.id!==aP);
-  const personOpts=S.personen.filter(p=>p.id!==aP).map(p=>'<option value="'+p.id+'"'+(p.id===gfDefault?.id?' selected':'')+'>'+esc(p.name)+'</option>').join('');
+  const typ=opts.typ||'entscheidung';
+  const personOpts='<option value="">— optional —</option>'+S.personen.filter(p=>p.id!==aP).map(p=>'<option value="'+p.id+'">'+esc(p.name)+'</option>').join('');
   document.getElementById('mb').innerHTML=
-    '<div class="mt">⚖️ Entscheidung anfragen</div>'
-    +'<div class="fl"><label>An wen? <span style="color:var(--red)">*</span></label>'
-    +'<select id="dr-an" style="font-size:13px">'+personOpts+'</select></div>'
-    +'<div class="fl"><label>Welche Entscheidung wird gebraucht? <span style="color:var(--red)">*</span></label>'
-    +'<textarea id="dr-frage" rows="2" placeholder="z.B. Sollen wir Lieferant X wechseln?" style="resize:none"></textarea></div>'
+    '<div class="mt">❓ Offene Frage stellen</div>'
+    +'<div class="fl"><label>Typ</label>'
+    +'<div style="display:flex;gap:12px;margin-top:4px;flex-wrap:wrap">'
+    +'<label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer"><input type="radio" name="of-typ" value="entscheidung"'+(typ==='entscheidung'?' checked':'')+'>  ⚖️ Entscheidung</label>'
+    +'<label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer"><input type="radio" name="of-typ" value="problem"'+(typ==='problem'?' checked':'')+'>  ⚠️ Problem</label>'
+    +'<label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer"><input type="radio" name="of-typ" value="unklarheit"'+(typ==='unklarheit'?' checked':'')+'>  ❓ Unklarheit</label>'
+    +'</div></div>'
+    +'<div class="fl"><label>An wen? <span style="color:var(--t3);font-weight:400">(optional)</span></label>'
+    +'<select id="of-an" style="font-size:13px">'+personOpts+'</select></div>'
+    +'<div class="fl"><label>Frage / Problem <span style="color:var(--red)">*</span></label>'
+    +'<textarea id="of-frage" rows="2" placeholder="z.B. Sollen wir Lieferant X wechseln?" style="resize:none"></textarea></div>'
     +'<div class="fl"><label>Kontext <span style="color:var(--t3);font-weight:400">(optional)</span></label>'
-    +'<textarea id="dr-kontext" rows="2" placeholder="Hintergrundinformationen, die helfen..." style="resize:none"></textarea></div>'
+    +'<textarea id="of-kontext" rows="2" placeholder="Hintergrundinformationen, die helfen…" style="resize:none">'+esc(opts.kontext||'')+'</textarea></div>'
     +'<div class="fl"><label>Was steht ohne Antwort still? <span style="color:var(--t3);font-weight:400">(optional)</span></label>'
-    +'<input type="text" id="dr-blockiert" placeholder="z.B. Angebot kann nicht versendet werden"></div>'
+    +'<input type="text" id="of-blockiert" placeholder="z.B. Angebot kann nicht versendet werden"></div>'
     +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
-    +'<div class="fl"><label>Priorität <span style="color:var(--red)">*</span></label>'
-    +'<select id="dr-prio" style="font-size:13px">'
+    +'<div class="fl"><label>Priorität</label>'
+    +'<select id="of-prio" style="font-size:13px">'
     +'<option value="hoch">🔴 Hoch</option>'
     +'<option value="mittel" selected>🟡 Mittel</option>'
     +'<option value="niedrig">⚪ Niedrig</option>'
     +'</select></div>'
-    +'<div class="fl"><label>Deadline <span style="color:var(--red)">*</span></label>'
-    +'<input type="date" id="dr-deadline" value="'+TODAY+'"></div>'
+    +'<div class="fl"><label>Deadline <span style="color:var(--t3);font-weight:400">(optional)</span></label>'
+    +'<input type="date" id="of-deadline"></div>'
     +'</div>'
     +'<div class="fl"><label>Sichtbarkeit nach Entscheidung</label>'
     +'<div style="display:flex;gap:8px;margin-top:4px">'
-    +'<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer"><input type="radio" name="dr-sicht" value="gf_only" checked> Nur GF</label>'
-    +'<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer"><input type="radio" name="dr-sicht" value="team"> Ganzes Team</label>'
+    +'<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer"><input type="radio" name="of-sicht" value="gf_only" checked> Nur GF</label>'
+    +'<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer"><input type="radio" name="of-sicht" value="team"> Ganzes Team</label>'
     +'</div></div>'
-    +'<div class="mf"><button class="btn btn-gr" onclick="cm()">Abbrechen</button><button class="btn" onclick="saveDecisionRequest()" style="background:var(--gold);border-color:var(--gold);color:#fff">Anfragen</button></div>';
+    +'<div class="mf"><button class="btn btn-gr" onclick="cm()">Abbrechen</button><button class="btn" onclick="saveOffeneFrage()" style="background:var(--gold);border-color:var(--gold);color:#fff">Frage stellen</button></div>';
   document.getElementById('ovl').classList.add('open');
 }
-async function saveDecisionRequest(){
-  const frage=document.getElementById('dr-frage').value.trim();
-  const deadline=document.getElementById('dr-deadline').value;
+function openDecisionForm(){openOffeneFrage();}
+
+async function saveOffeneFrage(){
+  const frage=document.getElementById('of-frage').value.trim();
   if(!frage){toast('Bitte Frage eingeben');return;}
-  if(!deadline){toast('Bitte Deadline wählen');return;}
-  const sicht=document.querySelector('input[name="dr-sicht"]:checked')?.value||'gf_only';
-  const anPersonId=document.getElementById('dr-an').value||null;
+  const typ=document.querySelector('input[name="of-typ"]:checked')?.value||'entscheidung';
+  const sicht=document.querySelector('input[name="of-sicht"]:checked')?.value||'gf_only';
+  const anPersonId=document.getElementById('of-an').value||null;
+  const deadline=document.getElementById('of-deadline').value||null;
   const rec={
     id:nid('dr'),
     frage,
-    kontext:document.getElementById('dr-kontext').value.trim()||null,
-    blockiert:document.getElementById('dr-blockiert').value.trim()||null,
-    prioritaet:document.getElementById('dr-prio').value,
-    deadline,
+    typ,
+    kontext:document.getElementById('of-kontext').value.trim()||null,
+    blockiert:document.getElementById('of-blockiert').value.trim()||null,
+    prioritaet:document.getElementById('of-prio').value,
+    deadline:deadline||null,
     sichtbarkeit:sicht,
     erstellt_von:aP,
     an_person_id:anPersonId,
@@ -5371,14 +5536,14 @@ async function saveDecisionRequest(){
   };
   S.decisionRequests.unshift(rec);
   await dbInsert('decision_requests',rec);
-  // Adressierte Person + GF benachrichtigen
   const anP=S.personen.find(p=>p.id===anPersonId);
   const gfSlackIds=S.personen.filter(p=>p.stufe==='gf'&&p.id!==aP&&p.id!==anPersonId&&p.slack_id).map(p=>p.slack_id);
-  notify('entscheidung_angefragt',{frage:rec.frage,prioritaet:rec.prioritaet,deadline:rec.deadline,blockiert:rec.blockiert,an_slack_id:anP?.slack_id||'',gf_slack_ids:gfSlackIds,actor_slack_id:me()?.slack_id||''});
+  notify('entscheidung_angefragt',{frage:rec.frage,typ,prioritaet:rec.prioritaet,deadline:rec.deadline,blockiert:rec.blockiert,an_slack_id:anP?.slack_id||'',gf_slack_ids:gfSlackIds,actor_slack_id:me()?.slack_id||''});
   cm();render();
   const slackName=anP?.name?.split(' ')[0]||'';
-  toast('✅ Gesendet' + (slackName&&anP?.slack_id ? ' · 💬 Slack DM an '+slackName : ''));
+  toast('✅ Gesendet'+(slackName&&anP?.slack_id?' · 💬 Slack DM an '+slackName:''));
 }
+async function saveDecisionRequest(){return saveOffeneFrage();}
 function openDecisionAnswer(id,mode){
   const d=S.decisionRequests.find(x=>x.id===id);if(!d)return;
   let body='';
@@ -5461,11 +5626,165 @@ function drNeuAnfragen(drId){
   openDecisionForm();
   // Pre-fill nach kurzer Verzögerung (DOM muss erst aufbauen)
   setTimeout(()=>{
-    const f=document.getElementById('dr-frage');if(f)f.value=d.frage;
-    const k=document.getElementById('dr-kontext');if(k)k.value=(d.kontext||'')+(d.rueckgabe_begruendung?'\n\n↩ Zurückgegeben: '+d.rueckgabe_begruendung:'');
-    const b=document.getElementById('dr-blockiert');if(b)b.value=d.blockiert||'';
+    const f=document.getElementById('of-frage');if(f)f.value=d.frage;
+    const k=document.getElementById('of-kontext');if(k)k.value=(d.kontext||'')+(d.rueckgabe_begruendung?'\n\n↩ Zurückgegeben: '+d.rueckgabe_begruendung:'');
+    const b=document.getElementById('of-blockiert');if(b)b.value=d.blockiert||'';
   },100);
 }
+
+// ─── Meeting-Pipeline Funktionen ───────────────────────────────
+async function zuPipeline(drId){
+  const d=S.decisionRequests.find(x=>x.id===drId);if(!d||d._busy)return;
+  d._busy=true;
+  const prev=d.status;
+  d.status='pipeline';d.pipeline_seit=TODAY;
+  render();
+  const ok=await dbPatch('decision_requests',drId,{status:'pipeline',pipeline_seit:TODAY});
+  if(!ok){d.status=prev;d.pipeline_seit=null;render();toast('⚠️ Speichern fehlgeschlagen');}
+  else{
+    const von=person(d.erstellt_von);
+    const anP=d.an_person_id?person(d.an_person_id):null;
+    notify('frage_zu_pipeline',{frage:d.frage,von_name:von?.name||'',typ:d.typ||'entscheidung',an_slack_id:anP?.slack_id||'',actor_slack_id:me()?.slack_id||''});
+    toast('⏳ Zur Meeting-Pipeline hinzugefügt');
+  }
+  d._busy=false;
+}
+async function fragenZuMeetingZuweisen(drId,meetId){
+  if(!meetId)return;
+  const d=S.decisionRequests.find(x=>x.id===drId);if(!d)return;
+  d.status='in_meeting';d.meeting_id=meetId;
+  await dbPatch('decision_requests',drId,{status:'in_meeting',meeting_id:meetId});
+  render();toast('Frage zum Meeting hinzugefügt');
+}
+async function setMeetingStatus(meetId,status){
+  const m=S.meetings.find(x=>x.id===meetId);if(!m)return;
+  m.status=status;
+  await dbPatch('meetings',meetId,{status});
+  render();
+}
+function openMeetingForm(prefillDrIds=[]){
+  if(!me())return;
+  const pipelineItems=S.decisionRequests.filter(d=>d.status==='pipeline');
+  const personCBs=S.personen.map(p=>'<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;padding:3px 0"><input type="checkbox" name="mt-teil" value="'+p.id+'"'+(p.id===aP?' checked':'')+'>'+esc(p.name)+'</label>').join('');
+  const fragenCBs=pipelineItems.length?pipelineItems.map(d=>{
+    const tIcon={'entscheidung':'⚖️','problem':'⚠️','unklarheit':'❓'}[d.typ||'entscheidung']||'❓';
+    const von=person(d.erstellt_von);
+    return'<label style="display:flex;align-items:flex-start;gap:6px;font-size:12px;cursor:pointer;padding:5px 0;border-bottom:1px solid var(--bd)"><input type="checkbox" name="mt-frage" value="'+d.id+'"'+(prefillDrIds.includes(d.id)?' checked':'')+' style="margin-top:2px;flex-shrink:0">'+tIcon+' <span>'+esc(d.frage.slice(0,70))+(d.frage.length>70?'…':'')+'<span style="font-size:10px;color:var(--t3);margin-left:5px">von '+(von?.name.split(' ')[0]||'?')+'</span></span></label>';
+  }).join(''):'<div style="font-size:12px;color:var(--t3);font-style:italic;padding:6px 0">Keine Fragen in der Pipeline</div>';
+  document.getElementById('mb').innerHTML=
+    '<div class="mt">🗓 Meeting erstellen</div>'
+    +'<div class="fl"><label>Titel <span style="color:var(--red)">*</span></label>'
+    +'<input type="text" id="mf-titel" placeholder="z.B. Strategie-Sync KW 17" autofocus></div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
+    +'<div class="fl"><label>Datum</label><input type="date" id="mf-datum" value="'+TODAY+'"></div>'
+    +'<div class="fl"><label>Uhrzeit</label><input type="time" id="mf-uhrzeit" value="10:00"></div>'
+    +'</div>'
+    +'<div class="fl"><label>Teilnehmer</label><div style="display:flex;flex-wrap:wrap;gap:2px 16px;margin-top:4px">'+personCBs+'</div></div>'
+    +'<div class="fl"><label>Fragen aus Pipeline</label><div style="max-height:180px;overflow-y:auto;border:1px solid var(--bd);border-radius:8px;padding:8px 10px;background:var(--gray-bg)">'+fragenCBs+'</div></div>'
+    +'<div class="mf"><button class="btn btn-gr" onclick="cm()">Abbrechen</button><button class="btn" onclick="saveMeeting()" style="background:var(--blue);border-color:var(--blue);color:#fff">Meeting erstellen</button></div>';
+  document.getElementById('ovl').classList.add('open');
+}
+async function saveMeeting(){
+  const titel=document.getElementById('mf-titel').value.trim();
+  if(!titel){toast('Bitte Titel eingeben');return;}
+  const datum=document.getElementById('mf-datum').value||null;
+  const uhrzeit=document.getElementById('mf-uhrzeit').value||null;
+  const teilnehmerIds=[...document.querySelectorAll('input[name="mt-teil"]:checked')].map(el=>el.value);
+  const selectedFragen=[...document.querySelectorAll('input[name="mt-frage"]:checked')].map(el=>el.value);
+  const meetId=nid('mt');
+  const rec={id:meetId,titel,datum,uhrzeit,teilnehmer_ids:teilnehmerIds,meet_link:null,gcal_event_id:null,aufnahme_link:null,status:'geplant',erstellt_von:aP,erstellt_am:new Date().toISOString()};
+  S.meetings.unshift(rec);
+  await dbInsert('meetings',rec);
+  for(const drId of selectedFragen){
+    const d=S.decisionRequests.find(x=>x.id===drId);if(!d)continue;
+    d.status='in_meeting';d.meeting_id=meetId;
+    await dbPatch('decision_requests',drId,{status:'in_meeting',meeting_id:meetId});
+  }
+  const teilnNames=teilnehmerIds.map(id=>person(id)?.name||'').filter(Boolean);
+  notify('meeting_erstellt',{titel,datum,teilnehmer_names:teilnNames,fragen_count:selectedFragen.length,actor_slack_id:me()?.slack_id||''});
+  cm();
+  if(gcalIsConnected())gcalCreateMeetingEvent(rec);
+  render();toast('🗓 Meeting erstellt');
+}
+async function gcalCreateMeetingEvent(meeting){
+  if(!gcalIsConnected())return;
+  const token=localStorage.getItem('gcal_token');
+  const tz=Intl.DateTimeFormat().resolvedOptions().timeZone||'Europe/Vienna';
+  const dateStr=meeting.datum||TODAY;
+  const timeStr=(meeting.uhrzeit||'10:00').slice(0,5)+':00';
+  const startD=new Date(dateStr+'T'+timeStr);
+  const endD=new Date(startD.getTime()+60*60*1000);
+  const body={
+    summary:'🗓 '+meeting.titel,
+    description:'Halleluja OS Meeting',
+    start:{dateTime:startD.toISOString(),timeZone:tz},
+    end:{dateTime:endD.toISOString(),timeZone:tz},
+    conferenceData:{createRequest:{requestId:meeting.id,conferenceSolutionKey:{type:'hangoutsMeet'}}}
+  };
+  try{
+    const resp=await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events?conferenceDataVersion=1',
+      {method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify(body)});
+    if(resp.ok){
+      const d=await resp.json();
+      const meetLink=d.conferenceData?.entryPoints?.find(e=>e.entryPointType==='video')?.uri||null;
+      const gcalId=d.id||null;
+      const m=S.meetings.find(x=>x.id===meeting.id);
+      if(m){m.meet_link=meetLink;m.gcal_event_id=gcalId;}
+      if(gcalId)await dbPatch('meetings',meeting.id,{meet_link:meetLink,gcal_event_id:gcalId});
+      if(meetLink){render();toast('📅 Meet-Link erstellt');}
+    }else if(resp.status===401){localStorage.removeItem('gcal_token');}
+  }catch(e){console.warn('gcalCreateMeetingEvent:',e);}
+}
+function meetingAufnahme(meetId){
+  const m=S.meetings.find(x=>x.id===meetId);if(!m)return;
+  document.getElementById('mb').innerHTML=
+    '<div class="mt">🎥 Aufnahme eintragen</div>'
+    +'<div class="fl"><label>Aufnahme-Link</label>'
+    +'<input type="url" id="ma-link" value="'+esc(m.aufnahme_link||'')+'" placeholder="https://drive.google.com/…" autofocus></div>'
+    +'<div class="mf"><button class="btn btn-gr" onclick="cm()">Abbrechen</button>'
+    +'<button class="btn btn-dk" onclick="saveAufnahme(\''+meetId+'\')">Speichern</button></div>';
+  document.getElementById('ovl').classList.add('open');
+}
+async function saveAufnahme(meetId){
+  const link=document.getElementById('ma-link').value.trim();
+  const m=S.meetings.find(x=>x.id===meetId);if(!m)return;
+  m.aufnahme_link=link;
+  await dbPatch('meetings',meetId,{aufnahme_link:link||null});
+  cm();render();toast('✅ Aufnahme gespeichert');
+}
+function setBeschluss(drId,meetId){
+  const d=S.decisionRequests.find(x=>x.id===drId);if(!d)return;
+  document.getElementById('mb').innerHTML=
+    '<div class="mt">✓ Beschluss eintragen</div>'
+    +'<div style="font-size:13px;font-weight:600;color:var(--t2);margin-bottom:14px;line-height:1.4;padding:10px 12px;background:var(--gray-bg);border-radius:8px;border:1px solid var(--bd)">'+esc(d.frage)+'</div>'
+    +'<div class="fl"><label>Beschluss <span style="color:var(--red)">*</span></label>'
+    +'<textarea id="sb-beschluss" rows="3" placeholder="Was wurde entschieden?" style="resize:none" autofocus></textarea></div>'
+    +'<div class="fl"><label>Warum? <span style="color:var(--t3);font-weight:400">(optional)</span></label>'
+    +'<textarea id="sb-warum" rows="2" placeholder="Was war der ausschlaggebende Grund?" style="resize:none"></textarea></div>'
+    +'<div class="mf"><button class="btn btn-gr" onclick="cm()">Abbrechen</button>'
+    +'<button class="btn" onclick="saveBeschluss(\''+drId+'\',\''+meetId+'\')" style="background:var(--gold);border-color:var(--gold);color:#fff">Beschluss speichern</button></div>';
+  document.getElementById('ovl').classList.add('open');
+}
+async function saveBeschluss(drId,meetId){
+  const beschluss=document.getElementById('sb-beschluss').value.trim();
+  if(!beschluss){toast('Bitte Beschluss eingeben');return;}
+  const warum=document.getElementById('sb-warum').value.trim()||null;
+  const d=S.decisionRequests.find(x=>x.id===drId);if(!d)return;
+  const now=new Date().toISOString();
+  d.status='entschieden';d.beschluss=beschluss;d.warum=warum;d.beantwortet_am=now;d.beantwortet_von=aP;d.meeting_id=meetId;
+  await dbPatch('decision_requests',drId,{status:'entschieden',beschluss,warum,beantwortet_am:now,beantwortet_von:aP,meeting_id:meetId});
+  const von=person(d.erstellt_von);
+  const m=S.meetings.find(x=>x.id===meetId);
+  if(von?.slack_id)notify('beschluss_eingetragen',{frage:d.frage,beschluss,meeting_titel:m?.titel||'',an_slack_id:von.slack_id,actor_slack_id:me()?.slack_id||''});
+  cm();render();toast('✅ Beschluss gespeichert');
+}
+async function meetingAbschliessen(meetId){
+  const m=S.meetings.find(x=>x.id===meetId);if(!m)return;
+  m.status='abgeschlossen';
+  await dbPatch('meetings',meetId,{status:'abgeschlossen'});
+  render();toast('✅ Meeting abgeschlossen');
+}
+
 // ─── Google Calendar Integration ───────────────────────────────
 function gcalIsConnected(){
   if(localStorage.getItem('gcal_ever_connected')!=='1')return false;
