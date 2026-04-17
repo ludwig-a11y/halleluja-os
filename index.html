@@ -1462,7 +1462,8 @@ function getWochenScore(wr){
     const txt=wrItemName(wr,n);if(!txt)return;
     total++;if(wr['big3_'+n+'_done'])done++;
   });
-  const perfect=total>0&&done===total&&total>=3;
+  // Perfect = alle committeten erledigt (egal ob 1, 2 oder 3 Big 3)
+  const perfect=total>0&&done===total;
   const points=done+(perfect?2:0);
   return{done,total,perfect,points};
 }
@@ -1480,22 +1481,32 @@ function getPerfectStreak(pid){
   }
   return streak;
 }
-// Momentum-Score: rollender 4-Wochen-Durchschnitt der Big-3-Integrität
-// Score = Σ(erledigt) / Σ(committed) × 100, nur über Wochen mit Commitments
+// Momentum-Score: rollender 4-Wochen-Score
+// Brian-Johnson-Logik: verfehlte Wochen zählen als Verlust (0/3),
+// aber NUR ab der ersten je committeten Woche (kein Strafzins für Neu-User).
 function getMomentumScore(pid){
   const {kw,jahr}=getKW();
-  let done=0,total=0,weeks=0;
+  const eigeneWr=(S.wochenresets||[]).filter(r=>String(r.pid)===String(pid));
+  if(!eigeneWr.length)return{score:null,weeks:0,done:0,total:0,missed:0};
+  // Ältester Eintrag bestimmt Start-Zeitpunkt (als absolute Wochen-Nummer)
+  const wkNum=(k,j)=>j*53+k;
+  const firstWk=Math.min(...eigeneWr.map(r=>wkNum(r.kw,r.jahr)));
+  let done=0,total=0,weeks=0,missed=0;
   let curKw=kw,curJahr=jahr;
   for(let i=0;i<4;i++){
-    const r=(S.wochenresets||[]).find(r=>String(r.pid)===String(pid)&&r.kw===curKw&&r.jahr===curJahr);
+    if(wkNum(curKw,curJahr)<firstWk)break; // vor erstem Commitment: nicht zählen
+    const r=eigeneWr.find(r=>r.kw===curKw&&r.jahr===curJahr);
     if(r){
       const s=getWochenScore(r);
       if(s.total>0){done+=s.done;total+=s.total;weeks++;}
+    } else {
+      // Verfehlte Woche (nach Start): zählt als 0/3 Vollverlust
+      total+=3;missed++;
     }
     curKw--;if(curKw<1){curKw=52;curJahr--;}
   }
-  if(total===0)return{score:null,weeks:0,done:0,total:0};
-  return{score:Math.round(done/total*100),weeks,done,total};
+  if(total===0)return{score:null,weeks:0,done:0,total:0,missed:0};
+  return{score:Math.round(done/total*100),weeks,done,total,missed};
 }
 function momentumFarbe(score){
   if(score==null)return{bg:'var(--gray-bg)',tc:'var(--t2)',bd:'var(--bd)',label:'—'};
@@ -1524,7 +1535,9 @@ function momentumCardHtml(pid,compact){
   if(m.score!=null){
     h+='<div style="height:6px;background:var(--gray-bg);border-radius:3px;overflow:hidden;margin-bottom:8px"><div style="height:100%;width:'+pct+'%;background:'+f.tc+';transition:width .4s"></div></div>';
     h+='<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--t3)">';
-    h+='<span>'+m.done+'/'+m.total+' Big 3 · '+m.weeks+' '+(m.weeks===1?'Woche':'Wochen')+'</span>';
+    let metaL=m.done+'/'+m.total+' Big 3 · '+m.weeks+' '+(m.weeks===1?'Woche':'Wochen');
+    if(m.missed>0)metaL+=' · '+m.missed+' verfehlt';
+    h+='<span>'+metaL+'</span>';
     if(streak>=1)h+='<span style="color:'+f.tc+';font-weight:700">🔥 '+streak+(streak===1?' Perfect Week':' Perfect Weeks')+'</span>';
     h+='</div>';
   } else {
@@ -1789,7 +1802,15 @@ function updateWRTZSection(){
   div.innerHTML=html;
 }
 // UX-Guardrails: Heuristische Big-3-Qualitätsprüfung (Bezos "high standards via system")
+// Debounced: erst 800ms nach letztem Tastendruck zeigen, sonst nervt's
+const _big3ValidateTimers={};
 function validateBig3Input(n){
+  clearTimeout(_big3ValidateTimers[n]);
+  const hintEarly=document.getElementById('wr-b'+n+'-hint');
+  if(hintEarly)hintEarly.style.display='none';
+  _big3ValidateTimers[n]=setTimeout(()=>_validateBig3Now(n),800);
+}
+function _validateBig3Now(n){
   const el=document.getElementById('wr-b'+n);
   const hint=document.getElementById('wr-b'+n+'-hint');
   if(!el||!hint)return;
@@ -2282,7 +2303,12 @@ function showBackBtn(){
   btn.id='back-to-me';
   btn.textContent='← Zurück zu '+p.name;
   btn.style.cssText='position:fixed;bottom:20px;right:20px;z-index:99;padding:10px 16px;border-radius:10px;background:'+c.tc+';color:#fff;border:none;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.2)';
-  btn.onclick=()=>{aP=realMe;updateBadge();render();removeBackBtn();};
+  btn.onclick=()=>{
+    if(_resetSnoozeTimer){clearTimeout(_resetSnoozeTimer);_resetSnoozeTimer=null;}
+    _resetSnoozeUntil=0;_resetSnoozeCount=0;
+    window._wrGutSnooze='';window._wrBlockiertSnooze='';
+    aP=realMe;_snoozeLoad();updateBadge();render();removeBackBtn();
+  };
   document.body.appendChild(btn);
 }
 function removeBackBtn(){document.getElementById('back-to-me')?.remove();}
@@ -2461,7 +2487,13 @@ function rSB(){
 }
 function switchPerson(id){
   if(isGF()||visiblePersonIds(aP).includes(id)||id===aP){
-    aP=id;updateBadge();render();showBackBtn();
+    // Snooze-State pro Person: Timer clearen + für neue Person laden
+    if(_resetSnoozeTimer){clearTimeout(_resetSnoozeTimer);_resetSnoozeTimer=null;}
+    _resetSnoozeUntil=0;_resetSnoozeCount=0;
+    window._wrGutSnooze='';window._wrBlockiertSnooze='';
+    aP=id;
+    _snoozeLoad();
+    updateBadge();render();showBackBtn();
   } else {
     // Can't view this person → open "assign task" modal for them
     const p=person(id);if(!p)return;
