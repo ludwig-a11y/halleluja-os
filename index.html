@@ -1526,13 +1526,12 @@ function momentumRingHtml(pid){
   const pct=m.score==null?0:Math.max(0,Math.min(100,m.score));
   const deg=Math.round(pct/100*360);
   const ringBg=m.score==null?'var(--gray-bg)':'conic-gradient('+f.tc+' 0deg '+deg+'deg, var(--gray-bg) '+deg+'deg 360deg)';
-  let h='<button onclick="openMomentumInfo()" title="Momentum-Score" style="position:relative;width:72px;height:72px;border-radius:50%;border:none;padding:0;background:'+ringBg+';cursor:pointer;flex-shrink:0;font-family:inherit">';
-  h+='<span style="position:absolute;inset:6px;border-radius:50%;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0">';
-  h+='<span style="font-size:20px;font-weight:800;color:'+f.tc+';line-height:1">'+scoreTxt+'</span>';
-  h+='<span style="font-size:8px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-top:2px">Momentum</span>';
-  h+='</span>';
+  // Minimaler Chip: kleiner farbiger Dot + Zahl, optional Streak-Flamme
+  let h='<button onclick="openMomentumInfo()" title="Momentum-Score" style="display:inline-flex;align-items:center;gap:5px;border:1px solid var(--bd);background:var(--sf);border-radius:99px;padding:3px 9px;cursor:pointer;font-family:inherit;flex-shrink:0;line-height:1">';
+  h+='<span style="width:7px;height:7px;border-radius:50%;background:'+(m.score==null?'var(--t3)':f.tc)+';flex-shrink:0"></span>';
+  h+='<span style="font-size:11px;font-weight:700;color:var(--t2);letter-spacing:.2px">'+scoreTxt+'</span>';
   if(streak>=1){
-    h+='<span style="position:absolute;top:-4px;right:-4px;background:'+f.tc+';color:#fff;font-size:10px;font-weight:800;border-radius:99px;padding:2px 6px;line-height:1;border:2px solid var(--bg)">🔥'+streak+'</span>';
+    h+='<span style="font-size:10px;font-weight:700;color:'+f.tc+'">🔥'+streak+'</span>';
   }
   h+='</button>';
   return h;
@@ -1711,10 +1710,10 @@ function openWochenreset(){
     +zwangBlockiertInput
     +(_resetZwang?'':summaryHtml)
     +(rueckblickHtml?'<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px">'+rueckblickHtml+'</div>':'')
-    +(!wr&&!_resetZwang?'<div class="fl"><label>🟢 Was lief gut? <span style="font-weight:400;color:var(--t2)">(optional)</span></label>'
-    +'<textarea id="wr-gut" rows="2" style="width:100%;padding:8px;border:1px solid var(--bd);border-radius:8px;font-family:inherit;font-size:13px;resize:vertical" placeholder="Dein größter Win, ein Moment der Energie gemacht hat…"></textarea></div>'
-    +'<div class="fl"><label>⚡ Was hat gebremst? <span style="font-weight:400;color:var(--t2)">(optional)</span></label>'
-    +'<textarea id="wr-blockiert" rows="2" style="width:100%;padding:8px;border:1px solid var(--bd);border-radius:8px;font-family:inherit;font-size:13px;resize:vertical" placeholder="Äußere Hindernisse, fehlende Infos, eigene Energie…"></textarea></div>'
+    +(!wr&&!_resetZwang?'<div class="fl"><label>🟢 Highlight der Woche <span style="font-weight:400;color:var(--t2)">(optional)</span></label>'
+    +'<textarea id="wr-gut" rows="2" style="width:100%;padding:8px;border:1px solid var(--bd);border-radius:8px;font-family:inherit;font-size:13px;resize:vertical" placeholder="z. B. ein Win, ein Moment mit Energie, etwas Gelerntes…"></textarea></div>'
+    +'<div class="fl"><label>⚡ Bremsen <span style="font-weight:400;color:var(--t2)">(optional)</span></label>'
+    +'<textarea id="wr-blockiert" rows="2" style="width:100%;padding:8px;border:1px solid var(--bd);border-radius:8px;font-family:inherit;font-size:13px;resize:vertical" placeholder="z. B. Hindernisse, fehlende Infos, Energie-Tiefs…"></textarea></div>'
     +'<div style="border-top:1px solid var(--bd);margin:13px 0"></div>':'')
 
     // ── Step 1: Fokus-Ziel ──
@@ -1984,10 +1983,10 @@ function openWochenresetZwang(){
     +'<div style="font-size:12px;color:var(--t2);margin-bottom:10px">Nimm dir 2 Minuten — dann geht es weiter mit KW '+(kw+1)+'.</div>'
     +snoozeInfo
     +sum
-    +'<div class="fl"><label>🟢 Was lief gut — oder hat Schwung gegeben? <span style="font-weight:400;color:var(--t2)">(optional)</span></label>'
-    +'<textarea id="wr-gut-s1" rows="2" style="width:100%;padding:8px;border:1px solid var(--bd);border-radius:8px;font-family:inherit;font-size:13px;resize:vertical" placeholder="Dein größter Win, ein Moment der Energie gemacht hat…">'+esc(window._wrGutSnooze||'')+'</textarea></div>'
-    +'<div class="fl"><label>⚡ Was hat gebremst? <span style="font-weight:400;color:var(--t2)">(optional)</span></label>'
-    +'<textarea id="wr-blockiert-s1" rows="2" style="width:100%;padding:8px;border:1px solid var(--bd);border-radius:8px;font-family:inherit;font-size:13px;resize:vertical" placeholder="Äußere Hindernisse, fehlende Infos, eigene Energie…">'+esc(window._wrBlockiertSnooze||'')+'</textarea></div>'
+    +'<div class="fl"><label>🟢 Highlight der Woche <span style="font-weight:400;color:var(--t2)">(optional)</span></label>'
+    +'<textarea id="wr-gut-s1" rows="2" style="width:100%;padding:8px;border:1px solid var(--bd);border-radius:8px;font-family:inherit;font-size:13px;resize:vertical" placeholder="z. B. ein Win, ein Moment mit Energie, etwas Gelerntes…">'+esc(window._wrGutSnooze||'')+'</textarea></div>'
+    +'<div class="fl"><label>⚡ Bremsen <span style="font-weight:400;color:var(--t2)">(optional)</span></label>'
+    +'<textarea id="wr-blockiert-s1" rows="2" style="width:100%;padding:8px;border:1px solid var(--bd);border-radius:8px;font-family:inherit;font-size:13px;resize:vertical" placeholder="z. B. Hindernisse, fehlende Infos, Energie-Tiefs…">'+esc(window._wrBlockiertSnooze||'')+'</textarea></div>'
     +'<div class="mf">'
     +snoozeBtn
     +'<button class="btn btn-dk" onclick="wrZurPlanung()" style="min-width:180px">Weiter zur Planung →</button>'
