@@ -1418,6 +1418,33 @@ function wrItemName(wr,n){
   if(tzId){const tz=S.ziele.flatMap(z=>z.teilziele||[]).find(t=>t.id===tzId);if(tz)return tz.name;}
   return wr['big3_'+n]||null;
 }
+// Brian Johnson "Heroic" Score: Commitment-Integrität messbar machen
+// 1 Pt pro Big-3 · +2 Bonus bei Perfect Week (3/3) · Streak zählt aufeinanderfolgende Perfect Weeks
+function getWochenScore(wr){
+  if(!wr)return{done:0,total:0,perfect:false,points:0};
+  let done=0,total=0;
+  [1,2,3].forEach(n=>{
+    const txt=wrItemName(wr,n);if(!txt)return;
+    total++;if(wr['big3_'+n+'_done'])done++;
+  });
+  const perfect=total>0&&done===total&&total>=3;
+  const points=done+(perfect?2:0);
+  return{done,total,perfect,points};
+}
+function getPerfectStreak(pid){
+  // Zähle Perfect Weeks rückwärts ab aktueller Woche (oder letzter abgeschlossener Woche)
+  const {kw,jahr}=getKW();
+  let streak=0,curKw=kw,curJahr=jahr;
+  for(let i=0;i<52;i++){
+    const r=(S.wochenresets||[]).find(r=>String(r.pid)===String(pid)&&r.kw===curKw&&r.jahr===curJahr);
+    if(!r)break;
+    const s=getWochenScore(r);
+    if(!s.perfect)break;
+    streak++;
+    curKw--;if(curKw<1){curKw=52;curJahr--;}
+  }
+  return streak;
+}
 function openWochenreset(){
   const{kw,jahr}=getKW();
   const nextKw=kw;
@@ -1683,7 +1710,32 @@ function openWochenresetZwang(){
   });
   const erlP1=erlDW.filter(a=>a.prio==='P1'),erlP2=erlDW.filter(a=>a.prio==='P2'),erlP3=erlDW.filter(a=>a.prio==='P3');
   const offP1=S.aufgaben.filter(a=>a.pid===aP&&a.prio==='P1'&&a.status!=='erledigt'&&canSee(a));
-  let sum='<div style="background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:14px 16px;margin-bottom:16px">';
+  // Heroic Score Karte
+  const score=getWochenScore(wr);
+  const streak=getPerfectStreak(aP);
+  let scoreCard='';
+  if(wr&&score.total>0){
+    const stars='⭐'.repeat(score.done)+'☆'.repeat(Math.max(0,score.total-score.done));
+    scoreCard+='<div style="background:linear-gradient(135deg,#1a1a2e,#2d1b4e);color:#fff;border-radius:14px;padding:16px 18px;margin-bottom:14px">';
+    scoreCard+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;opacity:.6">💪 Heroic Score · KW '+kw+'</span></div>';
+    scoreCard+='<div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">';
+    scoreCard+='<div style="font-size:22px;letter-spacing:2px">'+stars+'</div>';
+    scoreCard+='<div style="font-size:14px;font-weight:700">'+score.done+'/'+score.total+' Big 3</div>';
+    scoreCard+='</div>';
+    if(score.perfect)scoreCard+='<div style="display:inline-block;padding:3px 10px;border-radius:99px;background:linear-gradient(90deg,#fbbf24,#f59e0b);color:#1a1a2e;font-size:11px;font-weight:800;margin-right:6px">🏆 Perfect Week</div>';
+    if(streak>=2)scoreCard+='<div style="display:inline-block;padding:3px 10px;border-radius:99px;background:rgba(251,146,60,.25);color:#fdba74;font-size:11px;font-weight:700">🔥 '+streak+' Wochen in Folge</div>';
+    scoreCard+='<div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.1);display:flex;align-items:baseline;gap:6px">';
+    scoreCard+='<span style="font-size:24px;font-weight:800;color:#fbbf24">+'+score.points+'</span>';
+    scoreCard+='<span style="font-size:11px;opacity:.6">Commitment Points</span>';
+    if(score.perfect)scoreCard+='<span style="font-size:10px;opacity:.5;margin-left:auto">'+score.done+' × 1 + 2 Perfect-Bonus</span>';
+    scoreCard+='</div>';
+    scoreCard+='</div>';
+  } else if(!wr){
+    scoreCard+='<div style="background:var(--gray-bg);border:1.5px dashed var(--bd);border-radius:12px;padding:12px 16px;margin-bottom:14px;text-align:center">';
+    scoreCard+='<div style="font-size:12px;color:var(--t2)">💪 Noch kein Score — du hattest keine Big 3 für diese Woche committet.</div>';
+    scoreCard+='</div>';
+  }
+  let sum=scoreCard+'<div style="background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:14px 16px;margin-bottom:16px">';
   sum+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);margin-bottom:10px">📊 KW '+kw+' auf einen Blick</div>';
   // Big 3
   if(wr){
