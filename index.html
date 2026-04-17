@@ -1752,6 +1752,7 @@ function openWochenreset(){
             if(inp){inp.value=wr['big3_'+n];fi++;}
           }
         });
+        _wrUpdateKandidaten();
       },100);});
     }
   }
@@ -1761,15 +1762,53 @@ function updateWRTZSection(){
   const div=document.getElementById('wr-tz-section');if(!div)return;
   const z=zielId?S.ziele.find(x=>x.id===zielId):null;
   const isBereich=z&&z.status==='bereich';
-  // Für beide: Meilensteine (Ziele) und Themen (Bereiche) als Picker zeigen
   const tzArr=z?(z.teilziele||[]).filter(t=>!t.erledigt&&(t.status||'aktiv')==='aktiv'):[];
   const _lbl=isBereich?'Thema':'Meilenstein',_lblPl=isBereich?'Themen':'Meilensteine';
-  // Update Step 2 label
   const step2Label=document.getElementById('wr-step2-label');
   if(step2Label)step2Label.textContent='Big 3 für diese Woche';
   const step2Sub=document.getElementById('wr-step2-sub');
-  if(step2Sub)step2Sub.textContent=isBereich?'Wähle Themen oder lege neue an (max. 3)':'Wähle Meilensteine oder lege neue an (max. 3)';
+  if(step2Sub)step2Sub.textContent='Wähle aus Vorschlägen oder trage eigene ein (max. 3)';
   let html='';
+
+  // ── Smarte Kandidaten ──────────────────────────────────────────
+  // 1. Carry-over: letzte Woche nicht erledigte Big 3
+  const{kw,jahr}=getKW();
+  let lwKw=kw-1,lwJahr=jahr;if(lwKw<1){lwKw=52;lwJahr--;}
+  const lw=(S.wochenresets||[]).find(r=>String(r.pid)===String(aP)&&r.kw===lwKw&&r.jahr===lwJahr);
+  const carryOver=[];
+  if(lw){[1,2,3].forEach(n=>{if(lw['big3_'+n]&&!lw['big3_'+n+'_done'])carryOver.push(lw['big3_'+n]);});}
+
+  // 2. Offene P1-Aufgaben dieser Person
+  const p1Tasks=(S.aufgaben||[]).filter(a=>String(a.pid)===String(aP)&&a.prio==='P1'&&!['erledigt','zurueckgegeben'].includes(a.status||'')).slice(0,5);
+
+  const kandidatBtn=(text,icon,accentColor,accentBg)=>{
+    const safe=text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+    return '<button type="button" onclick="_wrKandidatSelect(this)" data-kandidat-text="'+safe+'" style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:'+accentBg+';border:1.5px solid '+accentColor+';border-radius:8px;cursor:pointer;font-family:inherit;font-size:12px;color:var(--text);text-align:left;width:100%;transition:all .15s;box-sizing:border-box">'
+      +'<span style="font-size:10px;color:'+accentColor+';flex-shrink:0;font-weight:700">'+icon+'</span>'
+      +'<span style="flex:1;line-height:1.35">'+esc(text)+'</span>'
+      +'<span class="wr-k-badge" style="font-size:10px;color:var(--t3);flex-shrink:0;white-space:nowrap">+ wählen</span>'
+      +'</button>';
+  };
+
+  if(carryOver.length||p1Tasks.length){
+    html+='<div style="margin-bottom:16px;padding:12px;background:var(--sf);border:1px solid var(--bd);border-radius:10px">';
+    html+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--t3);margin-bottom:10px">📋 Vorschläge für deine Big 3</div>';
+    if(carryOver.length){
+      html+='<div style="font-size:10px;font-weight:600;color:var(--amber);text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px">🔁 Letzte Woche offen</div>';
+      html+='<div style="display:flex;flex-direction:column;gap:4px;margin-bottom:10px">';
+      carryOver.forEach(t=>{html+=kandidatBtn(t,'🔁','var(--amber)','var(--amber-bg)');});
+      html+='</div>';
+    }
+    if(p1Tasks.length){
+      html+='<div style="font-size:10px;font-weight:600;color:var(--red);text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px">⚡ Offene P1-Aufgaben</div>';
+      html+='<div style="display:flex;flex-direction:column;gap:4px">';
+      p1Tasks.forEach(a=>{html+=kandidatBtn(a.titel,'P1','var(--red)','var(--red-bg,var(--gray-bg))');});
+      html+='</div>';
+    }
+    html+='</div>';
+  }
+
+  // ── Meilensteine des Fokus-Ziels ──────────────────────────────
   if(tzArr.length){
     const curMon=TODAY.slice(0,7);
     const monNames=['','Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
@@ -1779,7 +1818,7 @@ function updateWRTZSection(){
     const tzRow=tz=>{
       const ueberf=tz.datum&&tz.datum<TODAY;
       const dlLabel=tz.datum?('bis '+tz.datum.slice(8)+'.'+tz.datum.slice(5,7)+'.'):'';
-      return '<label onclick="var l=this;requestAnimationFrame(function(){var c=l.querySelector(\'input\');l.style.borderColor=c.checked?\'var(--green)\':\'var(--bd)\';l.style.background=c.checked?\'var(--green-bg)\':\'var(--gray-bg)\'})" style="display:flex;align-items:center;gap:9px;padding:8px 10px;background:var(--gray-bg);border:1.5px solid var(--bd);border-radius:8px;cursor:pointer;transition:all .15s">'
+      return '<label onclick="var l=this;requestAnimationFrame(function(){var c=l.querySelector(\'input\');l.style.borderColor=c.checked?\'var(--green)\':\'var(--bd)\';l.style.background=c.checked?\'var(--green-bg)\':\'var(--gray-bg)\'});_wrUpdateKandidaten()" style="display:flex;align-items:center;gap:9px;padding:8px 10px;background:var(--gray-bg);border:1.5px solid var(--bd);border-radius:8px;cursor:pointer;transition:all .15s">'
         +'<input type="checkbox" class="wr-tz-check" value="'+tz.id+'" style="width:16px;height:16px;cursor:pointer;flex-shrink:0;accent-color:var(--green)">'
         +'<span style="font-size:12px;font-weight:500;color:var(--text);flex:1">'+esc(tz.name)+'</span>'
         +(dlLabel?'<span style="font-size:10px;color:'+(ueberf?'var(--red)':'var(--t3)')+'">'+dlLabel+(ueberf?' ⚠':'')+'</span>':'<span style="font-size:10px;color:var(--t3)">ohne Datum</span>')
@@ -1787,7 +1826,7 @@ function updateWRTZSection(){
     };
     if(faellig.length){
       html+='<div style="font-size:11px;font-weight:700;color:var(--text);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">📅 '+(isBereich?'Aktive Themen':'Fällig im '+curMonName)+'</div>';
-      html+='<div style="font-size:10px;color:var(--t3);margin-bottom:7px">'+_lblPl+' die du diese Woche voranbringen willst</div>';
+      html+='<div style="font-size:10px;color:var(--t3);margin-bottom:7px">'+_lblPl+' direkt verknüpfen (empfohlen)</div>';
       html+='<div style="display:flex;flex-direction:column;gap:5px;margin-bottom:12px">';
       faellig.forEach(tz=>{html+=tzRow(tz);});
       html+='</div>';
@@ -1799,21 +1838,53 @@ function updateWRTZSection(){
       html+='</div></details>';
     }
   }
-  const freePlaceholder='z.B. „Angebot Kunde X — versendet"';
-  html+='<div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:7px">'+( tzArr.length?'Neu anlegen (wird automatisch '+_lbl+')':_lblPl+' eingeben')+'</div>';
+
+  // ── Freie Eingabe / Neu anlegen ───────────────────────────────
+  html+='<div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:7px">'+(tzArr.length?'Neu anlegen (wird automatisch '+_lbl+')':'Eigene Eingabe')+'</div>';
   html+='<div style="display:grid;gap:7px">';
   [1,2,3].forEach(n=>{
     html+='<div style="background:var(--gray-bg);border:1px solid var(--bd);border-radius:9px;padding:9px 11px">';
     html+='<div style="display:flex;align-items:center;gap:9px"><span style="font-size:13px;font-weight:800;color:var(--green);width:14px;flex-shrink:0">'+n+'</span>';
-    html+='<input id="wr-b'+n+'" type="text" oninput="validateBig3Input('+n+')" placeholder="'+(n<3?freePlaceholder:'Optional…')+'" style="border:none;background:transparent;font-family:inherit;font-size:13px;color:var(--text);outline:none;flex:1">';
+    html+='<input id="wr-b'+n+'" type="text" oninput="validateBig3Input('+n+');_wrUpdateKandidaten()" placeholder="'+(n<3?'z.B. „Angebot Kunde X — versendet"':'Optional…')+'" style="border:none;background:transparent;font-family:inherit;font-size:13px;color:var(--text);outline:none;flex:1">';
     html+='</div>';
     html+='<div id="wr-b'+n+'-hint" style="font-size:11px;margin-top:4px;padding-left:23px;display:none"></div>';
     html+='</div>';
   });
   html+='</div>';
-  // Freitag-Test Micro-Prompt
   html+='<div style="margin-top:10px;padding:8px 11px;background:var(--amber-bg);border-left:3px solid var(--amber);border-radius:0 6px 6px 0;font-size:11px;color:var(--text)"><b>Freitag-Test:</b> Kannst du jedes Big 3 Freitag abhaken? Wenn nein → zu groß oder zu vage.</div>';
   div.innerHTML=html;
+}
+
+// Kandidaten-Button: Text in nächsten freien Slot eintragen (oder entfernen)
+function _wrKandidatSelect(btnEl){
+  const text=btnEl.getAttribute('data-kandidat-text');if(!text)return;
+  // Bereits in einem Slot? → entfernen
+  for(let n=1;n<=3;n++){
+    const inp=document.getElementById('wr-b'+n);
+    if(inp&&inp.value.trim()===text){inp.value='';_wrUpdateKandidaten();return;}
+  }
+  // Ersten leeren Slot füllen
+  for(let n=1;n<=3;n++){
+    const inp=document.getElementById('wr-b'+n);
+    if(inp&&!inp.value.trim()){inp.value=text;_wrUpdateKandidaten();return;}
+  }
+  toast('Maximal 3 Big 3 — leere zuerst einen Slot.');
+}
+
+// Kandidaten-Buttons visuell mit aktuellen Slots abgleichen
+function _wrUpdateKandidaten(){
+  const filledTexts=new Set();
+  for(let n=1;n<=3;n++){const v=document.getElementById('wr-b'+n)?.value.trim();if(v)filledTexts.add(v);}
+  document.querySelectorAll('[data-kandidat-text]').forEach(btn=>{
+    const text=btn.getAttribute('data-kandidat-text');
+    const sel=filledTexts.has(text);
+    btn.style.opacity=sel?'1':'1';
+    btn.style.borderColor=sel?'var(--green)':'';
+    btn.style.background=sel?'var(--green-bg)':'';
+    const badge=btn.querySelector('.wr-k-badge');
+    if(badge)badge.textContent=sel?'✓ gewählt':'+ wählen';
+    if(badge)badge.style.color=sel?'var(--green)':'var(--t3)';
+  });
 }
 // UX-Guardrails: Heuristische Big-3-Qualitätsprüfung (Bezos "high standards via system")
 // Debounced: erst 800ms nach letztem Tastendruck zeigen, sonst nervt's
