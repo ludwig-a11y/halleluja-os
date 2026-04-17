@@ -391,13 +391,12 @@ function _snoozeLoad(){
     const raw=localStorage.getItem(_snoozeKey());if(!raw)return;
     const o=JSON.parse(raw);
     if(!o||typeof o!=='object')return;
+    _resetSnoozeCount=typeof o.count==='number'?o.count:(o.used?_RESET_SNOOZE_MAX:0);
     if(o.until&&o.until>Date.now()){
       _resetSnoozeUntil=o.until;
-      _resetSnoozeUsed=!!o.used;
       if(_resetSnoozeTimer)clearTimeout(_resetSnoozeTimer);
       _resetSnoozeTimer=setTimeout(()=>{if(aP&&!dieseWocheReset(aP))openWochenresetZwang();},Math.max(0,o.until-Date.now()));
-    } else if(o.used){
-      _resetSnoozeUsed=true;
+    } else {
       _resetSnoozeUntil=0;
     }
     window._wrGutSnooze=o.gut||'';
@@ -408,7 +407,7 @@ function _snoozePersist(gut,blockiert){
   if(!aP)return;
   try{
     localStorage.setItem(_snoozeKey(),JSON.stringify({
-      until:_resetSnoozeUntil,used:_resetSnoozeUsed,
+      until:_resetSnoozeUntil,count:_resetSnoozeCount,
       gut:gut||window._wrGutSnooze||'',blockiert:blockiert||window._wrBlockiertSnooze||''
     }));
   }catch(e){}
@@ -471,7 +470,8 @@ function checkP1Done(pid){
 }
 
 let S={personen:[],teams:[],ziele:[],aufgaben:[],kpiVals:{},kpiValsMonth:{},kpiValsWeek:{},checkins:{},kpiToday:{},signale:[],wochenresets:[],beobachtungen:[],kontext:[],kalender:[],decisionRequests:[],meetings:[],paddelGewinner:[]};
-let aP=null,realMe=null,aV='tag',timIv=null,_selPrio=null,_resetZwang=false,_resetSnoozeUntil=0,_resetSnoozeUsed=false,_resetSnoozeTimer=null;
+let aP=null,realMe=null,aV='tag',timIv=null,_selPrio=null,_resetZwang=false,_resetSnoozeUntil=0,_resetSnoozeCount=0,_resetSnoozeTimer=null;
+const _RESET_SNOOZE_MAX=3;
 let _kid=Date.now();
 const nid=p=>p+(++_kid);
 
@@ -1728,7 +1728,7 @@ async function saveWochenreset(){
   window._noOverlayClose=false;
   window._wrBlockiertZwang='';
   window._wrGutZwang='';
-  _resetSnoozeUsed=false;
+  _resetSnoozeCount=0;
   _resetSnoozeUntil=0;
   if(_resetSnoozeTimer){clearTimeout(_resetSnoozeTimer);_resetSnoozeTimer=null;}
   _snoozeClear();
@@ -1810,10 +1810,11 @@ function openWochenresetZwang(){
     sum+='</div>';
   }
   sum+='</div>';
-  const snoozeInfo=_resetSnoozeUsed
+  const snoozeRest=_RESET_SNOOZE_MAX-_resetSnoozeCount;
+  const snoozeInfo=(snoozeRest<=0)
     ?'<div style="font-size:12px;color:var(--t2);margin-bottom:10px;padding:6px 10px;background:var(--gray-bg);border-radius:6px">✨ Jetzt ist dein Moment für Reflexion — 2 Minuten.</div>'
-    :'<div style="font-size:12px;color:var(--t2);margin-bottom:10px;padding:6px 10px;background:var(--gray-bg);border-radius:6px">✨ Jetzt ist dein Moment für Reflexion — jetzt oder in 30 Min.</div>';
-  const snoozeBtn=_resetSnoozeUsed?'':'<button class="btn btn-gr" onclick="snoozeReset()" style="margin-right:auto">⏱ In 30 Min</button>';
+    :'<div style="font-size:12px;color:var(--t2);margin-bottom:10px;padding:6px 10px;background:var(--gray-bg);border-radius:6px">✨ Jetzt ist dein Moment für Reflexion — jetzt oder in 30 Min (noch '+snoozeRest+'× verschiebbar).</div>';
+  const snoozeBtn=(snoozeRest<=0)?'':'<button class="btn btn-gr" onclick="snoozeReset()" style="margin-right:auto">⏱ In 30 Min'+(snoozeRest<_RESET_SNOOZE_MAX?' ('+snoozeRest+'×)':'')+'</button>';
   document.getElementById('mb').innerHTML=
     '<div class="mt">📋 Wochenrückblick KW '+kw+'</div>'
     +'<div style="font-size:12px;color:var(--t2);margin-bottom:10px">Nimm dir 2 Minuten — dann geht es weiter mit KW '+(kw+1)+'.</div>'
@@ -2200,19 +2201,20 @@ function checkResetZwang(){
   openWochenresetZwang();
 }
 function snoozeReset(){
-  if(_resetSnoozeUsed)return;
+  if(_resetSnoozeCount>=_RESET_SNOOZE_MAX)return;
   // Aktuell getippte Werte retten
   const gut=document.getElementById('wr-gut-s1')?.value||'';
   const blockiert=document.getElementById('wr-blockiert-s1')?.value||'';
   window._wrGutSnooze=gut;
   window._wrBlockiertSnooze=blockiert;
-  _resetSnoozeUsed=true;
+  _resetSnoozeCount++;
   _resetSnoozeUntil=Date.now()+30*60*1000;
   _snoozePersist(gut,blockiert);
   _resetZwang=false;
   window._noOverlayClose=false;
   cm();
-  toast('⏱ Rückblick in 30 Min — dann geht\'s los.');
+  const rest=_RESET_SNOOZE_MAX-_resetSnoozeCount;
+  toast(rest>0?'⏱ In 30 Min erneut — noch '+rest+'× verschiebbar.':'⏱ In 30 Min — danach kein Aufschub mehr.');
   if(_resetSnoozeTimer)clearTimeout(_resetSnoozeTimer);
   _resetSnoozeTimer=setTimeout(()=>{if(aP&&!dieseWocheReset(aP))openWochenresetZwang();},30*60*1000);
   render();
