@@ -1423,8 +1423,64 @@ function openWochenreset(){
   const nextKw=kw;
   const wr=dieseWocheReset(aP);
   const lw=letzteWocheReset(aP);
+  const istRueckblick=isResetZeit()||!!wr;
+
+  // ── Wochenzusammenfassung ──
+  const{monday:_wrMon,sunday:_wrSun}=getWeekRange();
+  const erlDW=S.aufgaben.filter(a=>{
+    if(a.pid!==aP||a.status!=='erledigt'||!a.updated_at)return false;
+    const dt=new Date(a.updated_at);if(isNaN(dt.getTime()))return false;
+    const d=localDate(dt);return d>=_wrMon&&d<=_wrSun;
+  });
+  const erlP1=erlDW.filter(a=>a.prio==='P1'),erlP2=erlDW.filter(a=>a.prio==='P2'),erlP3=erlDW.filter(a=>a.prio==='P3');
+  const offP1=S.aufgaben.filter(a=>a.pid===aP&&a.prio==='P1'&&a.status!=='erledigt'&&canSee(a));
+  let summaryHtml='';
+  if(istRueckblick){
+    summaryHtml+='<div style="background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:14px 16px;margin-bottom:14px">';
+    summaryHtml+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);margin-bottom:10px">📊 KW '+kw+' auf einen Blick</div>';
+    // Big 3 dieser Woche
+    if(wr){
+      let b3html='';
+      [1,2,3].forEach(n=>{
+        const txt=wrItemName(wr,n),done=wr['big3_'+n+'_done'];if(!txt)return;
+        b3html+='<div style="display:flex;align-items:center;gap:8px;padding:3px 0">';
+        b3html+='<div style="width:15px;height:15px;border-radius:4px;flex-shrink:0;display:flex;align-items:center;justify-content:center;'+(done?'background:var(--green);':'border:1.5px solid var(--bd)')+'">'+(done?'<span style="color:#fff;font-size:8px;font-weight:800">✓</span>':'')+'</div>';
+        b3html+='<span style="font-size:12px;'+(done?'color:var(--t3);text-decoration:line-through':'color:var(--text)')+'">'+esc(txt)+'</span>';
+        b3html+='</div>';
+      });
+      if(b3html){
+        summaryHtml+='<div style="font-size:10px;font-weight:700;color:var(--t2);margin-bottom:4px">Big 3</div>';
+        summaryHtml+=b3html;
+        summaryHtml+='<div style="border-top:1px solid var(--bd);margin:10px 0"></div>';
+      }
+    }
+    // Erledigte diese Woche
+    if(erlDW.length){
+      summaryHtml+='<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:4px">';
+      summaryHtml+='<span style="font-size:12px;font-weight:700;color:var(--green)">✓ '+erlDW.length+' erledigt</span>';
+      if(erlP1.length)summaryHtml+='<span style="font-size:10px;padding:1px 6px;border-radius:99px;background:var(--red-bg);color:var(--red);font-weight:700">P1 ×'+erlP1.length+'</span>';
+      if(erlP2.length)summaryHtml+='<span style="font-size:10px;padding:1px 6px;border-radius:99px;background:var(--blue-bg);color:var(--blue);font-weight:700">P2 ×'+erlP2.length+'</span>';
+      if(erlP3.length)summaryHtml+='<span style="font-size:10px;padding:1px 6px;border-radius:99px;background:var(--gray-bg);color:var(--t3);font-weight:700">P3 ×'+erlP3.length+'</span>';
+      summaryHtml+='</div>';
+      erlP1.slice(0,3).forEach(a=>{summaryHtml+='<div style="font-size:11px;color:var(--t3);padding:1px 0 1px 10px">✓ '+esc(a.titel.length>52?a.titel.slice(0,52)+'…':a.titel)+'</div>';});
+      if(erlP1.length>3)summaryHtml+='<div style="font-size:10px;color:var(--t3);padding-left:10px">… '+( erlP1.length-3)+' weitere P1</div>';
+    } else {
+      summaryHtml+='<div style="font-size:12px;color:var(--t3)">Noch keine Aufgaben diese Woche erledigt.</div>';
+    }
+    // Noch offene P1s
+    if(offP1.length){
+      summaryHtml+='<div style="margin-top:8px;border-top:1px solid var(--bd);padding-top:8px">';
+      summaryHtml+='<span style="font-size:12px;font-weight:700;color:var(--orange)">⚠ '+offP1.length+' P1 noch offen</span>';
+      offP1.slice(0,3).forEach(a=>{summaryHtml+='<div style="font-size:11px;color:var(--orange);padding:1px 0 1px 10px">○ '+esc(a.titel.length>52?a.titel.slice(0,52)+'…':a.titel)+'</div>';});
+      if(offP1.length>3)summaryHtml+='<div style="font-size:10px;color:var(--orange);padding-left:10px">… '+(offP1.length-3)+' weitere</div>';
+      summaryHtml+='</div>';
+    }
+    summaryHtml+='</div>';
+  }
+
+  // Letzte Woche Rückblick (alte Chips — nur bei erstmaligem Planen)
   let rueckblickHtml='';
-  if(lw){
+  if(lw&&!istRueckblick){
     [1,2,3].forEach(n=>{
       const txt=wrItemName(lw,n),done=lw['big3_'+n+'_done'];
       if(!txt)return;
@@ -1449,9 +1505,11 @@ function openWochenreset(){
   const andereAlle=[...andereZ,...andereBer];
   if(andereAlle.length){zieleHtml+='<details style="margin-top:6px"><summary style="font-size:11px;color:var(--t3);cursor:pointer;padding:4px 0">▸ Andere Ziele ('+andereAlle.length+')</summary><div style="margin-top:6px">'+andereAlle.map(zBtn).join('')+'</div></details>';}
 
+  const modalTitel=wr?'Big 3 bearbeiten — KW '+kw:(istRueckblick?'Wochenrückblick KW '+kw:'Wochenplanung KW '+nextKw);
   document.getElementById('mb').innerHTML=
-    '<div class="mt">'+(wr?'Big 3 bearbeiten — KW '+kw:'Wochenplanung KW '+nextKw)+'</div>'
-    +(rueckblickHtml&&!wr?'<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px">'+rueckblickHtml+'</div>':'')
+    '<div class="mt">'+modalTitel+'</div>'
+    +summaryHtml
+    +(rueckblickHtml?'<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px">'+rueckblickHtml+'</div>':'')
     +(!wr?'<div class="fl"><label>Warum die Lücke? <span style="font-weight:400;color:var(--t2)">(optional)</span></label>'
     +'<textarea id="wr-blockiert" rows="2" style="width:100%;padding:8px;border:1px solid var(--bd);border-radius:8px;font-family:inherit;font-size:13px;resize:vertical" placeholder="z.B. Leads brauchten mehr Entscheidungszeit…"></textarea></div>'
     +'<div style="border-top:1px solid var(--bd);margin:13px 0"></div>':'')
