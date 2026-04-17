@@ -1533,6 +1533,11 @@ function momentumCardHtml(pid,compact){
   h+='</div>';
   return h;
 }
+function closeMomentumInfo(){
+  // Wenn im Zwang-Modus: zurück zum Rückblick-Modal statt einfach schließen
+  if(_resetZwang){openWochenresetZwang();return;}
+  cm();
+}
 function openMomentumInfo(){
   document.getElementById('mb').innerHTML=
     '<div class="mt">⚡ Momentum-Score</div>'
@@ -1571,7 +1576,7 @@ function openMomentumInfo(){
     +'<div style="margin-bottom:12px">Aufeinanderfolgende Wochen mit <b>allen</b> Big 3 erledigt. Bricht bei einer verfehlten Woche auf 0.</div>'
 
     +'</div>'
-    +'<div class="mf" style="justify-content:flex-end"><button class="btn btn-dk" onclick="cm()">Verstanden</button></div>';
+    +'<div class="mf" style="justify-content:flex-end"><button class="btn btn-dk" onclick="closeMomentumInfo()">Verstanden</button></div>';
   document.getElementById('ovl').classList.add('open');
 }
 function openWochenreset(){
