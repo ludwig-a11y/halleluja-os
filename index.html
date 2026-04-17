@@ -382,7 +382,42 @@ function getKW(d){
   const w1=new Date(date.getFullYear(),0,4);
   return{kw:1+Math.round(((date-w1)/86400000-3+(w1.getDay()+6)%7)/7),jahr:date.getFullYear()};
 }
-function isResetZeit(){const n=new Date();return n.getDay()===5&&n.getHours()>=16;}
+function isResetZeit(){const n=new Date();const d=n.getDay();return(d===5&&n.getHours()>=16)||d===6||d===0;}
+function isResetAnkuendigung(){const n=new Date();const d=n.getDay();return(d===5&&n.getHours()>=12)||d===6||d===0;}
+function _snoozeKey(){return'hallj_snooze_'+aP;}
+function _snoozeLoad(){
+  if(!aP)return;
+  try{
+    const raw=localStorage.getItem(_snoozeKey());if(!raw)return;
+    const o=JSON.parse(raw);
+    if(!o||typeof o!=='object')return;
+    if(o.until&&o.until>Date.now()){
+      _resetSnoozeUntil=o.until;
+      _resetSnoozeUsed=!!o.used;
+      if(_resetSnoozeTimer)clearTimeout(_resetSnoozeTimer);
+      _resetSnoozeTimer=setTimeout(()=>{if(aP&&!dieseWocheReset(aP))openWochenresetZwang();},Math.max(0,o.until-Date.now()));
+    } else if(o.used){
+      _resetSnoozeUsed=true;
+      _resetSnoozeUntil=0;
+    }
+    window._wrGutSnooze=o.gut||'';
+    window._wrBlockiertSnooze=o.blockiert||'';
+  }catch(e){}
+}
+function _snoozePersist(gut,blockiert){
+  if(!aP)return;
+  try{
+    localStorage.setItem(_snoozeKey(),JSON.stringify({
+      until:_resetSnoozeUntil,used:_resetSnoozeUsed,
+      gut:gut||window._wrGutSnooze||'',blockiert:blockiert||window._wrBlockiertSnooze||''
+    }));
+  }catch(e){}
+}
+function _snoozeClear(){
+  if(!aP)return;
+  try{localStorage.removeItem(_snoozeKey());}catch(e){}
+  window._wrGutSnooze='';window._wrBlockiertSnooze='';
+}
 function dieseWocheReset(pid){
   const{kw,jahr}=getKW();
   return(S.wochenresets||[]).find(r=>String(r.pid)===String(pid)&&r.kw===kw&&r.jahr===jahr);
@@ -436,7 +471,7 @@ function checkP1Done(pid){
 }
 
 let S={personen:[],teams:[],ziele:[],aufgaben:[],kpiVals:{},kpiValsMonth:{},kpiValsWeek:{},checkins:{},kpiToday:{},signale:[],wochenresets:[],beobachtungen:[],kontext:[],kalender:[],decisionRequests:[],meetings:[],paddelGewinner:[]};
-let aP=null,realMe=null,aV='tag',timIv=null,_selPrio=null,_resetZwang=false;
+let aP=null,realMe=null,aV='tag',timIv=null,_selPrio=null,_resetZwang=false,_resetSnoozeUntil=0,_resetSnoozeUsed=false,_resetSnoozeTimer=null;
 let _kid=Date.now();
 const nid=p=>p+(++_kid);
 
@@ -1693,6 +1728,10 @@ async function saveWochenreset(){
   window._noOverlayClose=false;
   window._wrBlockiertZwang='';
   window._wrGutZwang='';
+  _resetSnoozeUsed=false;
+  _resetSnoozeUntil=0;
+  if(_resetSnoozeTimer){clearTimeout(_resetSnoozeTimer);_resetSnoozeTimer=null;}
+  _snoozeClear();
   cm();render();
 }
 
@@ -1771,15 +1810,21 @@ function openWochenresetZwang(){
     sum+='</div>';
   }
   sum+='</div>';
+  const snoozeInfo=_resetSnoozeUsed
+    ?'<div style="font-size:11px;color:var(--t3);margin-bottom:10px;padding:6px 10px;background:var(--gray-bg);border-radius:6px">🔒 Dieses Fenster bleibt offen, bis du den Rückblick gemacht hast. (Snooze bereits verbraucht)</div>'
+    :'<div style="font-size:11px;color:var(--t3);margin-bottom:10px;padding:6px 10px;background:var(--gray-bg);border-radius:6px">🔒 Dieses Fenster bleibt offen, bis du den Rückblick gemacht oder 1× verschoben hast.</div>';
+  const snoozeBtn=_resetSnoozeUsed?'':'<button class="btn btn-gr" onclick="snoozeReset()" style="margin-right:auto">⏱ In 30 Min</button>';
   document.getElementById('mb').innerHTML=
     '<div class="mt">📋 Wochenrückblick KW '+kw+'</div>'
-    +'<div style="font-size:12px;color:var(--t2);margin-bottom:14px">Nimm dir 2 Minuten — dann geht es weiter mit KW '+(kw+1)+'.</div>'
+    +'<div style="font-size:12px;color:var(--t2);margin-bottom:10px">Nimm dir 2 Minuten — dann geht es weiter mit KW '+(kw+1)+'.</div>'
+    +snoozeInfo
     +sum
     +'<div class="fl"><label>🟢 Was lief gut — oder hat Schwung gegeben? <span style="font-weight:400;color:var(--t2)">(optional)</span></label>'
-    +'<textarea id="wr-gut-s1" rows="2" style="width:100%;padding:8px;border:1px solid var(--bd);border-radius:8px;font-family:inherit;font-size:13px;resize:vertical" placeholder="Dein größter Win, ein Moment der Energie gemacht hat…"></textarea></div>'
+    +'<textarea id="wr-gut-s1" rows="2" style="width:100%;padding:8px;border:1px solid var(--bd);border-radius:8px;font-family:inherit;font-size:13px;resize:vertical" placeholder="Dein größter Win, ein Moment der Energie gemacht hat…">'+esc(window._wrGutSnooze||'')+'</textarea></div>'
     +'<div class="fl"><label>⚡ Was hat gebremst? <span style="font-weight:400;color:var(--t2)">(optional)</span></label>'
-    +'<textarea id="wr-blockiert-s1" rows="2" style="width:100%;padding:8px;border:1px solid var(--bd);border-radius:8px;font-family:inherit;font-size:13px;resize:vertical" placeholder="Äußere Hindernisse, fehlende Infos, eigene Energie…"></textarea></div>'
-    +'<div class="mf" style="justify-content:flex-end">'
+    +'<textarea id="wr-blockiert-s1" rows="2" style="width:100%;padding:8px;border:1px solid var(--bd);border-radius:8px;font-family:inherit;font-size:13px;resize:vertical" placeholder="Äußere Hindernisse, fehlende Infos, eigene Energie…">'+esc(window._wrBlockiertSnooze||'')+'</textarea></div>'
+    +'<div class="mf">'
+    +snoozeBtn
     +'<button class="btn btn-dk" onclick="wrZurPlanung()" style="min-width:180px">Weiter zur Planung →</button>'
     +'</div>';
   document.getElementById('ovl').classList.add('open');
@@ -1993,6 +2038,7 @@ function tryLogin(){
   if(pinIn===(p.pin||'0000')){
     aP=loginSel;realMe=loginSel;
     try{localStorage.setItem('h_session',JSON.stringify({pid:loginSel,ts:Date.now()}));}catch(e){}
+    _snoozeLoad();
     document.getElementById('login-screen').style.display='none';
     document.getElementById('app').style.display='flex';
     updateBadge();render();startSonderPoller();startDataPoller();handleDeepLink();checkDeepLink();
@@ -2150,7 +2196,26 @@ function render(){
 function checkResetZwang(){
   if(!aP||_resetZwang)return;
   if(!isResetZeit()||dieseWocheReset(aP))return;
+  if(Date.now()<_resetSnoozeUntil)return;
   openWochenresetZwang();
+}
+function snoozeReset(){
+  if(_resetSnoozeUsed)return;
+  // Aktuell getippte Werte retten
+  const gut=document.getElementById('wr-gut-s1')?.value||'';
+  const blockiert=document.getElementById('wr-blockiert-s1')?.value||'';
+  window._wrGutSnooze=gut;
+  window._wrBlockiertSnooze=blockiert;
+  _resetSnoozeUsed=true;
+  _resetSnoozeUntil=Date.now()+30*60*1000;
+  _snoozePersist(gut,blockiert);
+  _resetZwang=false;
+  window._noOverlayClose=false;
+  cm();
+  toast('⏱ Rückblick in 30 Min — dann geht\'s los.');
+  if(_resetSnoozeTimer)clearTimeout(_resetSnoozeTimer);
+  _resetSnoozeTimer=setTimeout(()=>{if(aP&&!dieseWocheReset(aP))openWochenresetZwang();},30*60*1000);
+  render();
 }
 
 function rSB(){
@@ -2341,6 +2406,38 @@ function rWoche(){
   const tagN=['Mo','Di','Mi','Do','Fr','Sa'];
   const myA=S.aufgaben.filter(a=>String(a.pid)===String(aP)&&canSee(a));
   let out='<div style="font-size:16px;font-weight:700;margin-bottom:20px">Meine Woche · KW '+kw+'</div>';
+
+  // ── Rückblick-Ankündigung (Freitag ab 12:00 · Sa · So) ──
+  if(isResetAnkuendigung()&&!dieseWocheReset(aP)){
+    const n=new Date();
+    const dow=n.getDay(); // 5=Fr 6=Sa 0=So
+    const istJetzt=isResetZeit();
+    const snoozeAktiv=Date.now()<_resetSnoozeUntil;
+    if(snoozeAktiv){
+      const restMin=Math.ceil((_resetSnoozeUntil-Date.now())/60000);
+      out+='<button onclick="openWochenresetZwang()" style="width:100%;background:var(--amber-bg);border:1px solid var(--amber-bd);border-left:3px solid var(--amber);border-radius:0 10px 10px 0;padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;gap:10px;cursor:pointer;font-family:inherit;text-align:left">';
+      out+='<span style="font-size:18px">⏱</span>';
+      out+='<div style="flex:1"><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--amber)">Rückblick verschoben</div>';
+      out+='<div style="font-size:13px;color:var(--text)">Kommt in ca. '+restMin+' Min wieder — oder jetzt starten.</div></div>';
+      out+='<span style="font-size:12px;color:var(--amber);font-weight:700">→</span>';
+      out+='</button>';
+    } else if(istJetzt){
+      const dringlich=(dow===0)?'Sonntag — letzte Chance, bevor die Woche endet.':(dow===6?'Jetzt am Wochenende erledigen, bevor die neue Woche startet.':'Jetzt 2 Minuten Zeit nehmen. Pflicht-Fenster ist offen.');
+      out+='<button onclick="openWochenresetZwang()" style="width:100%;background:var(--red-bg);border:1px solid var(--red-bd);border-left:3px solid var(--red);border-radius:0 10px 10px 0;padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;gap:10px;cursor:pointer;font-family:inherit;text-align:left">';
+      out+='<span style="font-size:18px">📋</span>';
+      out+='<div style="flex:1"><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--red)">Rückblick fällig</div>';
+      out+='<div style="font-size:13px;color:var(--text)">'+dringlich+'</div></div>';
+      out+='<span style="font-size:12px;color:var(--red);font-weight:700">→</span>';
+      out+='</button>';
+    } else {
+      out+='<button onclick="openWochenresetZwang()" style="width:100%;background:var(--blue-bg);border:1px solid var(--blue-bd);border-left:3px solid var(--blue);border-radius:0 10px 10px 0;padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;gap:10px;cursor:pointer;font-family:inherit;text-align:left">';
+      out+='<span style="font-size:18px">📅</span>';
+      out+='<div style="flex:1"><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--blue)">Heute ist Rückblick-Tag</div>';
+      out+='<div style="font-size:13px;color:var(--text)">Ab 16:00 kommt ein Pflicht-Fenster — jetzt freiwillig starten?</div></div>';
+      out+='<span style="font-size:12px;color:var(--blue);font-weight:700">→</span>';
+      out+='</button>';
+    }
+  }
 
   // ── Firmen-Fokus ──
   const fokusZ=S.ziele.find(z=>z.focus);
@@ -6618,7 +6715,7 @@ window.addEventListener('keydown',e=>{
     if(raw){
       const s=JSON.parse(raw);
       if(s&&s.ts&&Date.now()-s.ts<30*24*60*60*1000&&person(s.pid)){
-        aP=s.pid;realMe=s.pid;
+        aP=s.pid;realMe=s.pid;_snoozeLoad();
         const ls=document.getElementById('login-screen'),ap=document.getElementById('app');
         if(ls)ls.style.display='none';
         if(ap)ap.style.display='flex';
