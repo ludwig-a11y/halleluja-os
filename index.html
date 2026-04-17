@@ -1513,8 +1513,10 @@ function openWochenreset(){
     +zwangBlockiertInput
     +(_resetZwang?'':summaryHtml)
     +(rueckblickHtml?'<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px">'+rueckblickHtml+'</div>':'')
-    +(!wr&&!_resetZwang?'<div class="fl"><label>Warum die Lücke? <span style="font-weight:400;color:var(--t2)">(optional)</span></label>'
-    +'<textarea id="wr-blockiert" rows="2" style="width:100%;padding:8px;border:1px solid var(--bd);border-radius:8px;font-family:inherit;font-size:13px;resize:vertical" placeholder="z.B. Leads brauchten mehr Entscheidungszeit…"></textarea></div>'
+    +(!wr&&!_resetZwang?'<div class="fl"><label>🟢 Was lief gut? <span style="font-weight:400;color:var(--t2)">(optional)</span></label>'
+    +'<textarea id="wr-gut" rows="2" style="width:100%;padding:8px;border:1px solid var(--bd);border-radius:8px;font-family:inherit;font-size:13px;resize:vertical" placeholder="Dein größter Win, ein Moment der Energie gemacht hat…"></textarea></div>'
+    +'<div class="fl"><label>⚡ Was hat gebremst? <span style="font-weight:400;color:var(--t2)">(optional)</span></label>'
+    +'<textarea id="wr-blockiert" rows="2" style="width:100%;padding:8px;border:1px solid var(--bd);border-radius:8px;font-family:inherit;font-size:13px;resize:vertical" placeholder="Äußere Hindernisse, fehlende Infos, eigene Energie…"></textarea></div>'
     +'<div style="border-top:1px solid var(--bd);margin:13px 0"></div>':'')
 
     // ── Step 1: Fokus-Ziel ──
@@ -1647,6 +1649,7 @@ async function saveWochenreset(){
   const rec={
     id:'wr-'+String(aP)+'-'+kw+'-'+jahr,
     pid:aP,kw,jahr,
+    lief_gut:(document.getElementById('wr-gut')?.value.trim()||window._wrGutZwang||''),
     blockiert:(document.getElementById('wr-hindernis')?.value.trim()||document.getElementById('wr-blockiert')?.value.trim()||''),
     wenn_dann:(document.getElementById('wr-wenndann')?.value.trim()||''),
     focus_ziel_id:zielId,
@@ -1662,6 +1665,7 @@ async function saveWochenreset(){
   _resetZwang=false;
   window._noOverlayClose=false;
   window._wrBlockiertZwang='';
+  window._wrGutZwang='';
   cm();render();
 }
 
@@ -1719,8 +1723,10 @@ function openWochenresetZwang(){
     '<div class="mt">📋 Wochenrückblick KW '+kw+'</div>'
     +'<div style="font-size:12px;color:var(--t2);margin-bottom:14px">Nimm dir 2 Minuten — dann geht es weiter mit KW '+(kw+1)+'.</div>'
     +sum
-    +'<div class="fl"><label>Warum die Lücke? <span style="font-weight:400;color:var(--t2)">(optional)</span></label>'
-    +'<textarea id="wr-blockiert-s1" rows="2" style="width:100%;padding:8px;border:1px solid var(--bd);border-radius:8px;font-family:inherit;font-size:13px;resize:vertical" placeholder="z.B. Leads brauchten mehr Entscheidungszeit…"></textarea></div>'
+    +'<div class="fl"><label>🟢 Was lief gut — oder hat Schwung gegeben? <span style="font-weight:400;color:var(--t2)">(optional)</span></label>'
+    +'<textarea id="wr-gut-s1" rows="2" style="width:100%;padding:8px;border:1px solid var(--bd);border-radius:8px;font-family:inherit;font-size:13px;resize:vertical" placeholder="Dein größter Win, ein Moment der Energie gemacht hat…"></textarea></div>'
+    +'<div class="fl"><label>⚡ Was hat gebremst? <span style="font-weight:400;color:var(--t2)">(optional)</span></label>'
+    +'<textarea id="wr-blockiert-s1" rows="2" style="width:100%;padding:8px;border:1px solid var(--bd);border-radius:8px;font-family:inherit;font-size:13px;resize:vertical" placeholder="Äußere Hindernisse, fehlende Infos, eigene Energie…"></textarea></div>'
     +'<div class="mf" style="justify-content:flex-end">'
     +'<button class="btn btn-dk" onclick="wrZurPlanung()" style="min-width:180px">Weiter zur Planung →</button>'
     +'</div>';
@@ -1728,6 +1734,7 @@ function openWochenresetZwang(){
 }
 function wrZurPlanung(){
   window._wrBlockiertZwang=document.getElementById('wr-blockiert-s1')?.value||'';
+  window._wrGutZwang=document.getElementById('wr-gut-s1')?.value||'';
   // Bestehende openWochenreset aufrufen — sie erkennt _resetZwang und passt Footer an
   openWochenreset();
 }

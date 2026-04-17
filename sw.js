@@ -1,5 +1,5 @@
 // Halleluja OS — Service Worker
-const CACHE = 'halleluja-v28';
+const CACHE = 'halleluja-v29';
 const SHELL = ['./'];
 
 // Install: cache the HTML shell
