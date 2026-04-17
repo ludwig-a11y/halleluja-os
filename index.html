@@ -436,7 +436,7 @@ function checkP1Done(pid){
 }
 
 let S={personen:[],teams:[],ziele:[],aufgaben:[],kpiVals:{},kpiValsMonth:{},kpiValsWeek:{},checkins:{},kpiToday:{},signale:[],wochenresets:[],beobachtungen:[],kontext:[],kalender:[],decisionRequests:[],meetings:[],paddelGewinner:[]};
-let aP=null,realMe=null,aV='tag',timIv=null,_selPrio=null;
+let aP=null,realMe=null,aV='tag',timIv=null,_selPrio=null,_resetZwang=false;
 let _kid=Date.now();
 const nid=p=>p+(++_kid);
 
@@ -1505,12 +1505,15 @@ function openWochenreset(){
   const andereAlle=[...andereZ,...andereBer];
   if(andereAlle.length){zieleHtml+='<details style="margin-top:6px"><summary style="font-size:11px;color:var(--t3);cursor:pointer;padding:4px 0">▸ Andere Ziele ('+andereAlle.length+')</summary><div style="margin-top:6px">'+andereAlle.map(zBtn).join('')+'</div></details>';}
 
-  const modalTitel=wr?'Big 3 bearbeiten — KW '+kw:(istRueckblick?'Wochenrückblick KW '+kw:'Wochenplanung KW '+nextKw);
+  const modalTitel=wr?'Big 3 bearbeiten — KW '+kw:(_resetZwang?'📅 KW '+(kw+1)+' planen':istRueckblick?'Wochenrückblick KW '+kw:'Wochenplanung KW '+nextKw);
+  // Im Zwang-Modus: Warum-Lücke kam aus Schritt 1, hier als hidden input
+  const zwangBlockiertInput=_resetZwang?'<input type="hidden" id="wr-blockiert" value="'+esc(window._wrBlockiertZwang||'')+'">':'';
   document.getElementById('mb').innerHTML=
     '<div class="mt">'+modalTitel+'</div>'
-    +summaryHtml
+    +zwangBlockiertInput
+    +(_resetZwang?'':summaryHtml)
     +(rueckblickHtml?'<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px">'+rueckblickHtml+'</div>':'')
-    +(!wr?'<div class="fl"><label>Warum die Lücke? <span style="font-weight:400;color:var(--t2)">(optional)</span></label>'
+    +(!wr&&!_resetZwang?'<div class="fl"><label>Warum die Lücke? <span style="font-weight:400;color:var(--t2)">(optional)</span></label>'
     +'<textarea id="wr-blockiert" rows="2" style="width:100%;padding:8px;border:1px solid var(--bd);border-radius:8px;font-family:inherit;font-size:13px;resize:vertical" placeholder="z.B. Leads brauchten mehr Entscheidungszeit…"></textarea></div>'
     +'<div style="border-top:1px solid var(--bd);margin:13px 0"></div>':'')
 
@@ -1542,8 +1545,9 @@ function openWochenreset(){
     +'<textarea id="wr-wenndann" rows="2" placeholder="Wenn das passiert, dann mache ich…" style="width:100%;padding:8px;border:1px solid var(--bd);border-radius:8px;font-family:inherit;font-size:13px;resize:vertical;box-sizing:border-box">'+esc(wr?.wenn_dann||'')+'</textarea>'
     +'</div></details>'
 
-    +'<div class="mf"><button class="btn btn-gr" onclick="cm()">Abbrechen</button>'
-    +'<button class="btn btn-dk" onclick="saveWochenreset()">Speichern</button></div>';
+    +(_resetZwang
+      ?'<div class="mf" style="justify-content:flex-end"><button class="btn btn-dk" onclick="saveWochenreset()" style="min-width:180px">Woche abschließen ✓</button></div>'
+      :'<div class="mf"><button class="btn btn-gr" onclick="cm()">Abbrechen</button><button class="btn btn-dk" onclick="saveWochenreset()">Speichern</button></div>');
   document.getElementById('ovl').classList.add('open');
   if(selZielId){
     updateWRTZSection();
@@ -1655,9 +1659,78 @@ async function saveWochenreset(){
   S.wochenresets=S.wochenresets.filter(r=>r.id!==rec.id);
   S.wochenresets.push(rec);
   await supa('wochenresets',{method:'POST',body:rec,prefer:'resolution=merge-duplicates,return=minimal'});
+  _resetZwang=false;
+  window._noOverlayClose=false;
+  window._wrBlockiertZwang='';
   cm();render();
 }
 
+function openWochenresetZwang(){
+  _resetZwang=true;
+  window._noOverlayClose=true;
+  const{kw}=getKW();
+  const{monday:_wrMon,sunday:_wrSun}=getWeekRange();
+  const wr=dieseWocheReset(aP);
+  // Erledigte diese Woche
+  const erlDW=S.aufgaben.filter(a=>{
+    if(a.pid!==aP||a.status!=='erledigt'||!a.updated_at)return false;
+    const dt=new Date(a.updated_at);if(isNaN(dt.getTime()))return false;
+    const d=localDate(dt);return d>=_wrMon&&d<=_wrSun;
+  });
+  const erlP1=erlDW.filter(a=>a.prio==='P1'),erlP2=erlDW.filter(a=>a.prio==='P2'),erlP3=erlDW.filter(a=>a.prio==='P3');
+  const offP1=S.aufgaben.filter(a=>a.pid===aP&&a.prio==='P1'&&a.status!=='erledigt'&&canSee(a));
+  let sum='<div style="background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:14px 16px;margin-bottom:16px">';
+  sum+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);margin-bottom:10px">📊 KW '+kw+' auf einen Blick</div>';
+  // Big 3
+  if(wr){
+    let b3='';
+    [1,2,3].forEach(n=>{
+      const txt=wrItemName(wr,n),done=wr['big3_'+n+'_done'];if(!txt)return;
+      b3+='<div style="display:flex;align-items:center;gap:8px;padding:3px 0">';
+      b3+='<div style="width:15px;height:15px;border-radius:4px;flex-shrink:0;display:flex;align-items:center;justify-content:center;'+(done?'background:var(--green);':'border:1.5px solid var(--bd)')+'">'+(done?'<span style="color:#fff;font-size:8px;font-weight:800">✓</span>':'')+'</div>';
+      b3+='<span style="font-size:12px;'+(done?'color:var(--t3);text-decoration:line-through':'color:var(--text)')+'">'+esc(txt)+'</span>';
+      b3+='</div>';
+    });
+    if(b3){sum+='<div style="font-size:10px;font-weight:700;color:var(--t2);margin-bottom:4px">Big 3</div>'+b3+'<div style="border-top:1px solid var(--bd);margin:10px 0"></div>';}
+  }
+  // Erledigte
+  if(erlDW.length){
+    sum+='<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:4px">';
+    sum+='<span style="font-size:13px;font-weight:700;color:var(--green)">✓ '+erlDW.length+' erledigt</span>';
+    if(erlP1.length)sum+='<span style="font-size:10px;padding:1px 6px;border-radius:99px;background:var(--red-bg);color:var(--red);font-weight:700">P1 ×'+erlP1.length+'</span>';
+    if(erlP2.length)sum+='<span style="font-size:10px;padding:1px 6px;border-radius:99px;background:var(--blue-bg);color:var(--blue);font-weight:700">P2 ×'+erlP2.length+'</span>';
+    if(erlP3.length)sum+='<span style="font-size:10px;padding:1px 6px;border-radius:99px;background:var(--gray-bg);color:var(--t3);font-weight:700">P3 ×'+erlP3.length+'</span>';
+    sum+='</div>';
+    erlP1.slice(0,4).forEach(a=>{sum+='<div style="font-size:11px;color:var(--t3);padding:1px 0 1px 10px">✓ '+esc(a.titel.length>54?a.titel.slice(0,54)+'…':a.titel)+'</div>';});
+    if(erlP1.length>4)sum+='<div style="font-size:10px;color:var(--t3);padding-left:10px">… '+(erlP1.length-4)+' weitere P1</div>';
+  } else {
+    sum+='<div style="font-size:12px;color:var(--t3)">Noch keine Aufgaben diese Woche abgeschlossen.</div>';
+  }
+  // Noch offene P1
+  if(offP1.length){
+    sum+='<div style="margin-top:8px;border-top:1px solid var(--bd);padding-top:8px">';
+    sum+='<span style="font-size:12px;font-weight:700;color:var(--orange)">⚠ '+offP1.length+' P1 noch offen</span>';
+    offP1.slice(0,3).forEach(a=>{sum+='<div style="font-size:11px;color:var(--orange);padding:1px 0 1px 10px">○ '+esc(a.titel.length>54?a.titel.slice(0,54)+'…':a.titel)+'</div>';});
+    if(offP1.length>3)sum+='<div style="font-size:10px;color:var(--orange);padding-left:10px">… '+(offP1.length-3)+' weitere</div>';
+    sum+='</div>';
+  }
+  sum+='</div>';
+  document.getElementById('mb').innerHTML=
+    '<div class="mt">📋 Wochenrückblick KW '+kw+'</div>'
+    +'<div style="font-size:12px;color:var(--t2);margin-bottom:14px">Nimm dir 2 Minuten — dann geht es weiter mit KW '+(kw+1)+'.</div>'
+    +sum
+    +'<div class="fl"><label>Warum die Lücke? <span style="font-weight:400;color:var(--t2)">(optional)</span></label>'
+    +'<textarea id="wr-blockiert-s1" rows="2" style="width:100%;padding:8px;border:1px solid var(--bd);border-radius:8px;font-family:inherit;font-size:13px;resize:vertical" placeholder="z.B. Leads brauchten mehr Entscheidungszeit…"></textarea></div>'
+    +'<div class="mf" style="justify-content:flex-end">'
+    +'<button class="btn btn-dk" onclick="wrZurPlanung()" style="min-width:180px">Weiter zur Planung →</button>'
+    +'</div>';
+  document.getElementById('ovl').classList.add('open');
+}
+function wrZurPlanung(){
+  window._wrBlockiertZwang=document.getElementById('wr-blockiert-s1')?.value||'';
+  // Bestehende openWochenreset aufrufen — sie erkennt _resetZwang und passt Footer an
+  openWochenreset();
+}
 function openBlocker(wrId){
   const wr=S.wochenresets.find(r=>r.id===wrId);if(!wr)return;
   document.getElementById('mb').innerHTML=
@@ -2010,6 +2083,15 @@ function render(){
   else if(aV==='woche')rWoche();
   else if(aV==='ziele')rZiele();
   else if(aV==='team')rTeam();
+  // Freitags-Pflicht: modal erst nach render() prüfen (DOM ready)
+  if(!document.getElementById('ovl')?.classList.contains('open')){
+    checkResetZwang();
+  }
+}
+function checkResetZwang(){
+  if(!aP||_resetZwang)return;
+  if(!isResetZeit()||dieseWocheReset(aP))return;
+  openWochenresetZwang();
 }
 
 function rSB(){
@@ -5743,6 +5825,7 @@ async function mdConfirm(){
 // ===== /MEETING DUMP =====
 
 function cm(){
+  if(_resetZwang)return; // Wochenrückblick muss abgeschlossen werden
   window._noOverlayClose=false;
   const ovl=document.getElementById('ovl');
   if(ovl)ovl.classList.remove('open');
