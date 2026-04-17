@@ -1480,6 +1480,57 @@ function getPerfectStreak(pid){
   }
   return streak;
 }
+// Momentum-Score: rollender 4-Wochen-Durchschnitt der Big-3-Integrität
+// Score = Σ(erledigt) / Σ(committed) × 100, nur über Wochen mit Commitments
+function getMomentumScore(pid){
+  const {kw,jahr}=getKW();
+  let done=0,total=0,weeks=0;
+  let curKw=kw,curJahr=jahr;
+  for(let i=0;i<4;i++){
+    const r=(S.wochenresets||[]).find(r=>String(r.pid)===String(pid)&&r.kw===curKw&&r.jahr===curJahr);
+    if(r){
+      const s=getWochenScore(r);
+      if(s.total>0){done+=s.done;total+=s.total;weeks++;}
+    }
+    curKw--;if(curKw<1){curKw=52;curJahr--;}
+  }
+  if(total===0)return{score:null,weeks:0,done:0,total:0};
+  return{score:Math.round(done/total*100),weeks,done,total};
+}
+function momentumFarbe(score){
+  if(score==null)return{bg:'var(--gray-bg)',tc:'var(--t2)',bd:'var(--bd)',label:'—'};
+  if(score>=90)return{bg:'var(--green-bg)',tc:'var(--green)',bd:'var(--green-bd)',label:'Elite'};
+  if(score>=75)return{bg:'var(--blue-bg)',tc:'var(--blue)',bd:'var(--blue-bd)',label:'Stark'};
+  if(score>=60)return{bg:'var(--amber-bg)',tc:'var(--amber)',bd:'var(--amber-bd)',label:'Okay'};
+  return{bg:'var(--red-bg)',tc:'var(--red)',bd:'var(--red-bd)',label:'Warnung'};
+}
+function momentumCardHtml(pid,compact){
+  const m=getMomentumScore(pid);
+  const streak=getPerfectStreak(pid);
+  const f=momentumFarbe(m.score);
+  const scoreTxt=m.score==null?'—':m.score;
+  const pct=m.score==null?0:Math.max(0,Math.min(100,m.score));
+  let h='<div style="background:var(--sf);border:1px solid '+f.bd+';border-left:3px solid '+f.tc+';border-radius:0 12px 12px 0;padding:14px 16px;margin-bottom:14px">';
+  h+='<div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px">';
+  h+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--t3)">⚡ Momentum</div>';
+  if(m.score!=null)h+='<div style="font-size:10px;font-weight:700;color:'+f.tc+'">'+f.label+'</div>';
+  h+='</div>';
+  h+='<div style="display:flex;align-items:baseline;gap:10px;margin-bottom:8px">';
+  h+='<span style="font-size:32px;font-weight:800;color:'+f.tc+';line-height:1">'+scoreTxt+'</span>';
+  if(m.score!=null)h+='<span style="font-size:12px;color:var(--t3)">/ 100</span>';
+  h+='</div>';
+  if(m.score!=null){
+    h+='<div style="height:6px;background:var(--gray-bg);border-radius:3px;overflow:hidden;margin-bottom:8px"><div style="height:100%;width:'+pct+'%;background:'+f.tc+';transition:width .4s"></div></div>';
+    h+='<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--t3)">';
+    h+='<span>'+m.done+'/'+m.total+' Big 3 · '+m.weeks+' '+(m.weeks===1?'Woche':'Wochen')+'</span>';
+    if(streak>=1)h+='<span style="color:'+f.tc+';font-weight:700">🔥 '+streak+(streak===1?' Perfect Week':' Perfect Weeks')+'</span>';
+    h+='</div>';
+  } else {
+    h+='<div style="font-size:12px;color:var(--t3)">Committe Big 3 und reflektiere — dann baut sich dein Momentum auf.</div>';
+  }
+  h+='</div>';
+  return h;
+}
 function openWochenreset(){
   const{kw,jahr}=getKW();
   const nextKw=kw;
@@ -1749,31 +1800,8 @@ function openWochenresetZwang(){
   });
   const erlP1=erlDW.filter(a=>a.prio==='P1'),erlP2=erlDW.filter(a=>a.prio==='P2'),erlP3=erlDW.filter(a=>a.prio==='P3');
   const offP1=S.aufgaben.filter(a=>a.pid===aP&&a.prio==='P1'&&a.status!=='erledigt'&&canSee(a));
-  // Heroic Score Karte
-  const score=getWochenScore(wr);
-  const streak=getPerfectStreak(aP);
-  let scoreCard='';
-  if(wr&&score.total>0){
-    const stars='⭐'.repeat(score.done)+'☆'.repeat(Math.max(0,score.total-score.done));
-    scoreCard+='<div style="background:linear-gradient(135deg,#1a1a2e,#2d1b4e);color:#fff;border-radius:14px;padding:16px 18px;margin-bottom:14px">';
-    scoreCard+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;opacity:.6">💪 Heroic Score · KW '+kw+'</span></div>';
-    scoreCard+='<div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">';
-    scoreCard+='<div style="font-size:22px;letter-spacing:2px">'+stars+'</div>';
-    scoreCard+='<div style="font-size:14px;font-weight:700">'+score.done+'/'+score.total+' Big 3</div>';
-    scoreCard+='</div>';
-    if(score.perfect)scoreCard+='<div style="display:inline-block;padding:3px 10px;border-radius:99px;background:linear-gradient(90deg,#fbbf24,#f59e0b);color:#1a1a2e;font-size:11px;font-weight:800;margin-right:6px">🏆 Perfect Week</div>';
-    if(streak>=2)scoreCard+='<div style="display:inline-block;padding:3px 10px;border-radius:99px;background:rgba(251,146,60,.25);color:#fdba74;font-size:11px;font-weight:700">🔥 '+streak+' Wochen in Folge</div>';
-    scoreCard+='<div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.1);display:flex;align-items:baseline;gap:6px">';
-    scoreCard+='<span style="font-size:24px;font-weight:800;color:#fbbf24">+'+score.points+'</span>';
-    scoreCard+='<span style="font-size:11px;opacity:.6">Commitment Points</span>';
-    if(score.perfect)scoreCard+='<span style="font-size:10px;opacity:.5;margin-left:auto">'+score.done+' × 1 + 2 Perfect-Bonus</span>';
-    scoreCard+='</div>';
-    scoreCard+='</div>';
-  } else if(!wr){
-    scoreCard+='<div style="background:var(--gray-bg);border:1.5px dashed var(--bd);border-radius:12px;padding:12px 16px;margin-bottom:14px;text-align:center">';
-    scoreCard+='<div style="font-size:12px;color:var(--t2)">💪 Noch kein Score — du hattest keine Big 3 für diese Woche committet.</div>';
-    scoreCard+='</div>';
-  }
+  // Momentum-Score Karte (ersetzt alten Heroic Score)
+  const scoreCard=momentumCardHtml(aP);
   let sum=scoreCard+'<div style="background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:14px 16px;margin-bottom:16px">';
   sum+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);margin-bottom:10px">📊 KW '+kw+' auf einen Blick</div>';
   // Big 3
@@ -2440,6 +2468,9 @@ function rWoche(){
       out+='</button>';
     }
   }
+
+  // ── Momentum-Score ──
+  out+=momentumCardHtml(aP);
 
   // ── Firmen-Fokus ──
   const fokusZ=S.ziele.find(z=>z.focus);
