@@ -1481,32 +1481,34 @@ function getPerfectStreak(pid){
   }
   return streak;
 }
-// Momentum-Score: rollender 4-Wochen-Score
-// Brian-Johnson-Logik: verfehlte Wochen zählen als Verlust (0/3),
-// aber NUR ab der ersten je committeten Woche (kein Strafzins für Neu-User).
+// Momentum-Score: 50er-Floor-Formel (Brian-Johnson-inspiriert)
+// score = 50 + (done - missed_big3) / 12 × 50
+// → Neutral startet bei 50, 4 Perfect Weeks in Folge = 100, 4 verfehlte Wochen = 0
+// Verfehlte Wochen (ohne wochenreset) zählen als 3 missed, aber erst ab erstem Commitment.
 function getMomentumScore(pid){
   const {kw,jahr}=getKW();
   const eigeneWr=(S.wochenresets||[]).filter(r=>String(r.pid)===String(pid));
-  if(!eigeneWr.length)return{score:null,weeks:0,done:0,total:0,missed:0};
-  // Ältester Eintrag bestimmt Start-Zeitpunkt (als absolute Wochen-Nummer)
+  if(!eigeneWr.length)return{score:null,weeks:0,done:0,missedBig3:0,missedWeeks:0};
   const wkNum=(k,j)=>j*53+k;
   const firstWk=Math.min(...eigeneWr.map(r=>wkNum(r.kw,r.jahr)));
-  let done=0,total=0,weeks=0,missed=0;
+  let done=0,weeks=0,missedBig3=0,missedWeeks=0,committedBig3=0;
   let curKw=kw,curJahr=jahr;
   for(let i=0;i<4;i++){
-    if(wkNum(curKw,curJahr)<firstWk)break; // vor erstem Commitment: nicht zählen
+    if(wkNum(curKw,curJahr)<firstWk)break;
     const r=eigeneWr.find(r=>r.kw===curKw&&r.jahr===curJahr);
     if(r){
       const s=getWochenScore(r);
-      if(s.total>0){done+=s.done;total+=s.total;weeks++;}
+      if(s.total>0){done+=s.done;committedBig3+=s.total;missedBig3+=(s.total-s.done);weeks++;}
     } else {
-      // Verfehlte Woche (nach Start): zählt als 0/3 Vollverlust
-      total+=3;missed++;
+      missedWeeks++;missedBig3+=3;
     }
     curKw--;if(curKw<1){curKw=52;curJahr--;}
   }
-  if(total===0)return{score:null,weeks:0,done:0,total:0,missed:0};
-  return{score:Math.round(done/total*100),weeks,done,total,missed};
+  if(weeks===0&&missedWeeks===0)return{score:null,weeks:0,done:0,missedBig3:0,missedWeeks:0};
+  // Floor-Formel: 50 + (done - missed)/12 × 50, geclamped auf 0-100
+  const raw=50+(done-missedBig3)/12*50;
+  const score=Math.max(0,Math.min(100,Math.round(raw)));
+  return{score,weeks,done,committedBig3,missedBig3,missedWeeks};
 }
 function momentumFarbe(score){
   if(score==null)return{bg:'var(--gray-bg)',tc:'var(--t2)',bd:'var(--bd)',label:'—'};
@@ -1515,7 +1517,28 @@ function momentumFarbe(score){
   if(score>=60)return{bg:'var(--amber-bg)',tc:'var(--amber)',bd:'var(--amber-bd)',label:'Okay'};
   return{bg:'var(--red-bg)',tc:'var(--red)',bd:'var(--red-bd)',label:'Warnung'};
 }
-function momentumCardHtml(pid,compact){
+// Kompaktes Ring-Badge (Woche-Tab) — klein, klickbar, öffnet Info-Modal
+function momentumRingHtml(pid){
+  const m=getMomentumScore(pid);
+  const streak=getPerfectStreak(pid);
+  const f=momentumFarbe(m.score);
+  const scoreTxt=m.score==null?'—':m.score;
+  const pct=m.score==null?0:Math.max(0,Math.min(100,m.score));
+  const deg=Math.round(pct/100*360);
+  const ringBg=m.score==null?'var(--gray-bg)':'conic-gradient('+f.tc+' 0deg '+deg+'deg, var(--gray-bg) '+deg+'deg 360deg)';
+  let h='<button onclick="openMomentumInfo()" title="Momentum-Score" style="position:relative;width:72px;height:72px;border-radius:50%;border:none;padding:0;background:'+ringBg+';cursor:pointer;flex-shrink:0;font-family:inherit">';
+  h+='<span style="position:absolute;inset:6px;border-radius:50%;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0">';
+  h+='<span style="font-size:20px;font-weight:800;color:'+f.tc+';line-height:1">'+scoreTxt+'</span>';
+  h+='<span style="font-size:8px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-top:2px">Momentum</span>';
+  h+='</span>';
+  if(streak>=1){
+    h+='<span style="position:absolute;top:-4px;right:-4px;background:'+f.tc+';color:#fff;font-size:10px;font-weight:800;border-radius:99px;padding:2px 6px;line-height:1;border:2px solid var(--bg)">🔥'+streak+'</span>';
+  }
+  h+='</button>';
+  return h;
+}
+// Volle Karte (Rückblick-Modal): mehr Detail
+function momentumCardHtml(pid){
   const m=getMomentumScore(pid);
   const streak=getPerfectStreak(pid);
   const f=momentumFarbe(m.score);
@@ -1535,8 +1558,8 @@ function momentumCardHtml(pid,compact){
   if(m.score!=null){
     h+='<div style="height:6px;background:var(--gray-bg);border-radius:3px;overflow:hidden;margin-bottom:8px"><div style="height:100%;width:'+pct+'%;background:'+f.tc+';transition:width .4s"></div></div>';
     h+='<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--t3)">';
-    let metaL=m.done+'/'+m.total+' Big 3 · '+m.weeks+' '+(m.weeks===1?'Woche':'Wochen');
-    if(m.missed>0)metaL+=' · '+m.missed+' verfehlt';
+    let metaL=m.done+' erledigt · '+m.weeks+' '+(m.weeks===1?'Woche':'Wochen');
+    if(m.missedWeeks>0)metaL+=' · '+m.missedWeeks+' verfehlt';
     h+='<span>'+metaL+'</span>';
     if(streak>=1)h+='<span style="color:'+f.tc+';font-weight:700">🔥 '+streak+(streak===1?' Perfect Week':' Perfect Weeks')+'</span>';
     h+='</div>';
@@ -1574,8 +1597,9 @@ function openMomentumInfo(){
     +'<div style="font-size:12px;color:var(--t3);margin-bottom:12px"><i>Beispiele:</i> „Angebot Kunde X — versendet", „3 Discovery-Calls geführt", „Landing-Page v2 live"</div>'
 
     +'<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);margin-bottom:4px">Wie wird berechnet?</div>'
-    +'<div style="margin-bottom:6px">Rollender Durchschnitt der letzten 4 Wochen:</div>'
-    +'<div style="padding:8px 12px;background:var(--gray-bg);border-radius:6px;font-family:monospace;font-size:12px;margin-bottom:12px">erledigte Big 3 ÷ committete Big 3 × 100</div>'
+    +'<div style="margin-bottom:6px">Rollend über die letzten 4 Wochen, gestartet bei 50 (neutral):</div>'
+    +'<div style="padding:8px 12px;background:var(--gray-bg);border-radius:6px;font-family:monospace;font-size:12px;margin-bottom:6px">50 + (erledigt − verfehlt) ÷ 12 × 50</div>'
+    +'<div style="font-size:12px;color:var(--t2);margin-bottom:12px">• 4 Perfect Weeks in Folge = 100<br>• 4 verfehlte Wochen = 0<br>• Verfehlte Woche zählt als 3× missed (Vollverlust)</div>'
 
     +'<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);margin-bottom:4px">Skala</div>'
     +'<div style="display:flex;flex-direction:column;gap:3px;margin-bottom:12px;font-size:12px">'
@@ -2558,7 +2582,7 @@ function rWoche(){
   const tage=wochenTage();
   const tagN=['Mo','Di','Mi','Do','Fr','Sa'];
   const myA=S.aufgaben.filter(a=>String(a.pid)===String(aP)&&canSee(a));
-  let out='<div style="font-size:16px;font-weight:700;margin-bottom:20px">Meine Woche · KW '+kw+'</div>';
+  let out='<div style="display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:20px"><div style="font-size:16px;font-weight:700">Meine Woche · KW '+kw+'</div>'+momentumRingHtml(aP)+'</div>';
 
   // ── Rückblick-Ankündigung (Freitag ab 12:00 · Sa · So) ──
   if(isResetAnkuendigung()&&!dieseWocheReset(aP)){
@@ -2591,9 +2615,6 @@ function rWoche(){
       out+='</button>';
     }
   }
-
-  // ── Momentum-Score ──
-  out+=momentumCardHtml(aP);
 
   // ── Firmen-Fokus ──
   const fokusZ=S.ziele.find(z=>z.focus);
