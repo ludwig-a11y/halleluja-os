@@ -3704,17 +3704,6 @@ async function toggleBig3(wrId,field){
   if(wr[field]){const n=field.replace('_done','');const txt=wrItemName(wr,parseInt(n.slice(-1)));if(txt)notify('big3_erledigt',{big3:txt,kw:getKW().kw});}
   if(aV==='woche')rWoche();else rTag();
 }
-function toggleHeuteWeitere(){
-  const el=document.getElementById('heute-weitere-body');
-  const btn=document.getElementById('heute-weitere-btn');
-  if(!el)return;
-  const open=el.style.display!=='none';
-  el.style.display=open?'none':'block';
-  if(!isLead())localStorage.setItem('heute_weitere_open_'+aP,open?'0':'1');
-  const arr=btn?.querySelector('span span:last-child');
-  if(arr)arr.textContent=open?'▼':'▲';
-}
-
 function rWoche(){
   const{kw}=getKW();
   const wr=dieseWocheReset(aP);
@@ -4273,11 +4262,6 @@ function rTag(){
     }
   }
 
-  // Vorab definieren (werden auch im Weiteres-Toggle-Count gebraucht)
-  const weitere=bl.filter(a=>a.id!==naechste?.id);
-  const mitZiel=weitere.filter(a=>a.ziel_id&&!istBereich(a.ziel_id));
-  const ohneZiel=weitere.filter(a=>!a.ziel_id||istBereich(a.ziel_id));
-
   // ── "Fixes heute" — ganz oben, damit keine Termine übersehen werden ──
   out+=rFixesHeute(aP);
 
@@ -4656,8 +4640,6 @@ function rTag(){
   out+='<div style="text-align:center;padding:8px 0 4px">';
   out+='<button onclick="openBeobachtung()" style="font-size:12px;padding:7px 16px;border-radius:8px;border:1px solid var(--bd);background:var(--gray-bg);color:var(--t2);cursor:pointer;font-family:inherit">💬 Beobachtung erfassen</button>';
   out+='</div>';
-
-  // (Ende des früheren #heute-weitere-body — Wrapper ist weg)
 
   out+=rInbox(aP);
   out+=rMorgenPreview(aP);
