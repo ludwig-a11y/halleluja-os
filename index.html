@@ -1323,6 +1323,97 @@ function rMorgenPreview(pid){
   h+='</details>';
   return h;
 }
+
+// ─── DEADLINE-ALARM (Konzept A) ─────────────────────────────────
+// Aufgaben mit dl<=TODAY, die NICHT als Ergebnisvorhaben sichtbar sind.
+// Deadline = Commitment, unabhängig von Priorität.
+function rDeadlineAlarm(pid){
+  const wr=dieseWocheReset(pid);
+  const big3TzIds=new Set();
+  if(wr){[1,2,3].forEach(n=>{const t=wr['big3_'+n+'_tz_id'];if(t)big3TzIds.add(String(t));});}
+  const overdue=S.aufgaben.filter(a=>
+    String(a.pid)===String(pid)&&
+    a.dl&&a.dl<=TODAY&&
+    !['erledigt','zurueckgegeben','archiviert','backlog'].includes(a.status)&&
+    !(a.teilzielId&&big3TzIds.has(String(a.teilzielId)))
+  ).sort((a,b)=>(a.dl||'').localeCompare(b.dl||''));
+  if(!overdue.length)return'';
+  let h='<div style="background:var(--red-bg);border:1.5px solid var(--red);border-radius:14px;padding:12px 14px;margin-bottom:14px">';
+  h+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">';
+  h+='<span style="font-size:15px">🚨</span>';
+  h+='<span style="font-size:13px;font-weight:700;color:var(--red)">Deadline heute/überfällig</span>';
+  h+='<span style="margin-left:auto;background:var(--red);color:#fff;font-size:10px;font-weight:700;padding:2px 9px;border-radius:99px">'+overdue.length+'</span>';
+  h+='</div>';
+  overdue.forEach(a=>{
+    const dlD=new Date(a.dl+'T12:00:00');
+    const dlStr=a.dl===TODAY?'heute':dlD.getDate()+'.'+(dlD.getMonth()+1)+'.';
+    const isUeber=a.dl<TODAY;
+    const prioCol=a.prio==='P1'?'var(--red)':a.prio==='P2'?'var(--gold-t)':'var(--t3)';
+    h+='<div style="background:var(--sf);border:1px solid var(--red-bd);border-radius:10px;padding:9px 12px;margin-bottom:6px;display:flex;align-items:center;gap:10px">';
+    h+='<span style="font-size:10px;font-weight:700;color:var(--red);white-space:nowrap;min-width:52px">'+(isUeber?'⚠ ':'')+dlStr+'</span>';
+    if(a.prio)h+='<span style="font-size:10px;font-weight:700;color:'+prioCol+';white-space:nowrap">'+a.prio+'</span>';
+    h+='<span style="flex:1;font-size:13px;font-weight:600;cursor:pointer;overflow:hidden;text-overflow:ellipsis" onclick="openDetail(\''+a.id+'\')">'+esc(a.titel)+'</span>';
+    h+='<button onclick="erledigenA(\''+a.id+'\')" style="flex-shrink:0;font-size:11px;padding:6px 10px;border-radius:8px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);cursor:pointer;font-family:inherit" title="Erledigen">✓</button>';
+    h+='</div>';
+  });
+  h+='</div>';
+  return h;
+}
+
+// ─── CLEANUP (Konzept B) ────────────────────────────────────────
+// Aufgaben ohne Meilenstein, sichtbar ab konfigurierbarer Uhrzeit (min 15:00).
+// "Fokus endet. Jetzt aufräumen." Zählt nicht fürs Paddel.
+function rCleanup(pid){
+  const cfgKey='cleanup_start_'+pid;
+  const startH=Math.max(15,parseInt(localStorage.getItem(cfgKey)||'15',10));
+  const nowH=new Date().getHours();
+  if(nowH<startH)return'';
+  const items=S.aufgaben.filter(a=>
+    String(a.pid)===String(pid)&&
+    !a.teilzielId&&
+    !['erledigt','zurueckgegeben','archiviert'].includes(a.status)&&
+    a.inboxStatus!=='neu'
+  ).sort((a,b)=>{
+    const po={'P1':0,'P2':1,'P3':2};
+    return (po[a.prio]??3)-(po[b.prio]??3);
+  });
+  if(!items.length)return'';
+  let h='<div style="background:var(--sf);border:1.5px solid var(--bd);border-radius:14px;padding:12px 14px;margin-bottom:14px">';
+  h+='<div style="display:flex;align-items:center;gap:8px">';
+  h+='<span style="font-size:15px">🧹</span>';
+  h+='<span style="font-size:13px;font-weight:700">Cleanup ab '+startH+':00</span>';
+  h+='<span style="background:var(--gray-bg);color:var(--t2);font-size:10px;font-weight:700;padding:2px 9px;border-radius:99px">'+items.length+'</span>';
+  h+='<button onclick="toggleCleanupSettings()" style="margin-left:auto;background:none;border:none;cursor:pointer;font-size:14px;color:var(--t3);padding:4px" title="Startzeit ändern">⚙</button>';
+  h+='</div>';
+  h+='<div id="cleanup-settings" style="display:none;padding:8px 0 6px;margin-top:8px;border-top:1px solid var(--bd)">';
+  h+='<div style="font-size:11px;color:var(--t2);margin-bottom:6px">Cleanup-Pille erscheint ab:</div>';
+  h+='<div style="display:flex;gap:6px;flex-wrap:wrap">';
+  [15,16,17,18].forEach(h2=>{
+    const sel=h2===startH;
+    h+='<button onclick="setCleanupStart(\''+pid+'\','+h2+')" style="font-size:11px;padding:5px 12px;border-radius:7px;border:1px solid '+(sel?'var(--inv)':'var(--bd)')+';background:'+(sel?'var(--inv)':'var(--sf)')+';color:'+(sel?'var(--inv-t)':'var(--t2)')+';cursor:pointer;font-family:inherit;font-weight:'+(sel?'700':'500')+'">'+h2+':00</button>';
+  });
+  h+='</div></div>';
+  h+='<div style="font-size:11px;color:var(--t3);margin:8px 0 10px">Fokus endet. Jetzt aufräumen — zählt nicht fürs Paddel.</div>';
+  items.forEach(a=>{
+    const prioCol=a.prio==='P1'?'var(--red)':a.prio==='P2'?'var(--gold-t)':'var(--t3)';
+    h+='<div style="background:var(--gray-bg);border:1px solid var(--bd);border-radius:10px;padding:9px 12px;margin-bottom:6px;display:flex;align-items:center;gap:10px">';
+    if(a.prio)h+='<span style="font-size:10px;font-weight:700;color:'+prioCol+';white-space:nowrap;min-width:18px">'+a.prio+'</span>';
+    h+='<span style="flex:1;font-size:13px;cursor:pointer;overflow:hidden;text-overflow:ellipsis" onclick="openDetail(\''+a.id+'\')">'+esc(a.titel)+'</span>';
+    h+='<button onclick="erledigenA(\''+a.id+'\')" style="flex-shrink:0;font-size:11px;padding:6px 10px;border-radius:8px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);cursor:pointer;font-family:inherit" title="Erledigen">✓</button>';
+    h+='</div>';
+  });
+  h+='</div>';
+  return h;
+}
+function toggleCleanupSettings(){
+  const el=document.getElementById('cleanup-settings');
+  if(el)el.style.display=el.style.display==='none'?'block':'none';
+}
+function setCleanupStart(pid,hour){
+  localStorage.setItem('cleanup_start_'+pid,String(hour));
+  render();
+}
+
 // ─── INBOX (End-of-Day Ritual) ──────────────────────────────────
 function rInbox(pid){
   const items=S.aufgaben.filter(a=>
@@ -4340,6 +4431,9 @@ function rTag(){
   // ── P1-KPIs direkt unter Ergebnisvorhaben ("⚡ Heute zählt") ──
   out+=rKpiBlock(aP,'p1');
 
+  // ── Deadline-Alarm: Commitments mit dl<=TODAY, die NICHT Ergebnisvorhaben sind ──
+  out+=rDeadlineAlarm(aP);
+
   // Team-kritische Sachen direkt sichtbar (kein Accordion mehr — Sam-Move)
 
   // (Wolken & Ideen moved into unified Inbox below)
@@ -4642,6 +4736,7 @@ function rTag(){
   out+='</div>';
 
   out+=rInbox(aP);
+  out+=rCleanup(aP);
   out+=rMorgenPreview(aP);
 
   document.getElementById('main').innerHTML=out;
