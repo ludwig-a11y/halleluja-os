@@ -1584,9 +1584,9 @@ function missPatternCardHtml(pid){
   const interpBd=d.dominant?'var(--orange-bd)':'var(--bd)';
   const interpColor=d.dominant?'var(--orange)':'var(--t2)';
   let h='<div style="background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:14px 16px;margin-bottom:14px">';
-  h+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">';
-  h+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3)">🔍 Dein Ausführungs-Muster</div>';
-  h+='<div style="font-size:10px;color:var(--t3)">'+d.total+' Aufgabe'+(d.total!==1?'n':'')+' mit Miss-Historie</div>';
+  h+='<div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px;gap:10px">';
+  h+='<div><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3)">🔍 Ausführungs-Muster · Leading Indicator</div><div style="font-size:10px;color:var(--t3);margin-top:2px;font-weight:500">Ergänzt Momentum: wie du mit Deadlines umgehst.</div></div>';
+  h+='<div style="font-size:10px;color:var(--t3);white-space:nowrap">'+d.total+' Aufgabe'+(d.total!==1?'n':'')+' mit Miss-Historie</div>';
   h+='</div>';
   h+=bars;
   h+='<div style="margin-top:10px;padding:8px 10px;background:'+interpBg+';border:1px solid '+interpBd+';border-radius:8px;font-size:11px;color:'+interpColor+';line-height:1.4">'+d.interpretation+'</div>';
@@ -3974,7 +3974,15 @@ function rTag(){
           const isAktiv=linkedTask.status==='aktiv';
           out+='<button onclick="'+(isAktiv?'focusModus(\''+linkedTask.id+'\')':'startenA(\''+linkedTask.id+'\')')+'" style="flex-shrink:0;padding:8px 16px;border-radius:9px;background:var(--inv);color:var(--inv-t);border:none;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap">'+(isAktiv?'🔥 Weiter':'▶ Los')+'</button>';
         } else {
-          const _nA=tzId?'{prio:\'P1\',teilzielId:\''+tzId+'\'}':'{prio:\'P1\'}';
+          let prefillTzId=tzId;
+          if(!prefillTzId&&wrAktuell.focus_ziel_id){
+            const fokusZ=S.ziele.find(z=>z.id===wrAktuell.focus_ziel_id);
+            if(fokusZ){
+              const activeMS=(fokusZ.teilziele||[]).filter(t=>!t.erledigt&&(t.status||'aktiv')==='aktiv').sort((a,b)=>(a.datum||'9999').localeCompare(b.datum||'9999'))[0];
+              if(activeMS)prefillTzId=activeMS.id;
+            }
+          }
+          const _nA=prefillTzId?'{prio:\'P1\',teilzielId:\''+prefillTzId+'\'}':'{prio:\'P1\'}';
           out+='<button onclick="openNeu('+_nA+')" style="flex-shrink:0;padding:8px 14px;border-radius:9px;background:var(--gray-bg);color:var(--t2);border:1.5px dashed var(--bd);font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap" title="Aufgabe für dieses Ergebnisvorhaben anlegen">+ Aufgabe</button>';
         }
       }
