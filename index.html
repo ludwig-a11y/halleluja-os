@@ -8039,30 +8039,55 @@ function gcalStartNotifications(){
     });
   },30000);
 }
+function _gcalVorlaufOpts(evDate){
+  // Gibt Vorlauf-Optionen zurück, abhängig davon wie weit das Event entfernt ist
+  const daysUntil=Math.round((new Date(evDate+'T12:00:00')-new Date(TODAY+'T12:00:00'))/86400000);
+  const addDays=(d,n)=>{const r=new Date(d+'T12:00:00');r.setDate(r.getDate()+n);return localDate(r);};
+  const fmtD=d=>{const dd=new Date(d+'T12:00:00');return['So','Mo','Di','Mi','Do','Fr','Sa'][dd.getDay()]+' '+dd.getDate()+'.'+(dd.getMonth()+1)+'.';};
+  const opts=[];
+  if(daysUntil>0)opts.push({label:'Am Tag davor',sub:fmtD(addDays(evDate,-1)),date:addDays(evDate,-1)});
+  if(daysUntil>2)opts.push({label:'2 Tage davor',sub:fmtD(addDays(evDate,-2)),date:addDays(evDate,-2)});
+  if(daysUntil>7)opts.push({label:'1 Woche davor',sub:fmtD(addDays(evDate,-7)),date:addDays(evDate,-7)});
+  if(daysUntil>14)opts.push({label:'2 Wochen davor',sub:fmtD(addDays(evDate,-14)),date:addDays(evDate,-14)});
+  opts.push({label:'Heute',sub:fmtD(TODAY),date:TODAY});
+  return opts.filter(o=>o.date>=TODAY);
+}
 function gcalShowEvent(id){
   const ev=(window._gcalEvtMap||{})[id];if(!ev)return;
   const fmt=d=>d.getHours()+':'+(''+(d.getMinutes())).padStart(2,'0');
   const evDate=ev.start?localDate(ev.start):TODAY;
-  // Prüfen ob schon eine Vorbereitungsaufgabe existiert
-  const bereitsVorb=S.aufgaben.some(a=>(a.eventId===id||a.event_id===id)&&String(a.pid)===String(aP)&&a.status!=='archiviert');
+  const bestehend=S.aufgaben.filter(a=>(a.eventId===id||a.event_id===id)&&String(a.pid)===String(aP)&&a.status!=='archiviert');
+  const opts=_gcalVorlaufOpts(evDate);
+  let vorb='';
+  if(bestehend.length){
+    vorb+='<div style="font-size:11px;color:var(--green);font-weight:600;margin-bottom:8px">✓ '+bestehend.length+' Vorbereitungsaufgabe'+(bestehend.length>1?'n':'')+' angelegt</div>';
+    bestehend.forEach(a=>{
+      vorb+='<div onclick="cm();openDetail(\''+a.id+'\')" style="font-size:11px;color:var(--t2);padding:4px 8px;background:var(--green-bg);border-radius:6px;cursor:pointer;margin-bottom:4px">↳ '+esc(a.titel)+(a.dl&&a.dl!==evDate?' · '+a.dl.slice(8)+'.'+a.dl.slice(5,7)+'.':'')+'</div>';
+    });
+  }
+  // Vorlauf-Picker
+  vorb+='<div style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px;margin-top:'+(bestehend.length?'10':'0')+'px">📝 '+(bestehend.length?'Weitere Vorbereitung — Wann?':'Vorbereitung — Wann anfangen?')+'</div>';
+  vorb+='<div style="display:flex;flex-direction:column;gap:5px">';
+  opts.forEach(o=>{
+    vorb+='<button onclick="gcalOpenVorbereitung(\''+id+'\',\''+o.date+'\')" style="text-align:left;padding:9px 12px;border-radius:9px;border:1px solid var(--bd);background:var(--sf);cursor:pointer;font-family:inherit;display:flex;justify-content:space-between;align-items:center" onmouseenter="this.style.background=\'var(--gray-bg)\'" onmouseleave="this.style.background=\'var(--sf)\'">'
+      +'<span style="font-size:13px;font-weight:600;color:var(--text)">'+o.label+'</span>'
+      +'<span style="font-size:11px;color:var(--t3)">'+o.sub+'</span>'
+      +'</button>';
+  });
+  vorb+='</div>';
   document.getElementById('mb').innerHTML='<div class="mt">📅 '+esc(ev.titel)+'</div>'
     +'<div style="font-size:13px;color:var(--t2);margin-bottom:14px">'+fmt(ev.start)+' – '+fmt(ev.end)+(ev.ort?' &nbsp;·&nbsp; <span style="color:var(--t3)">'+esc(ev.ort)+'</span>':'')+'</div>'
     +(ev.beschreibung?'<div style="font-size:12px;color:var(--text);line-height:1.6;white-space:pre-wrap;background:var(--gray-bg);border-radius:8px;padding:10px 12px;margin-bottom:14px;max-height:200px;overflow-y:auto">'+esc(ev.beschreibung)+'</div>':'')
-    +'<div class="mf" style="flex-direction:column;gap:8px">'
-    +(bereitsVorb
-      ?'<div style="font-size:12px;color:var(--green);text-align:center;padding:6px">✓ Vorbereitungsaufgabe bereits angelegt</div>'
-      :'<button class="btn" style="background:var(--inv);color:var(--inv-t);border:none;font-weight:600" onclick="gcalOpenVorbereitung(\''+id+'\')">📝 + Vorbereitungsaufgabe</button>')
-    +'<button class="btn btn-gr" onclick="cm()">Schließen</button>'
-    +'</div>';
+    +vorb
+    +'<div style="margin-top:10px"><button class="btn btn-gr" onclick="cm()">Schließen</button></div>';
   document.getElementById('ovl').classList.add('open');
 }
-function gcalOpenVorbereitung(evId){
+function gcalOpenVorbereitung(evId,prepDate){
   const ev=(window._gcalEvtMap||{})[evId];if(!ev)return;
   window._pendingEventId=evId;
-  const evDate=ev.start?localDate(ev.start):TODAY;
+  const dl=prepDate||(ev.start?localDate(ev.start):TODAY);
   cm();
-  openNeu({titel:'Vorbereitung: '+ev.titel,dl:evDate,prio:'P1'});
-  // Dalio-Hint nach kurzem Delay (DOM muss fertig sein)
+  openNeu({titel:'Vorbereitung: '+ev.titel,dl,prio:'P1'});
   setTimeout(()=>{
     const hint=document.getElementById('neu-paddel-hint');
     if(hint&&!document.getElementById('ntz')?.value){
