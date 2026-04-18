@@ -4685,6 +4685,7 @@ function openNeu(pf={}){
     +'<div class="fl"><label>Priorität</label><div style="display:flex;gap:6px;margin-top:2px">'
     +[null,'P1','P2','P3'].map(pr=>{const bg=pr==='P1'?'var(--red-bg)':pr==='P2'?'var(--blue-bg)':'var(--gray-bg)';const tc=pr==='P1'?'var(--red)':pr==='P2'?'var(--blue)':'var(--t2)';return'<button id="pbp-'+(pr||'k')+'" onclick="selPrioBtn(this,\''+pr+'\')" style="font-size:12px;padding:4px 11px;border-radius:8px;border:1px solid '+(pr?tc:'var(--bd)')+';background:'+bg+';color:'+tc+';cursor:pointer;font-family:inherit">'+(pr||'kein')+'</button>';}).join('')
     +'</div></div>'
+    +'<div id="neu-paddel-hint" style="font-size:11px;color:var(--t2);background:var(--gray-bg);border:1px dashed var(--bd);border-radius:8px;padding:8px 10px;margin-bottom:10px;line-height:1.4">⚠️ <b>Kein Meilenstein gewählt</b> → kein Paddel-Punkt beim Erledigen. Unter <i>Mehr ↓</i> → Ziel + Meilenstein zuordnen für Paddel.</div>'
     +'<div class="mf" style="margin-bottom:8px"><button class="btn btn-gr" onclick="cm()">Abbrechen</button><button class="btn btn-dk" onclick="saveNeu()">Speichern</button></div>'
     +'<div style="text-align:center;margin-bottom:4px"><button onclick="const m=document.getElementById(\'neu-mehr\');const open=m.style.display!==\'none\';m.style.display=open?\'none\':\'block\';this.textContent=open?\'Mehr ↓\':\'Weniger ↑\'" style="font-size:11px;color:var(--t3);background:none;border:none;cursor:pointer;font-family:inherit;padding:2px 8px">Mehr ↓</button></div>'
     +'<div id="neu-mehr" style="display:none">'
@@ -4732,7 +4733,25 @@ function updateNeuTZ(){
     const mDatum=opt?.dataset?.datum;
     const dlInput=document.getElementById('ndl');
     if(mDatum&&dlInput)dlInput.value=mDatum;
+    updateNeuPaddelHint();
   };
+  updateNeuPaddelHint();
+}
+function updateNeuPaddelHint(){
+  const hint=document.getElementById('neu-paddel-hint');if(!hint)return;
+  const tzSel=document.getElementById('ntz');
+  const tzVal=tzSel?tzSel.value:'';
+  if(tzVal){
+    hint.innerHTML='✅ <b>Meilenstein zugeordnet</b> → Paddel-Punkt beim Erledigen (P1 = 3🏅, P2 = 1🏅).';
+    hint.style.background='var(--green-bg)';
+    hint.style.borderColor='var(--green-bd)';
+    hint.style.color='var(--green)';
+  }else{
+    hint.innerHTML='⚠️ <b>Kein Meilenstein gewählt</b> → kein Paddel-Punkt beim Erledigen. Unter <i>Mehr ↓</i> → Ziel + Meilenstein zuordnen für Paddel.';
+    hint.style.background='var(--gray-bg)';
+    hint.style.borderColor='var(--bd)';
+    hint.style.color='var(--t2)';
+  }
 }
 function aiDebounce(){
   if(window._aiDebounce)clearTimeout(window._aiDebounce);
