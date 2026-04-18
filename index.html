@@ -130,6 +130,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;font-size:1
 .btn-xs:hover{opacity:.7}
 .btn-toggle{font-size:11px;padding:5px 10px;border-radius:7px;border:1px solid var(--bd);background:var(--gray-bg);color:var(--t2);cursor:pointer;font-family:inherit;font-weight:400;transition:all .15s}
 .btn-toggle.on{background:var(--inv);color:var(--inv-t);font-weight:700}
+details.fixes-heute{border-radius:99px;transition:border-radius .2s,background .2s}
+details.fixes-heute[open]{border-radius:14px}
+details.fixes-heute>summary{border-radius:99px;transition:border-radius .2s}
+details.fixes-heute[open]>summary{border-radius:14px 14px 0 0}
 .hoverable{transition:background .12s}
 .hoverable:hover{background:var(--gray-bg)}
 .hover-lift{transition:border-color .15s}
@@ -1093,7 +1097,7 @@ function rFixesHeute(pid){
   }
   const bg=imminent?'var(--red-bg)':'var(--sf)';
   const bd=imminent?'var(--red-bd)':'var(--bd)';
-  let h='<details class="fixes-heute" style="margin-bottom:10px;background:'+bg+';border:1px solid '+bd+';border-radius:10px;overflow:hidden"'+(autoOpen?' open':'')+'>';
+  let h='<details class="fixes-heute" style="margin-bottom:10px;background:'+bg+';border:1px solid '+bd+';overflow:hidden"'+(autoOpen?' open':'')+'>';
   h+='<summary style="list-style:none;cursor:pointer;padding:9px 14px;display:flex;align-items:center;gap:10px">'+collapsed+'<span style="font-size:10px;color:var(--t3);margin-left:4px">▾</span></summary>';
   h+=expanded;
   h+='</details>';
