@@ -530,7 +530,10 @@ function normalizeAufgabe(a){
     aktSeit:a.akt_seit?new Date(a.akt_seit).getTime():null,
     dl:a.dl||'',dl_type:a.dl_type||'bis',recurring:a.recurring||null,
     ua:Array.isArray(a.ua)?a.ua:(typeof a.ua==='string'?JSON.parse(a.ua||'[]'):[]),
-    erstelltVon:a.erstellt_von||null};
+    erstelltVon:a.erstellt_von||null,
+    missCount:a.miss_count||0,lastMissAction:a.last_miss_action||null,
+    lastMissAt:a.last_miss_at||null,lastMissNote:a.last_miss_note||null,
+    shiftCount:a.shift_count||0};
 }
 async function loadData(){
   const [personen,teams,ziele,kpis,teilziele,aufgaben,kpiVals,checkins,signale,wochenresets,beobachtungen,kontextFeed,decisionRequests,meetings,paddelGewinner]=await Promise.all([
@@ -2503,7 +2506,7 @@ function tryLogin(){
     _snoozeLoad();
     document.getElementById('login-screen').style.display='none';
     document.getElementById('app').style.display='flex';
-    updateBadge();render();checkOnboarding();checkMeilensteinReviews();startSonderPoller();startDataPoller();handleDeepLink();checkDeepLink();
+    updateBadge();render();checkOnboarding();checkMeilensteinReviews();setTimeout(()=>checkMissedDeadlines(),800);startSonderPoller();startDataPoller();handleDeepLink();checkDeepLink();
     gcalFetchToday();
   } else {
     document.getElementById('login-err').textContent='Falsche PIN.';pinIn='';updDots();
@@ -2715,6 +2718,169 @@ async function restartOnboarding(){
 }
 // ─── Ende ONBOARDING ─────────────────────────────────────────────
 
+// ─── MISSED-DEADLINE FEEDBACK (MVP) ──────────────────────────────
+// Trigger: P1 verpasst um ≥1 Tag, P2 verpasst um ≥2 Tage. P3/ohne dl → nie.
+// Batch: ein Stack-Modal das alle verpassten Tasks nacheinander zeigt.
+// Pro Tag nur 1× pro Task (last_miss_at < heute als Guard).
+function getMissedTasks(){
+  const p=me();if(!p)return[];
+  return S.aufgaben.filter(a=>{
+    if(String(a.pid)!==String(aP))return false;
+    if(a.status==='erledigt'||a.status==='archiviert'||a.status==='zurueckgegeben'||a.status==='backlog')return false;
+    if(a.parentId)return false; // Unteraufgaben überspringen, Parent trägt Deadline
+    if(!a.dl)return false;
+    if(a.prio!=='P1'&&a.prio!=='P2')return false;
+    const threshold=a.prio==='P1'?1:2;
+    // dl + threshold Tage <= TODAY bedeutet: die Deadline ist um threshold Tage überschritten
+    const dlDate=new Date(a.dl+'T00:00:00');
+    const diffDays=Math.floor((new Date(TODAY+'T00:00:00')-dlDate)/86400000);
+    if(diffDays<threshold)return false;
+    // Guard: schon heute behandelt?
+    if(a.lastMissAt){
+      const lastDate=(a.lastMissAt||'').slice(0,10);
+      if(lastDate===TODAY)return false;
+    }
+    return true;
+  });
+}
+function checkMissedDeadlines(){
+  // Nicht triggern während Onboarding, Meilenstein-Review oder Wochenreset-Zwang aktiv sind
+  if(window._onb)return;
+  if(document.getElementById('mr-ovl'))return;
+  if(_resetZwang)return;
+  const missed=getMissedTasks();
+  if(!missed.length)return;
+  // Nach Priorität + Verzug sortieren (P1 zuerst, dann älteste DL)
+  missed.sort((x,y)=>{
+    if(x.prio!==y.prio)return x.prio==='P1'?-1:1;
+    return (x.dl||'').localeCompare(y.dl||'');
+  });
+  window._missStack={tasks:missed,idx:0,note:''};
+  openMissedStack();
+}
+function openMissedStack(){
+  const st=window._missStack;if(!st||!st.tasks||!st.tasks.length)return;
+  if(st.idx>=st.tasks.length){closeMissedStack();return;}
+  const a=st.tasks[st.idx];
+  const dlDate=new Date(a.dl+'T00:00:00');
+  const diffDays=Math.floor((new Date(TODAY+'T00:00:00')-dlDate)/86400000);
+  const prioColor=a.prio==='P1'?'var(--red)':'var(--blue)';
+  const prioBg=a.prio==='P1'?'var(--red-bg)':'var(--blue-bg)';
+  const tzName=a.teilzielId?(S.ziele.flatMap(z=>z.teilziele||[]).find(t=>t.id===a.teilzielId)?.name||''):'';
+  const mehrfach=a.missCount>0||a.shiftCount>=2;
+  let ov=document.getElementById('md-ovl');
+  if(!ov){ov=document.createElement('div');ov.id='md-ovl';ov.style.cssText='position:fixed;inset:0;z-index:9992;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box';document.body.appendChild(ov);}
+  const progress=st.tasks.length>1?'<div style="font-size:11px;color:var(--t3);margin-bottom:6px">'+(st.idx+1)+' von '+st.tasks.length+'</div>':'';
+  const mehrfachHint=mehrfach?'<div style="font-size:11px;color:var(--orange);background:var(--orange-bg);border:1px solid var(--orange-bd);border-radius:8px;padding:8px 10px;margin-bottom:12px">⚠️ Wiederholung — '+(a.missCount>0?a.missCount+'× vorher verpasst':'')+(a.missCount>0&&a.shiftCount>=2?' · ':'')+(a.shiftCount>=2?a.shiftCount+'× verschoben':'')+'. Was ist das Muster?</div>':'';
+  ov.innerHTML='<div style="background:var(--sf);border-radius:16px;padding:24px;max-width:480px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3)">'
+    +progress
+    +'<div style="font-size:11px;color:var(--t3);font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">⏰ Deadline verpasst</div>'
+    +'<div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:6px">'
+    +'<span style="font-size:11px;padding:2px 8px;border-radius:99px;background:'+prioBg+';color:'+prioColor+';font-weight:700;flex-shrink:0;margin-top:2px">'+a.prio+'</span>'
+    +'<div style="font-size:16px;font-weight:700;line-height:1.3">'+esc(a.titel)+'</div>'
+    +'</div>'
+    +(tzName?'<div style="font-size:11px;color:var(--t2);margin-bottom:4px">↳ '+esc(tzName)+'</div>':'')
+    +'<div style="font-size:12px;color:var(--t2);margin-bottom:14px">War fällig: <strong>'+a.dl.slice(8)+'.'+a.dl.slice(5,7)+'.'+a.dl.slice(0,4)+'</strong> · <span style="color:'+prioColor+'">'+diffDays+' Tag'+(diffDays!==1?'e':'')+' überfällig</span></div>'
+    +mehrfachHint
+    +'<div style="font-size:13px;font-weight:600;margin-bottom:10px">Was jetzt?</div>'
+    +'<div style="display:flex;flex-direction:column;gap:7px;margin-bottom:12px">'
+    +'<button onclick="missAction(\'neu_schaetzen\')" style="padding:11px 14px;border-radius:10px;border:1.5px solid var(--bd);background:var(--sf);color:var(--text);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;text-align:left;display:flex;align-items:center;gap:10px"><span style="font-size:18px">📅</span><span style="flex:1"><div>Neu schätzen</div><div style="font-size:11px;color:var(--t3);font-weight:400;margin-top:1px">Realistische Deadline setzen</div></span></button>'
+    +'<button onclick="missAction(\'splitten\')" style="padding:11px 14px;border-radius:10px;border:1.5px solid var(--bd);background:var(--sf);color:var(--text);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;text-align:left;display:flex;align-items:center;gap:10px"><span style="font-size:18px">✂️</span><span style="flex:1"><div>Splitten</div><div style="font-size:11px;color:var(--t3);font-weight:400;margin-top:1px">War zu groß — in Unteraufgaben zerlegen</div></span></button>'
+    +'<button onclick="missAction(\'los\')" style="padding:11px 14px;border-radius:10px;border:1.5px solid var(--green-bd);background:var(--green-bg);color:var(--green);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;text-align:left;display:flex;align-items:center;gap:10px"><span style="font-size:18px">▶</span><span style="flex:1"><div>Jetzt loslegen</div><div style="font-size:11px;color:var(--green);opacity:.75;font-weight:400;margin-top:1px">Aufgabe starten · Deadline bleibt</div></span></button>'
+    +'<button onclick="missAction(\'irrelevant\')" style="padding:11px 14px;border-radius:10px;border:1.5px solid var(--bd);background:var(--gray-bg);color:var(--t2);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;text-align:left;display:flex;align-items:center;gap:10px"><span style="font-size:18px">🗄</span><span style="flex:1"><div>Irrelevant</div><div style="font-size:11px;color:var(--t3);font-weight:400;margin-top:1px">Archivieren — war nie wichtig genug</div></span></button>'
+    +'</div>'
+    +'<div style="margin-bottom:12px"><label style="font-size:11px;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;font-weight:700;display:block;margin-bottom:4px">Notiz <span style="font-weight:400;text-transform:none;letter-spacing:0">(optional · wird mit Action gespeichert)</span></label><textarea id="miss-note" rows="2" placeholder="z.B. Kunde hat spät geantwortet · hab falsch geschätzt · war abgelenkt…" style="width:100%;padding:8px 10px;border:1px solid var(--bd);border-radius:8px;background:var(--sf);color:var(--text);font-family:inherit;font-size:12px;resize:vertical;box-sizing:border-box">'+esc(st.note||'')+'</textarea></div>'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--t3)"><span>💡 Für dich — damit sich Muster erkennen lassen.</span>'+(st.tasks.length>1?'<button onclick="missSkip()" style="font-size:11px;background:none;border:none;color:var(--t3);cursor:pointer;text-decoration:underline;font-family:inherit">Später →</button>':'')+'</div>'
+    +'</div>';
+  // Note-Feld Sync
+  setTimeout(()=>{const nt=document.getElementById('miss-note');if(nt)nt.addEventListener('input',e=>{window._missStack.note=e.target.value;});},20);
+}
+function missSkip(){
+  const st=window._missStack;if(!st)return;
+  st.idx++;st.note='';
+  openMissedStack();
+}
+function closeMissedStack(){
+  const ov=document.getElementById('md-ovl');if(ov)ov.remove();
+  window._missStack=null;
+  render();
+}
+async function missAction(action){
+  const st=window._missStack;if(!st)return;
+  const a=st.tasks[st.idx];if(!a)return;
+  const note=(document.getElementById('miss-note')?.value||'').trim()||null;
+  const nowIso=new Date().toISOString();
+  // Gemeinsam: miss-Felder patchen
+  const missPatch={miss_count:(a.missCount||0)+1,last_miss_action:action,last_miss_at:nowIso,last_miss_note:note};
+  a.missCount=missPatch.miss_count;a.lastMissAction=action;a.lastMissAt=nowIso;a.lastMissNote=note;
+  if(action==='neu_schaetzen'){
+    // Inline Date-Prompt
+    const newDl=prompt('Neue Deadline (YYYY-MM-DD)? Leer = morgen.',TODAY);
+    let dl=newDl&&/^\d{4}-\d{2}-\d{2}$/.test(newDl)?newDl:null;
+    if(!dl){const d=new Date();d.setDate(d.getDate()+1);dl=d.toISOString().slice(0,10);}
+    if(dl<=TODAY){toast('⚠ Neue Deadline muss in der Zukunft liegen');return;}
+    a.dl=dl;a.shiftCount=(a.shiftCount||0)+1;
+    await dbPatch('aufgaben',a.id,{...missPatch,dl,shift_count:a.shiftCount});
+    toast('📅 Neue Deadline: '+dl.slice(8)+'.'+dl.slice(5,7)+'.');
+  } else if(action==='splitten'){
+    await dbPatch('aufgaben',a.id,missPatch);
+    // Stack pausieren, Splitten-Dialog öffnen
+    closeMissedStack();
+    openSplitDialog(a.id);
+    return;
+  } else if(action==='los'){
+    await dbPatch('aufgaben',a.id,missPatch);
+    closeMissedStack();
+    await startenA(a.id);
+    return;
+  } else if(action==='irrelevant'){
+    a.status='archiviert';
+    await dbPatch('aufgaben',a.id,{...missPatch,status:'archiviert',updated_at:nowIso});
+    toast('🗄 Archiviert');
+  }
+  // Nächsten Task im Stack
+  st.idx++;st.note='';
+  if(st.idx>=st.tasks.length)closeMissedStack();
+  else openMissedStack();
+}
+function openSplitDialog(aid){
+  const a=S.aufgaben.find(x=>x.id===aid);if(!a)return;
+  document.getElementById('mb').innerHTML='<div class="mt">✂️ Aufgabe splitten</div>'
+    +'<div style="font-size:12px;color:var(--t2);margin-bottom:12px;line-height:1.4"><strong>'+esc(a.titel)+'</strong><br>Trage 2–3 kleinere Unteraufgaben ein. Die ursprüngliche Aufgabe wird beendet und die neuen werden als eigenständige P1-Aufgaben mit gleichem Meilenstein angelegt.</div>'
+    +'<div class="fl"><label>Teil 1</label><input id="split-1" placeholder="z.B. Entwurf schreiben" autofocus></div>'
+    +'<div class="fl"><label>Teil 2</label><input id="split-2" placeholder="z.B. Review einholen"></div>'
+    +'<div class="fl"><label>Teil 3 <span style="font-weight:400;color:var(--t3)">(optional)</span></label><input id="split-3" placeholder=""></div>'
+    +'<div class="mf"><button class="btn btn-gr" onclick="cm();continueMissStack()">Abbrechen</button><button class="btn btn-dk" onclick="saveSplit(\''+aid+'\')">Speichern &amp; Aufteilen</button></div>';
+  document.getElementById('ovl').classList.add('open');
+}
+async function saveSplit(aid){
+  const a=S.aufgaben.find(x=>x.id===aid);if(!a)return;
+  const parts=[1,2,3].map(n=>document.getElementById('split-'+n)?.value.trim()).filter(Boolean);
+  if(parts.length<2){toast('Mindestens 2 Teile bitte');return;}
+  const nowIso=new Date().toISOString();
+  // Ursprungs-Aufgabe archivieren
+  a.status='archiviert';
+  await dbPatch('aufgaben',aid,{status:'archiviert',updated_at:nowIso});
+  // Neue Teile anlegen
+  for(const titel of parts){
+    const id=nid('a');
+    const rec={id,titel,pid:aP,prio:'P1',status:'neu',
+      ziel_id:a.zielId||null,teilziel_id:a.teilzielId||null,
+      geplant:a.geplant||1,dl:null,dl_type:'bis',
+      notiz:'Gesplittet aus: '+a.titel,erstellt_von:aP};
+    S.aufgaben.push(normalizeAufgabe(rec));
+    await dbInsert('aufgaben',rec);
+  }
+  toast('✂️ '+parts.length+' Teile angelegt');
+  cm();continueMissStack();
+}
+function continueMissStack(){
+  const st=window._missStack;
+  if(!st){render();return;}
+  st.idx++;st.note='';
+  if(st.idx>=st.tasks.length){closeMissedStack();return;}
+  openMissedStack();
+}
 // ─── §7 MEILENSTEIN-REVIEW ───────────────────────────────────────
 function checkMeilensteinReviews(){
   const p=me();if(!p)return;
@@ -4557,14 +4723,20 @@ function openDetail(id){
 }
 async function saveDetailField(id,field,val){
   const a=S.aufgaben.find(x=>x.id===id);if(!a)return;
+  let prevDl=null;
   if(field==='titel'){if(!val||!val.trim())return;a.titel=val.trim();}
   else if(field==='notiz'){a.notiz=val.trim()||null;}
-  else if(field==='dl'){a.dl=val||null;}
+  else if(field==='dl'){prevDl=a.dl||null;a.dl=val||null;}
   else if(field==='geplant'){a.geplant=val;}
   else if(field==='ziel_id'){a.zielId=val||null;a.teilzielId=null;}
   else if(field==='vertraulich'){a.vertraulich=val;}
   const patch={[field]:field==='titel'?a.titel:field==='notiz'?a.notiz:field==='dl'?a.dl:field==='geplant'?a.geplant:field==='vertraulich'?val:val||null};
   if(field==='ziel_id')patch.teilziel_id=null;
+  // Deadline-Shift zählen: nur wenn schon eine dl existierte und der neue Wert anders ist
+  if(field==='dl'&&prevDl&&val&&prevDl!==val){
+    a.shiftCount=(a.shiftCount||0)+1;
+    patch.shift_count=a.shiftCount;
+  }
   await dbPatch('aufgaben',id,patch);
   if(field==='dl'&&val&&!gcalGetEvtId(id))gcalCreateEvent(a);
   render();
@@ -7761,7 +7933,7 @@ window.addEventListener('keydown',e=>{
         const ls=document.getElementById('login-screen'),ap=document.getElementById('app');
         if(ls)ls.style.display='none';
         if(ap)ap.style.display='flex';
-        updateBadge();render();checkOnboarding();checkMeilensteinReviews();startSonderPoller();startDataPoller();handleDeepLink();checkDeepLink();
+        updateBadge();render();checkOnboarding();checkMeilensteinReviews();setTimeout(()=>checkMissedDeadlines(),800);startSonderPoller();startDataPoller();handleDeepLink();checkDeepLink();
         gcalFetchToday();
       } else localStorage.removeItem('h_session');
     }
