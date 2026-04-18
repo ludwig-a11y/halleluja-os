@@ -3632,11 +3632,20 @@ function rTag(){
       out+='<div style="font-size:13px;font-weight:600;margin-bottom:3px">'+esc(a.titel)+'</div>';
       if(from)out+='<div style="font-size:11px;color:var(--t2);margin-bottom:4px">von '+esc(from.name)+(a.prio?' · Vorschlag: <strong style="color:'+(a.prio==='P1'?'var(--red)':'var(--blue)')+'">'+a.prio+'</strong>':'')+'</div>';
       if(a.notiz)out+='<div style="font-size:11px;color:var(--t2);margin-bottom:8px;font-style:italic;line-height:1.4">💬 '+esc(a.notiz).slice(0,120)+(a.notiz.length>120?'…':'')+'</div>';
-      // Schritt 1: zwei Buttons
-      out+='<div id="ibx-s1-'+a.id+'" style="display:flex;gap:8px">';
+      // Schritt 1: drei Buttons
+      out+='<div id="ibx-s1-'+a.id+'" style="display:flex;gap:8px;flex-wrap:wrap">';
       out+='<button onclick="document.getElementById(\'ibx-s1-'+a.id+'\').style.display=\'none\';document.getElementById(\'ibx-s2-'+a.id+'\').style.display=\'block\'" style="padding:6px 16px;border-radius:8px;background:var(--hero);color:#fff;border:none;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer">✓ Annehmen</button>';
-      out+='<button onclick="document.getElementById(\'ibx-s1-'+a.id+'\').style.display=\'none\';document.getElementById(\'ibx-abl-'+a.id+'\').style.display=\'block\'" style="padding:6px 14px;border-radius:8px;background:var(--gray-bg);color:var(--t2);border:1px solid var(--bd);font-family:inherit;font-size:12px;font-weight:600;cursor:pointer">↩ Ablehnen</button>';
+      out+='<button onclick="document.getElementById(\'ibx-s1-'+a.id+'\').style.display=\'none\';document.getElementById(\'ibx-abl-'+a.id+'\').style.display=\'block\'" style="padding:6px 14px;border-radius:8px;background:var(--red-bg);color:var(--red);border:1px solid var(--red-bd);font-family:inherit;font-size:12px;font-weight:600;cursor:pointer">↩ Zurück</button>';
+      out+='<button onclick="document.getElementById(\'ibx-s1-'+a.id+'\').style.display=\'none\';document.getElementById(\'ibx-wl-'+a.id+'\').style.display=\'block\'" style="padding:6px 14px;border-radius:8px;background:var(--purple-bg);color:var(--purple);border:1px solid var(--purple-bd);font-family:inherit;font-size:12px;font-weight:600;cursor:pointer">→ Weiterleiten</button>';
       out+='</div>';
+      // Weiterleiten-Panel (direkt aus Schritt 1)
+      out+='<div id="ibx-wl-'+a.id+'" style="display:none;margin-top:6px;padding:8px 10px;background:var(--purple-bg);border:1px solid var(--purple-bd);border-radius:8px">'
+        +'<div style="font-size:10px;color:var(--purple);font-weight:600;margin-bottom:4px">An wen weiterleiten?</div>'
+        +'<input id="wl-grund-'+a.id+'" placeholder="Grund (Pflicht) …" style="width:100%;box-sizing:border-box;font-size:12px;padding:6px 10px;border-radius:6px;border:1px solid var(--purple-bd);background:var(--sf);color:var(--text);font-family:inherit;margin-bottom:6px">'
+        +'<div style="display:flex;gap:5px;flex-wrap:wrap">'
+        +S.personen.filter(p=>p.id!==aP).map(p=>'<div onclick="weiterleitenAufgabe(\''+a.id+'\',\''+p.id+'\')" style="cursor:pointer;font-size:11px;font-weight:600;padding:4px 11px;border-radius:99px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);white-space:nowrap">'+esc(p.name.split(' ')[0])+'</div>').join('')
+        +'</div>'
+        +'</div>';
       // Schritt 2: Prio wählen (nach Annehmen)
       out+='<div id="ibx-s2-'+a.id+'" style="display:none">';
       out+='<div style="font-size:10px;color:var(--t3);margin-bottom:6px;margin-top:2px">Welche Priorität hat das für dich?</div>';
@@ -3649,20 +3658,10 @@ function rTag(){
         return'<button onclick="setPrio(\''+a.id+'\',\''+p+'\')" class="btn-prio'+(suggested?' btn-prio-on':'')+'" style="background:'+bg+';color:'+tc+'">'+p+'</button>';
       }).join('');
       out+='</div></div>';
-      // Ablehnen-Optionen
-      out+='<div id="ibx-abl-'+a.id+'" style="display:none">';
-      out+='<textarea id="abl-grund-'+a.id+'" placeholder="Grund (Pflicht) …" rows="2" style="width:100%;box-sizing:border-box;font-size:12px;padding:7px 10px;border-radius:8px;border:1px solid var(--bd);background:var(--sf);color:var(--text);font-family:inherit;resize:none;margin-top:6px;margin-bottom:6px"></textarea>';
-      out+='<div style="display:flex;gap:6px;flex-wrap:wrap">';
-      out+='<button onclick="inboxAblehnenZurueck(\''+a.id+'\')" class="btn-sm" style="border-color:var(--red-bd);background:var(--red-bg);color:var(--red)">↩ Zurück an '+esc((from?.name||'').split(' ')[0])+'</button>';
-      out+='<button onclick="toggleWeiterleiten(\''+a.id+'\')" class="btn-sm" style="border-color:var(--purple-bd);background:var(--purple-bg);color:var(--purple)">→ Weiterleiten</button>';
-      out+='</div>';
-      out+='<div id="wl-'+a.id+'" style="display:none;gap:5px;flex-wrap:wrap;margin-top:6px;padding:8px 10px;background:var(--purple-bg);border:1px solid var(--purple-bd);border-radius:8px">'
-        +'<span style="font-size:10px;color:var(--purple);font-weight:600;width:100%;margin-bottom:4px">An wen weiterleiten?</span>'
-        +'<input id="wl-grund-'+a.id+'" placeholder="Grund (Pflicht) …" style="width:100%;box-sizing:border-box;font-size:12px;padding:6px 10px;border-radius:6px;border:1px solid var(--purple-bd);background:var(--sf);color:var(--text);font-family:inherit;margin-bottom:6px">'
-        +'<div style="display:flex;gap:5px;flex-wrap:wrap">'
-        +S.personen.filter(p=>p.id!==aP).map(p=>'<div onclick="weiterleitenAufgabe(\''+a.id+'\',\''+p.id+'\')" style="cursor:pointer;font-size:11px;font-weight:600;padding:4px 11px;border-radius:99px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);white-space:nowrap">'+esc(p.name.split(' ')[0])+'</div>').join('')
-        +'</div>'
-        +'</div>';
+      // Zurückgeben-Panel (mit Pflicht-Grund)
+      out+='<div id="ibx-abl-'+a.id+'" style="display:none;margin-top:6px;padding:8px 10px;background:var(--red-bg);border:1px solid var(--red-bd);border-radius:8px">';
+      out+='<textarea id="abl-grund-'+a.id+'" placeholder="Grund (Pflicht) …" rows="2" style="width:100%;box-sizing:border-box;font-size:12px;padding:7px 10px;border-radius:8px;border:1px solid var(--red-bd);background:var(--sf);color:var(--text);font-family:inherit;resize:none;margin-bottom:6px"></textarea>';
+      out+='<button onclick="inboxAblehnenZurueck(\''+a.id+'\')" class="btn-sm" style="border-color:var(--red-bd);background:var(--red);color:#fff">↩ Zurück an '+esc((from?.name||'').split(' ')[0])+'</button>';
       out+='</div></div>';
     });
     }
