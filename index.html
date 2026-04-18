@@ -3624,7 +3624,8 @@ function rTag(){
     // ── Zugewiesene Aufgaben — Schritt 1: Annehmen / Ablehnen ──
     if(zugewiesenA.length){
     out+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--blue);margin-bottom:6px">📋 Von dir erwartet</div>';
-    const zielOptsI=S.ziele.length?'<select id="inbox-ziel-PLACEHOLDER" style="font-size:11px;padding:3px 8px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);font-family:inherit;max-width:180px"><option value="">— Ziel zuordnen —</option>'+S.ziele.map(z=>'<option value="'+z.id+'">'+esc(z.name).slice(0,30)+'</option>').join('')+'</select>':'';
+    const inboxMsOpts=meilensteinOptgroups(aP,'');
+    const zielOptsI=inboxMsOpts?'<select id="inbox-ziel-PLACEHOLDER" style="font-size:11px;padding:3px 8px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);font-family:inherit;max-width:220px">'+inboxMsOpts.replace('— kein Meilenstein —','— Meilenstein zuordnen —')+'</select>':'';
     zugewiesenA.forEach(a=>{
       const from=person(a.erstelltVon);
       out+='<div style="background:var(--gray-bg);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;margin-bottom:8px">';
@@ -3669,7 +3670,8 @@ function rTag(){
     if(neu.length){
     if(zugewiesenA.length)out+='<div style="border-top:1px solid var(--bd);margin:10px 0"></div>';
     out+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--red);margin-bottom:6px">⚡ Priorität wählen</div>';
-    const zielOptsN=S.ziele.length?'<select id="inbox-ziel-PLACEHOLDER" style="font-size:11px;padding:3px 8px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);font-family:inherit;max-width:180px"><option value="">— Ziel —</option>'+S.ziele.map(z=>'<option value="'+z.id+'">'+esc(z.name).slice(0,30)+'</option>').join('')+'</select>':'';
+    const inboxMsOptsN=meilensteinOptgroups(aP,'');
+    const zielOptsN=inboxMsOptsN?'<select id="inbox-ziel-PLACEHOLDER" style="font-size:11px;padding:3px 8px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);font-family:inherit;max-width:220px">'+inboxMsOptsN.replace('— kein Meilenstein —','— Meilenstein —')+'</select>':'';
     neu.forEach(a=>{
       const from=a.erstelltVon&&a.erstelltVon!==aP?person(a.erstelltVon):null;
       out+='<div style="background:var(--gray-bg);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;margin-bottom:8px">';
@@ -3788,9 +3790,9 @@ async function setPrio(id,pr){
       if(!confirm('Du hast bereits '+p1Count(a.pid)+' offene P1-Aufgaben. Trotzdem als P1 annehmen?'))return;
     }
     const zSel=document.getElementById('inbox-ziel-'+id);
-    const zid=zSel?zSel.value:'';
-    if(!zid&&S.ziele.length){
-      if(!confirm('P1 ohne Ziel – sicher? Überlege welches Ziel das voranbringt.')){
+    const tzid=zSel?zSel.value:'';
+    if(!tzid){
+      if(!confirm('P1 ohne Meilenstein – sicher? Ohne Meilenstein-Zuordnung gibt es keinen Paddel-Punkt.')){
         if(zSel){zSel.style.outline='2px solid var(--red)';zSel.focus();}
         return;
       }
@@ -3800,12 +3802,17 @@ async function setPrio(id,pr){
   const p=(!pr||pr==='null')?null:pr;
   try{
     const zielSel=document.getElementById('inbox-ziel-'+id);
-    const zid=zielSel?zielSel.value:'';
+    const tzid=zielSel?zielSel.value:'';
+    let zid='';
+    if(tzid && zielSel){
+      const opt=zielSel.options[zielSel.selectedIndex];
+      zid=opt?.dataset?.zielId||'';
+    }
     a.prio=p;a.status=p?'backlog':'neu';
-    if(zid){a.zielId=zid;a.teilzielId=null;}
+    if(tzid){a.zielId=zid||null;a.teilzielId=tzid;}
     try{render();}catch(e){console.error('render@setPrio',e);}
     const patch={prio:p,status:a.status};
-    if(zid){patch.ziel_id=zid;patch.teilziel_id=null;}
+    if(tzid){patch.ziel_id=zid||null;patch.teilziel_id=tzid;}
     const ok=await dbPatch('aufgaben',id,patch);
     if(!ok){a.prio=prev.prio;a.status=prev.status;a.zielId=prev.zielId;a.teilzielId=prev.teilzielId;toast('⚠️ Prio-Speichern fehlgeschlagen','var(--red)');}
     else if(p==='P1')gcalCreateEvent(a); // P1 → sofort in Kalender
