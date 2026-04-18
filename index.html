@@ -396,11 +396,15 @@ function _snoozeLoad(){
       _resetSnoozeUntil=o.until;
       if(_resetSnoozeTimer)clearTimeout(_resetSnoozeTimer);
       _resetSnoozeTimer=setTimeout(()=>{if(aP&&!dieseWocheReset(aP))openWochenresetZwang();},Math.max(0,o.until-Date.now()));
+      // Text nur wiederherstellen wenn Snooze noch aktiv läuft
+      window._wrGutSnooze=o.gut||'';
+      window._wrBlockiertSnooze=o.blockiert||'';
     } else {
+      // Snooze abgelaufen → kein Pre-Fill, Text verwerfen
       _resetSnoozeUntil=0;
+      window._wrGutSnooze='';
+      window._wrBlockiertSnooze='';
     }
-    window._wrGutSnooze=o.gut||'';
-    window._wrBlockiertSnooze=o.blockiert||'';
   }catch(e){}
 }
 function _snoozePersist(gut,blockiert){
