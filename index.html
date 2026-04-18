@@ -537,7 +537,7 @@ function normalizeAufgabe(a){
     erstelltVon:a.erstellt_von||null,
     missCount:a.miss_count||0,lastMissAction:a.last_miss_action||null,
     lastMissAt:a.last_miss_at||null,lastMissNote:a.last_miss_note||null,
-    shiftCount:a.shift_count||0};
+    shiftCount:a.shift_count||0,inboxStatus:a.inbox_status||null};
 }
 async function loadData(){
   const [personen,teams,ziele,kpis,teilziele,aufgaben,kpiVals,checkins,signale,wochenresets,beobachtungen,kontextFeed,decisionRequests,meetings,paddelGewinner]=await Promise.all([
@@ -1206,9 +1206,13 @@ async function weiterleitenAufgabe(id,newPid){
   try{
     const neuePerson=person(newPid);
     const absender=person(a.erstelltVon);
+    const istFremdPid=newPid!==aP;
     a.pid=newPid;a.status='zugewiesen';a.erstelltVon=a.erstelltVon||aP;
+    if(istFremdPid)a.inboxStatus='neu';
     render();
-    const ok=await dbPatch('aufgaben',id,{pid:newPid,status:'zugewiesen',erstellt_von:a.erstelltVon});
+    const patch={pid:newPid,status:'zugewiesen',erstellt_von:a.erstelltVon};
+    if(istFremdPid)patch.inbox_status='neu';
+    const ok=await dbPatch('aufgaben',id,patch);
     if(!ok){a.pid=prev.pid;a.status=prev.status;a.erstelltVon=prev.erstelltVon;toast('⚠ Fehler beim Speichern');}
     else{
       notify('aufgabe_zugewiesen',{aufgabe:a.titel,prio:a.prio,dl:a.dl,notiz:grund,fuer:neuePerson?{id:neuePerson.id,name:neuePerson.name,slack_id:neuePerson.slack_id}:null});
@@ -1319,6 +1323,105 @@ function rMorgenPreview(pid){
   h+='</details>';
   return h;
 }
+// ─── INBOX (End-of-Day Ritual) ──────────────────────────────────
+function rInbox(pid){
+  const items=S.aufgaben.filter(a=>
+    String(a.pid)===String(pid)&&
+    a.inboxStatus==='neu'&&
+    !['erledigt','archiviert'].includes(a.status)
+  );
+  if(!items.length)return'';
+  const count=items.length;
+  let collapsed='<div style="font-size:10px;font-weight:700;color:var(--orange);letter-spacing:.4px;text-transform:uppercase;white-space:nowrap">📥 Inbox</div>';
+  collapsed+='<div style="flex:1;font-size:12px;color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+count+' neu</div>';
+  const meineTZ=[];
+  S.ziele.forEach(z=>{
+    (z.teilziele||[]).forEach(t=>{
+      if(String(t.verantwortlichId)===String(pid)&&!t.erledigt)meineTZ.push({id:t.id,name:t.name,zielName:z.name});
+    });
+  });
+  let expanded='';
+  items.forEach(a=>{
+    const absender=a.erstelltVon&&a.erstelltVon!==pid?person(a.erstelltVon):null;
+    const absName=absender&&absender.name?absender.name.split(' ')[0]:null;
+    const bereitsTZ=a.teilzielId?meineTZ.find(t=>t.id===a.teilzielId):null;
+    expanded+='<div style="padding:10px 14px;border-top:1px solid var(--bd)">';
+    expanded+='<div style="font-size:13px;font-weight:600;margin-bottom:3px">'+esc(a.titel)+'</div>';
+    expanded+='<div style="font-size:11px;color:var(--t3);margin-bottom:6px">'+(absName?'von '+esc(absName):'aus Meeting')+(a.prio?' · '+a.prio:' · <span style="color:var(--amber);font-weight:600">ohne Prio</span>')+(a.dl?' · bis '+a.dl:'')+'</div>';
+    if(bereitsTZ)expanded+='<div style="font-size:11px;color:var(--blue);margin-bottom:8px">🎯 bereits: '+esc(bereitsTZ.zielName)+' › '+esc(bereitsTZ.name)+'</div>';
+    expanded+='<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">';
+    // Prio-Picker falls fehlt
+    if(!a.prio){
+      expanded+='<select onchange="if(this.value)inboxSetPrio(\''+a.id+'\',this.value)" style="font-size:11px;padding:5px 8px;border-radius:8px;border:1px solid var(--amber);background:var(--amber-bg);color:var(--amber);font-family:inherit;cursor:pointer;font-weight:600">';
+      expanded+='<option value="">⚠ Prio setzen…</option>';
+      expanded+='<option value="P1">P1</option><option value="P2">P2</option><option value="P3">P3</option>';
+      expanded+='</select>';
+    }
+    if(meineTZ.length){
+      expanded+='<select onchange="if(this.value)inboxAcceptMeilenstein(\''+a.id+'\',this.value)" style="font-size:11px;padding:5px 8px;border-radius:8px;border:1px solid var(--blue-bd);background:var(--blue-bg);color:var(--blue);font-family:inherit;cursor:pointer;font-weight:600">';
+      expanded+='<option value="">'+(bereitsTZ?'🎯 Meilenstein ändern…':'🎯 Meilenstein…')+'</option>';
+      meineTZ.forEach(t=>expanded+='<option value="'+t.id+'"'+(a.teilzielId===t.id?' selected':'')+'>'+esc(t.zielName)+' › '+esc(t.name)+'</option>');
+      if(bereitsTZ)expanded+='<option value="__keep__">✓ behalten &amp; annehmen</option>';
+      expanded+='</select>';
+    }
+    expanded+='<button onclick="inboxAcceptBacklog(\''+a.id+'\')" style="font-size:11px;padding:5px 10px;border-radius:8px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);cursor:pointer;font-family:inherit;font-weight:600">📦 Backlog</button>';
+    expanded+='<button onclick="inboxArchive(\''+a.id+'\')" style="font-size:11px;padding:5px 10px;border-radius:8px;border:1px solid var(--bd);background:var(--sf);color:var(--t3);cursor:pointer;font-family:inherit">✕</button>';
+    expanded+='</div></div>';
+  });
+  let h='<details class="fixes-heute" style="margin-top:14px;background:var(--sf);border:1px solid var(--orange-bd,var(--bd));overflow:hidden">';
+  h+='<summary style="list-style:none;cursor:pointer;padding:9px 14px;display:flex;align-items:center;gap:10px">'+collapsed+'<span style="font-size:10px;color:var(--t3);margin-left:4px">▾</span></summary>';
+  h+=expanded;
+  h+='</details>';
+  return h;
+}
+async function inboxAcceptMeilenstein(id,tzId){
+  const a=S.aufgaben.find(x=>x.id===id);if(!a||a._busy)return;
+  const keep=tzId==='__keep__';
+  let newTzId=keep?a.teilzielId:tzId;
+  let newZielId=a.zielId;
+  if(!keep){
+    newZielId=null;
+    S.ziele.forEach(z=>{(z.teilziele||[]).forEach(t=>{if(t.id===tzId)newZielId=z.id;});});
+  }
+  const prev={teilzielId:a.teilzielId,zielId:a.zielId,inboxStatus:a.inboxStatus,status:a.status};
+  const newStatus=a.status==='zugewiesen'?'neu':a.status;
+  a._busy=true;a.teilzielId=newTzId;a.zielId=newZielId;a.inboxStatus='triagiert';a.status=newStatus;
+  render();
+  const ok=await dbPatch('aufgaben',id,{teilziel_id:newTzId,ziel_id:newZielId,inbox_status:'triagiert',status:newStatus});
+  a._busy=false;
+  if(!ok){Object.assign(a,prev);toast('⚠ Fehler beim Speichern');render();return;}
+  toast(a.prio?'✓ Zugeordnet':'✓ Zugeordnet · Prio fehlt noch');render();
+}
+async function inboxSetPrio(id,prio){
+  const a=S.aufgaben.find(x=>x.id===id);if(!a||a._busy)return;
+  const prev={prio:a.prio};
+  a._busy=true;a.prio=prio;render();
+  const ok=await dbPatch('aufgaben',id,{prio});
+  a._busy=false;
+  if(!ok){Object.assign(a,prev);toast('⚠ Fehler');render();return;}
+  toast('✓ '+prio+' gesetzt');render();
+}
+async function inboxAcceptBacklog(id){
+  const a=S.aufgaben.find(x=>x.id===id);if(!a||a._busy)return;
+  const prev={status:a.status,inboxStatus:a.inboxStatus};
+  a._busy=true;a.status='backlog';a.inboxStatus='triagiert';
+  render();
+  const ok=await dbPatch('aufgaben',id,{status:'backlog',inbox_status:'triagiert'});
+  a._busy=false;
+  if(!ok){Object.assign(a,prev);toast('⚠ Fehler beim Speichern');render();return;}
+  toast('✓ Im Backlog · zählt nicht fürs Paddel');render();
+}
+async function inboxArchive(id){
+  const a=S.aufgaben.find(x=>x.id===id);if(!a||a._busy)return;
+  const prev={status:a.status,inboxStatus:a.inboxStatus};
+  a._busy=true;a.status='archiviert';a.inboxStatus='triagiert';
+  render();
+  const ok=await dbPatch('aufgaben',id,{status:'archiviert',inbox_status:'triagiert'});
+  a._busy=false;
+  if(!ok){Object.assign(a,prev);toast('⚠ Fehler beim Speichern');render();return;}
+  toast('✓ Archiviert');render();
+}
+// ─── /INBOX ─────────────────────────────────────────────────────
 // Ideen-Pool + "→ Meilenstein"-Button aus Inbox entfernt (Iteration 2 §1c).
 function rDelegBlock(pid){
   const delegated=S.aufgaben.filter(a=>a.erstelltVon===pid&&a.pid!==pid&&a.status!=='erledigt');
@@ -4592,6 +4695,7 @@ function rTag(){
 
   out+='</div>'; // Ende #heute-weitere-body
 
+  out+=rInbox(aP);
   out+=rMorgenPreview(aP);
 
   document.getElementById('main').innerHTML=out;
@@ -4926,8 +5030,12 @@ async function setTeilziel(id,tzid){
 }
 async function reassignAufgabe(id,newPid){
   const a=S.aufgaben.find(x=>x.id===id);if(!a||a.pid===newPid)return;
+  const istFremdPid=newPid!==aP;
   a.pid=newPid;a.status='zugewiesen';a.erstelltVon=a.erstelltVon||aP;
-  await dbPatch('aufgaben',id,{pid:newPid,status:'zugewiesen',erstellt_von:a.erstelltVon});
+  if(istFremdPid)a.inboxStatus='neu';
+  const patch={pid:newPid,status:'zugewiesen',erstellt_von:a.erstelltVon};
+  if(istFremdPid)patch.inbox_status='neu';
+  await dbPatch('aufgaben',id,patch);
   cm();render();
 }
 async function delAufgabe(id){
@@ -7427,7 +7535,8 @@ async function mdConfirm(){
       prio:t.prio,ziel_id:t.ziel_id,teilziel_id:null,
       geplant:1,gebucht:0,dl:t.dl,dl_type:t.dl?'bis':null,
       ua:[],notiz:t.kontext?'Meeting: '+t.kontext:null,
-      akt_seit:null,vertraulich:false,erstellt_von:aP};
+      akt_seit:null,vertraulich:false,erstellt_von:aP,
+      inbox_status:isOther?'neu':null};
     S.aufgaben.push(normalizeAufgabe(rec));
     await dbInsert('aufgaben',rec);
     if(isOther){
