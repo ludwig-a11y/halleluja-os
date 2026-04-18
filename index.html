@@ -2679,6 +2679,16 @@ async function toggleBig3(wrId,field){
   if(wr[field]){const n=field.replace('_done','');const txt=wrItemName(wr,parseInt(n.slice(-1)));if(txt)notify('big3_erledigt',{big3:txt,kw:getKW().kw});}
   if(aV==='woche')rWoche();else rTag();
 }
+function toggleHeuteWeitere(){
+  const el=document.getElementById('heute-weitere-body');
+  const btn=document.getElementById('heute-weitere-btn');
+  if(!el)return;
+  const open=el.style.display!=='none';
+  el.style.display=open?'none':'block';
+  if(!isLead())localStorage.setItem('heute_weitere_open_'+aP,open?'0':'1');
+  const arr=btn?.querySelector('span span:last-child');
+  if(arr)arr.textContent=open?'▼':'▲';
+}
 
 function rWoche(){
   const{kw}=getKW();
@@ -3199,7 +3209,7 @@ function rTag(){
     }
   }
 
-  // ── Big 3 Wochenkompass ──
+  // ── §2 Fokus: 3 Ergebnisvorhaben (HART) ──
   const{kw:kwAkt}=getKW();
   const wrAktuell=dieseWocheReset(aP);
   if(wrAktuell&&(wrAktuell.big3_1||wrAktuell.big3_2)){
@@ -3207,40 +3217,72 @@ function rTag(){
     const f=fz?FARBEN[fz.farbe||0]:FARBEN[0];
     const doneCount=[wrAktuell.big3_1&&wrAktuell.big3_1_done,wrAktuell.big3_2&&wrAktuell.big3_2_done,wrAktuell.big3_3&&wrAktuell.big3_3_done].filter(Boolean).length;
     const totalCount=[wrAktuell.big3_1,wrAktuell.big3_2,wrAktuell.big3_3].filter(Boolean).length;
-    out+='<details style="margin-bottom:14px">';
-    out+='<summary style="list-style:none;cursor:pointer;display:flex;align-items:center;gap:8px;padding:7px 12px;background:var(--sf);border:1px solid var(--bd);border-left:3px solid '+f.tc+';border-radius:0 8px 8px 0;font-size:11px">';
-    out+='<span style="font-weight:700;color:'+f.tc+';letter-spacing:.3px;text-transform:uppercase;font-size:10px">Ergebnisvorhaben</span>';
-    out+='<span style="color:var(--t3);font-size:10px">KW '+kwAkt+(fz?' · '+esc(fz.name):'')+'</span>';
-    out+='<span style="margin-left:auto;font-size:10px;color:'+(doneCount===totalCount?'var(--green)':'var(--t3)')+'">'+doneCount+'/'+totalCount+' ✓</span>';
-    out+='<span style="font-size:9px;color:var(--t3)">▸</span>';
-    out+='</summary>';
-    out+='<div style="padding:8px 12px 10px;border:1px solid var(--bd);border-top:none;border-left:3px solid '+f.tc+';border-radius:0 0 8px 0;background:var(--sf)">';
+    const allDone=doneCount===totalCount;
+    out+='<div style="margin-bottom:14px">';
+    out+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">';
+    out+='<span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:'+(allDone?'var(--green)':'var(--t3)')+'">'+(allDone?'🎉':'🎯')+' Ergebnisvorhaben · KW '+kwAkt+'</span>';
+    out+='<span style="margin-left:auto;font-size:11px;font-weight:700;color:'+(allDone?'var(--green)':'var(--t3)')+'">'+doneCount+'/'+totalCount+'</span>';
+    out+='</div>';
     [[1,'big3_1_done'],[2,'big3_2_done'],[3,'big3_3_done']].forEach(([n,doneF])=>{
       const txt=wrItemName(wrAktuell,n);if(!txt)return;
       const done=wrAktuell[doneF];
-      out+='<div onclick="toggleBig3(\''+wrAktuell.id+'\',\''+doneF+'\')" style="display:flex;align-items:center;gap:8px;padding:5px 0;cursor:pointer">';
-      out+='<div style="width:16px;height:16px;border-radius:4px;flex-shrink:0;'+(done?'background:'+f.tc+';border:1.5px solid '+f.tc+';display:flex;align-items:center;justify-content:center':'border:1.5px solid var(--bd)')+'">'+(done?'<span style="color:#fff;font-size:9px;font-weight:800">✓</span>':'')+'</div>';
-      out+='<span style="font-size:12px;'+(done?'color:var(--t3);text-decoration:line-through':'color:var(--text)')+'">'+txt+'</span>';
+      const tzId=wrAktuell['big3_'+n+'_tz_id']||null;
+      const linkedTask=tzId?S.aufgaben.find(a=>a.pid===aP&&String(a.teilzielId)===String(tzId)&&a.status!=='erledigt'&&a.prio==='P1'):null;
+      out+='<div style="background:var(--sf);border:1.5px solid '+(done?'var(--green-bd)':'var(--bd)')+';border-radius:12px;padding:12px 14px;margin-bottom:7px;display:flex;align-items:center;gap:10px;transition:border-color .2s">';
+      // Checkbox
+      out+='<div onclick="toggleBig3(\''+wrAktuell.id+'\',\''+doneF+'\')" style="width:20px;height:20px;border-radius:5px;flex-shrink:0;cursor:pointer;'+(done?'background:var(--green);border:1.5px solid var(--green);display:flex;align-items:center;justify-content:center':'border:1.5px solid var(--bd)')+'">'+(done?'<span style="color:#fff;font-size:11px;font-weight:800">✓</span>':'')+'</div>';
+      // Text
+      out+='<div style="flex:1;min-width:0">';
+      out+='<div style="font-size:13px;font-weight:600;'+(done?'color:var(--t3);text-decoration:line-through':'color:var(--text)')+';line-height:1.35">'+esc(txt)+'</div>';
+      if(linkedTask)out+='<div style="font-size:10px;color:var(--t3);margin-top:2px">↳ '+esc(linkedTask.titel.length>40?linkedTask.titel.slice(0,40)+'…':linkedTask.titel)+'</div>';
+      out+='</div>';
+      // Los-Button
+      if(!done){
+        if(linkedTask){
+          const isAktiv=linkedTask.status==='aktiv';
+          out+='<button onclick="'+(isAktiv?'focusModus(\''+linkedTask.id+'\')':'startenA(\''+linkedTask.id+'\')')+'" style="flex-shrink:0;padding:8px 16px;border-radius:9px;background:var(--inv);color:var(--inv-t);border:none;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap">'+(isAktiv?'🔥 Weiter':'▶ Los')+'</button>';
+        } else {
+          out+='<button onclick="openNeu({prio:\'P1\',teilzielId:\''+tzId+'\'})" style="flex-shrink:0;padding:8px 14px;border-radius:9px;background:var(--gray-bg);color:var(--t2);border:1.5px dashed var(--bd);font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap" title="Aufgabe für dieses Ergebnisvorhaben anlegen">+ Aufgabe</button>';
+        }
+      }
       out+='</div>';
     });
-    out+='</div></details>';
-    if(wrAktuell?.wenn_dann){
-      out+='<div style="font-size:11px;color:var(--t3);margin-top:-8px;margin-bottom:10px;padding-left:4px">💡 '+esc(wrAktuell.wenn_dann).slice(0,80)+(wrAktuell.wenn_dann.length>80?'…':'')+'</div>';
-    }
+    // Blocker & Aktionen
     if(wrAktuell.blockiert){
-      out+='<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--red-bg);border:1px solid var(--red-bd);border-radius:8px;margin-top:-6px;margin-bottom:12px">';
+      out+='<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--red-bg);border:1px solid var(--red-bd);border-radius:8px;margin-top:2px;margin-bottom:4px">';
       out+='<span style="font-size:11px">⚠</span><span style="font-size:11px;color:var(--red);flex:1">'+esc(wrAktuell.blockiert).slice(0,60)+(wrAktuell.blockiert.length>60?'…':'')+'</span>';
       out+='<button onclick="openBlocker(\''+wrAktuell.id+'\')" style="font-size:10px;padding:2px 8px;border-radius:5px;border:1px solid var(--red-bd);background:var(--sf);color:var(--red);cursor:pointer;font-family:inherit;flex-shrink:0">Ändern</button>';
       out+='</div>';
     } else {
       const _offFr=S.decisionRequests.filter(d=>d.erstellt_von===aP&&['offen','pipeline','in_meeting'].includes(d.status)).length;
-      out+='<div style="margin-top:-6px;margin-bottom:12px;display:flex;gap:6px;align-items:center">'
+      out+='<div style="margin-top:4px;display:flex;gap:6px;align-items:center">'
         +'<button onclick="openBlocker(\''+wrAktuell.id+'\')" style="font-size:10px;padding:3px 10px;border-radius:6px;border:1px dashed var(--bd);background:transparent;color:var(--t3);cursor:pointer;font-family:inherit">⚠ Blockade melden</button>'
         +'<button onclick="openOffeneFrage()" style="font-size:10px;padding:3px 10px;border-radius:6px;border:1px dashed var(--gold);background:transparent;color:var(--gold-t);cursor:pointer;font-family:inherit">🔍 Klärung anfragen</button>'
-        +(_offFr?'<span onclick="localStorage.setItem(\'dr_filter\',\'offen\');nav(\'team\')" style="background:var(--gold);color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px;cursor:pointer;display:flex;align-items:center;gap:3px" title="Meine offenen Klärungen ansehen">'+_offFr+' offen →</span>':'')
+        +(_offFr?'<span onclick="localStorage.setItem(\'dr_filter\',\'offen\');nav(\'team\')" style="background:var(--gold);color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px;cursor:pointer" title="Meine offenen Klärungen">'+_offFr+' offen →</span>':'')
         +'</div>';
     }
+    out+='</div>';
+  } else {
+    // Kein Wochenplan → Platzhalter (HART: kein anderer Inhalt ohne Plan)
+    out+='<div style="background:var(--amber-bg);border:1.5px solid var(--amber-bd);border-radius:12px;padding:16px 18px;margin-bottom:14px;text-align:center">';
+    out+='<div style="font-size:22px;margin-bottom:8px">📋</div>';
+    out+='<div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:6px">Kein Wochenplan</div>';
+    out+='<div style="font-size:12px;color:var(--t2);margin-bottom:12px;line-height:1.5">Ohne Wochenplan sind alle Aufgaben gleich wichtig — das heißt keine ist es wirklich. Setze jetzt deine 3 Ergebnisvorhaben.</div>';
+    out+='<button onclick="nav(\'woche\')" style="padding:10px 22px;border-radius:10px;background:var(--inv);color:var(--inv-t);border:none;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer">Wochenplan erstellen →</button>';
+    out+='</div>';
   }
+
+  // ── "Weiteres heute"-Toggle (§2 HART) ──
+  // Lead/GF: immer zugeklappt · MA: State via localStorage
+  const _weiteresOpen=isLead()?false:localStorage.getItem('heute_weitere_open_'+aP)==='1';
+  const _weitereN=mitZiel.length+(zugewiesenA.length+neu.length+zurueckA.length)+ohneZiel.length
+    +myA.filter(a=>['neu','backlog'].includes(a.status)&&a.dl_type==='am'&&a.dl>TODAY).length;
+  out+='<div style="margin-bottom:6px">';
+  out+='<button id="heute-weitere-btn" onclick="toggleHeuteWeitere()" style="width:100%;text-align:left;padding:9px 14px;border-radius:10px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);font-family:inherit;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:space-between">';
+  out+='<span style="font-weight:600">Weiteres heute</span>';
+  out+='<span style="display:flex;align-items:center;gap:6px"><span style="background:var(--gray-bg);border:1px solid var(--bd);border-radius:99px;font-size:11px;padding:1px 8px;color:var(--t3)">'+_weitereN+'</span><span style="font-size:10px;color:var(--t3)">'+(_weiteresOpen?'▲':'▼')+'</span></span>';
+  out+='</button></div>';
+  out+='<div id="heute-weitere-body" style="display:'+(_weiteresOpen?'block':'none')+'">';
 
   // (Wolken & Ideen moved into unified Inbox below)
 
@@ -3724,6 +3766,8 @@ function rTag(){
   out+='<div style="text-align:center;padding:8px 0 4px">';
   out+='<button onclick="openBeobachtung()" style="font-size:12px;padding:7px 16px;border-radius:8px;border:1px solid var(--bd);background:var(--gray-bg);color:var(--t2);cursor:pointer;font-family:inherit">💬 Beobachtung erfassen</button>';
   out+='</div>';
+
+  out+='</div>'; // Ende #heute-weitere-body
 
   document.getElementById('main').innerHTML=out;
   startTimers();
