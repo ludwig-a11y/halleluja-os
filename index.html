@@ -950,6 +950,24 @@ function isFällig(freq){
 }
 function freqLabel(freq){return{täglich:'Täglich',wöchentlich:'Wöchentlich (Freitag)',monatlich:'Monatlich (Monatsletzter)'}[freq]||freq;}
 
+function hasPendingP1Kpis(pid){
+  const result=[];
+  S.ziele.forEach(z=>{
+    (z.kpis||[]).forEach(k=>{
+      if(String(k.pid)!==String(pid))return;
+      if(k.prio!=='P1'&&!k.sonder)return;
+      if(!isFällig(k.freq))return;
+      const isTaeglich=k.typ==='täglich';
+      const todayVal=getKpiTodayVal(k.id,pid);
+      const displayVal=isTaeglich
+        ?(todayVal!==null?todayVal:(S.kpiVals[pid+'-'+k.id]?.datum===TODAY?S.kpiVals[pid+'-'+k.id].val:0))
+        :(todayVal!==null?todayVal:kpiVal(k));
+      const reached=k.inv?displayVal<=k.ziel:displayVal>=k.ziel;
+      if(!reached)result.push({...k,displayVal,zielName:z.name});
+    });
+  });
+  return result;
+}
 function rKpiBlock(pid,filter){
   const myKpis=[];
   S.ziele.forEach(z=>{(z.kpis||[]).forEach(k=>{if(String(k.pid)===String(pid))myKpis.push({...k,zielName:z.name});});});
@@ -4017,34 +4035,69 @@ function rTag(){
         hero+='<div data-tid="'+a2.id+'" style="font-family:monospace;font-size:12px;color:var(--t2)">'+fmt(elapsedSec(a2))+'</div></div>';
       });
     } else if(naechste){
-      const zNn=getZielName(naechste),tzNn=getTZName(naechste);
-      const fromN=naechste.erstelltVon&&naechste.erstelltVon!==aP?person(naechste.erstelltVon):null;
-      hero+='<div style="background:var(--hero);border-radius:18px;padding:clamp(16px,4vw,24px);margin-bottom:16px;color:#fff">';
-      hero+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">';
-      hero+='<div style="font-size:10px;font-weight:700;opacity:.4;letter-spacing:.8px;text-transform:uppercase">'+(fokusId?'🎯 Mein Fokus':'Nächster Schritt')+'</div>';
-      if(fokusId)hero+='<button onclick="clearFokus()" style="font-size:9px;padding:2px 8px;border-radius:99px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.1);color:rgba(255,255,255,.6);cursor:pointer;font-family:inherit;margin-left:auto">× Auto</button>';
-      hero+='</div>';
-      hero+='<div style="font-size:clamp(17px,4.5vw,22px);font-weight:700;margin-bottom:6px;line-height:1.3;cursor:pointer" onclick="openDetail(\''+naechste.id+'\')">'+esc(naechste.titel)+'</div>';
-      hero+='<div style="display:flex;gap:8px;align-items:center;margin-bottom:16px;flex-wrap:wrap">';
-      if(naechste.prio)hero+='<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:6px;background:rgba(255,255,255,.12);color:'+(naechste.prio==='P1'?'#fca5a5':naechste.prio==='P2'?'#93c5fd':'rgba(255,255,255,.5)')+'">'+naechste.prio+'</span>';
-      if(zNn)hero+='<span style="font-size:11px;opacity:.5">'+zNn+'</span>';
-      if(tzNn)hero+='<span style="font-size:11px;color:#c4b5fd">'+tzNn+'</span>';
-      if(naechste.dl){const d=dli(naechste.dl);if(d)hero+='<span style="font-size:11px;opacity:.5">'+d.l+'</span>';}
-      if(naechste.dlUhrzeit)hero+='<span style="font-size:11px;font-weight:700;background:rgba(255,255,255,.15);padding:2px 7px;border-radius:6px">📅 '+naechste.dlUhrzeit+'</span>';
-      if(naechste.geplant)hero+='<span style="font-size:11px;opacity:.4">'+fmtH(naechste.geplant)+'</span>';
-      if(fromN)hero+='<span style="font-size:10px;opacity:.35">von '+esc(fromN.name)+'</span>';
-      hero+='</div>';
-      if(naechste.notiz)hero+='<div style="font-size:12px;opacity:.5;font-style:italic;margin-bottom:14px">'+esc(naechste.notiz)+'</div>';
-      if(naechste.ua&&naechste.ua.length){
-        hero+='<div style="margin-bottom:16px;padding:10px 12px;background:rgba(255,255,255,.06);border-radius:10px">';
-        naechste.ua.forEach((u,i)=>{hero+='<div class="sr" onclick="toggleStep(\''+naechste.id+'\','+i+')" style="padding:4px 0"><div style="width:14px;height:14px;border-radius:3px;flex-shrink:0;display:flex;align-items:center;justify-content:center;'+(u.d?'background:var(--hero-t);border:1.5px solid var(--hero-t)':'border:1.5px solid rgba(255,255,255,.25)')+'">'+(u.d?'<span style="color:var(--hero);font-size:8px;font-weight:800">✓</span>':'')+'</div><span style="font-size:12px;'+(u.d?'opacity:.35;text-decoration:line-through':'opacity:.8')+'">'+u.t+'</span></div>';});
+      const pendingP1K=hasPendingP1Kpis(aP);
+      const p1zuerst=pendingP1K.length>0&&naechste.prio!=='P1';
+      if(p1zuerst){
+        // ── P1-Zuerst-Hero: offene P1-KPIs stehen vor P2/P3-Task ──
+        hero+='<div style="background:var(--hero);border-radius:18px;padding:clamp(16px,4vw,24px);margin-bottom:16px;color:#fff">';
+        hero+='<div style="font-size:10px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;margin-bottom:14px;color:#fca5a5">⚡ P1 zuerst</div>';
+        pendingP1K.forEach(k=>{
+          const pct=Math.min(100,Math.round(k.displayVal/(k.ziel||1)*100));
+          hero+='<div style="margin-bottom:16px">';
+          hero+='<div style="font-size:17px;font-weight:700;margin-bottom:2px">'+esc(k.label)+'</div>';
+          hero+='<div style="font-size:11px;opacity:.45;margin-bottom:10px">→ '+esc(k.zielName)+'</div>';
+          hero+='<div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">';
+          hero+='<span style="font-size:32px;font-weight:800;font-variant-numeric:tabular-nums">'+k.displayVal+'</span>';
+          hero+='<span style="font-size:15px;opacity:.4">/ '+k.ziel+'</span>';
+          hero+='<div style="flex:1;height:4px;background:rgba(255,255,255,.15);border-radius:99px;overflow:hidden"><div style="height:100%;background:#fca5a5;border-radius:99px;width:'+pct+'%"></div></div>';
+          hero+='</div>';
+          if(k.sonder){
+            hero+='<button onclick="incrementKpi(\''+k.id+'\',\''+aP+'\')" style="width:100%;padding:13px;border-radius:12px;background:var(--amber);color:#fff;border:none;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer">🔔 Verkauf eintragen</button>';
+          }else{
+            hero+='<button onclick="incrementKpi(\''+k.id+'\',\''+aP+'\')" style="width:100%;padding:13px;border-radius:12px;background:rgba(255,255,255,.15);color:#fff;border:none;font-family:inherit;font-size:16px;font-weight:700;cursor:pointer;transition:background .15s" onmouseenter="this.style.background=\'rgba(255,255,255,.25)\'" onmouseleave="this.style.background=\'rgba(255,255,255,.15)\'">+ 1</button>';
+          }
+          hero+='</div>';
+        });
+        // Danach: P2-Task als sekundäre Zeile
+        hero+='<div style="border-top:1px solid rgba(255,255,255,.12);padding-top:12px">';
+        hero+='<div style="font-size:9px;font-weight:700;opacity:.4;letter-spacing:.6px;text-transform:uppercase;margin-bottom:7px">Danach</div>';
+        hero+='<div onclick="openDetail(\''+naechste.id+'\')" style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:8px 10px;background:rgba(255,255,255,.07);border-radius:9px">';
+        hero+='<span style="font-size:10px;font-weight:700;color:'+(naechste.prio==='P2'?'#93c5fd':'rgba(255,255,255,.4)')+'">'+esc(naechste.prio||'')+'</span>';
+        hero+='<span style="flex:1;font-size:12px;opacity:.7;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(naechste.titel)+'</span>';
+        hero+='<button onclick="event.stopPropagation();startenA(\''+naechste.id+'\')" style="font-size:11px;padding:5px 10px;border-radius:7px;background:rgba(255,255,255,.15);color:#fff;border:none;font-family:inherit;cursor:pointer;white-space:nowrap">▶ Los</button>';
+        hero+='</div></div>';
         hero+='</div>';
+      } else {
+        // ── Normal-Hero: kein P1-KPI offen, oder naechste ist selbst P1 ──
+        const zNn=getZielName(naechste),tzNn=getTZName(naechste);
+        const fromN=naechste.erstelltVon&&naechste.erstelltVon!==aP?person(naechste.erstelltVon):null;
+        hero+='<div style="background:var(--hero);border-radius:18px;padding:clamp(16px,4vw,24px);margin-bottom:16px;color:#fff">';
+        hero+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">';
+        hero+='<div style="font-size:10px;font-weight:700;opacity:.4;letter-spacing:.8px;text-transform:uppercase">'+(fokusId?'🎯 Mein Fokus':'Nächster Schritt')+'</div>';
+        if(fokusId)hero+='<button onclick="clearFokus()" style="font-size:9px;padding:2px 8px;border-radius:99px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.1);color:rgba(255,255,255,.6);cursor:pointer;font-family:inherit;margin-left:auto">× Auto</button>';
+        hero+='</div>';
+        hero+='<div style="font-size:clamp(17px,4.5vw,22px);font-weight:700;margin-bottom:6px;line-height:1.3;cursor:pointer" onclick="openDetail(\''+naechste.id+'\')">'+esc(naechste.titel)+'</div>';
+        hero+='<div style="display:flex;gap:8px;align-items:center;margin-bottom:16px;flex-wrap:wrap">';
+        if(naechste.prio)hero+='<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:6px;background:rgba(255,255,255,.12);color:'+(naechste.prio==='P1'?'#fca5a5':naechste.prio==='P2'?'#93c5fd':'rgba(255,255,255,.5)')+'">'+naechste.prio+'</span>';
+        if(zNn)hero+='<span style="font-size:11px;opacity:.5">'+zNn+'</span>';
+        if(tzNn)hero+='<span style="font-size:11px;color:#c4b5fd">'+tzNn+'</span>';
+        if(naechste.dl){const d=dli(naechste.dl);if(d)hero+='<span style="font-size:11px;opacity:.5">'+d.l+'</span>';}
+        if(naechste.dlUhrzeit)hero+='<span style="font-size:11px;font-weight:700;background:rgba(255,255,255,.15);padding:2px 7px;border-radius:6px">📅 '+naechste.dlUhrzeit+'</span>';
+        if(naechste.geplant)hero+='<span style="font-size:11px;opacity:.4">'+fmtH(naechste.geplant)+'</span>';
+        if(fromN)hero+='<span style="font-size:10px;opacity:.35">von '+esc(fromN.name)+'</span>';
+        hero+='</div>';
+        if(naechste.notiz)hero+='<div style="font-size:12px;opacity:.5;font-style:italic;margin-bottom:14px">'+esc(naechste.notiz)+'</div>';
+        if(naechste.ua&&naechste.ua.length){
+          hero+='<div style="margin-bottom:16px;padding:10px 12px;background:rgba(255,255,255,.06);border-radius:10px">';
+          naechste.ua.forEach((u,i)=>{hero+='<div class="sr" onclick="toggleStep(\''+naechste.id+'\','+i+')" style="padding:4px 0"><div style="width:14px;height:14px;border-radius:3px;flex-shrink:0;display:flex;align-items:center;justify-content:center;'+(u.d?'background:var(--hero-t);border:1.5px solid var(--hero-t)':'border:1.5px solid rgba(255,255,255,.25)')+'">'+(u.d?'<span style="color:var(--hero);font-size:8px;font-weight:800">✓</span>':'')+'</div><span style="font-size:12px;'+(u.d?'opacity:.35;text-decoration:line-through':'opacity:.8')+'">'+u.t+'</span></div>';});
+          hero+='</div>';
+        }
+        hero+='<div style="display:flex;gap:6px;margin-bottom:16px"><input class="asi" id="si-'+naechste.id+'" placeholder="+ Schritt hinzufügen…" onkeydown="if(event.key===\'Enter\')addStep(\''+naechste.id+'\')" style="font-size:12px;padding:6px 10px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);color:#fff;border-radius:8px"><button onclick="addStep(\''+naechste.id+'\')" style="font-size:11px;padding:5px 10px;border-radius:6px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.08);color:rgba(255,255,255,.5);cursor:pointer">+</button></div>';
+        hero+='<div style="display:flex;gap:10px">';
+        hero+='<button onclick="focusModus(\''+naechste.id+'\')" style="flex:1;padding:14px;border-radius:12px;background:var(--hero-t);color:var(--hero);border:none;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer;box-shadow:0 0 24px rgba(255,255,255,.12);transition:all .15s" onmouseenter="this.style.boxShadow=\'0 0 32px rgba(255,255,255,.25)\'" onmouseleave="this.style.boxShadow=\'0 0 24px rgba(255,255,255,.12)\'" onmousedown="this.style.transform=\'scale(.98)\'" onmouseup="this.style.transform=\'scale(1)\'">▶ Starten</button>';
+        hero+='<button onclick="openDetail(\''+naechste.id+'\')" style="padding:14px 18px;border-radius:12px;background:rgba(255,255,255,.1);color:rgba(255,255,255,.5);border:none;font-family:inherit;font-size:13px;font-weight:500;cursor:pointer;transition:background .15s" onmouseenter="this.style.background=\'rgba(255,255,255,.2)\'" onmouseleave="this.style.background=\'rgba(255,255,255,.1)\'">···</button>';
+        hero+='</div></div>';
       }
-      hero+='<div style="display:flex;gap:6px;margin-bottom:16px"><input class="asi" id="si-'+naechste.id+'" placeholder="+ Schritt hinzufügen…" onkeydown="if(event.key===\'Enter\')addStep(\''+naechste.id+'\')" style="font-size:12px;padding:6px 10px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);color:#fff;border-radius:8px"><button onclick="addStep(\''+naechste.id+'\')" style="font-size:11px;padding:5px 10px;border-radius:6px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.08);color:rgba(255,255,255,.5);cursor:pointer">+</button></div>';
-      hero+='<div style="display:flex;gap:10px">';
-      hero+='<button onclick="focusModus(\''+naechste.id+'\')" style="flex:1;padding:14px;border-radius:12px;background:var(--hero-t);color:var(--hero);border:none;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer;box-shadow:0 0 24px rgba(255,255,255,.12);transition:all .15s" onmouseenter="this.style.boxShadow=\'0 0 32px rgba(255,255,255,.25)\'" onmouseleave="this.style.boxShadow=\'0 0 24px rgba(255,255,255,.12)\'" onmousedown="this.style.transform=\'scale(.98)\'" onmouseup="this.style.transform=\'scale(1)\'">▶ Starten</button>';
-      hero+='<button onclick="openDetail(\''+naechste.id+'\')" style="padding:14px 18px;border-radius:12px;background:rgba(255,255,255,.1);color:rgba(255,255,255,.5);border:none;font-family:inherit;font-size:13px;font-weight:500;cursor:pointer;transition:background .15s" onmouseenter="this.style.background=\'rgba(255,255,255,.2)\'" onmouseleave="this.style.background=\'rgba(255,255,255,.1)\'">···</button>';
-      hero+='</div></div>';
     } else if(alleGeschafft||!myA.length){
       hero+='<div style="background:var(--green);border-radius:18px;padding:clamp(20px,5vw,32px) clamp(16px,4vw,24px);margin-bottom:16px;color:#fff;text-align:center">';
       hero+='<div style="font-size:36px;margin-bottom:12px">🎉</div>';
