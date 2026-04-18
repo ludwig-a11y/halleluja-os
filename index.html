@@ -1105,60 +1105,8 @@ async function klassifiziereAlsRandom(id){
   await dbPatch('aufgaben',id,{typ:'random',prio:null,status:'backlog'});
   render();
 }
-function _updateMsLabels(){
-  const sel=document.getElementById('ms-ziel');if(!sel)return;const _b=istBereich(sel.value);
-  const t=document.getElementById('ms-title'),d=document.getElementById('ms-desc'),n=document.getElementById('ms-name-lbl'),s=document.getElementById('ms-save-btn');
-  if(t)t.textContent='Als '+(_b?'Thema':'Meilenstein')+' anlegen';
-  if(d)d.textContent='Die Aufgabe wird in '+(_b?'ein Thema':'einen Meilenstein')+' umgewandelt und dem gewählten '+(_b?'Bereich':'Ziel')+' zugeordnet.';
-  if(n)n.textContent=_b?'Thema-Name':'Meilenstein-Name';
-  if(s)s.textContent='→ '+(_b?'Thema':'Meilenstein')+' anlegen';
-}
-function aufgabeZuMeilenstein(id){
-  const a=S.aufgaben.find(x=>x.id===id);if(!a)return;
-  const zielOpts=S.ziele.filter(z=>z.status!=='vorschlag').map(z=>'<option value="'+z.id+'">'+(z.status==='bereich'?'📁 ':'')+esc(z.name)+'</option>').join('');
-  document.getElementById('mb').innerHTML='<div class="mt" id="ms-title">Als Meilenstein anlegen</div>'
-    +'<div id="ms-desc" style="font-size:12px;color:var(--t2);margin:-8px 0 16px;line-height:1.4">Die Aufgabe wird in einen Meilenstein umgewandelt und dem gewählten Ziel zugeordnet.</div>'
-    +'<div class="fl"><label>Gehört zu</label><select id="ms-ziel" onchange="_updateMsLabels()">'+zielOpts+'</select></div>'
-    +'<div class="fl"><label id="ms-name-lbl">Meilenstein-Name</label><input id="ms-name" value="'+esc(a.titel)+'" placeholder="z.B. ROI-Konzept fertiggestellt" autofocus></div>'
-    +'<div class="f2"><div class="fl"><label>Wer ist verantwortlich?</label><select id="ms-vid">'+S.personen.map(p=>'<option value="'+p.id+'"'+(p.id===aP?' selected':'')+'>'+esc(p.name)+'</option>').join('')+'</select></div>'
-    +'<div class="fl"><label>Bis wann? <span style="font-weight:400;color:var(--t2)">(optional)</span></label><input type="date" id="ms-datum" value="'+(a.dl||'')+'"></div></div>'
-    +'<div class="mf"><button class="btn btn-gr" onclick="cm()">Abbrechen</button><button class="btn btn-dk" id="ms-save-btn" onclick="saveMeilensteinFromAufgabe(\''+id+'\')">→ Meilenstein anlegen</button></div>';
-  document.getElementById('ovl').classList.add('open');
-  _updateMsLabels();
-}
-async function saveMeilensteinFromAufgabe(aufgabeId){
-  const a=S.aufgaben.find(x=>x.id===aufgabeId);if(a&&a._busy)return;
-  if(a)a._busy=true;
-  try{
-    const zid=document.getElementById('ms-ziel').value;
-    const name=document.getElementById('ms-name').value.trim();if(!name||!zid){if(a)a._busy=false;return;}
-    const vid=document.getElementById('ms-vid').value;
-    const datum=document.getElementById('ms-datum').value;
-    const z=zielObj(zid);if(!z){if(a)a._busy=false;return;}
-    const id=nid('tz'),rec={id,ziel_id:zid,name,verantwortlich_id:vid,datum:datum||null,erledigt:false,status:'aktiv'};
-    z.teilziele=z.teilziele||[];z.teilziele.push({...rec,zielId:zid,verantwortlichId:vid,datum:datum||'',status:'aktiv'});
-    await dbInsert('teilziele',rec);
-    S.aufgaben=S.aufgaben.filter(x=>x.id!==aufgabeId);
-    await dbDelete('aufgaben',aufgabeId);
-    cm();render();
-  }catch(e){console.error('saveMeilensteinFromAufgabe',e);toast('⚠ Fehler beim Umwandeln');}
-  finally{if(a)a._busy=false;}
-}
-async function klassifiziereAlsIdee(id){
-  const a=S.aufgaben.find(x=>x.id===id);if(!a||a._busy)return;
-  a._busy=true;
-  const prevStatus=a.status;
-  try{
-    const rec={id:nid('s'),pid:aP,typ:'idee',was:a.titel,warum:'Aus Inbox weitergeleitet (von '+(person(a.erstelltVon)?.name||'?')+')',fuer:null};
-    a.status='idee';
-    render();
-    await dbInsert('signale',rec);
-    const ok=await dbPatch('aufgaben',id,{status:'idee'});
-    if(!ok){a.status=prevStatus;S.signale=S.signale.filter(s=>s.id!==rec.id);toast('⚠ Fehler beim Speichern');}
-    else{S.signale.unshift(rec);toast('💡 In Ideen-Pool verschoben');}
-  }catch(e){console.error('klassifiziereAlsIdee',e);a.status=prevStatus;toast('⚠ Fehler');}
-  finally{a._busy=false;render();}
-}
+// _updateMsLabels, aufgabeZuMeilenstein, saveMeilensteinFromAufgabe, klassifiziereAlsIdee entfernt:
+// Ideen-Pool + "→ Meilenstein"-Button aus Inbox entfernt (Iteration 2 §1c).
 function rDelegBlock(pid){
   const delegated=S.aufgaben.filter(a=>a.erstelltVon===pid&&a.pid!==pid&&a.status!=='erledigt');
   if(!delegated.length)return'';
@@ -4752,30 +4700,7 @@ function openNeu(pf={}){
   }
   if(pf.teilzielId)setTimeout(()=>{const s=document.getElementById('ntz');if(s){s.value=pf.teilzielId;updateNeuPaddelHint();}},100);
 }
-function updateNeuTZ(){
-  const zSel=document.getElementById('nziel');if(!zSel)return;
-  const z=zielObj(zSel.value),tzSel=document.getElementById('ntz');
-  const wrap=document.getElementById('neu-tz-wrap');
-  if(!tzSel)return;
-  const _isB=z&&istBereich(z.id),_lbl=_isB?'Thema':'Meilenstein';
-  const wrapLabel=wrap?.querySelector('label');
-  if(wrapLabel)wrapLabel.innerHTML=_lbl+' <span style="font-weight:400;color:var(--t2)">(optional)</span>';
-  tzSel.innerHTML='<option value="">— kein '+_lbl+' —</option>';
-  const tza=z?(z.teilziele||[]).filter(t=>!t.erledigt&&(t.status||'aktiv')==='aktiv'):[];
-  tza.forEach(t=>{
-    const label=esc(t.name)+(t.datum?' · bis '+t.datum.slice(8)+'.'+t.datum.slice(5,7)+'.':'');
-    tzSel.innerHTML+='<option value="'+t.id+'" data-datum="'+(t.datum||'')+'">'+label+'</option>';
-  });
-  if(wrap)wrap.style.display=tza.length?'':'none';
-  tzSel.onchange=()=>{
-    const opt=tzSel.options[tzSel.selectedIndex];
-    const mDatum=opt?.dataset?.datum;
-    const dlInput=document.getElementById('ndl');
-    if(mDatum&&dlInput)dlInput.value=mDatum;
-    updateNeuPaddelHint();
-  };
-  updateNeuPaddelHint();
-}
+// updateNeuTZ() entfernt — Ziel-Select wurde durch Meilenstein-Select (ntz) ersetzt
 function updateNeuPaddelHint(){
   const hint=document.getElementById('neu-paddel-hint');if(!hint)return;
   const tzSel=document.getElementById('ntz');
@@ -5113,12 +5038,15 @@ function aiApplyAll(){
   if(window._aiPrio)aiApplyPrio(window._aiPrio);
   if(window._aiDauer){const sel=document.getElementById('nh');if(sel)sel.value=String(window._aiDauer);}
   if(window._aiSteps&&window._aiSteps.length)aiApplySteps();
-  // Ziel auto-matchen: wenn AI ein Ziel erkannt hat, versuche es im Dropdown zu setzen
+  // Meilenstein auto-matchen: wenn AI ein Ziel erkannt hat, passenden Meilenstein vorauswählen
   if(window._aiZielMatch){
-    const sel=document.getElementById('nziel');
-    if(sel){
-      const match=S.ziele.find(z=>z.name.toLowerCase().includes(window._aiZielMatch.toLowerCase()));
-      if(match){sel.value=match.id;updateNeuTZ();}
+    const tzSel=document.getElementById('ntz');
+    if(tzSel){
+      const zMatch=S.ziele.find(z=>z.name.toLowerCase().includes(window._aiZielMatch.toLowerCase()));
+      if(zMatch){
+        const tzMatch=(zMatch.teilziele||[]).find(t=>!t.erledigt&&(t.status||'aktiv')==='aktiv');
+        if(tzMatch){tzSel.value=tzMatch.id;updateNeuPaddelHint();}
+      }
     }
   }
   // Visual feedback
@@ -5187,7 +5115,6 @@ async function saveNeu(){
   // Priorität ist Pflicht — keine „kein Prio"-Option mehr
   if(!_selPrio){toast('⚠️ Bitte Priorität wählen (P1/P2/P3)');return;}
   // Ersteller darf immer anlegen — Kapazität managed der Empfänger in seiner Inbox
-  const _pidNeu=document.getElementById('np')?.value||aP;
   const tzSel=document.getElementById('ntz');
   const teilzielId=tzSel?tzSel.value||null:null;
   let zielId=null;
