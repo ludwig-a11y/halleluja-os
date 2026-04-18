@@ -952,7 +952,7 @@ function freqLabel(freq){return{täglich:'Täglich',wöchentlich:'Wöchentlich (
 
 function hasPendingP1Kpis(pid){
   const result=[];
-  S.ziele.forEach(z=>{
+  (S.ziele||[]).forEach(z=>{
     (z.kpis||[]).forEach(k=>{
       if(String(k.pid)!==String(pid))return;
       if(k.prio!=='P1'&&!k.sonder)return;
@@ -1043,8 +1043,8 @@ function rFixesHeute(pid){
   const appEvents=(S.aufgaben||[]).filter(a=>
     String(a.pid)===String(pid)&&a.dl===TODAY&&a.dlUhrzeit&&
     !['erledigt','zurueckgegeben','archiviert','backlog'].includes(a.status)
-  ).map(a=>{
-    const [hh,mm]=(a.dlUhrzeit||'00:00').split(':').map(Number);
+  ).filter(a=>/^\d{2}:\d{2}$/.test(a.dlUhrzeit)).map(a=>{
+    const [hh,mm]=a.dlUhrzeit.split(':').map(Number);
     const start=new Date(TODAY+'T'+String(hh).padStart(2,'0')+':'+String(mm).padStart(2,'0')+':00');
     const durMin=Math.round((parseFloat(a.geplant)||1)*60);
     const end=new Date(start.getTime()+durMin*60000);
@@ -5666,7 +5666,7 @@ function toggleDlUhr(){
   const open=wrap.style.display!=='none';
   wrap.style.display=open?'none':'block';
   if(btn){btn.style.color=open?'var(--t3)':'var(--blue)';btn.style.borderColor=open?'var(--bd)':'var(--blue-bd)';btn.style.background=open?'var(--sf)':'var(--blue-bg)';}
-  if(open){const inp=document.getElementById('ndluhr');if(inp)inp.value='';document.getElementById('ndl-event-badge').style.display='none';document.getElementById('ndl-uhr-hint').style.display='none';}
+  if(open){const inp=document.getElementById('ndluhr');if(inp)inp.value='';const b2=document.getElementById('ndl-event-badge');if(b2)b2.style.display='none';const h2=document.getElementById('ndl-uhr-hint');if(h2)h2.style.display='none';}
   else{const inp=document.getElementById('ndluhr');if(inp)inp.focus();}
 }
 function onDlUhrChange(){
