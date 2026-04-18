@@ -2351,7 +2351,7 @@ function tryLogin(){
     _snoozeLoad();
     document.getElementById('login-screen').style.display='none';
     document.getElementById('app').style.display='flex';
-    updateBadge();render();checkOnboarding();startSonderPoller();startDataPoller();handleDeepLink();checkDeepLink();
+    updateBadge();render();checkOnboarding();checkMeilensteinReviews();startSonderPoller();startDataPoller();handleDeepLink();checkDeepLink();
     gcalFetchToday();
   } else {
     document.getElementById('login-err').textContent='Falsche PIN.';pinIn='';updDots();
@@ -2550,6 +2550,107 @@ async function onboardingSnooze(){
   render();
 }
 // ─── Ende ONBOARDING ─────────────────────────────────────────────
+
+// ─── §7 MEILENSTEIN-REVIEW ───────────────────────────────────────
+function checkMeilensteinReviews(){
+  const p=me();if(!p)return;
+  // Find overdue teilziele belonging to current user that need a review
+  const fällig=S.ziele.flatMap(z=>z.teilziele||[]).filter(t=>{
+    if(String(t.verantwortlichId)!==String(aP))return false;
+    if(t.review_done)return false;
+    if(!t.datum)return false;
+    return t.datum<=TODAY;
+  });
+  if(!fällig.length)return;
+  openMeilensteinReview(fällig[0].id);
+}
+function openMeilensteinReview(tzId){
+  const tz=S.ziele.flatMap(z=>z.teilziele||[]).find(t=>t.id===tzId);
+  if(!tz)return;
+  const z=S.ziele.find(zl=>zl.id===(tz.zielId||tz.ziel_id));
+  const aufgGes=S.aufgaben.filter(a=>a.teilzielId===tzId).length;
+  const aufgErl=S.aufgaben.filter(a=>a.teilzielId===tzId&&a.status==='erledigt').length;
+  const pct=aufgGes>0?Math.round(aufgErl/aufgGes*100):0;
+  let ov=document.getElementById('mr-ovl');
+  if(!ov){ov=document.createElement('div');ov.id='mr-ovl';ov.style.cssText='position:fixed;inset:0;z-index:9991;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box';document.body.appendChild(ov);}
+  window._mrState=window._mrState||{};
+  if(!window._mrState[tzId])window._mrState[tzId]={step:1,erreicht:'',grund:'',learning:''};
+  const st=window._mrState[tzId];
+  const header='<div style="background:var(--sf);border-radius:16px;padding:24px;max-width:480px;width:100%;max-height:90vh;overflow-y:auto">'
+    +'<div style="font-size:11px;color:var(--t3);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">🎯 Meilenstein-Review</div>'
+    +'<div style="font-size:17px;font-weight:700;margin-bottom:4px">'+esc(tz.name)+'</div>'
+    +'<div style="font-size:11px;color:var(--t2);margin-bottom:14px">'+(z?'↳ '+esc(z.name)+' · ':'')+'Fällig: '+(tz.datum?tz.datum.slice(8)+'.'+tz.datum.slice(5,7)+'.'+tz.datum.slice(0,4):'?')+'</div>'
+    +'<div style="background:var(--gray-bg);border-radius:8px;padding:10px 12px;margin-bottom:18px;display:flex;align-items:center;gap:10px">'
+    +'<div style="flex:1"><div style="font-size:11px;color:var(--t3);margin-bottom:5px">Aufgaben abgeschlossen</div>'
+    +'<div style="height:6px;background:var(--bd);border-radius:3px;overflow:hidden"><div style="height:100%;background:var(--green);border-radius:3px;width:'+pct+'%"></div></div></div>'
+    +'<div style="font-size:14px;font-weight:700">'+aufgErl+'/'+aufgGes+'</div></div>';
+  let body='';
+  if(st.step===1){
+    const opts=['ja','teilweise','nein'];
+    const labels={ja:'✅ Ja — erreicht',teilweise:'〜 Teilweise erreicht',nein:'❌ Nein — nicht erreicht'};
+    body+='<div style="font-size:14px;font-weight:600;margin-bottom:14px">Meilenstein erreicht?</div>'
+      +'<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px">'
+      +opts.map(v=>{const sel=st.erreicht===v;return'<button onclick="window._mrState[\''+tzId+'\'].erreicht=\''+v+'\';openMeilensteinReview(\''+tzId+'\')" style="padding:12px 16px;border-radius:10px;border:1.5px solid '+(sel?'var(--inv)':'var(--bd)')+';background:'+(sel?'var(--inv)':'var(--sf)')+';color:'+(sel?'var(--inv-t)':'var(--text)')+';font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;text-align:left">'+labels[v]+'</button>';}).join('')
+      +'</div>';
+    if(st.erreicht)body+='<button onclick="mrNext(\''+tzId+'\')" style="width:100%;padding:13px;border-radius:10px;background:var(--inv);color:var(--inv-t);border:none;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer">Weiter →</button>';
+  } else if(st.step===2){
+    const gruende=[['plan','📐 Plan-Problem','Zu ambitioniert oder falsch geschätzt'],['ausfuehrung','⚙️ Ausführungs-Problem','Nicht konsequent bearbeitet, abgelenkt, Zeit gefehlt']];
+    body+='<div style="font-size:14px;font-weight:600;margin-bottom:6px">Was war die Hauptursache?</div>'
+      +'<div style="font-size:12px;color:var(--t2);margin-bottom:14px">Hilft dir, in Zukunft besser zu planen.</div>'
+      +'<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px">'
+      +gruende.map(([v,lbl,sub])=>{const sel=st.grund===v;return'<button onclick="window._mrState[\''+tzId+'\'].grund=\''+v+'\';openMeilensteinReview(\''+tzId+'\')" style="padding:12px 16px;border-radius:10px;border:1.5px solid '+(sel?'var(--inv)':'var(--bd)')+';background:'+(sel?'var(--inv)':'var(--sf)')+';color:'+(sel?'var(--inv-t)':'var(--text)')+';font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;text-align:left"><div>'+lbl+'</div><div style="font-size:11px;font-weight:400;color:'+(sel?'var(--inv-t)':'var(--t3)')+';margin-top:2px">'+sub+'</div></button>';}).join('')
+      +'</div>';
+    if(st.grund)body+='<button onclick="mrNext(\''+tzId+'\')" style="width:100%;padding:13px;border-radius:10px;background:var(--inv);color:var(--inv-t);border:none;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer">Weiter →</button>';
+  } else if(st.step===3){
+    body+='<div style="font-size:14px;font-weight:600;margin-bottom:6px">Learning in einem Satz</div>'
+      +'<div style="font-size:12px;color:var(--t2);margin-bottom:12px">Max. 140 Zeichen — was nimmst du mit?</div>'
+      +'<textarea id="mr-learning" maxlength="140" placeholder="Was habe ich gelernt?" style="width:100%;height:80px;padding:10px 12px;border-radius:8px;border:1px solid var(--bd);background:var(--sf);color:var(--text);font-family:inherit;font-size:13px;resize:none;box-sizing:border-box">'+esc(st.learning||'')+'</textarea>'
+      +'<div style="display:flex;justify-content:flex-end;font-size:10px;color:var(--t3);margin:4px 0 16px" id="mr-chr">0/140</div>'
+      +'<button onclick="saveMeilensteinReview(\''+tzId+'\')" style="width:100%;padding:13px;border-radius:10px;background:var(--green);color:#fff;border:none;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer">Abschließen ✓</button>'
+      +'<script>setTimeout(()=>{const ta=document.getElementById(\'mr-learning\');const ch=document.getElementById(\'mr-chr\');if(ta&&ch){ch.textContent=ta.value.length+\'/140\';ta.addEventListener(\'input\',()=>{ch.textContent=ta.value.length+\'/140\';})}},50)<\/script>';
+  }
+  ov.innerHTML=header+body+'</div>';
+}
+function mrNext(tzId){
+  const st=window._mrState&&window._mrState[tzId];if(!st)return;
+  if(st.step===1){st.step=(st.erreicht==='ja'?3:2);}
+  else if(st.step===2){st.step=3;}
+  openMeilensteinReview(tzId);
+}
+async function saveMeilensteinReview(tzId){
+  const st=window._mrState&&window._mrState[tzId];if(!st)return;
+  const learning=document.getElementById('mr-learning')?.value.trim()||'';
+  if(learning.length<10){toast('⚠️ Learning-Satz zu kurz (min. 10 Zeichen)');return;}
+  const patch={review_done:true,review_erreicht:st.erreicht,review_grund:st.grund||null,review_learning:learning,review_at:new Date().toISOString()};
+  const tz=S.ziele.flatMap(z=>z.teilziele||[]).find(t=>t.id===tzId);
+  if(tz)Object.assign(tz,patch);
+  await dbPatch('teilziele',tzId,patch);
+  const ov=document.getElementById('mr-ovl');if(ov)ov.remove();
+  toast('✓ Review gespeichert');
+  checkDiagnosePattern(); // Update hint state
+  setTimeout(()=>checkMeilensteinReviews(),600); // Check if more overdue
+}
+function checkDiagnosePattern(){
+  // Returns 'plan' | 'ausfuehrung' | null based on last 3 "nein" reviews
+  const allTZ=S.ziele.flatMap(z=>z.teilziele||[]);
+  const meineTZ=allTZ.filter(t=>String(t.verantwortlichId)===String(aP)&&t.review_done&&t.review_erreicht==='nein')
+    .sort((a,b)=>(b.review_at||'').localeCompare(a.review_at||''));
+  if(meineTZ.length<3)return null;
+  const last3=meineTZ.slice(0,3);
+  if(!last3.every(t=>t.review_erreicht==='nein'))return null;
+  const planC=last3.filter(t=>t.review_grund==='plan').length;
+  const ausfC=last3.filter(t=>t.review_grund==='ausfuehrung').length;
+  if(planC>=2)return'plan';
+  if(ausfC>=2)return'ausfuehrung';
+  return null;
+}
+function getDiagnoseHint(){
+  const pat=checkDiagnosePattern();if(!pat)return'';
+  if(pat==='plan')return'<div style="font-size:11px;padding:8px 10px;background:var(--amber-bg);border-left:3px solid var(--amber);border-radius:0 6px 6px 0;margin:-4px 0 12px">💡 Deine letzten 3 Meilensteine waren zu steil trotz guter Ausführung. Skaliere den Umfang runter.</div>';
+  if(pat==='ausfuehrung')return'<div style="font-size:11px;padding:8px 10px;background:var(--red-bg);border-left:3px solid var(--red);border-radius:0 6px 6px 0;margin:-4px 0 12px">💡 Ausführungs-Problem, nicht Plan-Problem. Was hat dich die letzten 3 Male blockiert?</div>';
+  return'';
+}
+// ─── Ende §7 MEILENSTEIN-REVIEW ──────────────────────────────────
 
 function updateBadge(){
   const p=me();if(!p)return;
@@ -4671,7 +4772,9 @@ async function toggleTZ(zid,tzid){
 }
 function openAddTZ(zid){
   const _isB=istBereich(zid),_lbl=_isB?'Thema':'Meilenstein',_ph=_isB?'z.B. Wartung & TÜV, IT-Sicherheit…':'z.B. Messe München vorbereitet';
+  const _diagnoseHint=_isB?'':getDiagnoseHint();
   document.getElementById('mb').innerHTML='<div class="mt">'+_lbl+' hinzufügen</div>'
+    +_diagnoseHint
     +'<div class="fl"><label>Name</label><input id="tzn" placeholder="'+_ph+'" autofocus></div>'
     +'<div class="f2"><div class="fl"><label>Verantwortlich</label><select id="tzv">'+S.personen.map(p=>'<option value="'+p.id+'">'+esc(p.name)+'</option>').join('')+'</select></div>'
     +'<div class="fl"><label>Bis wann <span style="font-weight:400;color:var(--t2)">(optional)</span></label><input type="date" id="tzd"></div></div>'
@@ -7338,7 +7441,7 @@ window.addEventListener('keydown',e=>{
         const ls=document.getElementById('login-screen'),ap=document.getElementById('app');
         if(ls)ls.style.display='none';
         if(ap)ap.style.display='flex';
-        updateBadge();render();checkOnboarding();startSonderPoller();startDataPoller();handleDeepLink();checkDeepLink();
+        updateBadge();render();checkOnboarding();checkMeilensteinReviews();startSonderPoller();startDataPoller();handleDeepLink();checkDeepLink();
         gcalFetchToday();
       } else localStorage.removeItem('h_session');
     }
