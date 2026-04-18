@@ -2547,6 +2547,7 @@ async function onboardingSnooze(){
     S.signale.unshift(sigRec);await dbInsert('signale',sigRec);
   }
   const ov=document.getElementById('onb-ovl');if(ov)ov.remove();
+  window._onb=null; // State reset — sonst startet openOnboarding mit altem Zustand
   render();
 }
 // ─── Ende ONBOARDING ─────────────────────────────────────────────
@@ -2625,9 +2626,9 @@ async function saveMeilensteinReview(tzId){
   const tz=S.ziele.flatMap(z=>z.teilziele||[]).find(t=>t.id===tzId);
   if(tz)Object.assign(tz,patch);
   await dbPatch('teilziele',tzId,patch);
+  delete window._mrState[tzId]; // State bereinigen — verhindert pre-filled Modal bei erneutem Öffnen
   const ov=document.getElementById('mr-ovl');if(ov)ov.remove();
   toast('✓ Review gespeichert');
-  checkDiagnosePattern(); // Update hint state
   setTimeout(()=>checkMeilensteinReviews(),600); // Check if more overdue
 }
 function checkDiagnosePattern(){
@@ -2637,7 +2638,6 @@ function checkDiagnosePattern(){
     .sort((a,b)=>(b.review_at||'').localeCompare(a.review_at||''));
   if(meineTZ.length<3)return null;
   const last3=meineTZ.slice(0,3);
-  if(!last3.every(t=>t.review_erreicht==='nein'))return null;
   const planC=last3.filter(t=>t.review_grund==='plan').length;
   const ausfC=last3.filter(t=>t.review_grund==='ausfuehrung').length;
   if(planC>=2)return'plan';
