@@ -4356,17 +4356,7 @@ function rTag(){
   // ── P1-KPIs direkt unter Ergebnisvorhaben ("⚡ Heute zählt") ──
   out+=rKpiBlock(aP,'p1');
 
-  // ── "Weiteres heute"-Toggle (§2 HART) ──
-  // Lead/GF: immer zugeklappt · MA: State via localStorage
-  const _weiteresOpen=isLead()?false:localStorage.getItem('heute_weitere_open_'+aP)==='1';
-  const _weitereN=mitZiel.length+(zugewiesenA.length+neu.length+zurueckA.length)+ohneZiel.length
-    +myA.filter(a=>['neu','backlog'].includes(a.status)&&a.dl_type==='am'&&a.dl>TODAY).length;
-  out+='<div style="margin-bottom:6px">';
-  out+='<button id="heute-weitere-btn" onclick="toggleHeuteWeitere()" style="width:100%;text-align:left;padding:9px 14px;border-radius:10px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);font-family:inherit;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:space-between">';
-  out+='<span style="font-weight:600">Weiteres heute</span>';
-  out+='<span style="display:flex;align-items:center;gap:6px"><span style="background:var(--gray-bg);border:1px solid var(--bd);border-radius:99px;font-size:11px;padding:1px 8px;color:var(--t3)">'+_weitereN+'</span><span style="font-size:10px;color:var(--t3)">'+(_weiteresOpen?'▲':'▼')+'</span></span>';
-  out+='</button></div>';
-  out+='<div id="heute-weitere-body" style="display:'+(_weiteresOpen?'block':'none')+'">';
+  // Team-kritische Sachen direkt sichtbar (kein Accordion mehr — Sam-Move)
 
   // (Wolken & Ideen moved into unified Inbox below)
 
@@ -4529,8 +4519,6 @@ function rTag(){
   if(hasSonderKpi)out+=rKpiBlock(aP,'rest');
 
 
-  mitZiel.forEach(a=>{out+=aufgabeKarte(a);});
-
   // ── Inbox (nur Aufgaben — Wolken/Ideen sind in Wochenansicht) ──
   {
   const _inboxN=zugewiesenA.length+neu.length+zurueckA.length;
@@ -4647,31 +4635,7 @@ function rTag(){
   }
   }
 
-  // ── Weitere (ohne Ziel — operativ) ──
-  if(ohneZiel.length){
-    out+='<details style="margin-bottom:12px"><summary style="list-style:none;cursor:pointer;padding:10px 16px;background:var(--sf);border:1px solid var(--bd);border-radius:12px;display:flex;align-items:center;justify-content:space-between">';
-    out+='<span style="font-size:12px;color:var(--t2)">Weitere</span>';
-    out+='<span style="font-size:12px;color:var(--t3)">'+ohneZiel.length+'</span></summary>';
-    out+='<div style="margin-top:8px">';
-    ohneZiel.forEach(a=>{out+=aufgabeKarte(a);});
-    out+='</div></details>';
-  }
-
-  // ── Geplante Aufgaben (am-Datum in Zukunft — sonst unsichtbar) ──
-  const geplante=myA.filter(a=>['neu','backlog'].includes(a.status)&&a.dl_type==='am'&&a.dl>TODAY);
-  if(geplante.length){
-    out+='<details style="margin-bottom:12px"><summary style="list-style:none;cursor:pointer;padding:10px 16px;background:var(--blue-bg);border:1px solid var(--blue-bd);border-radius:12px;display:flex;align-items:center;justify-content:space-between">';
-    out+='<span style="font-size:12px;font-weight:600;color:var(--blue)">📅 Geplant</span>';
-    out+='<span style="font-size:12px;color:var(--blue);opacity:.7">'+geplante.length+'</span></summary>';
-    out+='<div style="margin-top:8px">';
-    geplante.sort((a,b)=>a.dl.localeCompare(b.dl)).forEach(a=>{
-      out+='<div onclick="openDetail(\''+a.id+'\')" style="background:var(--blue-bg);border:1px solid var(--blue-bd);border-radius:10px;padding:9px 14px;margin-bottom:5px;display:flex;align-items:center;gap:8px;cursor:pointer">'
-        +'<span style="flex:1;font-size:12px;color:var(--text)">'+esc(a.titel)+'</span>'
-        +'<span style="font-size:10px;color:var(--blue);font-weight:600">'+a.dl.slice(8)+'.'+a.dl.slice(5,7)+'.</span>'
-        +'</div>';
-    });
-    out+='</div></details>';
-  }
+  // "Weitere ohne Ziel" + "Geplante Zukunfts-Aufgaben" — entfernt (Sam-Move: nur 3 Ergebnisvorhaben zählen heute)
 
   if(erl.length){
     out+='<details style="margin-bottom:12px"><summary style="list-style:none;cursor:pointer;padding:12px 16px;background:var(--green-bg);border:1px solid var(--green-bd);border-radius:12px;display:flex;align-items:center;justify-content:space-between">';
@@ -4693,7 +4657,7 @@ function rTag(){
   out+='<button onclick="openBeobachtung()" style="font-size:12px;padding:7px 16px;border-radius:8px;border:1px solid var(--bd);background:var(--gray-bg);color:var(--t2);cursor:pointer;font-family:inherit">💬 Beobachtung erfassen</button>';
   out+='</div>';
 
-  out+='</div>'; // Ende #heute-weitere-body
+  // (Ende des früheren #heute-weitere-body — Wrapper ist weg)
 
   out+=rInbox(aP);
   out+=rMorgenPreview(aP);
