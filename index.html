@@ -532,7 +532,7 @@ function normalizeAufgabe(a){
   return{...a,zielId:a.ziel_id||null,teilzielId:a.teilziel_id||null,
     parentId:a.parent_id||null,
     aktSeit:a.akt_seit?new Date(a.akt_seit).getTime():null,
-    dl:a.dl||'',dlUhrzeit:a.dl_uhrzeit||null,dl_type:a.dl_type||'bis',recurring:a.recurring||null,
+    dl:a.dl||'',dlUhrzeit:a.dl_uhrzeit||null,dl_type:a.dl_type||'bis',recurring:a.recurring||null,eventId:a.event_id||null,
     ua:Array.isArray(a.ua)?a.ua:(typeof a.ua==='string'?JSON.parse(a.ua||'[]'):[]),
     erstelltVon:a.erstellt_von||null,
     missCount:a.miss_count||0,lastMissAction:a.last_miss_action||null,
@@ -6177,10 +6177,12 @@ async function saveNeu(){
     gebucht:0,dl:document.getElementById('ndl').value||null,
     dl_type:(document.getElementById('dltype-bis')?.dataset.v==='bis')?'bis':'am',
     dl_uhrzeit:document.getElementById('ndluhr')?.value||null,
+    event_id:window._pendingEventId||null,
     ua:window._neuSteps||[],notiz:document.getElementById('nno').value.trim(),akt_seit:null,vertraulich:vert,
     recurring:document.getElementById('nrec')?.value||null,
     erstellt_von:aP};
   window._neuParentId=null;
+  window._pendingEventId=null;
   S.aufgaben.push(normalizeAufgabe(rec));
   await dbInsert('aufgaben',rec);
   // P1 immer in Kalender, P2/P3 nur mit Deadline
@@ -7952,11 +7954,36 @@ function gcalStartNotifications(){
 function gcalShowEvent(id){
   const ev=(window._gcalEvtMap||{})[id];if(!ev)return;
   const fmt=d=>d.getHours()+':'+(''+(d.getMinutes())).padStart(2,'0');
+  const evDate=ev.start?localDate(ev.start):TODAY;
+  // Prüfen ob schon eine Vorbereitungsaufgabe existiert
+  const bereitsVorb=S.aufgaben.some(a=>(a.eventId===id||a.event_id===id)&&String(a.pid)===String(aP)&&a.status!=='archiviert');
   document.getElementById('mb').innerHTML='<div class="mt">📅 '+esc(ev.titel)+'</div>'
     +'<div style="font-size:13px;color:var(--t2);margin-bottom:14px">'+fmt(ev.start)+' – '+fmt(ev.end)+(ev.ort?' &nbsp;·&nbsp; <span style="color:var(--t3)">'+esc(ev.ort)+'</span>':'')+'</div>'
     +(ev.beschreibung?'<div style="font-size:12px;color:var(--text);line-height:1.6;white-space:pre-wrap;background:var(--gray-bg);border-radius:8px;padding:10px 12px;margin-bottom:14px;max-height:200px;overflow-y:auto">'+esc(ev.beschreibung)+'</div>':'')
-    +'<div class="mf"><button class="btn btn-gr" onclick="cm()">Schließen</button></div>';
+    +'<div class="mf" style="flex-direction:column;gap:8px">'
+    +(bereitsVorb
+      ?'<div style="font-size:12px;color:var(--green);text-align:center;padding:6px">✓ Vorbereitungsaufgabe bereits angelegt</div>'
+      :'<button class="btn" style="background:var(--inv);color:var(--inv-t);border:none;font-weight:600" onclick="gcalOpenVorbereitung(\''+id+'\')">📝 + Vorbereitungsaufgabe</button>')
+    +'<button class="btn btn-gr" onclick="cm()">Schließen</button>'
+    +'</div>';
   document.getElementById('ovl').classList.add('open');
+}
+function gcalOpenVorbereitung(evId){
+  const ev=(window._gcalEvtMap||{})[evId];if(!ev)return;
+  window._pendingEventId=evId;
+  const evDate=ev.start?localDate(ev.start):TODAY;
+  cm();
+  openNeu({titel:'Vorbereitung: '+ev.titel,dl:evDate,prio:'P1'});
+  // Dalio-Hint nach kurzem Delay (DOM muss fertig sein)
+  setTimeout(()=>{
+    const hint=document.getElementById('neu-paddel-hint');
+    if(hint&&!document.getElementById('ntz')?.value){
+      hint.innerHTML='🤔 <b>Kein Meilenstein?</b> Wenn kein Ziel zu diesem Termin passt — <i>braucht es diesen Termin?</i>';
+      hint.style.background='var(--amber-bg)';
+      hint.style.borderColor='var(--amber-bd)';
+      hint.style.color='var(--amber)';
+    }
+  },150);
 }
 // ─── Google Calendar Write-Sync ─────────────────────────────────
 function gcalGetEvtId(aufgabeId){return localStorage.getItem('gcal_evt_'+aufgabeId)||null;}
