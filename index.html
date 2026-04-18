@@ -792,7 +792,12 @@ async function changePrio(e,aid,newPrio){
   }catch(e2){console.error('changePrio',e2);a.prio=prev;}
   finally{a._busy=false;document.querySelectorAll('.prio-dd.open').forEach(d=>d.classList.remove('open'));try{render();}catch(e2){console.error('render@changePrio2',e2);}}
 }
-function dlTag(dl){const d=dli(dl);if(!d)return'';return`<span class="tag" style="background:${d.bg};color:${d.c}">${d.l}</span>`;}
+function dlTag(dl,dlUhrzeit){
+  const d=dli(dl);
+  let out=d?`<span class="tag" style="background:${d.bg};color:${d.c}">${d.l}</span>`:'';
+  if(dlUhrzeit)out+=`<span class="tag" style="background:var(--blue-bg);color:var(--blue);font-variant-numeric:tabular-nums">📅 ${dlUhrzeit}</span>`;
+  return out;
+}
 function toggleDlType(v){
   const bis=document.getElementById('dltype-bis'),am=document.getElementById('dltype-am');
   if(!bis||!am)return;
@@ -3903,7 +3908,7 @@ function aufgabeKarte(a){
   }else{
     r+='<span onclick="event.stopPropagation();quickAssignZiel(\''+a.id+'\')" style="font-size:10px;color:var(--t3);border:1px dashed var(--bd);padding:1px 6px;border-radius:5px;cursor:pointer">+ Ziel?</span>';
   }
-  r+=dlTag(a.dl);
+  r+=dlTag(a.dl,a.dlUhrzeit);
   r+='<button onclick="event.stopPropagation();startenA(\''+a.id+'\')" style="font-size:11px;padding:4px 12px;border-radius:8px;background:var(--inv);color:var(--inv-t);border:none;font-family:inherit;cursor:pointer;font-weight:600;margin-left:auto">▶ Los</button>';
   r+='</div></div>';
   return r;
@@ -4025,6 +4030,7 @@ function rTag(){
       if(zNn)hero+='<span style="font-size:11px;opacity:.5">'+zNn+'</span>';
       if(tzNn)hero+='<span style="font-size:11px;color:#c4b5fd">'+tzNn+'</span>';
       if(naechste.dl){const d=dli(naechste.dl);if(d)hero+='<span style="font-size:11px;opacity:.5">'+d.l+'</span>';}
+      if(naechste.dlUhrzeit)hero+='<span style="font-size:11px;font-weight:700;background:rgba(255,255,255,.15);padding:2px 7px;border-radius:6px">📅 '+naechste.dlUhrzeit+'</span>';
       if(naechste.geplant)hero+='<span style="font-size:11px;opacity:.4">'+fmtH(naechste.geplant)+'</span>';
       if(fromN)hero+='<span style="font-size:10px;opacity:.35">von '+esc(fromN.name)+'</span>';
       hero+='</div>';
