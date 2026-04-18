@@ -3691,7 +3691,8 @@ function rTag(){
           const isAktiv=linkedTask.status==='aktiv';
           out+='<button onclick="'+(isAktiv?'focusModus(\''+linkedTask.id+'\')':'startenA(\''+linkedTask.id+'\')')+'" style="flex-shrink:0;padding:8px 16px;border-radius:9px;background:var(--inv);color:var(--inv-t);border:none;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap">'+(isAktiv?'🔥 Weiter':'▶ Los')+'</button>';
         } else {
-          out+='<button onclick="openNeu({prio:\'P1\',teilzielId:\''+tzId+'\'})" style="flex-shrink:0;padding:8px 14px;border-radius:9px;background:var(--gray-bg);color:var(--t2);border:1.5px dashed var(--bd);font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap" title="Aufgabe für dieses Ergebnisvorhaben anlegen">+ Aufgabe</button>';
+          const _nA=tzId?'{prio:\'P1\',teilzielId:\''+tzId+'\'}':'{prio:\'P1\'}';
+          out+='<button onclick="openNeu('+_nA+')" style="flex-shrink:0;padding:8px 14px;border-radius:9px;background:var(--gray-bg);color:var(--t2);border:1.5px dashed var(--bd);font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap" title="Aufgabe für dieses Ergebnisvorhaben anlegen">+ Aufgabe</button>';
         }
       }
       out+='</div>';
