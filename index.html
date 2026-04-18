@@ -553,7 +553,7 @@ async function loadData(){
   S.teams=(teams||[]).map(t=>({...t,members:t.members||[]}));
   S.ziele=(ziele||[]).map(z=>({
     ...z,verantwortlichId:z.verantwortlich_id,
-    kpis:(kpis||[]).filter(k=>k.ziel_id===z.id).map(k=>({...k,zielId:k.ziel_id})),
+    kpis:(kpis||[]).filter(k=>k.ziel_id===z.id).map(k=>({...k,zielId:k.ziel_id,teilzielId:k.teilziel_id||null,prio:k.prio||null})),
     teilziele:(teilziele||[]).filter(t=>t.ziel_id===z.id).map(t=>({...t,zielId:t.ziel_id,verantwortlichId:t.verantwortlich_id,datum:t.datum||'',status:t.status||'aktiv'}))
   }));
   S.aufgaben=(aufgaben||[]).map(normalizeAufgabe);
@@ -825,7 +825,8 @@ async function incrementKpi(kpiId,pid){
   await _saveKpi(kpiId,pid,newVal);
   render();
   if(k.sonder)showSonderCelebration(pid,k.label,newVal,k.ziel);
-  else showPaddelCelebration(pid);
+  else if(k.prio==='P1'&&k.teilzielId)showPaddelCelebration(pid);
+  else toast('+1 · ohne Meilenstein+P1 kein Paddel-Punkt');
 }
 function showSonderCelebration(pid,label,val,ziel){
   const p=person(pid);
@@ -888,7 +889,7 @@ function startDataPoller(){
     if(kpis){
       const newKpiHash=_kpiHashFn(kpis);
       if(newKpiHash!==_kpiHash){
-        S.ziele.forEach(z=>{z.kpis=kpis.filter(k=>k.ziel_id===z.id).map(k=>({...k,zielId:k.ziel_id}));});
+        S.ziele.forEach(z=>{z.kpis=kpis.filter(k=>k.ziel_id===z.id).map(k=>({...k,zielId:k.ziel_id,teilzielId:k.teilziel_id||null,prio:k.prio||null}));});
         _kpiHash=newKpiHash;
         changed=true;
       }
@@ -940,12 +941,18 @@ function isFällig(freq){
 }
 function freqLabel(freq){return{täglich:'Täglich',wöchentlich:'Wöchentlich (Freitag)',monatlich:'Monatlich (Monatsletzter)'}[freq]||freq;}
 
-function rKpiBlock(pid){
+function rKpiBlock(pid,filter){
   const myKpis=[];
   S.ziele.forEach(z=>{(z.kpis||[]).forEach(k=>{if(String(k.pid)===String(pid))myKpis.push({...k,zielName:z.name});});});
   if(!myKpis.length)return'';
-  let out='<div class="kpi-block"><div class="kpi-block-label">Meine KPIs</div><div class="kpi-grid">';
-  myKpis.forEach(k=>{
+  let filtered=myKpis;
+  if(filter==='p1')filtered=myKpis.filter(k=>k.prio==='P1'||k.sonder);
+  else if(filter==='rest')filtered=myKpis.filter(k=>k.prio!=='P1'&&!k.sonder);
+  if(!filtered.length)return'';
+  const title=filter==='p1'?'⚡ Heute zählt':'Meine KPIs';
+  const borderStyle=filter==='p1'?';border-color:var(--red-bd)':'';
+  let out='<div class="kpi-block" style="'+borderStyle+'"><div class="kpi-block-label">'+title+'</div><div class="kpi-grid">';
+  filtered.forEach(k=>{
     const fällig=isFällig(k.freq);
     const isTaeglich=k.typ==='täglich';
     const todayVal=getKpiTodayVal(k.id,pid);
@@ -956,13 +963,22 @@ function rKpiBlock(pid){
     const pct=Math.min(100,Math.round((k.inv?Math.max(0,k.ziel-displayVal+k.ziel):displayVal)/(k.ziel||1)*100));
     const showBtn=fällig||k.sonder;
     out+='<div class="kpi-item '+(k.sonder?'sonder':fällig?'fällig':'inaktiv')+'">';
-    out+='<div class="kpi-name">'+k.label+(k.unit?'<span style="font-weight:400"> · '+k.unit+'</span>':'')+(isTaeglich?'<span style="font-size:9px;margin-left:5px;padding:1px 5px;border-radius:99px;background:var(--blue-bg);color:var(--blue);font-weight:600">täglich</span>':'')+'</div>';
+    const prioBadge=k.prio==='P1'?'<span style="font-size:9px;margin-left:5px;padding:1px 6px;border-radius:99px;background:var(--red-bg);color:var(--red);font-weight:700">P1</span>':k.prio==='P2'?'<span style="font-size:9px;margin-left:5px;padding:1px 6px;border-radius:99px;background:var(--amber-bg);color:var(--amber);font-weight:700">P2</span>':'';
+    out+='<div class="kpi-name">'+k.label+(k.unit?'<span style="font-weight:400"> · '+k.unit+'</span>':'')+prioBadge+(isTaeglich?'<span style="font-size:9px;margin-left:5px;padding:1px 5px;border-radius:99px;background:var(--blue-bg);color:var(--blue);font-weight:600">täglich</span>':'')+'</div>';
     out+='<div class="kpi-goal-ref">→ '+k.zielName+'</div>';
-    if(isTaeglich){const monthSum=S.kpiValsMonth[pid+'-'+k.id]||0;out+='<div style="font-size:10px;color:var(--t3);margin-bottom:2px">Monat: <strong style="color:var(--text)">'+monthSum+'</strong> eingetragen</div>';}
-    out+='<div style="display:flex;align-items:baseline;gap:4px">';
+    out+='<div style="display:flex;align-items:baseline;gap:4px;margin-top:4px">';
+    out+='<div style="font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.4px;font-weight:700;margin-right:4px">Heute</div>';
     out+='<div class="kpi-val '+(ok?'ok':'nok')+'">'+displayVal+'</div>';
     out+='<div class="kpi-soll">/ '+k.ziel+'</div>';
     out+='</div>';
+    if(isTaeglich){
+      const weekSum=S.kpiValsWeek[pid+'-'+k.id]||0;
+      const monthSum=S.kpiValsMonth[pid+'-'+k.id]||0;
+      out+='<div style="display:flex;gap:12px;font-size:10px;color:var(--t3);margin-top:4px">';
+      out+='<span>Woche: <strong style="color:var(--text)">'+weekSum+'</strong></span>';
+      out+='<span>Monat: <strong style="color:var(--text)">'+monthSum+'</strong></span>';
+      out+='</div>';
+    }
     out+='<div style="height:3px;border-radius:99px;background:rgba(0,0,0,.07);overflow:hidden;margin:5px 0">'
       +'<div style="height:100%;border-radius:99px;background:'+(ok?'var(--green)':'var(--red)')+';width:'+pct+'%"></div></div>';
     if(!k.sonder)out+='<div class="kpi-freq-label">'+freqLabel(k.freq)+(fällig?'':' · nicht heute fällig')+'</div>';
@@ -2475,7 +2491,15 @@ function getPaddelCount(pid){
     const pts=(lbl.includes('verkauf')||lbl.includes('sauna'))?5:3;
     return sum+v*pts;
   },0);
-  return aufgabenPts+kpiPts;
+  // P1-KPIs (nicht-Sonder) mit Meilenstein: 1 Paddel pro Increment diese Woche
+  const p1KpiPts=S.ziele.flatMap(z=>z.kpis||[]).filter(k=>
+    String(k.pid)===String(pid)&&!k.sonder&&k.prio==='P1'&&k.teilzielId
+  ).reduce((sum,k)=>{
+    const isTaeglich=k.typ==='täglich';
+    const v=Math.max(0,isTaeglich?(S.kpiValsWeek[pid+'-'+k.id]||0):(kpiVal(k)||0));
+    return sum+v;
+  },0);
+  return aufgabenPts+kpiPts+p1KpiPts;
 }
 function showKonfetti(){
   const canvas=document.createElement('canvas');
@@ -4013,6 +4037,9 @@ function rTag(){
     out+='</div>';
   }
 
+  // ── P1-KPIs direkt unter Ergebnisvorhaben ("⚡ Heute zählt") ──
+  out+=rKpiBlock(aP,'p1');
+
   // ── "Weiteres heute"-Toggle (§2 HART) ──
   // Lead/GF: immer zugeklappt · MA: State via localStorage
   const _weiteresOpen=isLead()?false:localStorage.getItem('heute_weitere_open_'+aP)==='1';
@@ -4183,7 +4210,7 @@ function rTag(){
   }
 
   const hasSonderKpi=S.ziele.flatMap(z=>z.kpis||[]).some(k=>String(k.pid)===String(aP)&&k.sonder);
-  if(hasSonderKpi)out+=rKpiBlock(aP);
+  if(hasSonderKpi)out+=rKpiBlock(aP,'rest');
 
   // ── Tages-Zeitstrahl (einzeilig, drag-to-reorder) ──
   {
@@ -5534,6 +5561,8 @@ function editKpiDef(zid,kid){
     +'<div class="f2"><div class="fl"><label>Ist-Wert</label><input id="ki" type="number" value="'+k.ist+'"></div><div class="fl"><label>Ziel-Wert</label><input id="kz" type="number" value="'+k.ziel+'"></div></div>'
     +'<div class="f2"><div class="fl"><label>Einheit</label><input id="ku" value="'+(k.unit||'')+'" placeholder="%, Stk…"></div><div class="fl"><label>Rhythmus</label><select id="kf">'+FREQ.map(f=>'<option'+(k.freq===f?' selected':'')+'>'+f+'</option>').join('')+'</select></div></div>'
     +'<div class="fl"><label>Verantwortlich</label><select id="kp">'+S.personen.map(p=>'<option value="'+p.id+'"'+(String(k.pid)===String(p.id)?' selected':'')+'>'+esc(p.name)+'</option>').join('')+'</select></div>'
+    +'<div class="f2"><div class="fl"><label>Priorität</label><select id="kprio" onchange="updateKpiPaddelHint()"><option value=""'+(!k.prio?' selected':'')+'>— keine —</option><option value="P1"'+(k.prio==='P1'?' selected':'')+'>P1 (Top-Fokus)</option><option value="P2"'+(k.prio==='P2'?' selected':'')+'>P2</option><option value="P3"'+(k.prio==='P3'?' selected':'')+'>P3</option></select></div><div class="fl"><label>Meilenstein <span style="font-weight:400;color:var(--t2)">(für Paddel)</span></label><select id="kteilziel" onchange="updateKpiPaddelHint()"><option value="">— keiner —</option>'+((z.teilziele||[]).filter(t=>!t.erledigt&&(t.status||'aktiv')==='aktiv').map(t=>'<option value="'+t.id+'"'+(String(k.teilzielId||'')===String(t.id)?' selected':'')+'>'+esc(t.name)+'</option>').join(''))+'</select></div></div>'
+    +'<div id="kpi-paddel-hint" style="font-size:11px;background:var(--gray-bg);border:1px dashed var(--bd);border-radius:8px;padding:8px 10px;margin-bottom:10px;line-height:1.4"></div>'
     +'<div class="fl"><label style="text-transform:none;font-size:13px;font-weight:400;display:flex;align-items:center;gap:8px"><input type="checkbox" id="kinv"'+(k.inv?' checked':'')+' style="width:auto"> Niedriger ist besser</label></div>'
     +'<div class="fl"><label>Zählweise</label><div style="display:flex;gap:8px">'
     +'<label style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:400;cursor:pointer"><input type="radio" name="ktyp" id="ktyp-kum" value="kumulativ"'+((!k.typ||k.typ==='kumulativ')?' checked':'')+' style="width:auto"> Kumulativ <span style="font-size:10px;color:var(--t3)">(laufender Wert)</span></label>'
@@ -5542,6 +5571,25 @@ function editKpiDef(zid,kid){
     +'<div class="fl"><label style="text-transform:none;font-size:13px;font-weight:400;display:flex;align-items:center;gap:8px"><input type="checkbox" id="ksonder"'+(k.sonder?' checked':'')+' style="width:auto"> 🔔 Sonder-KPI (Glocken-Celebration für GF)</label></div>'
     +'<div class="mf"><button class="btn btn-red" onclick="delKpi(\''+zid+'\',\''+kid+'\')">Löschen</button><button class="btn btn-gr" onclick="cm()">Abbrechen</button><button class="btn btn-dk" onclick="saveKpi(\''+zid+'\',\''+kid+'\')">Speichern</button></div>';
   document.getElementById('ovl').classList.add('open');
+  setTimeout(updateKpiPaddelHint,20);
+}
+function updateKpiPaddelHint(){
+  const hint=document.getElementById('kpi-paddel-hint');if(!hint)return;
+  const prio=document.getElementById('kprio')?.value||'';
+  const tz=document.getElementById('kteilziel')?.value||'';
+  if(prio==='P1'&&tz){
+    hint.style.borderColor='var(--green)';hint.style.background='var(--green-bg)';hint.style.color='var(--green)';
+    hint.innerHTML='✅ <b>Paddel aktiv</b> · Jedes +1 zählt 1 Paddel-Punkt, keine Obergrenze.';
+  }else if(!prio){
+    hint.style.borderColor='var(--bd)';hint.style.background='var(--gray-bg)';hint.style.color='var(--t2)';
+    hint.innerHTML='ℹ️ Keine Priorität → KPI bleibt operativ sichtbar, aber gibt keine Paddel-Punkte.';
+  }else if(prio!=='P1'){
+    hint.style.borderColor='var(--bd)';hint.style.background='var(--gray-bg)';hint.style.color='var(--t2)';
+    hint.innerHTML='ℹ️ Nur <b>P1</b>-KPIs mit Meilenstein zählen fürs Paddel. P2/P3 bleiben operativ sichtbar ohne Paddel-Punkte.';
+  }else{
+    hint.style.borderColor='var(--amber-bd)';hint.style.background='var(--amber-bg)';hint.style.color='var(--amber)';
+    hint.innerHTML='⚠️ <b>P1 ohne Meilenstein</b> → kein Paddel-Punkt. Weise einen Meilenstein zu, damit die Ausführung auf ein Ziel einzahlt.';
+  }
 }
 async function saveKpi(zid,kid){
   const z=zielObj(zid);if(!z)return;const k=z.kpis.find(x=>x.id===kid);if(!k)return;
@@ -5556,8 +5604,10 @@ async function saveKpi(zid,kid){
   k.inv=document.getElementById('kinv').checked;
   k.sonder=document.getElementById('ksonder').checked;
   k.typ=document.querySelector('input[name="ktyp"]:checked')?.value||'kumulativ';
+  k.prio=document.getElementById('kprio')?.value||null;
+  k.teilzielId=document.getElementById('kteilziel')?.value||null;
   // sonder im selben PATCH wie alles andere — kein separater Call mehr
-  const kpiPatch={label:k.label,ist:k.ist,ziel:k.ziel,unit:k.unit,freq:k.freq,pid:k.pid,inv:k.inv,sonder:!!k.sonder,typ:k.typ};
+  const kpiPatch={label:k.label,ist:k.ist,ziel:k.ziel,unit:k.unit,freq:k.freq,pid:k.pid,inv:k.inv,sonder:!!k.sonder,typ:k.typ,prio:k.prio,teilziel_id:k.teilzielId};
   await dbPatch('kpis',kid,kpiPatch);
   // _sonderSeen für neu aktivierte Sonder-KPIs initialisieren
   if(k.sonder&&_sonderSeen[kid]===undefined){
