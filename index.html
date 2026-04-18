@@ -1697,23 +1697,37 @@ function openWochenreset(){
       rueckblickHtml+='<span style="font-size:11px;'+(done?'background:var(--green-bg);border:1px solid var(--green-bd);color:var(--green)':'background:var(--orange-bg);border:1px solid var(--orange-bd);color:var(--orange)')+';padding:2px 8px;border-radius:99px;font-weight:600">'+(done?'✓ ':'✗ ')+txt+'</span>';
     });
   }
-  const aktZiele=S.ziele.filter(z=>z.status!=='vorschlag'&&z.status!=='bereich');
-  const aktBereiche=S.ziele.filter(z=>z.status==='bereich');
-  const meineZ=aktZiele.filter(z=>String(z.verantwortlichId)===String(aP)||(z.teilziele||[]).some(tz=>String(tz.verantwortlichId)===String(aP)));
-  const andereZ=aktZiele.filter(z=>!meineZ.find(m=>m.id===z.id));
-  const meineBer=aktBereiche.filter(z=>String(z.verantwortlichId)===String(aP));
-  const andereBer=aktBereiche.filter(z=>!meineBer.find(m=>m.id===z.id));
   const selZielId=wr?.focus_ziel_id||'';
-  const zBtn=z=>{const f=FARBEN[z.farbe||0];const sel=z.id===selZielId;const isB=z.status==='bereich';return '<div onclick="[...document.querySelectorAll(\'.zw-opt\')].forEach(x=>{x.style.borderColor=\'#e5e5e3\';x.style.color=\'#888\';x.style.background=\'#fff\'});this.style.borderColor=\''+f.tc+'\';this.style.color=\''+f.tc+'\';this.style.background=\''+f.bg+'\';document.getElementById(\'wr-ziel\').value=\''+z.id+'\';updateWRTZSection()" class="zw-opt" style="cursor:pointer;border:1.5px solid '+(sel?f.tc:'#e5e5e3')+';border-radius:8px;padding:8px 11px;font-size:12px;font-weight:600;color:'+(sel?f.tc:'#888')+';background:'+(sel?f.bg:'#fff')+';margin-bottom:5px">'+(isB?'📁 ':'')+esc(z.name)+'</div>';};
-  // Ziel-Optionen aufteilen: Meine Ziele, Bereiche, Andere
-  let zieleHtml='';
-  if(meineZ.length){meineZ.forEach(z=>{zieleHtml+=zBtn(z);});}
-  if(meineBer.length){
-    zieleHtml+='<div style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin:8px 0 4px">📁 Meine Bereiche</div>';
-    meineBer.forEach(z=>{zieleHtml+=zBtn(z);});
+  // Vorausgewählter Meilenstein: aus bestehenden big3_tz_ids ableiten
+  const selTZId=wr?([wr.big3_1_tz_id,wr.big3_2_tz_id,wr.big3_3_tz_id].find(Boolean)||''):'';
+  // Meilensteine-Buttons: Ziel als Kontext, Meilenstein als primäre Auswahl
+  const tzBtnWR=(t,z)=>{
+    const f=FARBEN[z.farbe||0];const sel=t.id===selTZId;
+    const isB=z.status==='bereich';
+    const dlLabel=t.datum?'bis '+t.datum.slice(8)+'.'+t.datum.slice(5,7)+'.':'';
+    return '<div onclick="selectWrTZ(\''+z.id+'\',\''+t.id+'\')" class="wtz-opt" style="cursor:pointer;border:1.5px solid '+(sel?f.tc:'var(--bd)')+';border-radius:8px;padding:9px 11px;margin-bottom:5px;background:'+(sel?f.bg:'var(--sf)')+';transition:all .15s">'
+      +'<div style="font-size:12px;font-weight:600;color:'+(sel?f.tc:'var(--text)')+'">'+esc(t.name)+'</div>'
+      +'<div style="font-size:10px;color:var(--t3);margin-top:2px">'+(isB?'📁 ':'')+'<span style="color:var(--t2)">'+esc(z.name.length>40?z.name.slice(0,40)+'…':z.name)+'</span>'+(dlLabel?' · '+dlLabel:'')+'</div>'
+      +'</div>';
+  };
+  // Meilensteine sammeln: Meine zuerst, dann Andere
+  const alleZ=S.ziele.filter(z=>z.status!=='vorschlag');
+  const myTZGroups=[],otherTZGroups=[];
+  alleZ.forEach(z=>{
+    const tza=(z.teilziele||[]).filter(t=>!t.erledigt&&(t.status||'aktiv')==='aktiv');
+    if(!tza.length)return;
+    const mine=String(z.verantwortlichId)===String(aP)||tza.some(t=>String(t.verantwortlichId)===String(aP));
+    if(mine)myTZGroups.push({z,tza});else otherTZGroups.push({z,tza});
+  });
+  let msHtml='';
+  myTZGroups.forEach(({z,tza})=>{tza.forEach(t=>{msHtml+=tzBtnWR(t,z);});});
+  if(otherTZGroups.length){
+    const totalOther=otherTZGroups.reduce((s,g)=>s+g.tza.length,0);
+    msHtml+='<details style="margin-top:6px"><summary style="font-size:11px;color:var(--t3);cursor:pointer;padding:4px 0">▸ Andere Meilensteine ('+totalOther+')</summary><div style="margin-top:6px">';
+    otherTZGroups.forEach(({z,tza})=>{tza.forEach(t=>{msHtml+=tzBtnWR(t,z);});});
+    msHtml+='</div></details>';
   }
-  const andereAlle=[...andereZ,...andereBer];
-  if(andereAlle.length){zieleHtml+='<details style="margin-top:6px"><summary style="font-size:11px;color:var(--t3);cursor:pointer;padding:4px 0">▸ Andere Ziele ('+andereAlle.length+')</summary><div style="margin-top:6px">'+andereAlle.map(zBtn).join('')+'</div></details>';}
+  if(!msHtml)msHtml='<div style="font-size:12px;color:var(--t3);padding:8px 0">Keine aktiven Meilensteine vorhanden. <span onclick="nav(\'ziele\')" style="color:var(--blue);cursor:pointer;text-decoration:underline">Jetzt anlegen →</span></div>';
 
   const modalTitel=wr?'Ergebnisvorhaben bearbeiten — KW '+kw:(_resetZwang?'📅 KW '+(kw+1)+' planen':istRueckblick?'Wochenrückblick KW '+kw:'Wochenplanung KW '+nextKw);
   // Im Zwang-Modus: Warum-Lücke kam aus Schritt 1, hier als hidden input
@@ -1730,22 +1744,23 @@ function openWochenreset(){
     +'<textarea id="wr-blockiert" rows="2" style="width:100%;padding:8px;border:1px solid var(--bd);border-radius:8px;font-family:inherit;font-size:13px;resize:vertical" placeholder="z. B. Hindernisse, fehlende Infos, Energie-Tiefs…"></textarea></div>'
     +'<div style="border-top:1px solid var(--bd);margin:13px 0"></div>':'')
 
-    // ── Step 1: Fokus-Ziel ──
+    // ── Step 1: Meilenstein wählen ──
     +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">'
     +'<span style="background:var(--inv);color:var(--inv-t);font-size:12px;font-weight:800;width:24px;height:24px;border-radius:99px;display:flex;align-items:center;justify-content:center;flex-shrink:0">1</span>'
-    +'<span style="font-size:16px;font-weight:700;color:var(--text)">Fokus wählen</span>'
+    +'<span style="font-size:16px;font-weight:700;color:var(--text)">Meilenstein wählen</span>'
     +'</div>'
-    +'<div style="font-size:12px;color:var(--t2);margin-bottom:10px;margin-left:34px">Welches Ziel oder welchen Bereich treibst du diese Woche voran?</div>'
+    +'<div style="font-size:12px;color:var(--t2);margin-bottom:10px;margin-left:34px">Welchen Meilenstein bringst du diese Woche voran?</div>'
     +'<input type="hidden" id="wr-ziel" value="'+selZielId+'">'
+    +'<input type="hidden" id="wr-focus-tz" value="'+selTZId+'">'
     +(wr?'<textarea id="wr-blockiert" style="display:none">'+esc(wr.blockiert||'')+'</textarea>':'')
-    +'<div style="margin-left:34px">'+zieleHtml+'</div>'
+    +'<div style="margin-left:34px">'+msHtml+'</div>'
 
     // ── Step 2: Ergebnisvorhaben ──
     +'<div style="display:flex;align-items:center;gap:10px;margin-top:18px;margin-bottom:6px">'
-    +'<span style="background:'+(selZielId?'var(--inv)':'var(--bd)')+';color:'+(selZielId?'var(--inv-t)':'var(--t3)')+';font-size:12px;font-weight:800;width:24px;height:24px;border-radius:99px;display:flex;align-items:center;justify-content:center;flex-shrink:0">2</span>'
-    +'<span id="wr-step2-label" style="font-size:16px;font-weight:700;color:'+(selZielId?'var(--text)':'var(--t3)')+'">Ergebnisvorhaben für diese Woche</span>'
+    +'<span style="background:'+(selTZId?'var(--inv)':'var(--bd)')+';color:'+(selTZId?'var(--inv-t)':'var(--t3)')+';font-size:12px;font-weight:800;width:24px;height:24px;border-radius:99px;display:flex;align-items:center;justify-content:center;flex-shrink:0">2</span>'
+    +'<span id="wr-step2-label" style="font-size:16px;font-weight:700;color:'+(selTZId?'var(--text)':'var(--t3)')+'">Ergebnisvorhaben für diese Woche</span>'
     +'</div>'
-    +(selZielId?'<div id="wr-step2-sub" style="font-size:12px;color:var(--t2);margin-bottom:8px;margin-left:34px">Wähle bestehende oder lege neue an (max. 3)</div>':'<div id="wr-step2-sub" style="font-size:12px;color:var(--t3);margin-bottom:8px;margin-left:34px">Zuerst ein Ziel oder Bereich oben auswählen</div>')
+    +(selTZId?'<div id="wr-step2-sub" style="font-size:12px;color:var(--t2);margin-bottom:8px;margin-left:34px">Wähle aus Vorschlägen oder trage eigene ein (max. 3)</div>':'<div id="wr-step2-sub" style="font-size:12px;color:var(--t3);margin-bottom:8px;margin-left:34px">Zuerst oben einen Meilenstein auswählen</div>')
     +'<div id="wr-tz-section" style="margin-left:34px"></div>'
 
     // ── Step 3: Plan B ──
@@ -1779,6 +1794,32 @@ function openWochenreset(){
       },100);});
     }
   }
+}
+function selectWrTZ(zielId,tzId){
+  // Alle Buttons zurücksetzen
+  document.querySelectorAll('.wtz-opt').forEach(x=>{
+    x.style.borderColor='var(--bd)';x.style.background='var(--sf)';
+    const title=x.querySelector('div:first-child');if(title)title.style.color='var(--text)';
+  });
+  // Gewählten hervorheben
+  const allBtns=document.querySelectorAll('.wtz-opt');
+  allBtns.forEach(x=>{
+    if(x.getAttribute('onclick')&&x.getAttribute('onclick').includes('\''+tzId+'\'')){
+      const z=S.ziele.find(z=>z.id===zielId);
+      const f=z?FARBEN[z.farbe||0]:FARBEN[0];
+      x.style.borderColor=f.tc;x.style.background=f.bg;
+      const title=x.querySelector('div:first-child');if(title)title.style.color=f.tc;
+    }
+  });
+  document.getElementById('wr-ziel').value=zielId;
+  document.getElementById('wr-focus-tz').value=tzId;
+  // Step-2-Header aktivieren
+  const s2=document.getElementById('wr-step2-label');if(s2){s2.style.color='var(--text)';}
+  const s2circle=s2?.parentElement?.querySelector('span:first-child');
+  if(s2circle){s2circle.style.background='var(--inv)';s2circle.style.color='var(--inv-t)';}
+  const s2sub=document.getElementById('wr-step2-sub');
+  if(s2sub){s2sub.style.color='var(--t2)';s2sub.textContent='Wähle aus Vorschlägen oder trage eigene ein (max. 3)';}
+  updateWRTZSection();
 }
 function updateWRTZSection(){
   const zielId=document.getElementById('wr-ziel')?.value;
@@ -1832,6 +1873,7 @@ function updateWRTZSection(){
   }
 
   // ── Meilensteine des Fokus-Ziels ──────────────────────────────
+  const focusTZId=document.getElementById('wr-focus-tz')?.value||'';
   if(tzArr.length){
     const curMon=TODAY.slice(0,7);
     const monNames=['','Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
@@ -1841,8 +1883,9 @@ function updateWRTZSection(){
     const tzRow=tz=>{
       const ueberf=tz.datum&&tz.datum<TODAY;
       const dlLabel=tz.datum?('bis '+tz.datum.slice(8)+'.'+tz.datum.slice(5,7)+'.'):'';
-      return '<label onclick="var l=this;requestAnimationFrame(function(){var c=l.querySelector(\'input\');l.style.borderColor=c.checked?\'var(--green)\':\'var(--bd)\';l.style.background=c.checked?\'var(--green-bg)\':\'var(--gray-bg)\'});_wrUpdateKandidaten()" style="display:flex;align-items:center;gap:9px;padding:8px 10px;background:var(--gray-bg);border:1.5px solid var(--bd);border-radius:8px;cursor:pointer;transition:all .15s">'
-        +'<input type="checkbox" class="wr-tz-check" value="'+tz.id+'" style="width:16px;height:16px;cursor:pointer;flex-shrink:0;accent-color:var(--green)">'
+      const preChecked=tz.id===focusTZId;
+      return '<label onclick="var l=this;requestAnimationFrame(function(){var c=l.querySelector(\'input\');l.style.borderColor=c.checked?\'var(--green)\':\'var(--bd)\';l.style.background=c.checked?\'var(--green-bg)\':\'var(--gray-bg)\'});_wrUpdateKandidaten()" style="display:flex;align-items:center;gap:9px;padding:8px 10px;background:'+(preChecked?'var(--green-bg)':'var(--gray-bg)')+';border:1.5px solid '+(preChecked?'var(--green)':'var(--bd)')+';border-radius:8px;cursor:pointer;transition:all .15s">'
+        +'<input type="checkbox" class="wr-tz-check" value="'+tz.id+'"'+(preChecked?' checked':'')+' style="width:16px;height:16px;cursor:pointer;flex-shrink:0;accent-color:var(--green)">'
         +'<span style="font-size:12px;font-weight:500;color:var(--text);flex:1">'+esc(tz.name)+'</span>'
         +(dlLabel?'<span style="font-size:10px;color:'+(ueberf?'var(--red)':'var(--t3)')+'">'+dlLabel+(ueberf?' ⚠':'')+'</span>':'<span style="font-size:10px;color:var(--t3)">ohne Datum</span>')
         +'</label>';
