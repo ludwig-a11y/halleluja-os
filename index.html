@@ -7971,20 +7971,25 @@ async function gcalCreateEvent(a){
   const tz=Intl.DateTimeFormat().resolvedOptions().timeZone;
   const hrs=a.geplant||1;
   const tag=a.dl||TODAY;
-  // Heute → nächste volle Stunde; Zukunft → 9:00 Uhr
+  const uhrzeit=a.dl_uhrzeit||a.dlUhrzeit||null;
+  // App-Event mit Uhrzeit → exakte Zeit; Heute ohne Zeit → nächste volle Stunde; Zukunft → 9:00
   let startD;
-  if(tag===TODAY){
+  if(uhrzeit&&/^\d{2}:\d{2}$/.test(uhrzeit)){
+    const[hh,mm]=uhrzeit.split(':').map(Number);
+    startD=new Date(tag+'T'+String(hh).padStart(2,'0')+':'+String(mm).padStart(2,'0')+':00');
+  }else if(tag===TODAY){
     const now=new Date();
     startD=new Date(now);
     startD.setMinutes(0,0,0);
-    startD.setHours(startD.getHours()+1); // nächste volle Stunde
+    startD.setHours(startD.getHours()+1);
   }else{
     startD=new Date(tag+'T09:00:00');
   }
   const endD=new Date(startD.getTime()+hrs*3600000);
   const zN=getZielName(a);
-  // P1: Titel = "⚡ P1 — Zielname" (privat, kein Aufgabentitel nach außen)
-  const summary=a.prio==='P1'?'⚡ P1 — '+(zN||'Fokus'):'['+a.prio+'] '+a.titel;
+  // App-Event mit Zeit → echter Titel (User hat explizit Termin gesetzt)
+  // P1 ohne Zeit → anonym (Privatsphäre); P2/P3 → Prio + Titel
+  const summary=uhrzeit?a.titel:a.prio==='P1'?'⚡ P1 — '+(zN||'Fokus'):'['+a.prio+'] '+a.titel;
   const description=a.prio==='P1'?'Halleluja OS':'Halleluja OS';
   const colorMap={'P1':'11','P2':'6','P3':'8'};
   const body={
