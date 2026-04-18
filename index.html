@@ -1000,6 +1000,72 @@ function rKpiBlock(pid,filter){
   out+='</div></div>';
   return out;
 }
+// "Fixes heute" — Kalendertermine + Aufgaben mit dl=heute. Collapsed = nächstes Fix + Countdown; open = volle Liste.
+function rFixesHeute(pid){
+  const now=Date.now();
+  const kalHeute=(S.kalender||[]).filter(ev=>{
+    if(!ev.start)return false;
+    const d=ev.start;const ymd=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+    return ymd===TODAY;
+  }).sort((a,b)=>a.start-b.start);
+  const tasksHeute=S.aufgaben.filter(a=>
+    String(a.pid)===String(pid)&&a.dl===TODAY&&!['erledigt','zurueckgegeben','archiviert','backlog'].includes(a.status)
+  );
+  if(!kalHeute.length&&!tasksHeute.length)return'';
+  const fmt=d=>d.getHours()+':'+String(d.getMinutes()).padStart(2,'0');
+  const fmtDiff=(ms)=>{const min=Math.round(ms/60000);if(min<60)return'in '+min+'min';const h=Math.floor(min/60);return'in '+h+'h'+(min%60?' '+(min%60)+'min':'');};
+  const upcoming=kalHeute.filter(ev=>ev.end.getTime()>now);
+  const next=upcoming[0];
+  let collapsed='',imminent=false,autoOpen=false;
+  if(next){
+    const diffMs=next.start.getTime()-now;
+    const isRunning=diffMs<=0&&next.end.getTime()>now;
+    imminent=(diffMs>0&&diffMs<=15*60000)||isRunning;
+    autoOpen=imminent;
+    const tc=imminent?'var(--red)':'var(--text)';
+    const label=isRunning?'🔴 LÄUFT':imminent?'⏰ GLEICH':'⏰ Fix heute';
+    const when=isRunning?'jetzt':diffMs>0?fmtDiff(diffMs):'jetzt';
+    collapsed='<div style="font-size:10px;font-weight:700;color:'+tc+';letter-spacing:.4px;text-transform:uppercase;white-space:nowrap">'+label+'</div>'
+      +'<div style="flex:1;font-size:13px;font-weight:600;color:'+tc+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+fmt(next.start)+' · '+esc(next.titel)+'</div>'
+      +'<div style="font-size:11px;color:'+tc+';font-weight:600;white-space:nowrap">'+when+'</div>';
+  }else if(kalHeute.length){
+    collapsed='<div style="font-size:10px;font-weight:700;color:var(--t3);letter-spacing:.4px;text-transform:uppercase">✓ Fixes heute</div><div style="flex:1;font-size:12px;color:var(--t3)">alle durch</div>';
+  }else{
+    collapsed='<div style="font-size:10px;font-weight:700;color:var(--t3);letter-spacing:.4px;text-transform:uppercase">📋 Heute fällig</div><div style="flex:1;font-size:12px;color:var(--t2)">'+tasksHeute.length+' Aufgabe'+(tasksHeute.length!==1?'n':'')+'</div>';
+  }
+  // Expanded content
+  let expanded='';
+  if(kalHeute.length){
+    kalHeute.forEach(ev=>{
+      const passed=ev.end.getTime()<=now;
+      const running=ev.start.getTime()<=now&&ev.end.getTime()>now;
+      const color=passed?'var(--t3)':running?'var(--red)':'var(--text)';
+      const deco=passed?'text-decoration:line-through':'';
+      expanded+='<div onclick="gcalShowEvent(\''+ev.id+'\')" style="display:flex;align-items:center;gap:10px;padding:7px 14px;cursor:pointer;border-top:1px solid var(--bd);font-size:12px;color:'+color+';'+deco+'">';
+      expanded+='<span style="font-weight:700;min-width:48px;font-variant-numeric:tabular-nums">'+fmt(ev.start)+'</span>';
+      expanded+='<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📅 '+esc(ev.titel)+'</span>';
+      if(running)expanded+='<span style="font-size:10px;font-weight:700;color:var(--red)">läuft</span>';
+      expanded+='</div>';
+    });
+  }
+  if(tasksHeute.length){
+    expanded+='<div style="padding:6px 14px 4px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);border-top:1px solid var(--bd);background:var(--gray-bg)">Heute fällig (ohne Uhrzeit)</div>';
+    tasksHeute.forEach(a=>{
+      const prioColor=a.prio==='P1'?'var(--red)':a.prio==='P2'?'var(--blue)':'var(--t3)';
+      expanded+='<div onclick="openDetail(\''+a.id+'\')" style="display:flex;align-items:center;gap:10px;padding:7px 14px;cursor:pointer;border-top:1px solid var(--bd);font-size:12px">';
+      expanded+='<span style="font-size:10px;font-weight:700;color:'+prioColor+';min-width:48px">'+(a.prio||'—')+'</span>';
+      expanded+='<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(a.titel)+'</span>';
+      expanded+='</div>';
+    });
+  }
+  const bg=imminent?'var(--red-bg)':'var(--sf)';
+  const bd=imminent?'var(--red-bd)':'var(--bd)';
+  let h='<details class="fixes-heute" style="margin-bottom:10px;background:'+bg+';border:1px solid '+bd+';border-radius:10px;overflow:hidden"'+(autoOpen?' open':'')+'>';
+  h+='<summary style="list-style:none;cursor:pointer;padding:9px 14px;display:flex;align-items:center;gap:10px">'+collapsed+'<span style="font-size:10px;color:var(--t3);margin-left:4px">▾</span></summary>';
+  h+=expanded;
+  h+='</details>';
+  return h;
+}
 async function submitKpi(kpiId,pid){
   const el=document.getElementById('kpi-inp-'+kpiId);if(!el)return;
   const val=parseFloat(el.value)||0;
@@ -3965,6 +4031,9 @@ function rTag(){
   const mitZiel=weitere.filter(a=>a.ziel_id&&!istBereich(a.ziel_id));
   const ohneZiel=weitere.filter(a=>!a.ziel_id||istBereich(a.ziel_id));
 
+  // ── "Fixes heute" — ganz oben, damit keine Termine übersehen werden ──
+  out+=rFixesHeute(aP);
+
   // ── §2 Fokus: 3 Ergebnisvorhaben (HART) ──
   const{kw:kwAkt}=getKW();
   const wrAktuell=dieseWocheReset(aP);
@@ -4212,161 +4281,6 @@ function rTag(){
   const hasSonderKpi=S.ziele.flatMap(z=>z.kpis||[]).some(k=>String(k.pid)===String(aP)&&k.sonder);
   if(hasSonderKpi)out+=rKpiBlock(aP,'rest');
 
-  // ── Tages-Zeitstrahl (einzeilig, drag-to-reorder) ──
-  {
-    const tlTasks=[...aktiv,...offene].slice(0,10);
-    // apply saved order from localStorage
-    const orderKey='tagesplan-order-'+aP+'-'+TODAY;
-    const savedOrder=JSON.parse(localStorage.getItem(orderKey)||'[]');
-    if(savedOrder.length){
-      tlTasks.sort((a,b)=>{const ai=savedOrder.indexOf(a.id),bi=savedOrder.indexOf(b.id);return(ai<0?999:ai)-(bi<0?999:bi);});
-    }
-    if(tlTasks.length){
-      const now=new Date();
-      const nowH=now.getHours()+now.getMinutes()/60;
-      const erlH=erl.reduce((s,a)=>s+(a.gebucht||a.geplant||0.5),0);
-      const offenH=tlTasks.reduce((s,a)=>s+(a.geplant||1),0);
-      // Fokuszeit aus Profil
-      const mePerson=person(aP);
-      let fzStart=null,fzEnd=null,fzStartH=null,fzEndH=null;
-      if(mePerson&&mePerson.fokus_start&&mePerson.fokus_end){
-        const [fsh,fsm]=mePerson.fokus_start.split(':').map(Number);
-        const [feh,fem]=mePerson.fokus_end.split(':').map(Number);
-        fzStartH=fsh+fsm/60;
-        fzEndH=feh+fem/60;
-        fzStart=mePerson.fokus_start;
-        fzEnd=mePerson.fokus_end;
-      }
-      // 9:00 is the anchor — always. Early = bonus, late = visible gap
-      const anchor=9;
-      const DAY_START_MIN=7;  // frühestens 7:00
-      const DAY_CAP=21;       // Tagesende: niemals über 21:00
-      const isFeierabend=nowH>=DAY_CAP;
-      let dayStart=Math.max(DAY_START_MIN,Math.min(anchor,Math.floor(fzStartH!=null?Math.min(nowH,fzStartH):nowH)));
-      let dayEnd=Math.min(DAY_CAP,Math.max(17,Math.ceil(nowH+offenH)));
-      if(fzEndH!=null&&fzEndH>dayEnd)dayEnd=Math.min(DAY_CAP,Math.ceil(fzEndH));
-      if(isFeierabend){dayStart=DAY_START_MIN;dayEnd=DAY_CAP;} // nach 21:00: fixe Ansicht 7–21
-      const barH=dayEnd-dayStart;
-      const erlPct=(erlH/barH*100);
-      const gapH=Math.max(0,(nowH-dayStart)-erlH);
-      const gapPct=(gapH/barH*100);
-      const nowPct=Math.min(100,Math.max(0,(nowH-dayStart)/barH*100));
-      const anchorPct=((anchor-dayStart)/barH*100);
-      // early bird bonus?
-      const isEarly=nowH<anchor;
-      const earlyH=isEarly?Math.max(0,anchor-nowH):0;
-      out+='<div style="background:var(--sf);border:1px solid var(--bd);border-radius:14px;padding:12px 16px;margin-bottom:14px">';
-      const showExtern=localStorage.getItem('gcal_show_extern')!=='0';
-      out+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">';
-      out+='<div style="display:flex;align-items:center;gap:8px">';
-      out+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t2)">Tagesplan</div>';
-      if(gcalIsConnected()&&S.kalender&&S.kalender.length){
-        out+='<button onclick="localStorage.setItem(\'gcal_show_extern\',\''+(!showExtern?'1':'0')+'\');render()" title="'+(showExtern?'Externe Termine ausblenden':'Externe Termine einblenden')+'" style="background:none;border:none;cursor:pointer;font-size:13px;opacity:'+(showExtern?'1':'.4')+';padding:0;line-height:1" aria-label="Kalender-Events ein/ausblenden">📅</button>';
-      }
-      out+='</div>';
-      out+='<div style="font-size:11px;color:var(--t3)">'
-        +(isFeierabend?'<span style="color:var(--t3)">🌙 Feierabend</span> · ':gapH>0.5?'<span style="color:var(--red)">'+Math.round(gapH*10)/10+'h ungenutzt</span> · ':'')
-        +Math.round(erlH*10)/10+'h erledigt'+(isFeierabend?'':' · '+Math.round(offenH*10)/10+'h offen')+'</div>';
-      out+='</div>';
-      // time markers + Fokuszeit-Klammer
-      const fzRow=fzStartH!=null;
-      out+='<div style="position:relative;height:'+(fzRow?'22':'12')+'px;margin-bottom:2px">';
-      // Fokuszeit-Klammer (oben)
-      if(fzRow){
-        const fsPctB=Math.min(100,Math.max(0,(fzStartH-dayStart)/barH*100));
-        const fePctB=Math.min(100,Math.max(0,(fzEndH-dayStart)/barH*100));
-        const feWB=Math.max(0,fePctB-fsPctB);
-        const fzNowIn=nowH>=fzStartH&&nowH<fzEndH;
-        const clr=fzNowIn?'var(--red)':'rgba(185,28,28,.35)';
-        if(feWB>0){
-          // Linie
-          out+='<div style="position:absolute;left:'+fsPctB+'%;width:'+feWB+'%;top:5px;height:1px;background:'+clr+'"></div>';
-          // linke Kappe
-          out+='<div style="position:absolute;left:'+fsPctB+'%;top:3px;width:1px;height:5px;background:'+clr+'"></div>';
-          // rechte Kappe
-          out+='<div style="position:absolute;left:'+fePctB+'%;top:3px;width:1px;height:5px;background:'+clr+';transform:translateX(-1px)"></div>';
-          // Label "Fokus" zentriert
-          const midPct=(fsPctB+fePctB)/2;
-          out+='<div style="position:absolute;left:'+midPct+'%;top:0;transform:translateX(-50%);font-size:8px;font-weight:700;color:'+clr+';letter-spacing:.3px;white-space:nowrap">Fokus</div>';
-        }
-      }
-      // Stunden-Ticks (unten in der Zeile)
-      for(let h=dayStart;h<=dayEnd;h++){
-        const pct=((h-dayStart)/barH*100);
-        const isAnchor=h===anchor;
-        const show=isAnchor||h===12||h===15||h===dayEnd||(h<anchor&&h===dayStart);
-        if(show&&pct>=0&&pct<=100)out+='<div style="position:absolute;left:'+pct+'%;'+(fzRow?'bottom:0':'top:0')+';font-size:8px;'+(isAnchor?'font-weight:700;color:var(--text)':'color:var(--t3)')+';transform:translateX(-50%)">'+h+(isAnchor?':00':'')+'</div>';
-      }
-      out+='</div>';
-      // bar container
-      out+='<div style="position:relative">';
-      // 9:00 anchor line
-      if(dayStart<anchor)out+='<div style="position:absolute;left:'+anchorPct+'%;top:0;bottom:0;width:1px;background:var(--text);opacity:.15;z-index:8"></div>';
-      // single-row bar
-      out+='<div id="tagesplan-bar" style="position:relative;display:flex;height:32px;border-radius:8px;overflow:hidden;background:var(--gray-bg)">';
-      // erledigt block
-      if(erlH>0){
-        const earlyBonus=dayStart<anchor&&erlH>0;
-        out+='<div style="width:'+erlPct+'%;background:var(--green-bg);display:flex;align-items:center;justify-content:center;flex-shrink:0;border-right:1px solid var(--green-bd)">';
-        out+='<span style="font-size:9px;color:var(--green);font-weight:700;white-space:nowrap">'+(earlyBonus?'⚡ ':'✓ ')+Math.round(erlH*10)/10+'h</span>';
-        out+='</div>';
-      }
-      // gap = untracked/lost time (visible pressure when late)
-      if(gapH>0.1){
-        out+='<div style="width:'+gapPct+'%;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:repeating-linear-gradient(90deg,transparent,transparent 4px,rgba(128,128,128,.08) 4px,rgba(128,128,128,.08) 8px)">';
-        if(gapH>0.5)out+='<span style="font-size:8px;color:var(--t3);white-space:nowrap">'+Math.round(gapH*10)/10+'h</span>';
-        out+='</div>';
-      }
-      // task segments (start from "now") — nach 22:00 keine Tasks mehr anzeigen
-      if(isFeierabend){
-        out+='<div style="flex:1;display:flex;align-items:center;justify-content:center;background:var(--gray-bg);opacity:.4">';
-        out+='<span style="font-size:10px;color:var(--t3)">🌙 '+offenH.toFixed(1)+'h morgen</span>';
-        out+='</div>';
-      }
-      if(!isFeierabend)tlTasks.forEach((a,i)=>{
-        const dur=a.geplant||1;
-        const wPct=(dur/barH*100);
-        const isAktiv=a.status==='aktiv';
-        const pc=a.prio==='P1'?'var(--red)':a.prio==='P2'?'var(--blue)':'var(--t3)';
-        const bg=isAktiv?'var(--inv)':a.prio==='P1'?'var(--red-bg)':a.prio==='P2'?'var(--blue-bg)':'var(--gray-bg)';
-        const tc=isAktiv?'var(--inv-t)':pc;
-        const bd=i<tlTasks.length-1?'border-right:1px solid rgba(0,0,0,.08);':'';
-        out+='<div draggable="true" data-tpid="'+a.id+'" data-tpi="'+i+'" onclick="openDetail(\''+a.id+'\')" '
-          +'ondragstart="window._tpDrag='+i+';this.style.opacity=\'.5\'" '
-          +'ondragend="this.style.opacity=\'1\'" '
-          +'ondragover="event.preventDefault();this.style.outline=\'2px solid var(--inv)\'" '
-          +'ondragleave="this.style.outline=\'none\'" '
-          +'ondrop="event.preventDefault();this.style.outline=\'none\';tpReorder(window._tpDrag,'+i+')" '
-          +'style="width:'+wPct+'%;background:'+bg+';display:flex;align-items:center;padding:0 6px;gap:4px;cursor:grab;overflow:hidden;flex-shrink:0;'+bd+'">';
-        if(isAktiv)out+='<span style="font-size:8px;flex-shrink:0">🔥</span>';
-        out+='<span style="font-size:10px;font-weight:600;color:'+tc+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(a.titel)+'</span>';
-        out+='<span style="font-size:9px;color:'+tc+';opacity:.5;flex-shrink:0;margin-left:auto">'+fmtH(dur)+'</span>';
-        out+='</div>';
-      }); // end !isFeierabend forEach
-      // meeting overlays from Google Calendar
-      window._gcalEvtMap=window._gcalEvtMap||{};
-      (showExtern?(S.kalender||[]):[]).forEach((ev,idx)=>{
-        if(!ev.start||!ev.end)return;
-        const sH=ev.start.getHours()+ev.start.getMinutes()/60;
-        const eH=ev.end.getHours()+ev.end.getMinutes()/60;
-        const lPct=Math.max(0,(sH-dayStart)/barH*100);
-        const wPctM=Math.max(1,Math.min(100-lPct,(eH-sH)/barH*100));
-        if(lPct>=100)return;
-        const fmt=d=>d.getHours()+':'+(''+(d.getMinutes())).padStart(2,'0');
-        out+='<div onclick="gcalShowEvent(\''+ev.id+'\')" title="'+esc(ev.titel)+' · '+fmt(ev.start)+'–'+fmt(ev.end)+'" style="position:absolute;left:'+lPct+'%;width:'+wPctM+'%;top:0;bottom:0;background:rgba(29,78,216,.14);border-left:2px solid rgba(29,78,216,.45);z-index:6;pointer-events:auto;cursor:pointer;overflow:hidden;box-sizing:border-box">'
-          +'<span style="font-size:8px;color:var(--blue);font-weight:600;padding:0 4px;white-space:nowrap;line-height:32px;display:block;overflow:hidden;text-overflow:ellipsis">📅 '+esc(ev.titel)+'</span>'
-          +'</div>';
-      });
-      out+='</div>';
-      // now needle — red line overlaying the bar
-      if(nowH>=dayStart&&nowH<=dayEnd){
-        out+='<div style="position:absolute;left:'+nowPct+'%;top:-1px;bottom:-1px;width:2px;background:var(--red);border-radius:2px;z-index:10;pointer-events:none"></div>';
-        out+='<div style="position:absolute;left:'+nowPct+'%;bottom:-10px;transform:translateX(-50%);font-size:8px;font-weight:700;color:var(--red);pointer-events:none">'+now.getHours()+':'+(''+(now.getMinutes())).padStart(2,'0')+'</div>';
-      }
-      out+='</div>';
-      out+='</div>';
-    }
-  }
 
   mitZiel.forEach(a=>{out+=aufgabeKarte(a);});
 
