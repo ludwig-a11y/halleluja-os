@@ -5328,8 +5328,15 @@ function rZiele(){
         }
         // Themen
         myTZB.forEach(tz=>{
-          const tzA=bAufgAll.filter(a=>a.teilzielId===tz.id&&a.status!=='erledigt');
+          const tzA_all=bAufgAll.filter(a=>a.teilzielId===tz.id);
+          const tzA_offen=tzA_all.filter(a=>!['erledigt','archiviert','zurueckgegeben'].includes(a.status));
+          const tzA_events=tzA_offen.filter(a=>a.dlUhrzeit);
+          const tzA_tasks=tzA_offen.filter(a=>!a.dlUhrzeit);
+          const tzA_erledigt=tzA_all.filter(a=>a.status==='erledigt').slice(0,5);
+          const offenCount=tzA_offen.length;
+          const indent=canManageTZ(z.id)?'37':'12';
           out+='<div style="border:1px solid '+f.bd+';border-radius:10px;margin-bottom:8px;overflow:hidden;'+(tz.erledigt?'opacity:.5;':'')+'background:var(--sf)">';
+          // ── Header ──
           out+='<div style="display:flex;align-items:center;gap:10px;padding:10px 12px">';
           if(canManageTZ(z.id))out+='<input type="checkbox" '+(tz.erledigt?'checked':'')+' onclick="toggleTZ(\''+z.id+'\',\''+tz.id+'\')" style="flex-shrink:0;margin:0;width:15px;height:15px;accent-color:'+f.tc+'">';
           out+='<div style="flex:1;min-width:0;cursor:pointer" onclick="'+(canManageTZ(z.id)?'editTZ(\''+z.id+'\',\''+tz.id+'\')':'')+'">';
@@ -5339,17 +5346,48 @@ function rZiele(){
           if(tz.datum){const _m=['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];tzMeta.push('bis '+_m[parseInt(tz.datum.slice(5,7),10)-1]);}
           if(tzMeta.length)out+='<div style="font-size:10px;color:var(--t2);margin-top:1px">'+tzMeta.join(' · ')+'</div>';
           out+='</div>';
-          if(tzA.length)out+='<span style="font-size:10px;color:'+f.tc+';background:'+f.bg+';border:1px solid '+f.bd+';padding:1px 7px;border-radius:99px;flex-shrink:0;font-weight:600">'+tzA.length+'</span>';
+          if(offenCount)out+='<span style="font-size:10px;color:'+f.tc+';background:'+f.bg+';border:1px solid '+f.bd+';padding:1px 7px;border-radius:99px;flex-shrink:0;font-weight:600">'+offenCount+'</span>';
           out+='</div>';
-          if(tzA.length){tzA.forEach(a=>{
-            const p2=person(a.pid);
-            out+='<div onclick="openDetail(\''+a.id+'\')" style="display:flex;align-items:center;gap:8px;padding:8px 12px 8px '+(canManageTZ(z.id)?'37':'12')+'px;border-top:1px solid '+f.bd+';cursor:pointer;background:var(--sf)" onmouseenter="this.style.background=\''+f.bg+'\'" onmouseleave="this.style.background=\'var(--sf)\'">';
-            out+='<span style="font-size:8px;color:'+(a.status==='aktiv'?'var(--blue)':'var(--t3)')+'">●</span>';
-            out+='<span style="flex:1;font-size:12px;color:var(--text)">'+esc(a.titel)+'</span>';
-            if(p2)out+='<span style="font-size:10px;color:var(--t2)">'+p2.name+'</span>';
-            out+=prioTag(a.prio,null,false);
+          // ── Events geplant (Tasks mit Uhrzeit) ──
+          if(tzA_events.length){
+            out+='<div style="padding:4px '+indent+'px 2px;border-top:1px solid '+f.bd+';background:var(--blue-bg)">';
+            out+='<div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--blue);padding:4px 0 3px">📅 Events geplant</div>';
             out+='</div>';
-          });}
+            tzA_events.forEach(a=>{
+              const p2=person(a.pid);
+              out+='<div onclick="openDetail(\''+a.id+'\')" style="display:flex;align-items:center;gap:8px;padding:7px 12px 7px '+indent+'px;border-top:1px solid '+f.bd+';cursor:pointer;background:var(--blue-bg)" onmouseenter="this.style.opacity=\'.8\'" onmouseleave="this.style.opacity=\'1\'">';
+              out+='<span style="font-size:10px;font-weight:700;color:var(--blue);font-variant-numeric:tabular-nums;min-width:40px">'+a.dlUhrzeit+'</span>';
+              out+='<span style="flex:1;font-size:12px;color:var(--text)">'+esc(a.titel)+'</span>';
+              if(p2)out+='<span style="font-size:10px;color:var(--t2)">'+p2.name.split(' ')[0]+'</span>';
+              out+=prioTag(a.prio,null,false);
+              out+='</div>';
+            });
+          }
+          // ── Aufgaben offen ──
+          if(tzA_tasks.length){
+            if(tzA_events.length)out+='<div style="padding:4px '+indent+'px 2px;border-top:1px solid '+f.bd+';background:var(--gray-bg)"><div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);padding:4px 0 3px">Aufgaben</div></div>';
+            tzA_tasks.forEach(a=>{
+              const p2=person(a.pid);
+              out+='<div onclick="openDetail(\''+a.id+'\')" style="display:flex;align-items:center;gap:8px;padding:8px 12px 8px '+indent+'px;border-top:1px solid '+f.bd+';cursor:pointer;background:var(--sf)" onmouseenter="this.style.background=\''+f.bg+'\'" onmouseleave="this.style.background=\'var(--sf)\'">';
+              out+='<span style="font-size:8px;color:'+(a.status==='aktiv'?'var(--blue)':'var(--t3)')+'">●</span>';
+              out+='<span style="flex:1;font-size:12px;color:var(--text)">'+esc(a.titel)+'</span>';
+              if(p2)out+='<span style="font-size:10px;color:var(--t2)">'+p2.name.split(' ')[0]+'</span>';
+              out+=prioTag(a.prio,null,false);
+              out+='</div>';
+            });
+          }
+          // ── Erledigt (kompakt, klappbar) ──
+          if(tzA_erledigt.length){
+            out+='<details style="border-top:1px solid '+f.bd+'">';
+            out+='<summary style="list-style:none;cursor:pointer;padding:6px 12px 6px '+indent+'px;font-size:10px;font-weight:700;color:var(--green);background:var(--green-bg);display:flex;align-items:center;gap:6px">✓ '+tzA_erledigt.length+' erledigt<span style="font-size:9px;color:var(--t3);margin-left:auto">▾</span></summary>';
+            tzA_erledigt.forEach(a=>{
+              out+='<div onclick="openDetail(\''+a.id+'\')" style="display:flex;align-items:center;gap:8px;padding:6px 12px 6px '+indent+'px;border-top:1px solid '+f.bd+';cursor:pointer;background:var(--green-bg)">';
+              out+='<span style="flex:1;font-size:11px;color:var(--t3);text-decoration:line-through">'+esc(a.titel)+'</span>';
+              out+='</div>';
+            });
+            out+='</details>';
+          }
+          // ── Footer: + Aufgabe ──
           out+='<div style="padding:7px 12px;border-top:1px solid '+f.bd+';background:'+f.bg+'">';
           out+='<button onclick="openNeu({zielId:\''+z.id+'\',teilzielId:\''+tz.id+'\'})" style="font-size:11px;padding:3px 10px;border-radius:6px;border:1px solid '+f.bd+';background:var(--sf);color:'+f.tc+';font-weight:500;cursor:pointer;font-family:inherit">+ Aufgabe</button>';
           out+='</div></div>';
