@@ -2230,8 +2230,11 @@ function getPaddelCount(pid){
   // Nur diese Woche (Mo–So)
   const{monday,sunday}=getWeekRange();
   // Aufgaben dieser Woche: P1=3, P2=1, P3=0
+  // WICHTIG: nur Ziel-alignte Tasks zählen (teilzielId gesetzt = über Meilenstein ans Ziel gebunden).
+  // Leading Indicator = Ausführung von Taktik, die zum Ziel führt. Busywork ohne Ziel-Bezug gibt 0 Punkte.
   const aufgabenPts=S.aufgaben.filter(a=>{
     if(a.pid!==pid||a.status!=='erledigt'||!a.updated_at)return false;
+    if(!a.teilzielId)return false; // Kein Meilenstein-Bezug → 0 Punkte
     const dt=new Date(a.updated_at);
     if(isNaN(dt.getTime()))return false;
     const d=localDate(dt);
@@ -3852,8 +3855,14 @@ async function fertig(id){
     }
     // Fokus aufräumen wenn diese Aufgabe der aktive Fokus war
     if(localStorage.getItem('fokus_id_'+aP)===id)localStorage.removeItem('fokus_id_'+aP);
-    showPaddelCelebration(pid);
-    celebrateErl(a);
+    console.log('[Paddel] fertig() für',a.titel,'teilzielId=',a.teilzielId);
+    if(a.teilzielId){
+      showPaddelCelebration(pid);
+      celebrateErl(a);
+    }else{
+      // Ovens-Prinzip: keine Feier für Busywork. Nur nüchterne Bestätigung.
+      toast('✓ Erledigt · ohne Meilenstein-Zuordnung kein Paddel-Punkt');
+    }
     checkP1Done(pid);
     const restOffen=S.aufgaben.filter(x=>String(x.pid)===String(aP)&&x.status!=='erledigt');
     if(!restOffen.length)setTimeout(()=>celebrate('🏆','Alle Aufgaben erledigt! 🎉'),1500);
@@ -3890,7 +3899,11 @@ async function toggleStep(id,i){
     }
     const ok=await dbPatch('aufgaben',id,patch);
     if(!ok){a.ua[i].d=wasDone;a.status=prevStatus;a.aktSeit=prevAktSeit;a.gebucht=prevGebucht;toast('⚠ Fehler beim Speichern');}
-    else if(allDone){showPaddelCelebration(a.pid);checkP1Done(a.pid);}
+    else if(allDone){
+      if(a.teilzielId) showPaddelCelebration(a.pid);
+      else toast('✓ Erledigt · ohne Meilenstein-Zuordnung kein Paddel-Punkt');
+      checkP1Done(a.pid);
+    }
   }catch(e){console.error('toggleStep',e);a.ua[i].d=wasDone;a.status=prevStatus;a.aktSeit=prevAktSeit;a.gebucht=prevGebucht;}
   finally{
     a._busy=false;
@@ -4677,7 +4690,7 @@ function openNeu(pf={}){
     +'<div id="neu-mehr" style="display:none">'
     +'<div class="f2"><div class="fl"><label>Ziel <span style="font-weight:400;color:var(--t2)">(optional)</span></label><select id="nziel" onchange="updateNeuTZ()">'+zieleOpts+'</select></div>'
     +'<div class="fl"><label>Dauer</label><select id="nh">'+SH.map(([h,l])=>'<option value="'+h+'"'+((pf.geplant||1)==h?' selected':'')+'>'+l+'</option>').join('')+'</select></div></div>'
-    +'<div id="neu-tz-wrap" class="fl" style="display:none"><label>Meilenstein <span style="font-weight:400;color:var(--t2)">(optional)</span></label><select id="ntz"><option value="">— kein Meilenstein —</option></select></div>'
+    +'<div id="neu-tz-wrap" class="fl" style="display:none"><label>Meilenstein <span style="font-weight:400;color:var(--t2)">(optional)</span></label><select id="ntz"><option value="">— kein Meilenstein —</option></select><div style="font-size:10px;color:var(--t3);margin-top:4px;line-height:1.4">💡 Ohne Meilenstein-Zuordnung zählt diese Aufgabe <b>nicht</b> für deinen Paddel-Score. Nur Ziel-alignte Ausführung = Leading Indicator.</div></div>'
     +'<div class="fl"><label>Fällig</label><div style="display:flex;gap:6px;align-items:center"><input type="date" id="ndl" value="'+(pf.dl||getFriday())+'" style="flex:1">'
     +'<button id="dltype-bis" onclick="toggleDlType(\'bis\')" class="btn-toggle on" data-v="bis">bis</button>'
     +'<button id="dltype-am" onclick="toggleDlType(\'am\')" class="btn-toggle" data-v="am">am</button>'
@@ -5145,6 +5158,10 @@ async function saveNeu(){
   // P1 immer in Kalender, P2/P3 nur mit Deadline
   if(rec.prio==='P1'||rec.dl)gcalCreateEvent(rec);
   if(pid!==aP){const tp=person(pid);notify('aufgabe_zugewiesen',{aufgabe:t,fuer:{id:pid,name:tp?tp.name:'?',slack_id:tp?.slack_id||''},prio:rec.prio,dl:rec.dl});}
+  // Paddel-Hint: beim Anlegen ohne Meilenstein-Zuordnung warnen
+  if(!teilzielId && pid===aP){
+    setTimeout(()=>toast('💡 Ohne Meilenstein zählt diese Aufgabe nicht für deinen Paddel-Score'),200);
+  }
   cm();render();
   // Feedback wenn aus Idee/Wolke erstellt
   if(window._fromSignalId){
@@ -5332,6 +5349,7 @@ function rTeam(){
     outPR+='<div style="background:var(--amber-bg);border:1px solid var(--amber-bd);border-radius:14px;padding:14px 16px;margin-bottom:16px">';
     outPR+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">';
     outPR+='<div style="font-size:11px;font-weight:700;color:var(--amber)">🏆 Paddel-Rangliste · KW '+prKw+'</div>';
+    outPR+='<span title="Gezählt werden nur Aufgaben mit Meilenstein-Zuordnung. Ausführung von Taktik, die zum Ziel führt — nicht Busywork." style="font-size:11px;color:var(--amber);cursor:help;opacity:.7">ℹ️</span>';
     outPR+='<div style="margin-left:auto;display:flex;gap:5px;align-items:center">';
     outPR+='<span style="font-size:9px;padding:1px 6px;border-radius:99px;background:var(--red-bg);color:var(--red);font-weight:700">P1 = 3🏅</span>';
     outPR+='<span style="font-size:9px;padding:1px 6px;border-radius:99px;background:var(--blue-bg);color:var(--blue);font-weight:700">P2 = 1🏅</span>';
