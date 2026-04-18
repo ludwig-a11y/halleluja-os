@@ -528,7 +528,7 @@ function normalizeAufgabe(a){
   return{...a,zielId:a.ziel_id||null,teilzielId:a.teilziel_id||null,
     parentId:a.parent_id||null,
     aktSeit:a.akt_seit?new Date(a.akt_seit).getTime():null,
-    dl:a.dl||'',dl_type:a.dl_type||'bis',recurring:a.recurring||null,
+    dl:a.dl||'',dlUhrzeit:a.dl_uhrzeit||null,dl_type:a.dl_type||'bis',recurring:a.recurring||null,
     ua:Array.isArray(a.ua)?a.ua:(typeof a.ua==='string'?JSON.parse(a.ua||'[]'):[]),
     erstelltVon:a.erstellt_von||null,
     missCount:a.miss_count||0,lastMissAction:a.last_miss_action||null,
@@ -1000,21 +1000,38 @@ function rKpiBlock(pid,filter){
   out+='</div></div>';
   return out;
 }
-// "Fixes heute" — Kalendertermine + Aufgaben mit dl=heute. Collapsed = nächstes Fix + Countdown; open = volle Liste.
+// "Fixes heute" — Kalendertermine + App-Events (Aufgaben mit Uhrzeit) + Tasks ohne Uhrzeit.
+// Collapsed = nächstes Fix + Countdown; open = volle Liste.
 function rFixesHeute(pid){
   const now=Date.now();
+  const fmt=d=>d.getHours()+':'+String(d.getMinutes()).padStart(2,'0');
+  const fmtDiff=(ms)=>{const min=Math.round(ms/60000);if(min<60)return'in '+min+'min';const h=Math.floor(min/60);return'in '+h+'h'+(min%60?' '+(min%60)+'min':'');};
+  // Google Calendar events today
   const kalHeute=(S.kalender||[]).filter(ev=>{
     if(!ev.start)return false;
     const d=ev.start;const ymd=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
     return ymd===TODAY;
-  }).sort((a,b)=>a.start-b.start);
+  });
+  // App-Events: tasks with dl=today AND dlUhrzeit set
+  const appEvents=(S.aufgaben||[]).filter(a=>
+    String(a.pid)===String(pid)&&a.dl===TODAY&&a.dlUhrzeit&&
+    !['erledigt','zurueckgegeben','archiviert','backlog'].includes(a.status)
+  ).map(a=>{
+    const [hh,mm]=(a.dlUhrzeit||'00:00').split(':').map(Number);
+    const start=new Date(TODAY+'T'+String(hh).padStart(2,'0')+':'+String(mm).padStart(2,'0')+':00');
+    const durMin=Math.round((parseFloat(a.geplant)||1)*60);
+    const end=new Date(start.getTime()+durMin*60000);
+    return{...a,_isAppEvent:true,start,end};
+  });
+  // Merge + sort all fixed-time entries
+  const allFixed=[...kalHeute,...appEvents].sort((a,b)=>a.start-b.start);
+  // Tasks with dl=today but NO time (plain deadline)
   const tasksHeute=S.aufgaben.filter(a=>
-    String(a.pid)===String(pid)&&a.dl===TODAY&&!['erledigt','zurueckgegeben','archiviert','backlog'].includes(a.status)
+    String(a.pid)===String(pid)&&a.dl===TODAY&&!a.dlUhrzeit&&
+    !['erledigt','zurueckgegeben','archiviert','backlog'].includes(a.status)
   );
-  if(!kalHeute.length&&!tasksHeute.length)return'';
-  const fmt=d=>d.getHours()+':'+String(d.getMinutes()).padStart(2,'0');
-  const fmtDiff=(ms)=>{const min=Math.round(ms/60000);if(min<60)return'in '+min+'min';const h=Math.floor(min/60);return'in '+h+'h'+(min%60?' '+(min%60)+'min':'');};
-  const upcoming=kalHeute.filter(ev=>ev.end.getTime()>now);
+  if(!allFixed.length&&!tasksHeute.length)return'';
+  const upcoming=allFixed.filter(ev=>ev.end.getTime()>now);
   const next=upcoming[0];
   let collapsed='',imminent=false,autoOpen=false;
   if(next){
@@ -1023,33 +1040,49 @@ function rFixesHeute(pid){
     imminent=(diffMs>0&&diffMs<=15*60000)||isRunning;
     autoOpen=imminent;
     const tc=imminent?'var(--red)':'var(--text)';
+    const icon=next._isAppEvent?'📝':'📅';
     const label=isRunning?'🔴 LÄUFT':imminent?'⏰ GLEICH':'⏰ Fix heute';
     const when=isRunning?'jetzt':diffMs>0?fmtDiff(diffMs):'jetzt';
     collapsed='<div style="font-size:10px;font-weight:700;color:'+tc+';letter-spacing:.4px;text-transform:uppercase;white-space:nowrap">'+label+'</div>'
-      +'<div style="flex:1;font-size:13px;font-weight:600;color:'+tc+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+fmt(next.start)+' · '+esc(next.titel)+'</div>'
+      +'<div style="flex:1;font-size:13px;font-weight:600;color:'+tc+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+fmt(next.start)+' · '+icon+' '+esc(next.titel)+'</div>'
       +'<div style="font-size:11px;color:'+tc+';font-weight:600;white-space:nowrap">'+when+'</div>';
-  }else if(kalHeute.length){
+  }else if(allFixed.length){
     collapsed='<div style="font-size:10px;font-weight:700;color:var(--t3);letter-spacing:.4px;text-transform:uppercase">✓ Fixes heute</div><div style="flex:1;font-size:12px;color:var(--t3)">alle durch</div>';
   }else{
     collapsed='<div style="font-size:10px;font-weight:700;color:var(--t3);letter-spacing:.4px;text-transform:uppercase">📋 Heute fällig</div><div style="flex:1;font-size:12px;color:var(--t2)">'+tasksHeute.length+' Aufgabe'+(tasksHeute.length!==1?'n':'')+'</div>';
   }
-  // Expanded content
+  // Expanded content — all fixed-time entries merged
   let expanded='';
-  if(kalHeute.length){
-    kalHeute.forEach(ev=>{
+  if(allFixed.length){
+    allFixed.forEach(ev=>{
       const passed=ev.end.getTime()<=now;
       const running=ev.start.getTime()<=now&&ev.end.getTime()>now;
       const color=passed?'var(--t3)':running?'var(--red)':'var(--text)';
       const deco=passed?'text-decoration:line-through':'';
-      expanded+='<div onclick="gcalShowEvent(\''+ev.id+'\')" style="display:flex;align-items:center;gap:10px;padding:7px 14px;cursor:pointer;border-top:1px solid var(--bd);font-size:12px;color:'+color+';'+deco+'">';
-      expanded+='<span style="font-weight:700;min-width:48px;font-variant-numeric:tabular-nums">'+fmt(ev.start)+'</span>';
-      expanded+='<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📅 '+esc(ev.titel)+'</span>';
-      if(running)expanded+='<span style="font-size:10px;font-weight:700;color:var(--red)">läuft</span>';
-      expanded+='</div>';
+      if(ev._isAppEvent){
+        // App-Event: click → task detail
+        const prioColor=ev.prio==='P1'?'var(--red)':ev.prio==='P2'?'var(--blue)':'var(--t3)';
+        // Liebevolle Reibung: no milestone
+        const noMilestone=!ev.teilzielId;
+        expanded+='<div onclick="openDetail(\''+ev.id+'\')" style="display:flex;align-items:center;gap:10px;padding:7px 14px;cursor:pointer;border-top:1px solid var(--bd);font-size:12px;color:'+color+';'+deco+'">';
+        expanded+='<span style="font-weight:700;min-width:48px;font-variant-numeric:tabular-nums">'+fmt(ev.start)+'</span>';
+        expanded+='<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📝 '+esc(ev.titel)+'</span>';
+        expanded+='<span style="font-size:10px;font-weight:700;color:'+prioColor+'">'+(ev.prio||'')+'</span>';
+        if(noMilestone)expanded+='<span title="Kein Ziel-Bezug. Warum ist das in deinem Kalender?" style="font-size:11px;color:var(--t3);cursor:help">🤔</span>';
+        if(running)expanded+='<span style="font-size:10px;font-weight:700;color:var(--red)">läuft</span>';
+        expanded+='</div>';
+      }else{
+        // Google Calendar event
+        expanded+='<div onclick="gcalShowEvent(\''+ev.id+'\')" style="display:flex;align-items:center;gap:10px;padding:7px 14px;cursor:pointer;border-top:1px solid var(--bd);font-size:12px;color:'+color+';'+deco+'">';
+        expanded+='<span style="font-weight:700;min-width:48px;font-variant-numeric:tabular-nums">'+fmt(ev.start)+'</span>';
+        expanded+='<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📅 '+esc(ev.titel)+'</span>';
+        if(running)expanded+='<span style="font-size:10px;font-weight:700;color:var(--red)">läuft</span>';
+        expanded+='</div>';
+      }
     });
   }
   if(tasksHeute.length){
-    expanded+='<div style="padding:6px 14px 4px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);border-top:1px solid var(--bd);background:var(--gray-bg)">Heute fällig (ohne Uhrzeit)</div>';
+    expanded+='<div style="padding:6px 14px 4px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);border-top:1px solid var(--bd);background:var(--gray-bg)">Heute fällig (kein Fixpunkt)</div>';
     tasksHeute.forEach(a=>{
       const prioColor=a.prio==='P1'?'var(--red)':a.prio==='P2'?'var(--blue)':'var(--t3)';
       expanded+='<div onclick="openDetail(\''+a.id+'\')" style="display:flex;align-items:center;gap:10px;padding:7px 14px;cursor:pointer;border-top:1px solid var(--bd);font-size:12px">';
@@ -5563,6 +5596,27 @@ function smartNeuContext(){
   if(myTZ.length) return {teilzielId:myTZ[0].id};
   return {};
 }
+function toggleDlUhr(){
+  const wrap=document.getElementById('ndl-uhr-wrap');
+  const btn=document.getElementById('ndl-uhr-toggle');
+  if(!wrap)return;
+  const open=wrap.style.display!=='none';
+  wrap.style.display=open?'none':'block';
+  if(btn){btn.style.color=open?'var(--t3)':'var(--blue)';btn.style.borderColor=open?'var(--bd)':'var(--blue-bd)';btn.style.background=open?'var(--sf)':'var(--blue-bg)';}
+  if(open){const inp=document.getElementById('ndluhr');if(inp)inp.value='';document.getElementById('ndl-event-badge').style.display='none';document.getElementById('ndl-uhr-hint').style.display='none';}
+  else{const inp=document.getElementById('ndluhr');if(inp)inp.focus();}
+}
+function onDlUhrChange(){
+  const val=document.getElementById('ndluhr')?.value||'';
+  const badge=document.getElementById('ndl-event-badge');
+  const hint=document.getElementById('ndl-uhr-hint');
+  if(badge)badge.style.display=val?'inline-flex':'none';
+  // liebevolle Reibung: kein Meilenstein → zeige Hint
+  if(hint){
+    const tz=document.getElementById('ntz')?.value||'';
+    hint.style.display=(val&&!tz)?'block':'none';
+  }
+}
 function openNeu(pf={}){
   _selPrio=pf.prio||null;
   window._aiDebounce=null;
@@ -5588,7 +5642,16 @@ function openNeu(pf={}){
     +'<div class="fl"><label>Fällig</label><div style="display:flex;gap:6px;align-items:center"><input type="date" id="ndl" value="'+(pf.dl||getFriday())+'" style="flex:1">'
     +'<button id="dltype-bis" onclick="toggleDlType(\'bis\')" class="btn-toggle on" data-v="bis">bis</button>'
     +'<button id="dltype-am" onclick="toggleDlType(\'am\')" class="btn-toggle" data-v="am">am</button>'
-    +'</div></div>'
+    +'<button id="ndl-uhr-toggle" onclick="toggleDlUhr()" style="font-size:12px;padding:4px 9px;border-radius:7px;border:1px solid var(--bd);background:var(--sf);color:var(--t3);cursor:pointer;font-family:inherit;white-space:nowrap" title="Uhrzeit setzen → wird zum Event">⏱</button>'
+    +'</div>'
+    +'<div id="ndl-uhr-wrap" style="display:none;margin-top:8px">'
+    +'<div style="display:flex;gap:8px;align-items:center">'
+    +'<input type="time" id="ndluhr" oninput="onDlUhrChange()" style="padding:6px 8px;border-radius:7px;border:1px solid var(--bd);font-size:13px;background:var(--sf);color:var(--text);width:130px">'
+    +'<span id="ndl-event-badge" style="display:none;font-size:11px;font-weight:700;padding:3px 9px;border-radius:99px;background:var(--blue-bg);border:1px solid var(--blue-bd);color:var(--blue)">📅 Event</span>'
+    +'</div>'
+    +'<div id="ndl-uhr-hint" style="display:none;font-size:11px;color:var(--amber);background:var(--amber-bg);border:1px dashed var(--amber-bd);border-radius:7px;padding:7px 10px;margin-top:6px;line-height:1.4">🤔 <b>Ein Fixpunkt ohne Ziel-Bezug.</b> Warum ist das in deinem Kalender?</div>'
+    +'</div>'
+    +'</div>'
     +'<div class="fl" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">'
     +'<label style="display:flex;align-items:center;gap:6px;text-transform:none;font-size:12px;font-weight:400;color:var(--t3);cursor:pointer;margin:0"><select id="nrec" style="width:auto;padding:4px 8px;font-size:11px;border:1px solid var(--bd);border-radius:6px;color:var(--t2);background:var(--sf)"><option value="">Einmalig</option><option value="daily">🔄 Täglich</option><option value="weekly">🔄 Wöchentlich</option><option value="monthly">🔄 Monatlich</option></select></label>'
     +'<label style="display:flex;align-items:center;gap:6px;text-transform:none;font-size:12px;font-weight:400;color:var(--t3);cursor:pointer;margin:0"><input type="checkbox" id="nvert" style="width:auto" onchange="document.getElementById(\'nvert-hint\').style.display=this.checked?\'block\':\'none\'"> 🔒 Vertraulich</label><div id="nvert-hint" style="display:none;font-size:10px;color:var(--t3);margin-top:2px">Sichtbar für: Geschäftsführung, Zuständiger &amp; Ersteller</div>'
@@ -5620,6 +5683,12 @@ function updateNeuPaddelHint(){
     hint.style.background='var(--gray-bg)';
     hint.style.borderColor='var(--bd)';
     hint.style.color='var(--t2)';
+  }
+  // Sync liebevolle Reibung hint for Event without milestone
+  const uhrHint=document.getElementById('ndl-uhr-hint');
+  if(uhrHint){
+    const uhrVal=document.getElementById('ndluhr')?.value||'';
+    uhrHint.style.display=(uhrVal&&!tzVal)?'block':'none';
   }
 }
 function aiDebounce(){
@@ -6044,6 +6113,7 @@ async function saveNeu(){
     geplant:parseFloat(document.getElementById('nh').value)||1,
     gebucht:0,dl:document.getElementById('ndl').value||null,
     dl_type:(document.getElementById('dltype-bis')?.dataset.v==='bis')?'bis':'am',
+    dl_uhrzeit:document.getElementById('ndluhr')?.value||null,
     ua:window._neuSteps||[],notiz:document.getElementById('nno').value.trim(),akt_seit:null,vertraulich:vert,
     recurring:document.getElementById('nrec')?.value||null,
     erstellt_von:aP};
