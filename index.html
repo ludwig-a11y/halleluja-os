@@ -269,7 +269,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;font-size:1
     <div style="flex:1"></div>
     <div id="fokus-banner" style="display:none;align-items:center;gap:6px;padding:4px 12px;background:var(--red-bg);border:1px solid var(--red-bd);border-radius:8px;font-size:11px;font-weight:600;color:var(--red)">🎯 <span id="fokus-label"></span></div>
     <div id="live-clock" style="font-size:12px;font-weight:600;color:var(--t2);font-family:monospace;padding:0 8px"></div>
-    <button class="nt new-btn" onclick="openNeu()">+ Aufgabe</button>
+    <button class="nt new-btn" onclick="openNeu(smartNeuContext())">+ Aufgabe</button>
     <div style="margin-left:12px;display:flex;align-items:center;gap:8px">
       <div id="kap-pill" style="display:none;cursor:pointer" onclick="openMeinProfil()"></div>
       <div id="me-badge" style="display:flex;align-items:center;gap:6px;padding:0 6px;cursor:pointer;border-radius:8px" onclick="openMeinProfil()"></div>
@@ -306,7 +306,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;font-size:1
       Ich
     </button>
   </div>
-  <button id="mob-add" onclick="openNeu()">+</button>
+  <button id="mob-add" onclick="openNeu(smartNeuContext())">+</button>
 </div>
 
 <div class="ovl" id="ovl" onclick="if(event.target===this&&!window._noOverlayClose)cm()">
@@ -397,6 +397,22 @@ function meilensteinOptgroups(pid,selTzId=''){
   out+=mkGroup('Meine',meine);
   out+=mkGroup('Andere',andere);
   out+=mkGroup('Bereiche',bereiche);
+  // Fallback: wenn selTzId auf einen erledigten/archivierten TZ zeigt, als disabled-Info anzeigen statt still verschwinden lassen
+  if(selTzId){
+    const aktivMatch=sichtbar.some(z=>(z.teilziele||[]).some(t=>t.id===selTzId&&!t.erledigt&&(t.status||'aktiv')==='aktiv'));
+    if(!aktivMatch){
+      let inaktiv=null;
+      for(const z of S.ziele){
+        if(z.vertraulich&&!isGF()&&z.verantwortlichId!==aP)continue;
+        const tz=(z.teilziele||[]).find(t=>t.id===selTzId);
+        if(tz){inaktiv={t:tz,z};break;}
+      }
+      if(inaktiv){
+        const status=inaktiv.t.erledigt?'erledigt':(inaktiv.t.status==='archiviert'?'archiviert':'inaktiv');
+        out+='<optgroup label="⚠️ Nicht mehr aktiv"><option value="'+inaktiv.t.id+'" data-ziel-id="'+inaktiv.z.id+'" data-datum="'+(inaktiv.t.datum||'')+'" selected>'+esc(inaktiv.t.name)+' ('+status+')</option></optgroup>';
+      }
+    }
+  }
   return out;
 }
 function wochenTage(){
@@ -1738,7 +1754,28 @@ function openWochenreset(){
     otherTZGroups.forEach(({z,tza})=>{tza.forEach(t=>{msHtml+=tzBtnWR(t,z);});});
     msHtml+='</div></details>';
   }
-  if(!msHtml)msHtml='<div style="font-size:12px;color:var(--t3);padding:8px 0">Keine aktiven Meilensteine vorhanden. <span onclick="nav(\'ziele\')" style="color:var(--blue);cursor:pointer;text-decoration:underline">Jetzt anlegen →</span></div>';
+  // Inline-Meilenstein-Anlage (immer am Ende verfügbar, offen wenn keine Meilensteine existieren)
+  const meineZieleFuerInline=S.ziele.filter(z=>z.status!=='vorschlag'&&z.status!=='bereich'&&(String(z.verantwortlichId)===String(aP)||(z.teilziele||[]).some(t=>String(t.verantwortlichId)===String(aP))||isGF()));
+  const inlineZielOpts=meineZieleFuerInline.map(z=>'<option value="'+z.id+'">'+esc(z.name)+'</option>').join('');
+  const hasAnyMs=!!msHtml;
+  const inlineOpen=!hasAnyMs;
+  const inlineFormHtml=meineZieleFuerInline.length
+    ? '<details '+(inlineOpen?'open':'')+' style="margin-top:8px;border:1px dashed var(--bd);border-radius:8px;padding:8px 10px;background:var(--gray-bg)">'
+      +'<summary style="font-size:11px;color:var(--t2);cursor:pointer;font-weight:600">+ Neuen Meilenstein schnell anlegen</summary>'
+      +'<div style="margin-top:8px;display:flex;flex-direction:column;gap:6px">'
+      +'<input id="wr-inline-tz-name" placeholder="Meilenstein-Titel" style="font-size:12px;padding:6px 8px;border:1px solid var(--bd);border-radius:6px;background:var(--sf);color:var(--text);font-family:inherit">'
+      +'<div style="display:flex;gap:6px">'
+      +'<select id="wr-inline-tz-ziel" style="flex:1;font-size:12px;padding:6px 8px;border:1px solid var(--bd);border-radius:6px;background:var(--sf);color:var(--text);font-family:inherit">'+inlineZielOpts+'</select>'
+      +'<input type="date" id="wr-inline-tz-datum" style="font-size:12px;padding:6px 8px;border:1px solid var(--bd);border-radius:6px;background:var(--sf);color:var(--text);font-family:inherit">'
+      +'</div>'
+      +'<button onclick="saveInlineTZFromWR(event)" type="button" class="btn btn-dk" style="font-size:12px;padding:6px 10px;align-self:flex-start">Anlegen &amp; wählen</button>'
+      +'</div></details>'
+    : '<div style="font-size:11px;color:var(--t3);padding:8px 0">Erst ein Ziel im <span onclick="nav(\'ziele\')" style="color:var(--blue);cursor:pointer;text-decoration:underline">Ziele-Tab</span> anlegen, dann kannst du hier Meilensteine hinzufügen.</div>';
+  if(!msHtml){
+    msHtml='<div style="font-size:12px;color:var(--t3);padding:4px 0 2px">Keine aktiven Meilensteine.</div>'+inlineFormHtml;
+  } else {
+    msHtml+=inlineFormHtml;
+  }
 
   const modalTitel=wr?'Ergebnisvorhaben bearbeiten — KW '+kw:(_resetZwang?'📅 KW '+(kw+1)+' planen':istRueckblick?'Wochenrückblick KW '+kw:'Wochenplanung KW '+nextKw);
   // Im Zwang-Modus: Warum-Lücke kam aus Schritt 1, hier als hidden input
@@ -1888,6 +1925,28 @@ async function saveWrPhaseA(){
 }
 // ─── Ende §6 PHASE A ─────────────────────────────────────────────
 
+// Inline-Meilenstein-Anlage im Wochenreset-Modal (Fix #3: Freitag-Dead-End vermeiden)
+async function saveInlineTZFromWR(ev){
+  if(ev)ev.preventDefault();
+  const name=document.getElementById('wr-inline-tz-name')?.value.trim();
+  const zid=document.getElementById('wr-inline-tz-ziel')?.value;
+  const datum=document.getElementById('wr-inline-tz-datum')?.value||null;
+  if(!name){toast('Titel fehlt');return;}
+  if(!zid){toast('Ziel wählen');return;}
+  const z=zielObj(zid);if(!z){toast('Ziel nicht gefunden');return;}
+  const id=nid('tz');
+  const rec={id,ziel_id:zid,name,verantwortlich_id:aP,datum,erledigt:false,vertraulich:false,status:'aktiv'};
+  z.teilziele=z.teilziele||[];
+  z.teilziele.push({...rec,zielId:zid,verantwortlichId:aP,datum:datum||'',vertraulich:false,status:'aktiv'});
+  await dbInsert('teilziele',rec);
+  toast('✓ Meilenstein angelegt');
+  // Wochenreset-Modal neu rendern — der neue TZ wird über selTZId (=erster big3_tz_id) _nicht_ automatisch vorausgewählt,
+  // deswegen setzen wir ihn manuell in window-state vor dem Re-Open.
+  window._wrNewTzId=id;window._wrNewZielId=zid;
+  openWochenreset();
+  // Direkt selektieren (DOM ist nach openWochenreset neu):
+  setTimeout(()=>{try{selectWrTZ(zid,id);}catch(e){}},50);
+}
 function selectWrTZ(zielId,tzId){
   // Alle Buttons zurücksetzen
   document.querySelectorAll('.wtz-opt').forEach(x=>{
@@ -3634,7 +3693,7 @@ function rTag(){
       hero+='<div style="font-size:36px;margin-bottom:12px">🎉</div>';
       hero+='<div style="font-size:clamp(17px,4vw,20px);font-weight:700;margin-bottom:6px">Alles erledigt!</div>';
       hero+='<div style="font-size:13px;opacity:.8;margin-bottom:20px">Keine offenen Aufgaben — gut gemacht.</div>';
-      hero+='<button onclick="openNeu()" style="padding:12px 24px;border-radius:12px;background:var(--sf);color:var(--green);border:none;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer">+ Neue Aufgabe</button>';
+      hero+='<button onclick="openNeu(smartNeuContext())" style="padding:12px 24px;border-radius:12px;background:var(--sf);color:var(--green);border:none;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer">+ Neue Aufgabe</button>';
       hero+='</div>';
     }
     out+=hero;
@@ -5285,6 +5344,23 @@ function getFriday(){
   d.setDate(d.getDate()+add);
   return d.toISOString().slice(0,10);
 }
+// Leitet Default-Kontext für eine neue Aufgabe ab (Navbar + Kontext-Buttons ohne explizite Vorauswahl)
+function smartNeuContext(){
+  const wr=dieseWocheReset(aP);
+  if(wr){
+    for(let n=1;n<=3;n++){
+      const tzId=wr['big3_'+n+'_tz_id'];
+      const done=wr['big3_'+n+'_done'];
+      if(tzId && !done) return {teilzielId:tzId, prio:'P1'};
+    }
+  }
+  const myTZ=S.ziele.flatMap(z=>(z.teilziele||[]).filter(t=>
+    String(t.verantwortlichId)===String(aP) && !t.erledigt && (t.status||'aktiv')==='aktiv'
+  ));
+  myTZ.sort((a,b)=>(a.datum||'9999').localeCompare(b.datum||'9999'));
+  if(myTZ.length) return {teilzielId:myTZ[0].id};
+  return {};
+}
 function openNeu(pf={}){
   _selPrio=pf.prio||null;
   window._aiDebounce=null;
@@ -5775,9 +5851,12 @@ async function saveNeu(){
   // P1 immer in Kalender, P2/P3 nur mit Deadline
   if(rec.prio==='P1'||rec.dl)gcalCreateEvent(rec);
   if(pid!==aP){const tp=person(pid);notify('aufgabe_zugewiesen',{aufgabe:t,fuer:{id:pid,name:tp?tp.name:'?',slack_id:tp?.slack_id||''},prio:rec.prio,dl:rec.dl});}
-  // Paddel-Hint: beim Anlegen ohne Meilenstein-Zuordnung warnen
-  if(!teilzielId && pid===aP){
-    setTimeout(()=>toast('💡 Ohne Meilenstein zählt diese Aufgabe nicht für deinen Paddel-Score'),200);
+  // Paddel-Hint: beim Anlegen ohne Meilenstein-Zuordnung warnen (auch für delegierte Tasks)
+  if(!teilzielId){
+    const msg = pid===aP
+      ? '💡 Ohne Meilenstein zählt diese Aufgabe nicht für deinen Paddel-Score'
+      : '💡 Ohne Meilenstein zählt diese Aufgabe nicht für '+((person(pid)?.name||'').split(' ')[0]||'den Zugewiesenen')+'s Paddel-Score';
+    setTimeout(()=>toast(msg),200);
   }
   cm();render();
   // Feedback wenn aus Idee/Wolke erstellt
