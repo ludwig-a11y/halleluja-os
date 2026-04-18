@@ -481,6 +481,7 @@ const nid=p=>p+(++_kid);
 
 function normalizeAufgabe(a){
   return{...a,zielId:a.ziel_id||null,teilzielId:a.teilziel_id||null,
+    parentId:a.parent_id||null,
     aktSeit:a.akt_seit?new Date(a.akt_seit).getTime():null,
     dl:a.dl||'',dl_type:a.dl_type||'bis',recurring:a.recurring||null,
     ua:Array.isArray(a.ua)?a.ua:(typeof a.ua==='string'?JSON.parse(a.ua||'[]'):[]),
@@ -1610,6 +1611,50 @@ function openMomentumInfo(){
     +'<div class="mf" style="justify-content:flex-end"><button class="btn btn-dk" onclick="closeMomentumInfo()">Verstanden</button></div>';
   document.getElementById('ovl').classList.add('open');
 }
+function wrCascadeHtml(){
+  // Aktives Ziel: Fokus-Ziel der Person, oder erstes aktives Nicht-Bereich-Ziel
+  const myZiele=(S.ziele||[]).filter(z=>z.status!=='bereich'&&z.status!=='vorschlag'&&!z.erledigt);
+  const focusZ=myZiele.find(z=>z.focus)||myZiele[0]||null;
+  // Meilenstein: nächster nicht-erledigter TZ des aktiven Ziels (oder überhaupt)
+  const allTZ=focusZ?(focusZ.teilziele||[]).filter(t=>!t.erledigt&&(t.status||'aktiv')==='aktiv'):[];
+  const tzSort=[...allTZ].sort((a,b)=>{
+    if(!a.datum&&!b.datum)return 0;
+    if(!a.datum)return 1;if(!b.datum)return -1;
+    return a.datum.localeCompare(b.datum);
+  });
+  const focusTZ=tzSort[0]||null;
+  // Fortschritt: erledigte TZ / gesamt
+  const zTotal=focusZ?(focusZ.teilziele||[]).length:0;
+  const zDone=focusZ?(focusZ.teilziele||[]).filter(t=>t.erledigt).length:0;
+  // TZ-Fortschritt: Top-Level-Aufgaben verknüpft mit diesem TZ
+  const tzAufg=focusTZ?(S.aufgaben||[]).filter(a=>a.teilzielId===focusTZ.id&&!a.parentId):[];
+  const tzDone=tzAufg.filter(a=>a.status==='erledigt').length;
+  const tzTotal=tzAufg.length;
+  const tageBis=(d)=>{if(!d)return null;const diff=Math.round((new Date(d)-new Date(TODAY))/86400000);return diff;};
+  const card=(icon,lbl,titel,meta,onclick,placeholder)=>{
+    const c='flex:1;min-width:0;padding:10px 12px;background:var(--sf);border:1px solid var(--bd);border-radius:10px;'+(onclick?'cursor:pointer;':'');
+    const click=onclick?(' onclick="'+onclick+'"'):'';
+    return '<div style="'+c+'"'+click+'>'
+      +'<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);margin-bottom:3px">'+icon+' '+lbl+'</div>'
+      +(titel?'<div style="font-size:12px;font-weight:600;color:var(--text);line-height:1.3;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">'+esc(titel)+'</div>':'<div style="font-size:11px;color:var(--t3);font-style:italic">'+placeholder+'</div>')
+      +(meta?'<div style="font-size:10px;color:var(--t2);margin-top:3px">'+meta+'</div>':'')
+      +'</div>';
+  };
+  const z1=card('🌟','Ziel (3 Monate)',focusZ?.name,focusZ&&zTotal?(zDone+'/'+zTotal+' Meilensteine'):'',focusZ?('openZiel(\''+focusZ.id+'\')'):'',
+    'Kein aktives Ziel — jetzt setzen');
+  const tzMeta=focusTZ?((tzTotal?tzDone+'/'+tzTotal+' Aufgaben':'')+(focusTZ.datum?(tzTotal?' · ':'')+'bis '+focusTZ.datum.slice(8)+'.'+focusTZ.datum.slice(5,7)+'.':'')):'';
+  const z2=card('🎯','Meilenstein (4 Wochen)',focusTZ?.name,tzMeta,'',
+    focusZ?'Kein offener Meilenstein':'—');
+  // Diese Woche: zeigt aktuell eingetragene Big-3-Slots live (fallback: Platzhalter)
+  const w3=card('📅','Diese Woche','','<span id="wr-cas-b1" style="display:block">—</span><span id="wr-cas-b2" style="display:block">—</span><span id="wr-cas-b3" style="display:block">—</span>','',
+    'Deine Ergebnisvorhaben unten');
+  return '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;margin-bottom:14px">'+z1+z2+w3+'</div>';
+}
+function openZiel(zid){
+  // Fallback: öffnet Ziele-Tab und hebt das Ziel hervor
+  cm();nav('ziele');
+  setTimeout(()=>{const el=document.getElementById('ziel-'+zid);if(el)el.scrollIntoView({behavior:'smooth',block:'center'});},100);
+}
 function openWochenreset(){
   const{kw,jahr}=getKW();
   const nextKw=kw;
@@ -1641,7 +1686,7 @@ function openWochenreset(){
         b3html+='</div>';
       });
       if(b3html){
-        summaryHtml+='<div style="font-size:10px;font-weight:700;color:var(--t2);margin-bottom:4px">Big 3</div>';
+        summaryHtml+='<div style="font-size:10px;font-weight:700;color:var(--t2);margin-bottom:4px">Ergebnisvorhaben</div>';
         summaryHtml+=b3html;
         summaryHtml+='<div style="border-top:1px solid var(--bd);margin:10px 0"></div>';
       }
@@ -1697,7 +1742,7 @@ function openWochenreset(){
   const andereAlle=[...andereZ,...andereBer];
   if(andereAlle.length){zieleHtml+='<details style="margin-top:6px"><summary style="font-size:11px;color:var(--t3);cursor:pointer;padding:4px 0">▸ Andere Ziele ('+andereAlle.length+')</summary><div style="margin-top:6px">'+andereAlle.map(zBtn).join('')+'</div></details>';}
 
-  const modalTitel=wr?'Big 3 bearbeiten — KW '+kw:(_resetZwang?'📅 KW '+(kw+1)+' planen':istRueckblick?'Wochenrückblick KW '+kw:'Wochenplanung KW '+nextKw);
+  const modalTitel=wr?'Ergebnisvorhaben bearbeiten — KW '+kw:(_resetZwang?'📅 KW '+(kw+1)+' planen':istRueckblick?'Wochenrückblick KW '+kw:'Wochenplanung KW '+nextKw);
   // Im Zwang-Modus: Warum-Lücke kam aus Schritt 1, hier als hidden input
   const zwangBlockiertInput=_resetZwang?'<input type="hidden" id="wr-blockiert" value="'+esc(window._wrBlockiertZwang||'')+'">':'';
   document.getElementById('mb').innerHTML=
@@ -1705,6 +1750,7 @@ function openWochenreset(){
     +zwangBlockiertInput
     +(_resetZwang?'':summaryHtml)
     +(rueckblickHtml?'<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px">'+rueckblickHtml+'</div>':'')
+    +wrCascadeHtml()
     +(!wr&&!_resetZwang?'<div class="fl"><label>🟢 Highlight der Woche <span style="font-weight:400;color:var(--t2)">(optional)</span></label>'
     +'<textarea id="wr-gut" rows="2" style="width:100%;padding:8px;border:1px solid var(--bd);border-radius:8px;font-family:inherit;font-size:13px;resize:vertical" placeholder="z. B. ein Win, ein Moment mit Energie, etwas Gelerntes…"></textarea></div>'
     +'<div class="fl"><label>⚡ Bremsen <span style="font-weight:400;color:var(--t2)">(optional)</span></label>'
@@ -1721,10 +1767,10 @@ function openWochenreset(){
     +(wr?'<textarea id="wr-blockiert" style="display:none">'+esc(wr.blockiert||'')+'</textarea>':'')
     +'<div style="margin-left:34px">'+zieleHtml+'</div>'
 
-    // ── Step 2: Meilensteine ──
+    // ── Step 2: Ergebnisvorhaben ──
     +'<div style="display:flex;align-items:center;gap:10px;margin-top:18px;margin-bottom:6px">'
     +'<span style="background:'+(selZielId?'var(--inv)':'var(--bd)')+';color:'+(selZielId?'var(--inv-t)':'var(--t3)')+';font-size:12px;font-weight:800;width:24px;height:24px;border-radius:99px;display:flex;align-items:center;justify-content:center;flex-shrink:0">2</span>'
-    +'<span id="wr-step2-label" style="font-size:16px;font-weight:700;color:'+(selZielId?'var(--text)':'var(--t3)')+'">Meilensteine für diese Woche</span>'
+    +'<span id="wr-step2-label" style="font-size:16px;font-weight:700;color:'+(selZielId?'var(--text)':'var(--t3)')+'">Ergebnisvorhaben für diese Woche</span>'
     +'</div>'
     +(selZielId?'<div id="wr-step2-sub" style="font-size:12px;color:var(--t2);margin-bottom:8px;margin-left:34px">Wähle bestehende oder lege neue an (max. 3)</div>':'<div id="wr-step2-sub" style="font-size:12px;color:var(--t3);margin-bottom:8px;margin-left:34px">Zuerst ein Ziel oder Bereich oben auswählen</div>')
     +'<div id="wr-tz-section" style="margin-left:34px"></div>'
@@ -1769,7 +1815,7 @@ function updateWRTZSection(){
   const tzArr=z?(z.teilziele||[]).filter(t=>!t.erledigt&&(t.status||'aktiv')==='aktiv'):[];
   const _lbl=isBereich?'Thema':'Meilenstein',_lblPl=isBereich?'Themen':'Meilensteine';
   const step2Label=document.getElementById('wr-step2-label');
-  if(step2Label)step2Label.textContent='Big 3 für diese Woche';
+  if(step2Label)step2Label.textContent='Ergebnisvorhaben für diese Woche';
   const step2Sub=document.getElementById('wr-step2-sub');
   if(step2Sub)step2Sub.textContent='Wähle aus Vorschlägen oder trage eigene ein (max. 3)';
   let html='';
@@ -1783,7 +1829,7 @@ function updateWRTZSection(){
   if(lw){[1,2,3].forEach(n=>{if(lw['big3_'+n]&&!lw['big3_'+n+'_done'])carryOver.push(lw['big3_'+n]);});}
 
   // 2. Offene P1-Aufgaben dieser Person
-  const p1Tasks=(S.aufgaben||[]).filter(a=>String(a.pid)===String(aP)&&a.prio==='P1'&&!['erledigt','zurueckgegeben'].includes(a.status||'')).slice(0,5);
+  const p1Tasks=(S.aufgaben||[]).filter(a=>String(a.pid)===String(aP)&&a.prio==='P1'&&!a.parentId&&!['erledigt','zurueckgegeben'].includes(a.status||'')).slice(0,5);
 
   const kandidatBtn=(text,icon,accentColor,accentBg)=>{
     const safe=text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
@@ -1796,7 +1842,7 @@ function updateWRTZSection(){
 
   if(carryOver.length||p1Tasks.length){
     html+='<div style="margin-bottom:16px;padding:12px;background:var(--sf);border:1px solid var(--bd);border-radius:10px">';
-    html+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--t3);margin-bottom:10px">📋 Vorschläge für deine Big 3</div>';
+    html+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--t3);margin-bottom:10px">📋 Vorschläge für deine Ergebnisvorhaben</div>';
     if(carryOver.length){
       html+='<div style="font-size:10px;font-weight:600;color:var(--amber);text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px">🔁 Letzte Woche offen</div>';
       html+='<div style="display:flex;flex-direction:column;gap:4px;margin-bottom:10px">';
@@ -1855,7 +1901,7 @@ function updateWRTZSection(){
     html+='</div>';
   });
   html+='</div>';
-  html+='<div style="margin-top:10px;padding:8px 11px;background:var(--amber-bg);border-left:3px solid var(--amber);border-radius:0 6px 6px 0;font-size:11px;color:var(--text)"><b>Freitag-Test:</b> Kannst du jedes Big 3 Freitag abhaken? Wenn nein → zu groß oder zu vage.</div>';
+  html+='<div style="margin-top:10px;padding:8px 11px;background:var(--amber-bg);border-left:3px solid var(--amber);border-radius:0 6px 6px 0;font-size:11px;color:var(--text)"><b>Freitag-Test:</b> Kannst du jedes Ergebnisvorhaben Freitag abhaken? Wenn nein → zu groß oder zu vage.</div>';
   div.innerHTML=html;
 }
 
@@ -1872,13 +1918,29 @@ function _wrKandidatSelect(btnEl){
     const inp=document.getElementById('wr-b'+n);
     if(inp&&!inp.value.trim()){inp.value=text;_wrUpdateKandidaten();return;}
   }
-  toast('Maximal 3 Big 3 — leere zuerst einen Slot.');
+  toast('Maximal 3 Ergebnisvorhaben — leere zuerst einen Slot.');
 }
 
 // Kandidaten-Buttons visuell mit aktuellen Slots abgleichen
 function _wrUpdateKandidaten(){
   const filledTexts=new Set();
-  for(let n=1;n<=3;n++){const v=document.getElementById('wr-b'+n)?.value.trim();if(v)filledTexts.add(v);}
+  for(let n=1;n<=3;n++){
+    const v=document.getElementById('wr-b'+n)?.value.trim();
+    if(v)filledTexts.add(v);
+    const casEl=document.getElementById('wr-cas-b'+n);
+    if(casEl)casEl.textContent=v||'—';
+  }
+  // Checkbox-TZ-Namen auch in Kaskade mitzeigen (falls ausgewählt)
+  const checkedTZ=Array.from(document.querySelectorAll('.wr-tz-check:checked')).slice(0,3);
+  checkedTZ.forEach((cb,idx)=>{
+    const lbl=cb.closest('label')?.querySelector('span')?.textContent||'';
+    if(lbl){
+      for(let n=1;n<=3;n++){
+        const casEl=document.getElementById('wr-cas-b'+n);
+        if(casEl&&casEl.textContent==='—'){casEl.textContent=lbl;break;}
+      }
+    }
+  });
   document.querySelectorAll('[data-kandidat-text]').forEach(btn=>{
     const text=btn.getAttribute('data-kandidat-text');
     const sel=filledTexts.has(text);
@@ -2015,7 +2077,7 @@ function openWochenresetZwang(){
       b3+='<span style="font-size:12px;'+(done?'color:var(--t3);text-decoration:line-through':'color:var(--text)')+'">'+esc(txt)+'</span>';
       b3+='</div>';
     });
-    if(b3){sum+='<div style="font-size:10px;font-weight:700;color:var(--t2);margin-bottom:4px">Big 3</div>'+b3+'<div style="border-top:1px solid var(--bd);margin:10px 0"></div>';}
+    if(b3){sum+='<div style="font-size:10px;font-weight:700;color:var(--t2);margin-bottom:4px">Ergebnisvorhaben</div>'+b3+'<div style="border-top:1px solid var(--bd);margin:10px 0"></div>';}
   }
   // Erledigte
   if(erlDW.length){
@@ -2062,7 +2124,6 @@ function openWochenresetZwang(){
 function wrZurPlanung(){
   window._wrBlockiertZwang=document.getElementById('wr-blockiert-s1')?.value||'';
   window._wrGutZwang=document.getElementById('wr-gut-s1')?.value||'';
-  // Bestehende openWochenreset aufrufen — sie erkennt _resetZwang und passt Footer an
   openWochenreset();
 }
 function openBlocker(wrId){
@@ -2312,6 +2373,8 @@ function openMeinProfil(){
     +'</div>'
     +'<div style="height:1px;background:var(--bd);margin:4px 0 14px"></div>'
     +rKapazitaetBlock(aP)
+    // ── PIN ──
+    +'<div style="height:1px;background:var(--bd);margin:4px 0 14px"></div>'
     +'<div class="fl"><label>PIN ändern</label>'
     +'<div style="display:flex;gap:8px">'
     +'<input type="password" id="mp-pin" maxlength="4" placeholder="Neue PIN (4 Ziffern)" inputmode="numeric" pattern="[0-9]*" style="flex:1" onkeydown="if(event.key===\'Enter\')saveMeinPin()">'
@@ -2703,7 +2766,7 @@ function rWoche(){
     const big3Left=big3DowLate?'var(--red)':f.tc;
     out+='<div style="background:var(--sf);border:1px solid '+big3Bd+';border-left:3px solid '+big3Left+';border-radius:0 12px 12px 0;padding:14px 16px;margin-bottom:14px">';
     out+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">';
-    out+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:'+f.tc+'">Big 3 · KW '+kw+'</div>';
+    out+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:'+f.tc+'">Ergebnisvorhaben · KW '+kw+'</div>';
     const fzIsB=fz&&fz.status==='bereich';
     const fokusLabel=fz?(fzIsB?'📁 ':'')+esc(fz.name):'';
     out+='<span style="font-size:11px;color:'+(big3DowLate?'var(--red)':'var(--t2)')+'">'+big3Done+'/'+big3Total+' ✓'+(fokusLabel?' · '+fokusLabel:'')+'</span>';
@@ -2750,8 +2813,8 @@ function rWoche(){
     out+='</div>';
   }else{
     out+='<div style="background:var(--gray-bg);border:1.5px dashed var(--bd);border-radius:12px;padding:20px;text-align:center;margin-bottom:14px">';
-    out+='<div style="font-size:13px;color:var(--t2);margin-bottom:10px">Noch keine Big 3 für KW '+kw+'</div>';
-    out+='<button onclick="openWochenreset()" style="font-size:13px;font-weight:600;padding:9px 18px;border-radius:9px;background:var(--inv);color:var(--inv-t);border:none;cursor:pointer;font-family:inherit">Big 3 planen →</button>';
+    out+='<div style="font-size:13px;color:var(--t2);margin-bottom:10px">Noch keine Ergebnisvorhaben für KW '+kw+'</div>';
+    out+='<button onclick="openWochenreset()" style="font-size:13px;font-weight:600;padding:9px 18px;border-radius:9px;background:var(--inv);color:var(--inv-t);border:none;cursor:pointer;font-family:inherit">Ergebnisvorhaben planen →</button>';
     out+='</div>';
   }
 
@@ -2954,7 +3017,7 @@ function rWoche(){
     out+='<div onclick="openWochenreset()" style="background:var(--green);color:#fff;border-radius:12px;padding:13px 15px;cursor:pointer;display:flex;align-items:center;gap:11px">'
       +'<span style="font-size:20px">📋</span>'
       +'<div style="flex:1"><div style="font-weight:700;font-size:13px">Wochenrückblick KW '+kw2+'</div>'
-      +'<div style="font-size:11px;opacity:.6;margin-top:1px">Big 3 auswerten · KW '+(kw2+1)+' planen</div></div>'
+      +'<div style="font-size:11px;opacity:.6;margin-top:1px">Ergebnisvorhaben auswerten · KW '+(kw2+1)+' planen</div></div>'
       +'<span style="opacity:.4;font-size:16px">›</span></div>';
   }
 
@@ -3170,7 +3233,7 @@ function rTag(){
     const totalCount=[wrAktuell.big3_1,wrAktuell.big3_2,wrAktuell.big3_3].filter(Boolean).length;
     out+='<details style="margin-bottom:14px">';
     out+='<summary style="list-style:none;cursor:pointer;display:flex;align-items:center;gap:8px;padding:7px 12px;background:var(--sf);border:1px solid var(--bd);border-left:3px solid '+f.tc+';border-radius:0 8px 8px 0;font-size:11px">';
-    out+='<span style="font-weight:700;color:'+f.tc+';letter-spacing:.3px;text-transform:uppercase;font-size:10px">Big 3</span>';
+    out+='<span style="font-weight:700;color:'+f.tc+';letter-spacing:.3px;text-transform:uppercase;font-size:10px">Ergebnisvorhaben</span>';
     out+='<span style="color:var(--t3);font-size:10px">KW '+kwAkt+(fz?' · '+esc(fz.name):'')+'</span>';
     out+='<span style="margin-left:auto;font-size:10px;color:'+(doneCount===totalCount?'var(--green)':'var(--t3)')+'">'+doneCount+'/'+totalCount+' ✓</span>';
     out+='<span style="font-size:9px;color:var(--t3)">▸</span>';
@@ -3356,7 +3419,7 @@ function rTag(){
     out+='<div onclick="openWochenreset()" style="background:var(--green);color:#fff;border-radius:12px;padding:13px 15px;margin-bottom:14px;cursor:pointer;display:flex;align-items:center;gap:11px">'
       +'<span style="font-size:20px">📋</span>'
       +'<div style="flex:1"><div style="font-weight:700;font-size:13px">Wochenrückblick KW '+kwAkt+'</div>'
-      +'<div style="font-size:11px;opacity:.6;margin-top:1px">Big 3 auswerten · KW '+(kwAkt+1)+' planen</div></div>'
+      +'<div style="font-size:11px;opacity:.6;margin-top:1px">Ergebnisvorhaben auswerten · KW '+(kwAkt+1)+' planen</div></div>'
       +'<span style="opacity:.4;font-size:16px">›</span></div>';
   }
 
@@ -3879,6 +3942,25 @@ function openDetail(id){
   if(zust)h+='<div style="font-size:12px;color:var(--t2);margin-bottom:10px">'+esc(zust.name)+'</div>';
   if(a.notiz)h+='<div style="font-size:13px;color:var(--text);margin-bottom:12px;padding:10px 12px;background:var(--gray-bg);border-radius:8px;white-space:pre-wrap;line-height:1.5">'+esc(a.notiz)+'</div>';
   if(a.ua&&a.ua.length)h+='<div style="margin-bottom:12px"><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);margin-bottom:6px">Schritte</div>'+stepsHtml(a,false)+'</div>';
+  // ── Unteraufgaben ──
+  const kinder=S.aufgaben.filter(x=>String(x.parentId||'')===String(id));
+  h+='<div style="margin-bottom:12px">';
+  h+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px"><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3)">Unteraufgaben'+(kinder.length?' · '+kinder.filter(k=>k.status==='erledigt').length+'/'+kinder.length:'')+'</div>';
+  if(!a.parentId)h+='<button onclick="cm();openNeu({parent_id:\''+id+'\',pid:\''+a.pid+'\',zielId:\''+(a.zielId||'')+'\',teilzielId:\''+(a.teilzielId||'')+'\'})" style="font-size:11px;padding:4px 9px;border-radius:7px;border:1px dashed var(--bd);background:transparent;color:var(--t2);cursor:pointer;font-family:inherit">+ Unteraufgabe</button>';
+  h+='</div>';
+  if(kinder.length){
+    h+='<div style="display:flex;flex-direction:column;gap:5px;border-left:2px solid var(--bd);padding-left:10px">';
+    kinder.forEach(k=>{
+      const kDone=k.status==='erledigt';
+      h+='<div onclick="cm();openDetail(\''+k.id+'\')" style="display:flex;align-items:center;gap:7px;padding:6px 9px;background:var(--gray-bg);border:1px solid var(--bd);border-radius:7px;cursor:pointer;font-size:12px">';
+      h+='<div style="width:14px;height:14px;border-radius:3px;flex-shrink:0;'+(kDone?'background:var(--green);border:1.5px solid var(--green);display:flex;align-items:center;justify-content:center':'border:1.5px solid var(--bd)')+'">'+(kDone?'<span style="color:#fff;font-size:9px;font-weight:800">✓</span>':'')+'</div>';
+      h+='<span style="flex:1;'+(kDone?'color:var(--t3);text-decoration:line-through':'color:var(--text)')+'">'+esc(k.titel)+'</span>';
+      if(k.prio)h+='<span style="font-size:9px;font-weight:700;color:'+(k.prio==='P1'?'var(--red)':'var(--t3)')+'">'+k.prio+'</span>';
+      h+='</div>';
+    });
+    h+='</div>';
+  }
+  h+='</div>';
   h+='<div style="font-size:11px;color:var(--t2);padding:8px 0;border-top:1px solid var(--bd);margin-bottom:12px">Zeit: <strong>'+fmt(elapsedSec(a))+'</strong> von '+fmtH(a.geplant)+' geplant</div>';
   // ── Action Buttons ──
   h+='<div style="display:flex;gap:8px;margin-bottom:16px">';
@@ -4521,6 +4603,7 @@ function editKpiDef(zid,kid){
   if(!isGF())return;
   const z=zielObj(zid);if(!z)return;const k=z.kpis.find(x=>x.id===kid);if(!k)return;
   document.getElementById('mb').innerHTML='<div class="mt">KPI bearbeiten</div>'
+    +'<div style="font-size:11px;color:var(--t3);background:var(--gray-bg);border-left:3px solid var(--bd);border-radius:0 6px 6px 0;padding:7px 10px;margin-bottom:10px;line-height:1.4">💡 Tages-KPI × Arbeitstage = Wochen-/Monats-/Quartals-Ziel.<br>z. B. 12 Termine/Tag × 5 = 60/Woche × 4 = 240/Monat</div>'
     +'<div class="fl"><label>Name</label><input id="kl" value="'+k.label+'" autofocus></div>'
     +'<div class="f2"><div class="fl"><label>Ist-Wert</label><input id="ki" type="number" value="'+k.ist+'"></div><div class="fl"><label>Ziel-Wert</label><input id="kz" type="number" value="'+k.ziel+'"></div></div>'
     +'<div class="f2"><div class="fl"><label>Einheit</label><input id="ku" value="'+(k.unit||'')+'" placeholder="%, Stk…"></div><div class="fl"><label>Rhythmus</label><select id="kf">'+FREQ.map(f=>'<option'+(k.freq===f?' selected':'')+'>'+f+'</option>').join('')+'</select></div></div>'
@@ -4576,6 +4659,7 @@ function getFriday(){
 function openNeu(pf={}){
   _selPrio=pf.prio||null;
   window._aiDebounce=null;
+  window._neuParentId=pf.parent_id||null;
   const defaultPid=pf.pid||aP;
   const zieleOpts=zieleOptgroups(defaultPid,pf.zielId||'');
   const hasAI=true;
@@ -5046,14 +5130,16 @@ async function saveNeu(){
     if(matched){pid=matched.id;document.getElementById('np').value=pid;}
   }
   const id=nid('a');
+  const parentId=window._neuParentId||null;
   const rec={id,pid,titel:t,typ,status:pid!==aP?'zugewiesen':(_selPrio?'backlog':'neu'),prio:_selPrio||null,
-    ziel_id:zielId,teilziel_id:teilzielId,
+    ziel_id:zielId,teilziel_id:teilzielId,parent_id:parentId,
     geplant:parseFloat(document.getElementById('nh').value)||1,
     gebucht:0,dl:document.getElementById('ndl').value||null,
     dl_type:(document.getElementById('dltype-bis')?.dataset.v==='bis')?'bis':'am',
     ua:window._neuSteps||[],notiz:document.getElementById('nno').value.trim(),akt_seit:null,vertraulich:vert,
     recurring:document.getElementById('nrec')?.value||null,
     erstellt_von:aP};
+  window._neuParentId=null;
   S.aufgaben.push(normalizeAufgabe(rec));
   await dbInsert('aufgaben',rec);
   // P1 immer in Kalender, P2/P3 nur mit Deadline
@@ -5409,7 +5495,7 @@ function rTeam(){
     const sichtbarePers=isGF()?S.personen.filter(p=>p.stufe!=='gf'):S.personen.filter(p=>teamMids.has(p.id)&&p.id!==aP);
     if(sichtbarePers.length){
     outTC+='<div style="margin-top:28px">';
-    outTC+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t2);margin-bottom:12px">Big 3 im Team · KW '+kw+'</div>';
+    outTC+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t2);margin-bottom:12px">Ergebnisvorhaben im Team · KW '+kw+'</div>';
     sichtbarePers.forEach(p=>{
       const r=dieseWoche.find(x=>String(x.pid)===String(p.id));
       const f=FARBEN[p.ci||0];
