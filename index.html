@@ -431,8 +431,19 @@ function getKW(d){
   const w1=new Date(date.getFullYear(),0,4);
   return{kw:1+Math.round(((date-w1)/86400000-3+(w1.getDay()+6)%7)/7),jahr:date.getFullYear()};
 }
-function isResetZeit(){const n=new Date();const d=n.getDay();return(d===5&&n.getHours()>=16)||d===6||d===0;}
-function isResetAnkuendigung(){const n=new Date();const d=n.getDay();return(d===5&&n.getHours()>=12)||d===6||d===0;}
+function getResetStartH(){const raw=parseInt(localStorage.getItem('reset_start_'+(aP||''))||'16',10);return Math.min(18,Math.max(14,isNaN(raw)?16:raw));}
+function getResetEndH(){const raw=parseInt(localStorage.getItem('reset_end_'+(aP||''))||'19',10);return Math.min(22,Math.max(17,isNaN(raw)?19:raw));}
+function getResetSnoozeMins(){
+  const n=new Date();
+  if(n.getDay()!==5)return 30; // Sa/So: fixer 30-Min-Snooze
+  const endH=getResetEndH();
+  const endMs=new Date(n.getFullYear(),n.getMonth(),n.getDate(),endH,0,0).getTime();
+  const remainingMin=Math.max(0,(endMs-Date.now())/60000);
+  if(remainingMin<10)return 0;
+  return Math.max(5,Math.floor(remainingMin/3));
+}
+function isResetZeit(){const n=new Date();const d=n.getDay();if(d===6||d===0)return true;return d===5&&n.getHours()>=getResetStartH();}
+function isResetAnkuendigung(){const n=new Date();const d=n.getDay();if(d===6||d===0)return true;if(d!==5)return false;const startH=getResetStartH();return n.getHours()>=Math.max(12,startH-2);}
 function _snoozeKey(){return'hallj_snooze_'+aP;}
 function _snoozeLoad(){
   if(!aP)return;
@@ -2104,6 +2115,104 @@ function openZiel(zid){
   cm();nav('ziele');
   setTimeout(()=>{const el=document.getElementById('ziel-'+zid);if(el)el.scrollIntoView({behavior:'smooth',block:'center'});},100);
 }
+// ── §6 Phase A: Wochenrückblick — 3 Fragen ──────────────────────
+function openWrPhaseA(wr){
+  if(!window._wrPhaseA||window._wrPhaseA.wrId!==wr.id)
+    window._wrPhaseA={wrId:wr.id,step:1,geliefert:null,hauptthema:null,learning:''};
+  const st=window._wrPhaseA;
+  const{kw}=getKW();
+  const big3Items=[1,2,3].map(n=>({txt:wrItemName(wr,n),done:wr['big3_'+n+'_done']})).filter(x=>x.txt);
+  const big3Total=big3Items.length;
+  const big3Html=big3Total?'<div style="background:var(--gray-bg);border-radius:10px;padding:10px 12px;margin-bottom:16px">'
+    +big3Items.map(({txt,done})=>'<div style="display:flex;align-items:center;gap:8px;padding:2px 0">'
+      +'<span style="font-size:13px;color:'+(done?'var(--green)':'var(--t3)')+'">'+( done?'✓':'○')+'</span>'
+      +'<span style="font-size:12px;color:var(--t2);'+(done?'text-decoration:line-through':'')+'">'+esc(txt)+'</span>'
+      +'</div>').join('')+'</div>':'';
+  let h='<div class="mt">📋 Wochenrückblick KW '+kw+'</div>';
+  h+='<div style="font-size:12px;color:var(--t2);margin-bottom:16px">2 Minuten. Dann weiter zur Planung.</div>';
+  const stepInd='<div style="display:flex;gap:6px;margin-bottom:16px">'
+    +[1,2,3].filter(n=>n<=2||true).map(n=>{
+      if(n===2&&st.geliefert===big3Total&&big3Total>0)return'';
+      return'<div style="flex:1;height:4px;border-radius:99px;background:'+(n<=st.step?'var(--inv)':'var(--bd)')+'"></div>';
+    }).join('')+'</div>';
+  h+=stepInd;
+  if(st.step===1){
+    h+=big3Html;
+    h+='<div style="font-size:15px;font-weight:700;margin-bottom:16px">Wie viele Ergebnisvorhaben hast du <em>geliefert</em>?</div>';
+    h+='<div style="display:flex;gap:10px;margin-bottom:24px">';
+    [0,1,2,3].filter(n=>n<=big3Total||(big3Total===0&&n===0)).forEach(n=>{
+      const sel=st.geliefert===n;
+      h+='<button onclick="wrPhaseASet(1,'+n+')" style="flex:1;padding:18px 0;border-radius:12px;font-size:24px;font-weight:800;border:2px solid '+(sel?'var(--inv)':'var(--bd)')+';background:'+(sel?'var(--inv)':'var(--sf)')+';color:'+(sel?'var(--inv-t)':'var(--text)')+';cursor:pointer;font-family:inherit">'+n+'</button>';
+    });
+    h+='</div>';
+    h+='<div class="mf"><button class="btn btn-dk" onclick="wrPhaseANext()" '+(st.geliefert!==null?'':'disabled style="opacity:.4"')+' style="min-width:180px">Weiter →</button></div>';
+  }else if(st.step===2){
+    h+='<div style="font-size:15px;font-weight:700;margin-bottom:8px">Was war das Hauptthema?</div>';
+    h+='<div style="font-size:12px;color:var(--t2);margin-bottom:16px">Nicht als Kritik — als Diagnose für nächste Woche.</div>';
+    h+='<div style="display:flex;gap:10px;margin-bottom:24px;flex-wrap:wrap">';
+    [{v:'ausfuehrung',e:'⚡',l:'Ausführung',s:'Nicht gemacht, abgelenkt, zu spät'},{v:'scoping',e:'📐',l:'Scoping',s:'Zu viel gewollt, falsch eingeschätzt'}].forEach(({v,e,l,s})=>{
+      const sel=st.hauptthema===v;
+      h+='<button onclick="wrPhaseASet(2,\''+v+'\')" style="flex:1 1 140px;padding:14px 12px;border-radius:12px;text-align:left;border:2px solid '+(sel?'var(--inv)':'var(--bd)')+';background:'+(sel?'var(--inv)':'var(--sf)')+';cursor:pointer;font-family:inherit">';
+      h+='<div style="font-size:15px;font-weight:700;color:'+(sel?'var(--inv-t)':'var(--text)')+'">'+e+' '+l+'</div>';
+      h+='<div style="font-size:11px;color:'+(sel?'var(--inv-t)':'var(--t2)')+';margin-top:3px">'+s+'</div></button>';
+    });
+    h+='</div>';
+    h+='<div class="mf"><button class="btn btn-gr" onclick="wrPhaseASet(\'back\',1)" style="margin-right:auto">← Zurück</button><button class="btn btn-dk" onclick="wrPhaseANext()" '+(st.hauptthema?'':'disabled style="opacity:.4"')+' style="min-width:180px">Weiter →</button></div>';
+  }else{
+    const len=(st.learning||'').length;
+    h+='<div style="font-size:15px;font-weight:700;margin-bottom:8px">Ein Satz Learning dieser Woche.</div>';
+    h+='<div style="font-size:12px;color:var(--t2);margin-bottom:12px">Max. 140 Zeichen. Für dich — nicht für andere.</div>';
+    h+='<textarea id="wra-ta" maxlength="140" rows="3" oninput="wrPhaseAInput()" style="width:100%;padding:10px 12px;border:1.5px solid var(--bd);border-radius:10px;font-family:inherit;font-size:14px;resize:none;box-sizing:border-box" placeholder="z.B. Ich habe unterschätzt wie lange X dauert…">'+esc(st.learning||'')+'</textarea>';
+    h+='<div id="wra-cnt" style="font-size:10px;color:var(--t3);text-align:right;margin:3px 0 16px">'+(140-len)+' Zeichen übrig</div>';
+    const backStep=st.geliefert<(big3Total||3)?2:1;
+    h+='<div class="mf"><button class="btn btn-gr" onclick="wrPhaseASet(\'back\','+backStep+')" style="margin-right:auto">← Zurück</button>';
+    h+='<button id="wra-save" class="btn btn-dk" onclick="saveWrPhaseA(\''+wr.id+'\')" style="min-width:180px;'+(len>=10?'':'opacity:.4')+'">✓ Speichern & zur Planung</button></div>';
+  }
+  document.getElementById('mb').innerHTML=h;
+  document.getElementById('ovl').classList.add('open');
+  if(st.step===3)setTimeout(()=>{const ta=document.getElementById('wra-ta');if(ta){ta.focus();ta.setSelectionRange(ta.value.length,ta.value.length);}},80);
+}
+function wrPhaseASet(field,val){
+  if(!window._wrPhaseA)return;
+  if(field==='back'){window._wrPhaseA.step=val;}
+  else if(field===1)window._wrPhaseA.geliefert=val;
+  else if(field===2)window._wrPhaseA.hauptthema=val;
+  const wr=S.wochenresets.find(r=>r.id===window._wrPhaseA.wrId);
+  if(wr)openWrPhaseA(wr);
+}
+function wrPhaseANext(){
+  const st=window._wrPhaseA;if(!st)return;
+  const wr=S.wochenresets.find(r=>r.id===st.wrId);if(!wr)return;
+  const big3Total=[1,2,3].filter(n=>wrItemName(wr,n)).length;
+  if(st.step===1){
+    if(st.geliefert===null)return;
+    st.step=(st.geliefert<big3Total)?2:3;
+  }else if(st.step===2){
+    if(!st.hauptthema)return;
+    st.step=3;
+  }
+  openWrPhaseA(wr);
+}
+function wrPhaseAInput(){
+  const ta=document.getElementById('wra-ta');if(!ta)return;
+  const len=ta.value.length;
+  const cnt=document.getElementById('wra-cnt');if(cnt)cnt.textContent=(140-len)+' Zeichen übrig';
+  const btn=document.getElementById('wra-save');if(btn)btn.style.opacity=len>=10?'1':'0.4';
+  if(window._wrPhaseA)window._wrPhaseA.learning=ta.value;
+}
+async function saveWrPhaseA(wrId){
+  const st=window._wrPhaseA;if(!st)return;
+  const ta=document.getElementById('wra-ta');
+  const learning=(ta?ta.value:st.learning||'').trim();
+  if(learning.length<10){toast('⚠ Mindestens 10 Zeichen für Learning');return;}
+  const wr=S.wochenresets.find(r=>r.id===wrId);if(!wr)return;
+  wr.learning=learning;wr.geliefert_count=st.geliefert;wr.haupt_thema=st.hauptthema||null;
+  window._wrPhaseA=null;
+  // DB — silent fail wenn Spalten noch nicht existieren (Migration nötig)
+  await dbPatch('wochenresets',wrId,{learning,geliefert_count:st.geliefert,haupt_thema:st.hauptthema||null});
+  openWochenreset();
+}
+// ─────────────────────────────────────────────────────────────────
 function openWochenreset(){
   const{kw,jahr}=getKW();
   const nextKw=kw;
@@ -2725,11 +2834,15 @@ function openWochenresetZwang(){
     sum+='</div>';
   }
   sum+='</div>';
+  const isFriday=new Date().getDay()===5;
+  const snoozeMins=getResetSnoozeMins();
   const snoozeRest=_RESET_SNOOZE_MAX-_resetSnoozeCount;
-  const snoozeInfo=(snoozeRest<=0)
-    ?'<div style="font-size:12px;color:var(--t2);margin-bottom:10px;padding:6px 10px;background:var(--gray-bg);border-radius:6px">✨ Jetzt ist dein Moment für Reflexion — 2 Minuten.</div>'
-    :'<div style="font-size:12px;color:var(--t2);margin-bottom:10px;padding:6px 10px;background:var(--gray-bg);border-radius:6px">✨ Jetzt ist dein Moment für Reflexion — jetzt oder in 30 Min (noch '+snoozeRest+'× verschiebbar).</div>';
-  const snoozeBtn=(snoozeRest<=0)?'':'<button class="btn btn-gr" onclick="snoozeReset()" style="margin-right:auto">⏱ In 30 Min'+(snoozeRest<_RESET_SNOOZE_MAX?' ('+snoozeRest+'×)':'')+'</button>';
+  const canSnooze=isFriday?(snoozeMins>0):(snoozeRest>0);
+  const snoozeLabel=isFriday?('⏱ in ~'+snoozeMins+' Min'):('⏱ In 30 Min'+(snoozeRest<_RESET_SNOOZE_MAX?' ('+snoozeRest+'×)':''));
+  const snoozeInfo=canSnooze
+    ?'<div style="font-size:12px;color:var(--t2);margin-bottom:10px;padding:6px 10px;background:var(--gray-bg);border-radius:6px">✨ Jetzt ist dein Moment für Reflexion — jetzt oder '+snoozeLabel.replace('⏱ ','in ')+'.</div>'
+    :'<div style="font-size:12px;color:var(--t2);margin-bottom:10px;padding:6px 10px;background:var(--gray-bg);border-radius:6px">✨ Jetzt ist dein Moment für Reflexion — 2 Minuten.</div>';
+  const snoozeBtn=canSnooze?'<button class="btn btn-gr" onclick="snoozeReset()" style="margin-right:auto">'+snoozeLabel+'</button>':'';
   document.getElementById('mb').innerHTML=
     '<div class="mt">📋 Wochenrückblick KW '+kw+'</div>'
     +'<div style="font-size:12px;color:var(--t2);margin-bottom:10px">Nimm dir 2 Minuten — dann geht es weiter mit KW '+(kw+1)+'.</div>'
@@ -3604,22 +3717,29 @@ function checkResetZwang(){
   openWochenresetZwang();
 }
 function snoozeReset(){
-  if(_resetSnoozeCount>=_RESET_SNOOZE_MAX)return;
-  // Aktuell getippte Werte retten
   const gut=document.getElementById('wr-gut-s1')?.value||'';
   const blockiert=document.getElementById('wr-blockiert-s1')?.value||'';
-  window._wrGutSnooze=gut;
-  window._wrBlockiertSnooze=blockiert;
-  _resetSnoozeCount++;
-  _resetSnoozeUntil=Date.now()+30*60*1000;
-  _snoozePersist(gut,blockiert);
-  _resetZwang=false;
-  window._noOverlayClose=false;
-  cm();
-  const rest=_RESET_SNOOZE_MAX-_resetSnoozeCount;
-  toast(rest>0?'⏱ In 30 Min erneut — noch '+rest+'× verschiebbar.':'⏱ In 30 Min — danach kein Aufschub mehr.');
-  if(_resetSnoozeTimer)clearTimeout(_resetSnoozeTimer);
-  _resetSnoozeTimer=setTimeout(()=>{if(aP&&!dieseWocheReset(aP))openWochenresetZwang();},30*60*1000);
+  window._wrGutSnooze=gut;window._wrBlockiertSnooze=blockiert;
+  const isFriday=new Date().getDay()===5;
+  if(isFriday){
+    // Smooth snooze: proportional zur verbleibenden Fenster-Zeit
+    const snoozeMins=getResetSnoozeMins();
+    if(snoozeMins<=0){toast('⏱ Fenster fast geschlossen — jetzt kurz durchziehen.');return;}
+    _resetSnoozeUntil=Date.now()+snoozeMins*60*1000;
+    _snoozePersist(gut,blockiert);_resetZwang=false;window._noOverlayClose=false;cm();
+    toast('⏱ In ~'+snoozeMins+' Min erneut.');
+    if(_resetSnoozeTimer)clearTimeout(_resetSnoozeTimer);
+    _resetSnoozeTimer=setTimeout(()=>{if(aP&&!dieseWocheReset(aP))openWochenresetZwang();},snoozeMins*60*1000);
+  }else{
+    // Sa/So: klassisch 30 Min, max 3×
+    if(_resetSnoozeCount>=_RESET_SNOOZE_MAX)return;
+    _resetSnoozeCount++;_resetSnoozeUntil=Date.now()+30*60*1000;
+    _snoozePersist(gut,blockiert);_resetZwang=false;window._noOverlayClose=false;cm();
+    const rest=_RESET_SNOOZE_MAX-_resetSnoozeCount;
+    toast(rest>0?'⏱ In 30 Min erneut — noch '+rest+'× verschiebbar.':'⏱ In 30 Min — danach kein Aufschub mehr.');
+    if(_resetSnoozeTimer)clearTimeout(_resetSnoozeTimer);
+    _resetSnoozeTimer=setTimeout(()=>{if(aP&&!dieseWocheReset(aP))openWochenresetZwang();},30*60*1000);
+  }
   render();
 }
 
@@ -7316,6 +7436,22 @@ function editPerson(pid){
         +'<div style="font-size:10px;color:var(--t3);margin-top:5px">Gespeichert pro Gerät — nicht synchronisiert.</div>'
         +'</div>';
     })()
+    +(()=>{
+      const rsH=Math.min(18,Math.max(14,parseInt(localStorage.getItem('reset_start_'+pid)||'16',10)||16));
+      const reH=Math.min(22,Math.max(17,parseInt(localStorage.getItem('reset_end_'+pid)||'19',10)||19));
+      return '<div class="fl"><label>🗓 Wochenreset-Fenster <span style="font-weight:400;color:var(--t2)">(Freitag)</span></label>'
+        +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'
+        +'<select id="ep-reset-start" style="font-size:12px;padding:6px 10px;border-radius:8px;border:1px solid var(--bd);background:var(--sf);color:var(--text);font-family:inherit">'
+        +[14,15,16,17,18].map(h2=>'<option value="'+h2+'"'+(h2===rsH?' selected':'')+'>'+h2+':00</option>').join('')
+        +'</select>'
+        +'<span style="font-size:12px;color:var(--t2)">bis</span>'
+        +'<select id="ep-reset-end" style="font-size:12px;padding:6px 10px;border-radius:8px;border:1px solid var(--bd);background:var(--sf);color:var(--text);font-family:inherit">'
+        +[17,18,19,20,21,22].map(h2=>'<option value="'+h2+'"'+(h2===reH?' selected':'')+'>'+h2+':00</option>').join('')
+        +'</select>'
+        +'</div>'
+        +'<div style="font-size:10px;color:var(--t3);margin-top:4px">Snooze passt sich automatisch an die verbleibende Zeit an. Gespeichert pro Gerät.</div>'
+        +'</div>';
+    })()
     +'<div class="fl"><label>Slack User-ID <span style="font-weight:400;color:var(--t2)">(für DM-Benachrichtigungen)</span></label><input id="ep-slack" value="'+esc(p.slack_id||'')+'" placeholder="z.B. U05A8BCDE12" style="font-family:monospace;font-size:11px"></div>'
     +'<div class="fl"><label>PIN</label><input id="ep" type="password" value="'+p.pin+'" maxlength="4"></div>'
     +'<div class="mf">'+(pid!==realMe?'<button class="btn btn-red" onclick="deletePerson(\''+pid+'\')">Löschen</button>':'')+'<button class="btn btn-gr" onclick="openSettings()">Zurück</button><button class="btn btn-dk" onclick="savePerson(\''+pid+'\')">Speichern</button></div>';
@@ -7335,6 +7471,10 @@ async function savePerson(pid){
   const _cs=parseInt(document.getElementById('ep-cleanup-start')?.value||'15',10);
   if(!isNaN(_ir))localStorage.setItem('inbox_reminder_'+pid,String(Math.min(18,Math.max(14,_ir))));
   if(!isNaN(_cs))localStorage.setItem('cleanup_start_'+pid,String(Math.min(18,Math.max(15,_cs))));
+  const _rs=parseInt(document.getElementById('ep-reset-start')?.value||'16',10);
+  const _re=parseInt(document.getElementById('ep-reset-end')?.value||'19',10);
+  if(!isNaN(_rs))localStorage.setItem('reset_start_'+pid,String(Math.min(18,Math.max(14,_rs))));
+  if(!isNaN(_re))localStorage.setItem('reset_end_'+pid,String(Math.min(22,Math.max(17,_re))));
   // Strukturiertes Profil speichern
   const struktur=readProfilForm();
   p._profilStruktur=struktur;
