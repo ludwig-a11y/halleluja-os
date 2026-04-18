@@ -619,13 +619,16 @@ function notify(evt,data){
     body:JSON.stringify({event:evt,actor:p?{id:p.id,name:p.name,rolle:p.rolle}:null,app_url:appUrl,...data,ts:new Date().toISOString()})
   }).catch(()=>{});
 }
-function toast(msg){
+function toast(msg,color){
   let el=document.getElementById('app-toast');
   if(!el){el=document.createElement('div');el.id='app-toast';el.className='toast';document.body.appendChild(el);}
   el.textContent=msg;el.className='toast';
+  el.style.background=color||'';  // #13: optionale Farbe (z.B. 'var(--red)' für Fehler-Toasts)
   requestAnimationFrame(()=>{el.className='toast show';});
   clearTimeout(el._t);el._t=setTimeout(()=>{el.className='toast hide';},2500);
 }
+// #15: Prio-Color-Helper — P1=rot, P2=orange, sonst grau
+function prioColor(p){return p==='P1'?'var(--red)':p==='P2'?'var(--gold-t)':'var(--t3)';}
 function focusTakeover(){
   let ft=document.getElementById('focus-takeover');
   if(ft)ft.remove();
@@ -1163,13 +1166,15 @@ async function _doAufgabeZurueck(id,grund){
 async function aufgabeZurueckGesehen(id){
   const a=S.aufgaben.find(x=>x.id===id);if(!a||a._busy)return;
   a._busy=true;
-  const prev={status:a.status,notiz:a.notiz};
+  const prev={status:a.status,notiz:a.notiz,updated_at:a.updated_at};
   try{
+    const now=new Date().toISOString();
     a.status='erledigt';a.notiz=(a.notiz||'').replace(/^↩ Zurückgegeben[^\n]*/,'✓ Zurückgabe gesehen');
+    a.updated_at=now;  // #8: lokal synken damit "Heute erledigt" sofort erscheint
     render();
     const ok=await dbPatch('aufgaben',id,{status:'erledigt',notiz:a.notiz,updated_at:new Date().toISOString()});
-    if(!ok){a.status=prev.status;a.notiz=prev.notiz;toast('⚠ Fehler beim Speichern');}
-  }catch(e){console.error('aufgabeZurueckGesehen',e);a.status=prev.status;a.notiz=prev.notiz;}
+    if(!ok){a.status=prev.status;a.notiz=prev.notiz;a.updated_at=prev.updated_at;toast('⚠ Fehler beim Speichern');}
+  }catch(e){console.error('aufgabeZurueckGesehen',e);a.status=prev.status;a.notiz=prev.notiz;a.updated_at=prev.updated_at;}
   finally{a._busy=false;render();}
 }
 async function aufgabeZurueckNeu(id){
@@ -1334,6 +1339,7 @@ function rDeadlineAlarm(pid){
   const overdue=S.aufgaben.filter(a=>
     String(a.pid)===String(pid)&&
     a.dl&&a.dl<=TODAY&&
+    a.inboxStatus!=='neu'&&  // #3: Inbox-Items erst nach Triage alarmieren
     !['erledigt','zurueckgegeben','archiviert','backlog'].includes(a.status)&&
     !(a.teilzielId&&big3TzIds.has(String(a.teilzielId)))
   ).sort((a,b)=>(a.dl||'').localeCompare(b.dl||''));
@@ -1348,12 +1354,12 @@ function rDeadlineAlarm(pid){
     const dlD=new Date(a.dl+'T12:00:00');
     const dlStr=a.dl===TODAY?'heute':dlD.getDate()+'.'+(dlD.getMonth()+1)+'.';
     const isUeber=a.dl<TODAY;
-    const prioCol=a.prio==='P1'?'var(--red)':a.prio==='P2'?'var(--gold-t)':'var(--t3)';
+    const prioCol=prioColor(a.prio);
     h+='<div style="background:var(--sf);border:1px solid var(--red-bd);border-radius:10px;padding:9px 12px;margin-bottom:6px;display:flex;align-items:center;gap:10px">';
     h+='<span style="font-size:10px;font-weight:700;color:var(--red);white-space:nowrap;min-width:52px">'+(isUeber?'⚠ ':'')+dlStr+'</span>';
     if(a.prio)h+='<span style="font-size:10px;font-weight:700;color:'+prioCol+';white-space:nowrap">'+a.prio+'</span>';
     h+='<span style="flex:1;font-size:13px;font-weight:600;cursor:pointer;overflow:hidden;text-overflow:ellipsis" onclick="openDetail(\''+a.id+'\')">'+esc(a.titel)+'</span>';
-    h+='<button onclick="erledigenA(\''+a.id+'\')" style="flex-shrink:0;font-size:11px;padding:6px 10px;border-radius:8px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);cursor:pointer;font-family:inherit" title="Erledigen">✓</button>';
+    h+='<button onclick="fertig(\''+a.id+'\')" style="flex-shrink:0;font-size:11px;padding:6px 10px;border-radius:8px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);cursor:pointer;font-family:inherit" title="Erledigen">✓</button>';
     h+='</div>';
   });
   h+='</div>';
@@ -1365,12 +1371,15 @@ function rDeadlineAlarm(pid){
 // "Fokus endet. Jetzt aufräumen." Zählt nicht fürs Paddel.
 function rCleanup(pid){
   const cfgKey='cleanup_start_'+pid;
-  const startH=Math.max(15,parseInt(localStorage.getItem(cfgKey)||'15',10));
+  // #6: NaN-Guard — korrupter localStorage-Wert fällt auf Default 15 zurück
+  const raw=parseInt(localStorage.getItem(cfgKey)||'15',10);
+  const startH=Math.min(18,Math.max(15,isNaN(raw)?15:raw));
   const nowH=new Date().getHours();
   if(nowH<startH)return'';
   const items=S.aufgaben.filter(a=>
     String(a.pid)===String(pid)&&
     !a.teilzielId&&
+    !(a.dl&&a.dl<=TODAY)&&  // #2: Tasks mit Deadline im Alarm, nicht im Cleanup
     !['erledigt','zurueckgegeben','archiviert'].includes(a.status)&&
     a.inboxStatus!=='neu'
   ).sort((a,b)=>{
@@ -1383,7 +1392,7 @@ function rCleanup(pid){
   h+='<span style="font-size:15px">🧹</span>';
   h+='<span style="font-size:13px;font-weight:700">Cleanup ab '+startH+':00</span>';
   h+='<span style="background:var(--gray-bg);color:var(--t2);font-size:10px;font-weight:700;padding:2px 9px;border-radius:99px">'+items.length+'</span>';
-  h+='<button onclick="toggleCleanupSettings()" style="margin-left:auto;background:none;border:none;cursor:pointer;font-size:14px;color:var(--t3);padding:4px" title="Startzeit ändern">⚙</button>';
+  h+='<button onclick="toggleCleanupSettings()" style="margin-left:auto;background:none;border:none;cursor:pointer;font-size:14px;color:var(--t3);padding:8px 10px;min-width:36px;min-height:36px" title="Cleanup-Startzeit ändern">⚙</button>';
   h+='</div>';
   h+='<div id="cleanup-settings" style="display:none;padding:8px 0 6px;margin-top:8px;border-top:1px solid var(--bd)">';
   h+='<div style="font-size:11px;color:var(--t2);margin-bottom:6px">Cleanup-Pille erscheint ab:</div>';
@@ -1393,13 +1402,13 @@ function rCleanup(pid){
     h+='<button onclick="setCleanupStart(\''+pid+'\','+h2+')" style="font-size:11px;padding:5px 12px;border-radius:7px;border:1px solid '+(sel?'var(--inv)':'var(--bd)')+';background:'+(sel?'var(--inv)':'var(--sf)')+';color:'+(sel?'var(--inv-t)':'var(--t2)')+';cursor:pointer;font-family:inherit;font-weight:'+(sel?'700':'500')+'">'+h2+':00</button>';
   });
   h+='</div></div>';
-  h+='<div style="font-size:11px;color:var(--t3);margin:8px 0 10px">Fokus endet. Jetzt aufräumen — zählt nicht fürs Paddel.</div>';
+  h+='<div style="font-size:11px;color:var(--t3);margin:8px 0 10px">Aufgaben ohne Meilenstein — zählt nicht fürs Paddel.</div>';
   items.forEach(a=>{
-    const prioCol=a.prio==='P1'?'var(--red)':a.prio==='P2'?'var(--gold-t)':'var(--t3)';
+    const prioCol=prioColor(a.prio);
     h+='<div style="background:var(--gray-bg);border:1px solid var(--bd);border-radius:10px;padding:9px 12px;margin-bottom:6px;display:flex;align-items:center;gap:10px">';
     if(a.prio)h+='<span style="font-size:10px;font-weight:700;color:'+prioCol+';white-space:nowrap;min-width:18px">'+a.prio+'</span>';
     h+='<span style="flex:1;font-size:13px;cursor:pointer;overflow:hidden;text-overflow:ellipsis" onclick="openDetail(\''+a.id+'\')">'+esc(a.titel)+'</span>';
-    h+='<button onclick="erledigenA(\''+a.id+'\')" style="flex-shrink:0;font-size:11px;padding:6px 10px;border-radius:8px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);cursor:pointer;font-family:inherit" title="Erledigen">✓</button>';
+    h+='<button onclick="fertig(\''+a.id+'\')" style="flex-shrink:0;font-size:11px;padding:6px 10px;border-radius:8px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);cursor:pointer;font-family:inherit" title="Erledigen">✓</button>';
     h+='</div>';
   });
   h+='</div>';
@@ -3789,10 +3798,18 @@ async function assignStepPid(id,i,newPid){
 }
 
 async function toggleBig3(wrId,field){
-  const wr=S.wochenresets.find(r=>r.id===wrId);if(!wr)return;
-  wr[field]=!wr[field];
-  await dbPatch('wochenresets',wrId,{[field]:wr[field]});
-  if(wr[field]){const n=field.replace('_done','');const txt=wrItemName(wr,parseInt(n.slice(-1)));if(txt)notify('big3_erledigt',{big3:txt,kw:getKW().kw});}
+  const wr=S.wochenresets.find(r=>r.id===wrId);if(!wr||wr._busy)return;
+  wr._busy=true;
+  const prev=wr[field];
+  wr[field]=!prev;
+  if(aV==='woche')rWoche();else rTag();
+  const ok=await dbPatch('wochenresets',wrId,{[field]:wr[field]});
+  if(!ok){wr[field]=prev;toast('⚠ Fehler beim Speichern');}
+  else if(wr[field]){
+    const n=field.replace('_done','');const txt=wrItemName(wr,parseInt(n.slice(-1)));
+    if(txt)notify('big3_erledigt',{big3:txt,kw:getKW().kw});
+  }
+  wr._busy=false;
   if(aV==='woche')rWoche();else rTag();
 }
 function rWoche(){
@@ -4858,7 +4875,6 @@ async function fertig(id){
     }
     // Fokus aufräumen wenn diese Aufgabe der aktive Fokus war
     if(localStorage.getItem('fokus_id_'+aP)===id)localStorage.removeItem('fokus_id_'+aP);
-    console.log('[Paddel] fertig() für',a.titel,'teilzielId=',a.teilzielId);
     if(a.teilzielId){
       showPaddelCelebration(pid);
       celebrateErl(a);
@@ -5055,7 +5071,10 @@ async function setStatusModal(id,st){
     else{
       const _teamSlack=S.personen.filter(p=>p.id!==aP&&p.slack_id).map(p=>p.slack_id);
       if(st==='erledigt'){
-        celebrateErl(a);checkP1Done(a.pid);
+        // #4: Paddel-Gate — nur Feier wenn Meilenstein zugeordnet (Ovens: no fake rewards)
+        if(a.teilzielId){celebrateErl(a);}
+        else{toast('✓ Erledigt · ohne Meilenstein-Zuordnung kein Paddel-Punkt');}
+        checkP1Done(a.pid);
         const restOffen=S.aufgaben.filter(x=>String(x.pid)===String(aP)&&x.status!=='erledigt');
         if(!restOffen.length)setTimeout(()=>celebrate('🏆','Alle Aufgaben erledigt! 🎉'),1500);
       }
@@ -5065,19 +5084,34 @@ async function setStatusModal(id,st){
   finally{a._busy=false;cm();try{render();}catch(e){console.error('render@setStatusModal2',e);}}
 }
 async function setTeilziel(id,tzid){
-  const a=S.aufgaben.find(x=>x.id===id);if(!a)return;
+  const a=S.aufgaben.find(x=>x.id===id);if(!a||a._busy)return;
+  a._busy=true;
+  const prev={teilzielId:a.teilzielId};
   a.teilzielId=tzid||null;
-  await dbPatch('aufgaben',id,{teilziel_id:tzid||null});
+  const ok=await dbPatch('aufgaben',id,{teilziel_id:tzid||null});
+  if(!ok){a.teilzielId=prev.teilzielId;toast('⚠ Fehler beim Speichern','var(--red)');}
+  a._busy=false;
+  render();
 }
 async function reassignAufgabe(id,newPid){
-  const a=S.aufgaben.find(x=>x.id===id);if(!a||a.pid===newPid)return;
-  const istFremdPid=newPid!==aP;
-  a.pid=newPid;a.status='zugewiesen';a.erstelltVon=a.erstelltVon||aP;
-  if(istFremdPid)a.inboxStatus='neu';
-  const patch={pid:newPid,status:'zugewiesen',erstellt_von:a.erstelltVon};
-  if(istFremdPid)patch.inbox_status='neu';
-  await dbPatch('aufgaben',id,patch);
-  cm();render();
+  const a=S.aufgaben.find(x=>x.id===id);if(!a||a._busy||String(a.pid)===String(newPid))return;
+  a._busy=true;
+  const prev={pid:a.pid,status:a.status,erstelltVon:a.erstelltVon,inboxStatus:a.inboxStatus};
+  try{
+    const istFremdPid=String(newPid)!==String(aP);
+    const neuePerson=person(newPid);
+    a.pid=newPid;a.status='zugewiesen';a.erstelltVon=a.erstelltVon||aP;
+    if(istFremdPid)a.inboxStatus='neu';
+    const patch={pid:newPid,status:'zugewiesen',erstellt_von:a.erstelltVon};
+    if(istFremdPid)patch.inbox_status='neu';
+    cm();render();
+    const ok=await dbPatch('aufgaben',id,patch);
+    if(!ok){a.pid=prev.pid;a.status=prev.status;a.erstelltVon=prev.erstelltVon;a.inboxStatus=prev.inboxStatus;toast('⚠ Fehler beim Zuweisen');}
+    else if(istFremdPid){
+      notify('aufgabe_zugewiesen',{aufgabe:a.titel,prio:a.prio,dl:a.dl,fuer:neuePerson?{id:neuePerson.id,name:neuePerson.name,slack_id:neuePerson.slack_id}:null});
+    }
+  }catch(e){console.error('reassignAufgabe',e);a.pid=prev.pid;a.status=prev.status;a.erstelltVon=prev.erstelltVon;a.inboxStatus=prev.inboxStatus;toast('⚠ Fehler beim Zuweisen');}
+  finally{a._busy=false;render();}
 }
 async function delAufgabe(id){
   if(!confirm('Aufgabe löschen?'))return;
@@ -7577,7 +7611,7 @@ async function mdConfirm(){
       geplant:1,gebucht:0,dl:t.dl,dl_type:t.dl?'bis':null,
       ua:[],notiz:t.kontext?'Meeting: '+t.kontext:null,
       akt_seit:null,vertraulich:false,erstellt_von:aP,
-      inbox_status:isOther?'neu':null};
+      inbox_status:isOther?'neu':(!t.prio?'neu':null)};  // #9: self-assign ohne Prio auch in Inbox-Triage
     S.aufgaben.push(normalizeAufgabe(rec));
     await dbInsert('aufgaben',rec);
     if(isOther){
