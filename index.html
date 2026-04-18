@@ -2351,12 +2351,206 @@ function tryLogin(){
     _snoozeLoad();
     document.getElementById('login-screen').style.display='none';
     document.getElementById('app').style.display='flex';
-    updateBadge();render();startSonderPoller();startDataPoller();handleDeepLink();checkDeepLink();
+    updateBadge();render();checkOnboarding();startSonderPoller();startDataPoller();handleDeepLink();checkDeepLink();
     gcalFetchToday();
   } else {
     document.getElementById('login-err').textContent='Falsche PIN.';pinIn='';updDots();
   }
 }
+// ─── §3 ONBOARDING ───────────────────────────────────────────────
+function checkOnboarding(){
+  const p=me();if(!p)return;
+  if(p.onboarding_done)return;
+  const snoozeUntil=p.onboarding_snoozed_until;
+  if(snoozeUntil&&snoozeUntil>=TODAY)return;
+  // Hat bereits Ziel + Meilenstein + Wochenreset → auto-done
+  const hatZiel=S.ziele.some(z=>String(z.verantwortlichId)===String(aP)&&z.status!=='bereich');
+  const hatTZ=S.ziele.some(z=>(z.teilziele||[]).some(t=>String(t.verantwortlichId)===String(aP)));
+  const hatWR=!!dieseWocheReset(aP);
+  if(hatZiel&&hatTZ&&hatWR){dbPatch('personen',aP,{onboarding_done:true});p.onboarding_done=true;return;}
+  openOnboarding(1);
+}
+function validateMeasurable(text){
+  if(!text||text.trim().length<10)return false;
+  return /\d/.test(text)||/\b(bis|erreicht|launcht|live|fertig|abgeschlossen|gestartet|eingestellt|unterschrieben|geliefert)\b/i.test(text);
+}
+function openOnboarding(step){
+  window._onb=window._onb||{step:1,zielId:'',zielNeu:null,tzId:'',tzNeu:null,evs:['','','']};
+  window._onb.step=step;
+  let ov=document.getElementById('onb-ovl');
+  if(!ov){ov=document.createElement('div');ov.id='onb-ovl';ov.style.cssText='position:fixed;inset:0;z-index:9990;background:var(--bg);overflow-y:auto;padding:20px 16px 60px;box-sizing:border-box';document.body.appendChild(ov);}
+  const p=me();if(!p)return;
+  const snoozeCount=p.onboarding_snooze_count||0;
+  const canSnooze=snoozeCount<3;
+  const prog=(n)=>[1,2,3].map(i=>'<div style="flex:1;height:4px;border-radius:2px;background:'+(i<n?'var(--green)':i===n?'var(--inv)':'var(--bd)')+'"></div>').join('');
+  if(step===1){
+    const existingZiele=S.ziele.filter(z=>z.status!=='bereich'&&z.status!=='vorschlag');
+    const meineZ=existingZiele.filter(z=>String(z.verantwortlichId)===String(aP)||(z.teilziele||[]).some(t=>String(t.verantwortlichId)===String(aP)));
+    let existOpts='';
+    if(meineZ.length){
+      existOpts+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);margin-bottom:8px">Bestehendes Ziel wählen</div>';
+      existOpts+=meineZ.map(z=>{const f=FARBEN[z.farbe||0];const sel=z.id===window._onb.zielId;return'<div onclick="window._onb.zielId=\''+z.id+'\';document.querySelectorAll(\'.onb-zw\').forEach(x=>{x.style.borderColor=\'var(--bd)\';x.style.background=\'var(--sf)\';x.style.color=\'var(--text)\'});this.style.borderColor=\''+f.tc+'\';this.style.background=\''+f.bg+'\';this.style.color=\''+f.tc+'\';document.getElementById(\'onb-new-ziel\').style.display=\'none\'" class="onb-zw" style="cursor:pointer;border:1.5px solid '+(sel?f.tc:'var(--bd)')+';border-radius:8px;padding:9px 12px;margin-bottom:6px;background:'+(sel?f.bg:'var(--sf)')+';font-size:13px;font-weight:600;color:'+(sel?f.tc:'var(--text)')+'">'+esc(z.name)+'</div>';}).join('');
+      existOpts+='<div style="text-align:center;font-size:11px;color:var(--t3);margin:10px 0">— oder neues Ziel anlegen —</div>';
+    }
+    const zDefDatum=(()=>{const d=new Date(TODAY);d.setDate(d.getDate()+90);return d.toISOString().slice(0,10);})();
+    const zMinDatum=(()=>{const d=new Date(TODAY);d.setDate(d.getDate()+14);return d.toISOString().slice(0,10);})();
+    const zMaxDatum=(()=>{const d=new Date(TODAY);d.setDate(d.getDate()+120);return d.toISOString().slice(0,10);})();
+    ov.innerHTML='<div style="max-width:540px;margin:0 auto">'
+      +'<div style="text-align:center;margin-bottom:28px;padding-top:20px"><div style="font-size:32px;margin-bottom:10px">🎯</div>'
+      +'<div style="font-size:22px;font-weight:800;margin-bottom:6px">Willkommen, '+esc(p.name.split(' ')[0])+'</div>'
+      +'<div style="font-size:13px;color:var(--t2);line-height:1.5">3 Minuten — dann weißt du genau, was diese Woche zählt.</div></div>'
+      +'<div style="display:flex;gap:6px;margin-bottom:24px">'+prog(1)+'</div>'
+      +'<div style="font-size:19px;font-weight:700;margin-bottom:4px">1 · Quartalsziel</div>'
+      +'<div style="font-size:12px;color:var(--t2);margin-bottom:10px;line-height:1.5">Was willst du in den nächsten ~3 Monaten erreichen? Muss <b>messbar</b> sein — eine Zahl oder ein klares Ja/Nein.</div>'
+      +'<div style="font-size:11px;color:var(--t3);margin-bottom:14px;padding:8px 10px;background:var(--amber-bg);border-left:3px solid var(--amber);border-radius:0 6px 6px 0">Unscharfes Ziel = unscharfe Woche. Nimm dir Zeit.</div>'
+      +existOpts
+      +'<div id="onb-new-ziel">'
+      +'<div class="fl"><label>Ziel-Titel</label><input id="onb-z-title" placeholder="z.B. 30k MRR bis Ende Q2" oninput="onbCheckMeasurable(\'z\')" style="font-size:15px;font-weight:600"></div>'
+      +'<div id="onb-z-hint" style="font-size:11px;margin:-6px 0 10px;padding:6px 10px;border-radius:6px;background:var(--gray-bg);color:var(--t3)">⚠️ Nicht messbar. Füge eine Zahl oder ein klares Kriterium hinzu.</div>'
+      +'<div class="fl"><label>Bis wann?</label><input type="date" id="onb-z-datum" min="'+zMinDatum+'" max="'+zMaxDatum+'" value="'+zDefDatum+'"></div>'
+      +'</div>'
+      +'<div style="display:flex;gap:8px;margin-top:20px">'
+      +(canSnooze?'<button onclick="onboardingSnooze()" style="padding:11px 16px;border-radius:10px;background:var(--sf);color:var(--t2);border:1px solid var(--bd);font-family:inherit;font-size:12px;cursor:pointer;flex-shrink:0">Noch unklar →</button>':'')
+      +'<button onclick="onboardingNext(1)" style="flex:1;padding:13px;border-radius:10px;background:var(--inv);color:var(--inv-t);border:none;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer">Weiter →</button>'
+      +'</div>'
+      +(canSnooze?'<div style="text-align:center;font-size:10px;color:var(--t3);margin-top:8px">Snooze noch '+(3-snoozeCount)+'× möglich · Bitte GF/TL-Termin vereinbaren</div>'
+        :'<div style="text-align:center;font-size:11px;color:var(--red);font-weight:600;margin-top:8px">3× gesnoozed — kein weiterer Aufschub. Bitte jetzt mit deinem GF/TL sprechen.</div>')
+      +'</div>';
+  } else if(step===2){
+    const zielId=window._onb.zielId;
+    const z=S.ziele.find(z=>z.id===zielId);
+    const zName=z?z.name:(window._onb.zielNeu?.name||'Dein Ziel');
+    const existTZ=z?(z.teilziele||[]).filter(t=>!t.erledigt&&(t.status||'aktiv')==='aktiv'):[];
+    let tzExistHtml='';
+    if(existTZ.length){
+      tzExistHtml+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);margin-bottom:8px">Bestehenden Meilenstein wählen</div>';
+      tzExistHtml+=existTZ.map(t=>{const sel=t.id===window._onb.tzId;return'<div onclick="window._onb.tzId=\''+t.id+'\';document.querySelectorAll(\'.onb-tzw\').forEach(x=>{x.style.borderColor=\'var(--bd)\';x.style.background=\'var(--sf)\'});this.style.borderColor=\'var(--green)\';this.style.background=\'var(--green-bg)\';document.getElementById(\'onb-new-tz\').style.display=\'none\'" class="onb-tzw" style="cursor:pointer;border:1.5px solid '+(sel?'var(--green)':'var(--bd)')+';border-radius:8px;padding:9px 12px;margin-bottom:6px;background:'+(sel?'var(--green-bg)':'var(--sf)')+';font-size:13px;font-weight:600">'+esc(t.name)+(t.datum?'<span style="font-size:10px;color:var(--t3);font-weight:400;margin-left:6px">bis '+t.datum.slice(8)+'.'+t.datum.slice(5,7)+'.</span>':'')+'</div>';}).join('');
+      tzExistHtml+='<div style="text-align:center;font-size:11px;color:var(--t3);margin:10px 0">— oder neuen Meilenstein anlegen —</div>';
+    }
+    const tzMinD=(()=>{const d=new Date(TODAY);d.setDate(d.getDate()+7);return d.toISOString().slice(0,10);})();
+    const tzMaxD=(()=>{const d=new Date(TODAY);d.setDate(d.getDate()+35);return d.toISOString().slice(0,10);})();
+    const tzDefD=(()=>{const d=new Date(TODAY);d.setDate(d.getDate()+28);return d.toISOString().slice(0,10);})();
+    ov.innerHTML='<div style="max-width:540px;margin:0 auto">'
+      +'<div style="display:flex;gap:6px;margin-bottom:24px;padding-top:20px">'+prog(2)+'</div>'
+      +'<div style="font-size:11px;color:var(--t3);margin-bottom:4px">↳ Ziel: <strong style="color:var(--text)">'+esc(zName)+'</strong></div>'
+      +'<div style="font-size:19px;font-weight:700;margin-bottom:4px">2 · Meilenstein (~4 Wochen)</div>'
+      +'<div style="font-size:12px;color:var(--t2);margin-bottom:10px;line-height:1.5">Was ist in ~4 Wochen messbar erreicht? Steil planen ist OK — Nicht-erreichen ist kein Versagen, wenn die Taktik sauber ausgeführt wurde.</div>'
+      +'<div style="font-size:11px;color:var(--t3);margin-bottom:14px;padding:8px 10px;background:var(--blue-bg);border-left:3px solid var(--blue);border-radius:0 6px 6px 0">Der Paddel-Score zeigt dir, ob deine Ausführung gut war — unabhängig davon, ob du den Meilenstein erreichst.</div>'
+      +tzExistHtml
+      +'<div id="onb-new-tz">'
+      +'<div class="fl"><label>Meilenstein-Titel</label><input id="onb-tz-title" placeholder="z.B. 5 Neukunden gewonnen" oninput="onbCheckMeasurable(\'tz\')"></div>'
+      +'<div id="onb-tz-hint" style="font-size:11px;margin:-6px 0 10px;padding:6px 10px;border-radius:6px;background:var(--gray-bg);color:var(--t3)">⚠️ Nicht messbar. Füge eine Zahl oder ein klares Kriterium hinzu.</div>'
+      +'<div class="fl"><label>Bis wann?</label><input type="date" id="onb-tz-datum" min="'+tzMinD+'" max="'+tzMaxD+'" value="'+tzDefD+'"></div>'
+      +'</div>'
+      +'<div style="display:flex;gap:8px;margin-top:20px">'
+      +'<button onclick="openOnboarding(1)" style="padding:11px 16px;border-radius:10px;background:var(--sf);color:var(--t2);border:1px solid var(--bd);font-family:inherit;font-size:12px;cursor:pointer">← Zurück</button>'
+      +'<button onclick="onboardingNext(2)" style="flex:1;padding:13px;border-radius:10px;background:var(--inv);color:var(--inv-t);border:none;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer">Weiter →</button>'
+      +'</div></div>';
+  } else if(step===3){
+    const tzId=window._onb.tzId;
+    const tz=S.ziele.flatMap(z=>z.teilziele||[]).find(t=>t.id===tzId);
+    const tzName=tz?tz.name:(window._onb.tzNeu?.name||'Dein Meilenstein');
+    const evs=window._onb.evs||['','',''];
+    ov.innerHTML='<div style="max-width:540px;margin:0 auto">'
+      +'<div style="display:flex;gap:6px;margin-bottom:24px;padding-top:20px">'+prog(3)+'</div>'
+      +'<div style="font-size:11px;color:var(--t3);margin-bottom:4px">↳ Meilenstein: <strong style="color:var(--text)">'+esc(tzName)+'</strong></div>'
+      +'<div style="font-size:19px;font-weight:700;margin-bottom:4px">3 · Diese Woche</div>'
+      +'<div style="font-size:12px;color:var(--t2);margin-bottom:16px;line-height:1.5">Was lieferst du <b>diese Woche</b> konkret? Maximal 3 Ergebnisvorhaben — eines reicht auch.</div>'
+      +'<div class="fl"><label>Ergebnisvorhaben 1 <span style="font-weight:400;color:var(--red)">*</span></label><input id="onb-ev1" value="'+esc(evs[0]||'')+'" placeholder="Was lieferst du diese Woche?"></div>'
+      +'<div class="fl"><label>Ergebnisvorhaben 2 <span style="font-weight:400;color:var(--t3)">(optional)</span></label><input id="onb-ev2" value="'+esc(evs[1]||'')+'" placeholder="Optional…"></div>'
+      +'<div class="fl"><label>Ergebnisvorhaben 3 <span style="font-weight:400;color:var(--t3)">(optional)</span></label><input id="onb-ev3" value="'+esc(evs[2]||'')+'" placeholder="Optional…"></div>'
+      +'<div style="display:flex;gap:8px;margin-top:20px">'
+      +'<button onclick="openOnboarding(2)" style="padding:11px 16px;border-radius:10px;background:var(--sf);color:var(--t2);border:1px solid var(--bd);font-family:inherit;font-size:12px;cursor:pointer">← Zurück</button>'
+      +'<button onclick="saveOnboarding()" style="flex:1;padding:13px;border-radius:10px;background:var(--green);color:#fff;border:none;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer">🎯 Loslegen!</button>'
+      +'</div></div>';
+  }
+}
+function onbCheckMeasurable(which){
+  const inp=document.getElementById('onb-'+which+'-title');
+  const hint=document.getElementById('onb-'+which+'-hint');
+  if(!inp||!hint)return;
+  const ok=validateMeasurable(inp.value);
+  hint.style.background=ok?'var(--green-bg)':'var(--gray-bg)';
+  hint.style.color=ok?'var(--green)':'var(--t3)';
+  hint.textContent=ok?'✅ Messbar — gut.':'⚠️ Nicht messbar. Füge eine Zahl oder ein klares Ja/Nein-Kriterium hinzu.';
+}
+async function onboardingNext(step){
+  if(step===1){
+    if(window._onb.zielId){openOnboarding(2);return;}
+    const title=document.getElementById('onb-z-title')?.value.trim()||'';
+    if(!title){toast('⚠️ Bitte Ziel-Titel eingeben');return;}
+    if(!validateMeasurable(title)){toast('⚠️ Nicht messbar — füge eine Zahl oder ein Ja/Nein-Kriterium hinzu.');return;}
+    const datum=document.getElementById('onb-z-datum')?.value||'';
+    if(!datum){toast('⚠️ Bitte Datum wählen');return;}
+    const zId=nid('z');
+    const zRec={id:zId,name:title,status:'aktiv',verantwortlich_id:aP,farbe:0,monat_start:TODAY.slice(0,7),monat_ende:datum.slice(0,7),vertraulich:false};
+    S.ziele.push({...zRec,verantwortlichId:aP,kpis:[],teilziele:[]});
+    await dbInsert('ziele',zRec);
+    window._onb.zielId=zId;window._onb.zielNeu={name:title};
+    openOnboarding(2);
+  } else if(step===2){
+    if(window._onb.tzId){openOnboarding(3);return;}
+    const title=document.getElementById('onb-tz-title')?.value.trim()||'';
+    if(!title){toast('⚠️ Bitte Meilenstein-Titel eingeben');return;}
+    if(!validateMeasurable(title)){toast('⚠️ Nicht messbar — füge eine Zahl oder ein Ja/Nein-Kriterium hinzu.');return;}
+    const datum=document.getElementById('onb-tz-datum')?.value||'';
+    if(!datum){toast('⚠️ Bitte Datum wählen');return;}
+    const zielId=window._onb.zielId;
+    const tzId=nid('tz');
+    const tzRec={id:tzId,ziel_id:zielId,name:title,verantwortlich_id:aP,datum,erledigt:false,status:'aktiv'};
+    const z=S.ziele.find(z=>z.id===zielId);
+    if(z){z.teilziele=z.teilziele||[];z.teilziele.push({...tzRec,zielId,verantwortlichId:aP});}
+    await dbInsert('teilziele',tzRec);
+    window._onb.tzId=tzId;window._onb.tzNeu={name:title};
+    openOnboarding(3);
+  }
+}
+async function saveOnboarding(){
+  const ev1=document.getElementById('onb-ev1')?.value.trim()||'';
+  if(!ev1){toast('⚠️ Mindestens ein Ergebnisvorhaben eingeben');return;}
+  const evs=[ev1,document.getElementById('onb-ev2')?.value.trim()||'',document.getElementById('onb-ev3')?.value.trim()||''];
+  const tzId=window._onb.tzId;const zielId=window._onb.zielId;
+  const friday=getFriday();
+  const aufgaben=evs.filter(Boolean).map(titel=>{
+    const id=nid('a');
+    const rec={id,pid:aP,titel,typ:'strategisch',status:'backlog',prio:'P1',ziel_id:zielId,teilziel_id:tzId,
+      geplant:1,gebucht:0,dl:friday,dl_type:'bis',ua:[],notiz:'',akt_seit:null,vertraulich:false,erstellt_von:aP};
+    S.aufgaben.push(normalizeAufgabe(rec));return rec;
+  });
+  await Promise.all(aufgaben.map(r=>dbInsert('aufgaben',r)));
+  const{kw,jahr}=getKW();
+  const wrId=nid('wr');
+  const wrRec={id:wrId,pid:aP,kw,jahr,focus_ziel_id:zielId,
+    big3_1_tz_id:tzId,big3_1:evs[0]||null,big3_1_done:false,
+    big3_2_tz_id:evs[1]?tzId:null,big3_2:evs[1]||null,big3_2_done:false,
+    big3_3_tz_id:evs[2]?tzId:null,big3_3:evs[2]||null,big3_3_done:false};
+  S.wochenresets.unshift(wrRec);
+  await dbInsert('wochenresets',wrRec);
+  const p=me();if(p){p.onboarding_done=true;}
+  await dbPatch('personen',aP,{onboarding_done:true});
+  const ov=document.getElementById('onb-ovl');if(ov)ov.remove();
+  window._onb=null;
+  toast('🎯 Alles gesetzt — los geht\'s!');
+  nav('tag');
+}
+async function onboardingSnooze(){
+  const p=me();if(!p)return;
+  const count=(p.onboarding_snooze_count||0)+1;
+  const snoozedUntil=(()=>{const d=new Date(TODAY);d.setDate(d.getDate()+7);return d.toISOString().slice(0,10);})();
+  p.onboarding_snooze_count=count;p.onboarding_snoozed_until=snoozedUntil;
+  await dbPatch('personen',aP,{onboarding_snooze_count:count,onboarding_snoozed_until:snoozedUntil});
+  if(count>=3){
+    const gfLeads=S.personen.filter(x=>(x.stufe==='gf'||x.stufe==='lead')&&x.id!==aP);
+    const gfSlack=gfLeads.map(x=>x.slack_id).filter(Boolean);
+    notify('onboarding_snooze_max',{name:p.name,gf_slack_ids:gfSlack});
+    const sigRec={id:nid('s'),pid:aP,typ:'wolke',was:p.name+' braucht Zielgespräch — 3× Onboarding gesnoozed.',warum:'System-Automatik',fuer:null,bereich:'GF',vertraulich:true};
+    S.signale.unshift(sigRec);await dbInsert('signale',sigRec);
+  }
+  const ov=document.getElementById('onb-ovl');if(ov)ov.remove();
+  render();
+}
+// ─── Ende ONBOARDING ─────────────────────────────────────────────
+
 function updateBadge(){
   const p=me();if(!p)return;
   document.getElementById('me-badge').innerHTML=av(p,26,9)
@@ -7144,7 +7338,7 @@ window.addEventListener('keydown',e=>{
         const ls=document.getElementById('login-screen'),ap=document.getElementById('app');
         if(ls)ls.style.display='none';
         if(ap)ap.style.display='flex';
-        updateBadge();render();startSonderPoller();startDataPoller();handleDeepLink();checkDeepLink();
+        updateBadge();render();checkOnboarding();startSonderPoller();startDataPoller();handleDeepLink();checkDeepLink();
         gcalFetchToday();
       } else localStorage.removeItem('h_session');
     }
