@@ -1538,6 +1538,61 @@ function momentumRingHtml(pid){
   h+='</button>';
   return h;
 }
+// ─── MISS-PATTERN KARTE (Leading Indicator #2, neben Momentum) ───
+function getMissPatternData(pid){
+  const tasks=S.aufgaben.filter(a=>String(a.pid)===String(pid)&&a.lastMissAction);
+  const breakdown={neu_schaetzen:0,splitten:0,los:0,irrelevant:0};
+  tasks.forEach(a=>{if(breakdown[a.lastMissAction]!==undefined)breakdown[a.lastMissAction]++;});
+  const total=tasks.length;
+  if(total<3)return{total,breakdown,dominant:null,interpretation:null};
+  const entries=Object.entries(breakdown);
+  const max=entries.reduce((m,e)=>e[1]>m[1]?e:m);
+  const dominantRatio=max[1]/total;
+  const dominant=dominantRatio>=0.6?max[0]:null;
+  const interpretations={
+    neu_schaetzen:'Du schätzt strukturell zu eng. Plane kleinere Schritte statt steilerer Deadlines.',
+    splitten:'Du planst zu groß. Zerlege Tasks früher in 2-Stunden-Häppchen.',
+    los:'Prokrastinations-Muster. Das Problem ist Start-Reibung, nicht Scope.',
+    irrelevant:'Plan-Qualität niedrig. Zu viel auf die Liste ohne Filter.'
+  };
+  const interpretation=dominant?interpretations[dominant]:'Mischbild — noch kein klares Muster.';
+  return{total,breakdown,dominant,interpretation};
+}
+function missPatternCardHtml(pid){
+  const d=getMissPatternData(pid);
+  if(d.total<3){
+    return '<div style="background:var(--sf);border:1px dashed var(--bd);border-radius:10px;padding:10px 14px;margin-bottom:14px;display:flex;align-items:center;gap:10px;font-size:11px;color:var(--t3)">'
+      +'<span style="font-size:14px">🔍</span>'
+      +'<span>Muster-Diagnose: noch keine 3 verpassten Deadlines — sammle erst Daten.</span>'
+      +'</div>';
+  }
+  const labels={neu_schaetzen:['📅','Neu geschätzt'],splitten:['✂️','Gesplittet'],los:['▶','Losgelegt'],irrelevant:['🗄','Irrelevant']};
+  const max=Math.max(...Object.values(d.breakdown));
+  let bars='';
+  ['neu_schaetzen','splitten','los','irrelevant'].forEach(k=>{
+    const count=d.breakdown[k];
+    const [icon,lbl]=labels[k];
+    const pct=max>0?Math.round(count/max*100):0;
+    const isDominant=k===d.dominant;
+    bars+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;font-size:11px">'
+      +'<span style="width:95px;color:'+(isDominant?'var(--orange)':'var(--t2)')+';flex-shrink:0;font-weight:'+(isDominant?'600':'400')+'"><span style="margin-right:4px">'+icon+'</span>'+lbl+'</span>'
+      +'<div style="flex:1;height:6px;background:var(--gray-bg);border-radius:3px;overflow:hidden"><div style="height:100%;background:'+(isDominant?'var(--orange)':'var(--bd)')+';width:'+pct+'%;transition:width .4s"></div></div>'
+      +'<span style="width:22px;text-align:right;font-weight:700;color:'+(isDominant?'var(--orange)':'var(--t2)')+'">'+count+'</span>'
+      +'</div>';
+  });
+  const interpBg=d.dominant?'var(--orange-bg)':'var(--gray-bg)';
+  const interpBd=d.dominant?'var(--orange-bd)':'var(--bd)';
+  const interpColor=d.dominant?'var(--orange)':'var(--t2)';
+  let h='<div style="background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:14px 16px;margin-bottom:14px">';
+  h+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">';
+  h+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3)">🔍 Dein Ausführungs-Muster</div>';
+  h+='<div style="font-size:10px;color:var(--t3)">'+d.total+' Aufgabe'+(d.total!==1?'n':'')+' mit Miss-Historie</div>';
+  h+='</div>';
+  h+=bars;
+  h+='<div style="margin-top:10px;padding:8px 10px;background:'+interpBg+';border:1px solid '+interpBd+';border-radius:8px;font-size:11px;color:'+interpColor+';line-height:1.4">'+d.interpretation+'</div>';
+  h+='</div>';
+  return h;
+}
 // Volle Karte (Rückblick-Modal): mehr Detail
 function momentumCardHtml(pid){
   const m=getMomentumScore(pid);
@@ -3491,6 +3546,9 @@ function rWoche(){
     out+='<div style="font-size:12px;color:var(--text)">'+esc(wr.wenn_dann).slice(0,120)+(wr.wenn_dann.length>120?'…':'')+'</div></div>';
     out+='</div>';
   }
+
+  // ── Leading Indicator #2: Ausführungs-Muster aus Missed-Deadlines ──
+  out+=missPatternCardHtml(aP);
 
   // ── Für dich: Wolken & Ideen (eingehend, nicht selbst erstellt) ──
   {
