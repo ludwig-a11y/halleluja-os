@@ -370,6 +370,31 @@ function zieleOptgroups(pid,selId=''){
   if(bereiche.length)out+='<optgroup label="📁 Bereiche">'+bereiche.map(z=>'<option value="'+z.id+'"'+(selId===z.id?' selected':'')+'>📁 '+esc(z.name)+'</option>').join('')+'</optgroup>';
   return out;
 }
+// Meilenstein-zentrische Auswahl: Meilensteine (aktiv) gruppiert nach Ziel/Bereich.
+// Liefert <option>s mit data-ziel-id, data-datum. Aufrufer deriviert ziel_id aus Auswahl.
+function meilensteinOptgroups(pid,selTzId=''){
+  const sichtbar=S.ziele.filter(z=>(!z.vertraulich||isGF())&&z.status!=='vorschlag');
+  const withTz=sichtbar.map(z=>({z,tz:(z.teilziele||[]).filter(t=>!t.erledigt&&(t.status||'aktiv')==='aktiv')})).filter(x=>x.tz.length);
+  const meine=withTz.filter(x=>String(x.z.verantwortlichId)===String(pid)||x.tz.some(t=>String(t.verantwortlichId)===String(pid)));
+  const andere=withTz.filter(x=>!meine.find(m=>m.z.id===x.z.id)&&x.z.status!=='bereich');
+  const bereiche=withTz.filter(x=>x.z.status==='bereich'&&!meine.find(m=>m.z.id===x.z.id));
+  const meineIds=new Set(meine.map(m=>m.z.id));
+  const mkGroup=(label,items)=>{
+    if(!items.length)return '';
+    return items.map(({z,tz})=>{
+      const prefix=z.status==='bereich'?'📁 ':'';
+      return '<optgroup label="'+esc(prefix+(z.name||''))+'">'+tz.map(t=>{
+        const dat=t.datum?' · bis '+t.datum.slice(8)+'.'+t.datum.slice(5,7)+'.':'';
+        return '<option value="'+t.id+'" data-ziel-id="'+z.id+'" data-datum="'+(t.datum||'')+'"'+(selTzId===t.id?' selected':'')+'>'+esc(t.name)+dat+'</option>';
+      }).join('')+'</optgroup>';
+    }).join('');
+  };
+  let out='<option value="">— kein Meilenstein —</option>';
+  out+=mkGroup('Meine',meine);
+  out+=mkGroup('Andere',andere);
+  out+=mkGroup('Bereiche',bereiche);
+  return out;
+}
 function wochenTage(){
   const today=new Date(),dow=today.getDay(),diff=dow===0?-6:1-dow;
   const mo=new Date(today);mo.setDate(today.getDate()+diff);mo.setHours(0,0,0,0);
@@ -3653,18 +3678,28 @@ function rTag(){
       if(a.notiz)out+='<div style="font-size:11px;color:var(--t2);margin-bottom:8px;font-style:italic;line-height:1.4">💬 '+esc(a.notiz).slice(0,150)+(a.notiz.length>150?'…':'')+'</div>';
       out+='<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px">';
       out+=zielOptsN.replace('PLACEHOLDER',a.id);
-      out+=(['P1','P2','P3','null'].map(pr=>{
-        const lbl=pr==='null'?'Kein Prio':pr;
-        const bg=pr==='P1'?'var(--red-bg)':pr==='P2'?'var(--blue-bg)':pr==='P3'?'var(--gray-bg)':'var(--sf)';
-        const tc=pr==='P1'?'var(--red)':pr==='P2'?'var(--blue)':pr==='P3'?'var(--t2)':'var(--t3)';
-        return'<button onclick="setPrio(\''+a.id+'\',\''+(pr==='null'?null:pr)+'\')" class="btn-prio" style="background:'+bg+';color:'+tc+'">'+lbl+'</button>';
+      out+=(['P1','P2','P3'].map(pr=>{
+        const bg=pr==='P1'?'var(--red-bg)':pr==='P2'?'var(--blue-bg)':'var(--gray-bg)';
+        const tc=pr==='P1'?'var(--red)':pr==='P2'?'var(--blue)':'var(--t2)';
+        return'<button onclick="setPrio(\''+a.id+'\',\''+pr+'\')" class="btn-prio" style="background:'+bg+';color:'+tc+'">'+pr+'</button>';
       }).join(''));
       out+='</div>';
       out+='<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">';
       out+='<span style="font-size:10px;color:var(--t3)">oder:</span>';
-      out+='<button onclick="klassifiziereAlsIdee(\''+a.id+'\')" class="btn-sm" style="border-color:var(--blue-bd);background:var(--blue-bg);color:var(--blue)">→ Ideen-Pool</button>';
-      if(S.ziele.length)out+='<button onclick="aufgabeZuMeilenstein(\''+a.id+'\')" class="btn-sm" style="border-color:var(--green-bd);background:var(--green-bg);color:var(--green)">→ '+(a.zielId&&istBereich(a.zielId)?'Thema':'Meilenstein')+'</button>';
-      out+='</div></div>';
+      if(from)out+='<button onclick="document.getElementById(\'abl-wrap-'+a.id+'\').style.display=\'block\';this.style.display=\'none\'" class="btn-sm" style="border-color:var(--red-bd);background:var(--red-bg);color:var(--red)">↩ Zurück an '+esc(from.name.split(' ')[0])+'</button>';
+      out+='<button onclick="toggleWeiterleiten(\''+a.id+'\')" class="btn-sm" style="border-color:var(--purple-bd);background:var(--purple-bg);color:var(--purple)">→ Weiterleiten</button>';
+      out+='</div>';
+      // Inline-Panel: Zurückgeben mit Pflicht-Grund
+      if(from)out+='<div id="abl-wrap-'+a.id+'" style="display:none;margin-top:6px;padding:8px 10px;background:var(--red-bg);border:1px solid var(--red-bd);border-radius:8px"><textarea id="abl-grund-'+a.id+'" placeholder="Grund (Pflicht) …" rows="2" style="width:100%;box-sizing:border-box;font-size:12px;padding:7px 10px;border-radius:8px;border:1px solid var(--red-bd);background:var(--sf);color:var(--text);font-family:inherit;resize:none;margin-bottom:6px"></textarea><button onclick="inboxAblehnenZurueck(\''+a.id+'\')" class="btn-sm" style="border-color:var(--red-bd);background:var(--red);color:#fff">↩ Abschicken</button></div>';
+      // Inline-Panel: Weiterleiten mit Grund
+      out+='<div id="wl-'+a.id+'" style="display:none;gap:5px;flex-wrap:wrap;margin-top:6px;padding:8px 10px;background:var(--purple-bg);border:1px solid var(--purple-bd);border-radius:8px">'
+        +'<span style="font-size:10px;color:var(--purple);font-weight:600;width:100%;margin-bottom:4px">An wen weiterleiten?</span>'
+        +'<input id="wl-grund-'+a.id+'" placeholder="Grund (Pflicht) …" style="width:100%;box-sizing:border-box;font-size:12px;padding:6px 10px;border-radius:6px;border:1px solid var(--purple-bd);background:var(--sf);color:var(--text);font-family:inherit;margin-bottom:6px">'
+        +'<div style="display:flex;gap:5px;flex-wrap:wrap">'
+        +S.personen.filter(p=>p.id!==aP).map(p=>'<div onclick="weiterleitenAufgabe(\''+a.id+'\',\''+p.id+'\')" style="cursor:pointer;font-size:11px;font-weight:600;padding:4px 11px;border-radius:99px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);white-space:nowrap">'+esc(p.name.split(' ')[0])+'</div>').join('')
+        +'</div>'
+        +'</div>';
+      out+='</div>';
     });
     }
     // ── Zurückgegebene Aufgaben sub-section ──
@@ -4674,7 +4709,7 @@ function openNeu(pf={}){
   window._aiDebounce=null;
   window._neuParentId=pf.parent_id||null;
   const defaultPid=pf.pid||aP;
-  const zieleOpts=zieleOptgroups(defaultPid,pf.zielId||'');
+  const msOpts=meilensteinOptgroups(defaultPid,pf.teilzielId||'');
   const hasAI=true;
   document.getElementById('mb').innerHTML='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px"><div class="mt" style="margin-bottom:0">Neue Aufgabe</div><button onclick="cm();openMeeting()" style="font-size:11px;padding:4px 10px;border-radius:7px;border:1px solid var(--bd);background:var(--gray-bg);color:var(--t2);cursor:pointer;font-family:inherit;white-space:nowrap">📝 Aus Meeting</button></div>'
     +'<div class="fl"><label>Was soll gemacht werden?</label><div style="display:flex;gap:6px"><input id="nt" value="'+(pf.titel||'')+'" placeholder="Aufgabe, Todo, Meeting-Ergebnis…" autofocus style="flex:1" oninput="aiDebounce()">'
@@ -4683,15 +4718,14 @@ function openNeu(pf={}){
     +'<div id="ai-suggestion" style="display:none"></div>'
     +'<div class="fl"><label>Wer?</label><input type="hidden" id="np" value="'+defaultPid+'"><div style="display:flex;flex-wrap:wrap;gap:5px">'+S.personen.map(p=>'<div onclick="this.parentNode.querySelectorAll(\'.pp\').forEach(x=>{x.style.background=\'var(--sf)\';x.style.color=\'var(--t2)\';x.style.borderColor=\'var(--bd)\'});this.style.background=\'var(--inv)\';this.style.color=\'var(--inv-t)\';this.style.borderColor=\'var(--inv)\';document.getElementById(\'np\').value=\''+p.id+'\'" class="pp" style="cursor:pointer;font-size:12px;font-weight:600;padding:5px 12px;border-radius:99px;border:1.5px solid '+(p.id===defaultPid?'var(--inv)':'var(--bd)')+';background:'+(p.id===defaultPid?'var(--inv)':'var(--sf)')+';color:'+(p.id===defaultPid?'var(--inv-t)':'var(--t2)')+';white-space:nowrap">'+esc(p.name.split(' ')[0])+'</div>').join('')+'</div></div>'
     +'<div class="fl"><label>Priorität</label><div style="display:flex;gap:6px;margin-top:2px">'
-    +[null,'P1','P2','P3'].map(pr=>{const bg=pr==='P1'?'var(--red-bg)':pr==='P2'?'var(--blue-bg)':'var(--gray-bg)';const tc=pr==='P1'?'var(--red)':pr==='P2'?'var(--blue)':'var(--t2)';return'<button id="pbp-'+(pr||'k')+'" onclick="selPrioBtn(this,\''+pr+'\')" style="font-size:12px;padding:4px 11px;border-radius:8px;border:1px solid '+(pr?tc:'var(--bd)')+';background:'+bg+';color:'+tc+';cursor:pointer;font-family:inherit">'+(pr||'kein')+'</button>';}).join('')
+    +['P1','P2','P3'].map(pr=>{const bg=pr==='P1'?'var(--red-bg)':pr==='P2'?'var(--blue-bg)':'var(--gray-bg)';const tc=pr==='P1'?'var(--red)':pr==='P2'?'var(--blue)':'var(--t2)';return'<button id="pbp-'+pr+'" onclick="selPrioBtn(this,\''+pr+'\')" style="font-size:12px;padding:4px 11px;border-radius:8px;border:1px solid '+tc+';background:'+bg+';color:'+tc+';cursor:pointer;font-family:inherit">'+pr+'</button>';}).join('')
     +'</div></div>'
-    +'<div id="neu-paddel-hint" style="font-size:11px;color:var(--t2);background:var(--gray-bg);border:1px dashed var(--bd);border-radius:8px;padding:8px 10px;margin-bottom:10px;line-height:1.4">⚠️ <b>Kein Meilenstein gewählt</b> → kein Paddel-Punkt beim Erledigen. Unter <i>Mehr ↓</i> → Ziel + Meilenstein zuordnen für Paddel.</div>'
+    +'<div class="fl"><label>Meilenstein <span style="font-weight:400;color:var(--t2)">(für Paddel-Punkt)</span></label><select id="ntz" onchange="updateNeuPaddelHint();const o=this.options[this.selectedIndex];const d=o?.dataset?.datum;const dl=document.getElementById(\'ndl\');if(d&&dl)dl.value=d;">'+msOpts+'</select></div>'
+    +'<div id="neu-paddel-hint" style="font-size:11px;color:var(--t2);background:var(--gray-bg);border:1px dashed var(--bd);border-radius:8px;padding:8px 10px;margin-bottom:10px;line-height:1.4">⚠️ <b>Kein Meilenstein gewählt</b> → kein Paddel-Punkt beim Erledigen. Wähle oben einen Meilenstein, damit diese Aufgabe auf ein Ziel einzahlt.</div>'
     +'<div class="mf" style="margin-bottom:8px"><button class="btn btn-gr" onclick="cm()">Abbrechen</button><button class="btn btn-dk" onclick="saveNeu()">Speichern</button></div>'
     +'<div style="text-align:center;margin-bottom:4px"><button onclick="const m=document.getElementById(\'neu-mehr\');const open=m.style.display!==\'none\';m.style.display=open?\'none\':\'block\';this.textContent=open?\'Mehr ↓\':\'Weniger ↑\'" style="font-size:11px;color:var(--t3);background:none;border:none;cursor:pointer;font-family:inherit;padding:2px 8px">Mehr ↓</button></div>'
     +'<div id="neu-mehr" style="display:none">'
-    +'<div class="f2"><div class="fl"><label>Ziel <span style="font-weight:400;color:var(--t2)">(optional)</span></label><select id="nziel" onchange="updateNeuTZ()">'+zieleOpts+'</select></div>'
-    +'<div class="fl"><label>Dauer</label><select id="nh">'+SH.map(([h,l])=>'<option value="'+h+'"'+((pf.geplant||1)==h?' selected':'')+'>'+l+'</option>').join('')+'</select></div></div>'
-    +'<div id="neu-tz-wrap" class="fl" style="display:none"><label>Meilenstein <span style="font-weight:400;color:var(--t2)">(optional)</span></label><select id="ntz"><option value="">— kein Meilenstein —</option></select><div style="font-size:10px;color:var(--t3);margin-top:4px;line-height:1.4">💡 Ohne Meilenstein-Zuordnung zählt diese Aufgabe <b>nicht</b> für deinen Paddel-Score. Nur Ziel-alignte Ausführung = Leading Indicator.</div></div>'
+    +'<div class="fl"><label>Dauer</label><select id="nh">'+SH.map(([h,l])=>'<option value="'+h+'"'+((pf.geplant||1)==h?' selected':'')+'>'+l+'</option>').join('')+'</select></div>'
     +'<div class="fl"><label>Fällig</label><div style="display:flex;gap:6px;align-items:center"><input type="date" id="ndl" value="'+(pf.dl||getFriday())+'" style="flex:1">'
     +'<button id="dltype-bis" onclick="toggleDlType(\'bis\')" class="btn-toggle on" data-v="bis">bis</button>'
     +'<button id="dltype-am" onclick="toggleDlType(\'am\')" class="btn-toggle" data-v="am">am</button>'
@@ -4707,11 +4741,10 @@ function openNeu(pf={}){
   window._neuSteps=[];
   document.getElementById('ovl').classList.add('open');
   // Auto-open "Mehr" if pre-filled values exist in that section
-  if(pf.zielId||pf.dl||pf.notiz||pf.teilzielId){
+  if(pf.dl||pf.notiz){
     const m=document.getElementById('neu-mehr');if(m)m.style.display='block';
   }
-  if(pf.zielId)setTimeout(()=>{const s=document.getElementById('nziel');if(s){s.value=pf.zielId;updateNeuTZ();}},50);
-  if(pf.teilzielId)setTimeout(()=>{const s=document.getElementById('ntz');if(s)s.value=pf.teilzielId;},100);
+  if(pf.teilzielId)setTimeout(()=>{const s=document.getElementById('ntz');if(s){s.value=pf.teilzielId;updateNeuPaddelHint();}},100);
 }
 function updateNeuTZ(){
   const zSel=document.getElementById('nziel');if(!zSel)return;
@@ -5137,20 +5170,25 @@ function selPrioBtn(btn,pr){
   _selPrio=(!pr||pr==='null')?null:pr;
   document.querySelectorAll('[id^="pbp-"]').forEach(b=>b.style.outline='none');
   btn.style.outline='2px solid var(--text)';
-  // P1 → Mehr aufklappen + Ziel nudgen
+  // P1 → Meilenstein nudgen (Leading Indicator: P1 ohne Meilenstein = Busywork)
   if(pr==='P1'){
-    const m=document.getElementById('neu-mehr');if(m)m.style.display='block';
-    const z=document.getElementById('nziel');
+    const z=document.getElementById('ntz');
     if(z&&!z.value){z.style.outline='2px solid var(--red)';z.focus();setTimeout(()=>{z.style.outline='';},2000);}
   }
 }
 async function saveNeu(){
   const t=document.getElementById('nt').value.trim();if(!t)return;
-  const zielId=document.getElementById('nziel')?.value||null;
+  // Priorität ist Pflicht — keine „kein Prio"-Option mehr
+  if(!_selPrio){toast('⚠️ Bitte Priorität wählen (P1/P2/P3)');return;}
   // Ersteller darf immer anlegen — Kapazität managed der Empfänger in seiner Inbox
   const _pidNeu=document.getElementById('np')?.value||aP;
   const tzSel=document.getElementById('ntz');
   const teilzielId=tzSel?tzSel.value||null:null;
+  let zielId=null;
+  if(teilzielId && tzSel){
+    const opt=tzSel.options[tzSel.selectedIndex];
+    zielId=opt?.dataset?.zielId||null;
+  }
   const typ=(zielId&&!istBereich(zielId))?'strategisch':'operativ';
   const vert=document.getElementById('nvert')?document.getElementById('nvert').checked:false;
   let pid=document.getElementById('np').value;
