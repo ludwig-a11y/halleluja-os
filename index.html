@@ -1635,6 +1635,13 @@ function openWochenreset(){
   const lw=letzteWocheReset(aP);
   const istRueckblick=isResetZeit()||!!wr;
 
+  // ── §6 Phase A: Rückblick-Gate ──
+  // Wenn diese Woche ein WR existiert und noch kein Learning vorhanden ist,
+  // muss zuerst Phase A (3-Fragen-Rückblick) beantwortet werden.
+  if(wr && !wr.learning && istRueckblick && !_resetZwang){
+    return openWrPhaseA(wr);
+  }
+
   // ── Wochenzusammenfassung ──
   const{monday:_wrMon,sunday:_wrSun}=getWeekRange();
   const erlDW=S.aufgaben.filter(a=>{
@@ -1738,11 +1745,7 @@ function openWochenreset(){
     +(_resetZwang?'':summaryHtml)
     +(rueckblickHtml?'<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px">'+rueckblickHtml+'</div>':'')
     +wrCascadeHtml()
-    +(!wr&&!_resetZwang?'<div class="fl"><label>🟢 Highlight der Woche <span style="font-weight:400;color:var(--t2)">(optional)</span></label>'
-    +'<textarea id="wr-gut" rows="2" style="width:100%;padding:8px;border:1px solid var(--bd);border-radius:8px;font-family:inherit;font-size:13px;resize:vertical" placeholder="z. B. ein Win, ein Moment mit Energie, etwas Gelerntes…"></textarea></div>'
-    +'<div class="fl"><label>⚡ Bremsen <span style="font-weight:400;color:var(--t2)">(optional)</span></label>'
-    +'<textarea id="wr-blockiert" rows="2" style="width:100%;padding:8px;border:1px solid var(--bd);border-radius:8px;font-family:inherit;font-size:13px;resize:vertical" placeholder="z. B. Hindernisse, fehlende Infos, Energie-Tiefs…"></textarea></div>'
-    +'<div style="border-top:1px solid var(--bd);margin:13px 0"></div>':'')
+    /* Alte "Highlight/Bremsen"-Felder entfernt — §6 Phase A übernimmt die Reflektion strukturiert. */
 
     // ── Step 1: Meilenstein wählen ──
     +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">'
@@ -1795,6 +1798,92 @@ function openWochenreset(){
     }
   }
 }
+// ─── §6 WOCHENRÜCKBLICK — PHASE A ─────────────────────────────────
+function openWrPhaseA(wr){
+  // Vorbefüllung: wie viele big3 per Checkbox abgehakt wurden
+  const doneCount=[wr.big3_1_done,wr.big3_2_done,wr.big3_3_done].filter(Boolean).length;
+  if(!window._wrPhaseA||window._wrPhaseA.wrId!==wr.id){
+    window._wrPhaseA={wrId:wr.id,geliefert:doneCount,thema:'',learning:''};
+  }
+  renderWrPhaseA();
+  document.getElementById('ovl').classList.add('open');
+}
+function renderWrPhaseA(){
+  const st=window._wrPhaseA;if(!st)return;
+  const wr=S.wochenresets.find(r=>r.id===st.wrId);if(!wr)return;
+  const{kw}=getKW();
+  // Big3 Liste (Review-Kontext)
+  let big3List='';
+  [1,2,3].forEach(n=>{
+    const txt=wrItemName(wr,n);const done=wr['big3_'+n+'_done'];if(!txt)return;
+    big3List+='<div style="display:flex;align-items:center;gap:8px;padding:4px 0">'
+      +'<span style="font-size:14px;flex-shrink:0">'+(done?'✅':'⭕')+'</span>'
+      +'<span style="font-size:12px;color:var(--t2);'+(done?'text-decoration:line-through':'')+'">'+esc(txt)+'</span>'
+      +'</div>';
+  });
+  if(!big3List)big3List='<div style="font-size:12px;color:var(--t3);padding:4px 0">Keine Ergebnisvorhaben für diese Woche eingetragen.</div>';
+  // Q1: 0/1/2/3
+  const q1Btns=[0,1,2,3].map(n=>{
+    const sel=st.geliefert===n;
+    return'<button onclick="window._wrPhaseA.geliefert='+n+';window._wrPhaseA.thema=(window._wrPhaseA.geliefert===3?\'\':window._wrPhaseA.thema);renderWrPhaseA()" style="flex:1;padding:14px 0;border-radius:10px;border:1.5px solid '+(sel?'var(--inv)':'var(--bd)')+';background:'+(sel?'var(--inv)':'var(--sf)')+';color:'+(sel?'var(--inv-t)':'var(--text)')+';font-family:inherit;font-size:18px;font-weight:800;cursor:pointer">'+n+'</button>';
+  }).join('');
+  // Q2: nur wenn geliefert < 3
+  let q2Html='';
+  if(st.geliefert<3){
+    const themen=[['ausfuehrung','⚙️ Ausführung','Nicht gemacht, abgelenkt, zu spät angefangen'],['scoping','📐 Scoping','Zu viel gewollt, falsch geschätzt']];
+    q2Html='<div style="margin-top:20px">'
+      +'<div style="font-size:14px;font-weight:600;margin-bottom:4px">Was war das Hauptthema?</div>'
+      +'<div style="font-size:12px;color:var(--t2);margin-bottom:12px">Hilft, in Zukunft besser zu planen.</div>'
+      +'<div style="display:flex;flex-direction:column;gap:8px">'
+      +themen.map(([v,lbl,sub])=>{const sel=st.thema===v;return'<button onclick="window._wrPhaseA.thema=\''+v+'\';renderWrPhaseA()" style="padding:12px 16px;border-radius:10px;border:1.5px solid '+(sel?'var(--inv)':'var(--bd)')+';background:'+(sel?'var(--inv)':'var(--sf)')+';color:'+(sel?'var(--inv-t)':'var(--text)')+';font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;text-align:left"><div>'+lbl+'</div><div style="font-size:11px;font-weight:400;color:'+(sel?'var(--inv-t)':'var(--t3)')+';margin-top:2px">'+sub+'</div></button>';}).join('')
+      +'</div></div>';
+  }
+  // Q3: Learning
+  const q3Unlocked=(st.geliefert===3)||(st.geliefert<3&&st.thema);
+  let q3Html='';
+  if(q3Unlocked){
+    const lLen=(st.learning||'').length;
+    q3Html='<div style="margin-top:20px">'
+      +'<div style="font-size:14px;font-weight:600;margin-bottom:4px">Learning in einem Satz</div>'
+      +'<div style="font-size:12px;color:var(--t2);margin-bottom:8px">Max. 140 Zeichen — was nimmst du aus dieser Woche mit?</div>'
+      +'<textarea id="wrpa-learning" maxlength="140" oninput="window._wrPhaseA.learning=this.value;const ch=document.getElementById(\'wrpa-chr\');if(ch)ch.textContent=this.value.length+\'/140\';const b=document.getElementById(\'wrpa-submit\');if(b){const ok=this.value.trim().length>=10;b.style.opacity=ok?\'1\':\'.5\';b.style.cursor=ok?\'pointer\':\'not-allowed\';}" placeholder="z.B. Montag-Morgen-Block für Deep Work ist Gold wert." style="width:100%;height:72px;padding:10px 12px;border-radius:8px;border:1px solid var(--bd);background:var(--sf);color:var(--text);font-family:inherit;font-size:13px;resize:none;box-sizing:border-box">'+esc(st.learning||'')+'</textarea>'
+      +'<div style="display:flex;justify-content:flex-end;font-size:10px;color:var(--t3);margin-top:2px" id="wrpa-chr">'+lLen+'/140</div>'
+      +'</div>';
+  }
+  const canSubmit=q3Unlocked&&(st.learning||'').trim().length>=10;
+  const html='<div class="mt">🔄 Rückblick · KW '+kw+'</div>'
+    +'<div style="font-size:12px;color:var(--t2);margin-bottom:14px;padding:8px 12px;background:var(--gray-bg);border-left:3px solid var(--inv);border-radius:0 6px 6px 0;line-height:1.5">Ehrliche Reflektion zählt mehr als gute Zahlen. Niemand ist jede Woche bei 100%.</div>'
+    +'<div style="background:var(--sf);border:1px solid var(--bd);border-radius:10px;padding:10px 14px;margin-bottom:18px">'
+    +'<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);margin-bottom:6px">Deine Ergebnisvorhaben</div>'
+    +big3List
+    +'</div>'
+    +'<div style="font-size:14px;font-weight:600;margin-bottom:4px">Wie viele hast du geliefert?</div>'
+    +'<div style="font-size:12px;color:var(--t2);margin-bottom:12px">Keine Grautöne — entweder abgeschlossen oder nicht.</div>'
+    +'<div style="display:flex;gap:8px">'+q1Btns+'</div>'
+    +q2Html
+    +q3Html
+    +'<div class="mf" style="margin-top:20px">'
+    +'<button class="btn btn-gr" onclick="cm()">Später</button>'
+    +'<button id="wrpa-submit" class="btn btn-dk" onclick="saveWrPhaseA()" style="opacity:'+(canSubmit?'1':'.5')+';cursor:'+(canSubmit?'pointer':'not-allowed')+'">Weiter zur Planung →</button>'
+    +'</div>';
+  document.getElementById('mb').innerHTML=html;
+}
+async function saveWrPhaseA(){
+  const st=window._wrPhaseA;if(!st)return;
+  if(st.geliefert===null||st.geliefert===undefined){toast('⚠️ Bitte Anzahl wählen');return;}
+  if(st.geliefert<3&&!st.thema){toast('⚠️ Bitte Hauptthema wählen');return;}
+  const learning=(st.learning||'').trim();
+  if(learning.length<10){toast('⚠️ Learning-Satz zu kurz (min. 10 Zeichen)');return;}
+  const patch={geliefert_count:st.geliefert,haupt_thema:st.thema||null,learning};
+  const wr=S.wochenresets.find(r=>r.id===st.wrId);
+  if(wr)Object.assign(wr,patch);
+  await dbPatch('wochenresets',st.wrId,patch);
+  window._wrPhaseA=null;
+  toast('✓ Rückblick abgeschlossen — jetzt planen');
+  openWochenreset(); // Re-open, now in planning mode (Phase B)
+}
+// ─── Ende §6 PHASE A ─────────────────────────────────────────────
+
 function selectWrTZ(zielId,tzId){
   // Alle Buttons zurücksetzen
   document.querySelectorAll('.wtz-opt').forEach(x=>{
@@ -2550,6 +2639,17 @@ async function onboardingSnooze(){
   window._onb=null; // State reset — sonst startet openOnboarding mit altem Zustand
   render();
 }
+async function restartOnboarding(){
+  // Manueller Re-Trigger (z.B. aus dem Profil) — setzt onboarding_done=false zurück
+  // und öffnet den 3-Schritte-Flow. Snooze-Counter bleibt, damit User nicht endlos snoozen können.
+  const p=me();if(!p)return;
+  if(!confirm('Onboarding neu starten? Dein bestehendes Ziel/Meilenstein/Wochenplan bleibt unverändert — nur der Flow wird erneut geöffnet.'))return;
+  p.onboarding_done=false;p.onboarding_snoozed_until=null;
+  await dbPatch('personen',aP,{onboarding_done:false,onboarding_snoozed_until:null});
+  window._onb=null;
+  cm(); // Profil-Modal schließen
+  openOnboarding(1);
+}
 // ─── Ende ONBOARDING ─────────────────────────────────────────────
 
 // ─── §7 MEILENSTEIN-REVIEW ───────────────────────────────────────
@@ -2697,7 +2797,8 @@ function openMeinProfil(){
     +'<div id="mp-pin-msg" style="font-size:11px;margin-top:4px;min-height:16px"></div>'
     +'</div>'
     +'<div style="height:1px;background:var(--bd);margin:8px 0 14px"></div>'
-    +'<button onclick="toggleDark();openMeinProfil()" class="btn btn-gr" style="width:100%;margin-bottom:14px">'+(document.documentElement.classList.contains('dark')?'☀️ Light Mode':'🌙 Dark Mode')+'</button>'
+    +'<button onclick="toggleDark();openMeinProfil()" class="btn btn-gr" style="width:100%;margin-bottom:8px">'+(document.documentElement.classList.contains('dark')?'☀️ Light Mode':'🌙 Dark Mode')+'</button>'
+    +'<button onclick="restartOnboarding()" class="btn btn-gr" style="width:100%;margin-bottom:14px;font-size:12px">🎯 Onboarding neu starten</button>'
     // ── Meine Verbindungen ──────────────────────────────────────
     +'<div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Meine Verbindungen</div>'
     // Google Calendar
