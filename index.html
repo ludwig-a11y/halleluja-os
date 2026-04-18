@@ -3588,6 +3588,43 @@ function openMeinProfil(){
     +'<div class="fl"><label>Wochenstunden</label>'
     +'<input type="number" id="mp-sw" value="'+(p.stunden_woche||40)+'" min="1" max="80" style="width:80px" onchange="saveMeinFokus()">'
     +'</div>'
+    // ── Tagesende-Blöcke (per-device) ──
+    +(()=>{
+      const rRaw=parseInt(localStorage.getItem('inbox_reminder_'+aP)||'16',10);
+      const reminderH=Math.min(18,Math.max(14,isNaN(rRaw)?16:rRaw));
+      const cRaw=parseInt(localStorage.getItem('cleanup_start_'+aP)||'15',10);
+      const cleanupH=Math.min(18,Math.max(15,isNaN(cRaw)?15:cRaw));
+      return '<div class="fl"><label>Tagesende-Blöcke</label>'
+        +'<div style="display:flex;gap:16px;flex-wrap:wrap">'
+        +'<div><div style="font-size:11px;color:var(--t3);margin-bottom:5px">📬 Inbox-Verarbeitung ab</div>'
+        +'<select id="mp-inbox-reminder" onchange="saveMeinDevice()" style="font-size:12px;padding:6px 10px;border-radius:8px;border:1px solid var(--bd);background:var(--sf);color:var(--text);font-family:inherit">'
+        +[14,15,16,17,18].map(h2=>'<option value="'+h2+'"'+(h2===reminderH?' selected':'')+'>'+h2+':00</option>').join('')
+        +'</select></div>'
+        +'<div><div style="font-size:11px;color:var(--t3);margin-bottom:5px">🧹 Cleanup ab</div>'
+        +'<select id="mp-cleanup-start" onchange="saveMeinDevice()" style="font-size:12px;padding:6px 10px;border-radius:8px;border:1px solid var(--bd);background:var(--sf);color:var(--text);font-family:inherit">'
+        +[15,16,17,18].map(h2=>'<option value="'+h2+'"'+(h2===cleanupH?' selected':'')+'>'+h2+':00</option>').join('')
+        +'</select></div>'
+        +'</div>'
+        +'<div style="font-size:10px;color:var(--t3);margin-top:5px">Gespeichert pro Gerät — nicht synchronisiert.</div>'
+        +'</div>';
+    })()
+    // ── Wochenreset-Fenster (per-device) ──
+    +(()=>{
+      const rsH=Math.min(18,Math.max(14,parseInt(localStorage.getItem('reset_start_'+aP)||'16',10)||16));
+      const reH=Math.min(22,Math.max(17,parseInt(localStorage.getItem('reset_end_'+aP)||'19',10)||19));
+      return '<div class="fl"><label>🗓 Wochenreset-Fenster <span style="font-weight:400;color:var(--t2)">(Freitag)</span></label>'
+        +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'
+        +'<select id="mp-reset-start" onchange="saveMeinDevice()" style="font-size:12px;padding:6px 10px;border-radius:8px;border:1px solid var(--bd);background:var(--sf);color:var(--text);font-family:inherit">'
+        +[14,15,16,17,18].map(h2=>'<option value="'+h2+'"'+(h2===rsH?' selected':'')+'>'+h2+':00</option>').join('')
+        +'</select>'
+        +'<span style="font-size:12px;color:var(--t2)">bis</span>'
+        +'<select id="mp-reset-end" onchange="saveMeinDevice()" style="font-size:12px;padding:6px 10px;border-radius:8px;border:1px solid var(--bd);background:var(--sf);color:var(--text);font-family:inherit">'
+        +[17,18,19,20,21,22].map(h2=>'<option value="'+h2+'"'+(h2===reH?' selected':'')+'>'+h2+':00</option>').join('')
+        +'</select>'
+        +'</div>'
+        +'<div style="font-size:10px;color:var(--t3);margin-top:4px">Snooze passt sich an die verbleibende Zeit an.</div>'
+        +'</div>';
+    })()
     +'<div style="height:1px;background:var(--bd);margin:4px 0 14px"></div>'
     +rKapazitaetBlock(aP)
     // ── PIN ──
@@ -3638,6 +3675,18 @@ async function saveMeinFokus(){
   const sw=parseInt(document.getElementById('mp-sw')?.value)||40;
   p.fokus_start=fs;p.fokus_end=fe;p.stunden_woche=sw;
   await dbPatch('personen',aP,{fokus_start:fs,fokus_end:fe,stunden_woche:sw});
+}
+function saveMeinDevice(){
+  if(!aP)return;
+  const _ir=parseInt(document.getElementById('mp-inbox-reminder')?.value||'16',10);
+  const _cs=parseInt(document.getElementById('mp-cleanup-start')?.value||'15',10);
+  const _rs=parseInt(document.getElementById('mp-reset-start')?.value||'16',10);
+  const _re=parseInt(document.getElementById('mp-reset-end')?.value||'19',10);
+  if(!isNaN(_ir))localStorage.setItem('inbox_reminder_'+aP,String(Math.min(18,Math.max(14,_ir))));
+  if(!isNaN(_cs))localStorage.setItem('cleanup_start_'+aP,String(Math.min(18,Math.max(15,_cs))));
+  if(!isNaN(_rs))localStorage.setItem('reset_start_'+aP,String(Math.min(18,Math.max(14,_rs))));
+  if(!isNaN(_re))localStorage.setItem('reset_end_'+aP,String(Math.min(22,Math.max(17,_re))));
+  toast('✓ Gespeichert');
 }
 async function saveMeinPin(){
   const p=me();if(!p)return;
