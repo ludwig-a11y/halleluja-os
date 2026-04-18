@@ -3209,6 +3209,11 @@ function rTag(){
     }
   }
 
+  // Vorab definieren (werden auch im Weiteres-Toggle-Count gebraucht)
+  const weitere=bl.filter(a=>a.id!==naechste?.id);
+  const mitZiel=weitere.filter(a=>a.ziel_id&&!istBereich(a.ziel_id));
+  const ohneZiel=weitere.filter(a=>!a.ziel_id||istBereich(a.ziel_id));
+
   // ── §2 Fokus: 3 Ergebnisvorhaben (HART) ──
   const{kw:kwAkt}=getKW();
   const wrAktuell=dieseWocheReset(aP);
@@ -3600,9 +3605,6 @@ function rTag(){
     }
   }
 
-  const weitere=bl.filter(a=>a.id!==naechste?.id);
-  const mitZiel=weitere.filter(a=>a.ziel_id&&!istBereich(a.ziel_id));
-  const ohneZiel=weitere.filter(a=>!a.ziel_id||istBereich(a.ziel_id));
   mitZiel.forEach(a=>{out+=aufgabeKarte(a);});
 
   // ── Inbox (nur Aufgaben — Wolken/Ideen sind in Wochenansicht) ──
