@@ -147,8 +147,8 @@ details.fixes-heute[open]>summary{border-radius:14px 14px 0 0}
 .tbar{height:3px;border-radius:99px;background:var(--bd);margin-top:4px;overflow:hidden}
 .tf{height:100%;border-radius:99px;background:var(--blue)}
 .sw{padding-left:8px;border-left:2px solid var(--blue-bd);margin:8px 0}
-.sr{display:flex;align-items:center;gap:8px;padding:3px 0;cursor:pointer;user-select:none}
-.sc{width:13px;height:13px;border-radius:3px;border:1px solid var(--bd);background:var(--sf);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s}
+.sr{display:flex;align-items:center;gap:8px;padding:3px 0;user-select:none}
+.sc{width:13px;height:13px;border-radius:3px;border:1px solid var(--bd);background:var(--sf);display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;transition:all .15s}
 .sc:hover{border-color:var(--t2)}
 .sc.dn{background:var(--inv);border-color:var(--inv)}
 .sc.pop{animation:stepPop .4s ease}
@@ -418,6 +418,65 @@ function meilensteinOptgroups(pid,selTzId=''){
     }
   }
   return out;
+}
+// Meilenstein-Picker mit Inline-„+ Neu" Button
+// selectId: id des <select>
+// pid: Person (für Optgroup-Sortierung & Verantwortlichkeit des neuen MS)
+// selTzId: vorausgewählte TZ
+// onChangeAttr: zusätzlicher onchange-Handler-Code (String, wird angehängt)
+// fixedZielId: wenn gesetzt, ist Ziel im Add-Form fixiert
+function msPickerWithAdd(selectId,pid,selTzId,onChangeAttr,fixedZielId){
+  const msOpts=meilensteinOptgroups(pid,selTzId);
+  const oc=onChangeAttr?' onchange="'+onChangeAttr.replace(/"/g,'&quot;')+'"':'';
+  let h='<div style="display:flex;gap:6px;align-items:stretch">';
+  h+='<select id="'+selectId+'" style="flex:1"'+oc+'>'+msOpts+'</select>';
+  h+='<button type="button" onclick="toggleQuickMsForm(\''+selectId+'\')" style="flex-shrink:0;padding:0 10px;border-radius:8px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);cursor:pointer;font-family:inherit;font-size:11px;font-weight:600;white-space:nowrap" title="Neuen Meilenstein anlegen">+ Neu</button>';
+  h+='</div>';
+  const zOpts=S.ziele.filter(z=>z.status!=='vorschlag'&&z.status!=='archiviert'&&(!z.vertraulich||isGF()||String(z.verantwortlichId)===String(pid))&&canManageTZ(z.id)).map(z=>'<option value="'+z.id+'"'+(fixedZielId&&z.id===fixedZielId?' selected':'')+'>'+(z.status==='bereich'?'📁 ':'')+esc(z.name)+'</option>').join('');
+  const fixed=!!fixedZielId;
+  h+='<div id="'+selectId+'-addform" style="display:none;margin-top:8px;padding:10px;border:1px dashed var(--bd);border-radius:8px;background:var(--gray-bg)">';
+  h+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t2);margin-bottom:8px">➕ Neuer Meilenstein</div>';
+  h+='<div style="display:flex;flex-direction:column;gap:6px">';
+  if(!fixed)h+='<select id="'+selectId+'-zid" style="font-size:12px;padding:6px 8px;border:1px solid var(--bd);border-radius:6px;background:var(--sf);color:var(--text);font-family:inherit"><option value="">Ziel wählen…</option>'+zOpts+'</select>';
+  else h+='<input type="hidden" id="'+selectId+'-zid" value="'+fixedZielId+'">';
+  h+='<input id="'+selectId+'-name" placeholder="Titel (messbar — Zahl oder klares Ja/Nein)" style="font-size:12px;padding:6px 8px;border:1px solid var(--bd);border-radius:6px;background:var(--sf);color:var(--text);font-family:inherit" onkeydown="if(event.key===\'Enter\'){event.preventDefault();saveQuickMs(\''+selectId+'\',\''+pid+'\')}">';
+  h+='<input id="'+selectId+'-datum" type="date" style="font-size:12px;padding:6px 8px;border:1px solid var(--bd);border-radius:6px;background:var(--sf);color:var(--text);font-family:inherit">';
+  h+='<div style="display:flex;gap:6px;margin-top:2px">';
+  h+='<button type="button" onclick="saveQuickMs(\''+selectId+'\',\''+pid+'\')" style="flex:1;font-size:11px;padding:7px;border-radius:6px;border:none;background:var(--blue);color:#fff;cursor:pointer;font-family:inherit;font-weight:700">Anlegen &amp; auswählen</button>';
+  h+='<button type="button" onclick="toggleQuickMsForm(\''+selectId+'\')" style="font-size:11px;padding:7px 10px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);cursor:pointer;font-family:inherit">Abbrechen</button>';
+  h+='</div></div></div>';
+  return h;
+}
+function toggleQuickMsForm(selectId){
+  const f=document.getElementById(selectId+'-addform');if(!f)return;
+  const open=f.style.display==='block';
+  f.style.display=open?'none':'block';
+  if(!open)setTimeout(()=>document.getElementById(selectId+'-name')?.focus(),50);
+}
+async function saveQuickMs(selectId,pid){
+  const zidEl=document.getElementById(selectId+'-zid');
+  const nameEl=document.getElementById(selectId+'-name');
+  const datumEl=document.getElementById(selectId+'-datum');
+  if(!zidEl||!nameEl)return;
+  const zid=zidEl.value;
+  const name=nameEl.value.trim();
+  const datum=datumEl?.value||'';
+  if(!zid){toast('Bitte Ziel wählen');return;}
+  if(name.length<3){toast('Titel zu kurz');return;}
+  const z=zielObj(zid);if(!z){toast('Ziel nicht gefunden');return;}
+  const id=nid('tz'),rec={id,ziel_id:zid,name,verantwortlich_id:pid,datum:datum||null,erledigt:false,vertraulich:false,status:'aktiv'};
+  z.teilziele=z.teilziele||[];
+  z.teilziele.push({...rec,zielId:zid,verantwortlichId:pid,datum:datum||'',vertraulich:false,status:'aktiv'});
+  const ok=await dbInsert('teilziele',rec);
+  if(!ok){toast('Fehler beim Speichern');z.teilziele=z.teilziele.filter(t=>t.id!==id);return;}
+  const sel=document.getElementById(selectId);
+  if(sel){
+    sel.innerHTML=meilensteinOptgroups(pid,id);
+    sel.value=id;
+    sel.dispatchEvent(new Event('change'));
+  }
+  toggleQuickMsForm(selectId);
+  toast('✓ Meilenstein angelegt');
 }
 function wochenTage(){
   const today=new Date(),dow=today.getDay(),diff=dow===0?-6:1-dow;
@@ -4137,7 +4196,6 @@ function rWoche(){
       a.inboxStatus!=='neu'
     ).sort((a,b)=>{const po={'P1':0,'P2':1,'P3':2};return(po[a.prio]??3)-(po[b.prio]??3);});
     if(cleanupItems.length){
-      const msOpts=meilensteinOptgroups(aP,'');
       const accOpen=localStorage.getItem('cleanup_acc_'+aP)==='1';
       out+='<div style="background:var(--sf);border:1px solid var(--bd);border-radius:12px;margin-bottom:14px;overflow:hidden">';
       out+='<div onclick="toggleCleanupAcc()" style="display:flex;align-items:center;gap:10px;padding:12px 14px;cursor:pointer">';
@@ -4156,7 +4214,7 @@ function rWoche(){
         out+='<span style="flex:1;font-size:12px;cursor:pointer;overflow:hidden;text-overflow:ellipsis" onclick="openDetail(\''+a.id+'\')">'+esc(a.titel)+'</span>';
         out+='<button onclick="fertig(\''+a.id+'\')" style="flex-shrink:0;font-size:10px;padding:4px 8px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);cursor:pointer;font-family:inherit" title="Erledigen">✓</button>';
         out+='</div>';
-        out+='<select onchange="setTeilziel(\''+a.id+'\',this.value)" style="width:100%;box-sizing:border-box;font-size:11px;padding:4px 8px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);font-family:inherit">'+msOpts+'</select>';
+        out+=msPickerWithAdd('cleanup-tz-'+a.id,aP,'','setTeilziel(\''+a.id+'\',this.value)',null);
         out+='</div>';
       });
       out+='</div></div>';
@@ -4490,7 +4548,17 @@ function rTag(){
       hero+='<button onclick="pauseA(\''+a.id+'\')" style="padding:13px 16px;border-radius:12px;background:rgba(255,255,255,.15);color:#fff;border:none;font-family:inherit;font-size:14px;cursor:pointer;transition:background .15s" onmouseenter="this.style.background=\'rgba(255,255,255,.25)\'" onmouseleave="this.style.background=\'rgba(255,255,255,.15)\'">⏸</button>';
       hero+='<button onclick="openDetail(\''+a.id+'\')" style="padding:13px 16px;border-radius:12px;background:rgba(255,255,255,.15);color:#fff;border:none;font-family:inherit;font-size:14px;cursor:pointer;transition:background .15s" onmouseenter="this.style.background=\'rgba(255,255,255,.25)\'" onmouseleave="this.style.background=\'rgba(255,255,255,.15)\'">···</button>';
       hero+='</div>';
-      hero+='<div style="margin-top:12px;border-top:1px solid rgba(255,255,255,.15);padding-top:12px">'+stepsHtml(a,true)+'</div></div>';
+      hero+='<div style="margin-top:12px;border-top:1px solid rgba(255,255,255,.15);padding-top:12px"><div style="font-size:9px;font-weight:700;opacity:.5;letter-spacing:.6px;text-transform:uppercase;margin-bottom:6px">Checkliste</div>'+stepsHtml(a,true)+'</div>';
+      // ── Unteraufgaben (auch in aktivem Hero) ──
+      {
+        const subsA=S.aufgaben.filter(x=>x.parentId===a.id&&x.status!=='archiviert');
+        hero+='<div style="margin-top:10px;padding:10px 12px;background:rgba(255,255,255,.06);border-radius:10px;border:1px dashed rgba(255,255,255,.15)">';
+        hero+='<div style="display:flex;align-items:center;gap:6px;margin-bottom:'+(subsA.length?'8':'6')+'px"><div style="font-size:9px;font-weight:700;opacity:.6;letter-spacing:.6px;text-transform:uppercase">Unteraufgaben</div>'+(subsA.length?'<span style="font-size:10px;opacity:.5">('+subsA.filter(x=>x.status==='erledigt').length+'/'+subsA.length+')</span>':'')+'</div>';
+        subsA.forEach(su=>{const sp=person(su.pid);const done=su.status==='erledigt';hero+='<div onclick="openDetail(\''+su.id+'\')" style="display:flex;align-items:center;gap:8px;padding:5px 0;cursor:pointer;font-size:12px"><span style="opacity:'+(done?'.35':'.9')+';'+(done?'text-decoration:line-through':'')+';flex:1">'+esc(su.titel)+'</span>'+(sp&&sp.id!==aP?'<span style="font-size:9px;color:#93c5fd;font-weight:600">'+esc(safeName(sp).split(' ')[0])+'</span>':'')+'</div>';});
+        hero+='<button onclick="openNeu({parent_id:\''+a.id+'\',pid:\''+aP+'\',zielId:\''+(a.zielId||'')+'\',teilzielId:\''+(a.teilzielId||'')+'\'})" style="margin-top:6px;font-size:11px;padding:6px 10px;border-radius:7px;background:rgba(255,255,255,.1);color:rgba(255,255,255,.75);border:1px solid rgba(255,255,255,.15);cursor:pointer;font-family:inherit;font-weight:600">+ Unteraufgabe</button>';
+        hero+='</div>';
+      }
+      hero+='</div>';
       if(aktiv.length>1)aktiv.slice(1).forEach(a2=>{
         hero+='<div onclick="openDetail(\''+a2.id+'\')" style="background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:12px 14px;margin-bottom:8px;cursor:pointer;display:flex;align-items:center;gap:10px">';
         hero+='<div class="dot" style="background:var(--blue)"></div>';
@@ -4536,7 +4604,7 @@ function rTag(){
         const fromN=naechste.erstelltVon&&naechste.erstelltVon!==aP?person(naechste.erstelltVon):null;
         hero+='<div style="background:var(--hero);border-radius:18px;padding:clamp(16px,4vw,24px);margin-bottom:16px;color:#fff">';
         hero+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">';
-        hero+='<div style="font-size:10px;font-weight:700;opacity:.4;letter-spacing:.8px;text-transform:uppercase">'+(fokusId?'🎯 Mein Fokus':'Nächster Schritt')+'</div>';
+        hero+='<div style="font-size:10px;font-weight:700;opacity:.4;letter-spacing:.8px;text-transform:uppercase">'+(fokusId?'🎯 Mein Fokus':'Jetzt dran')+'</div>';
         if(fokusId)hero+='<button onclick="clearFokus()" style="font-size:9px;padding:2px 8px;border-radius:99px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.1);color:rgba(255,255,255,.6);cursor:pointer;font-family:inherit;margin-left:auto">× Auto</button>';
         hero+='</div>';
         hero+='<div style="font-size:clamp(17px,4.5vw,22px);font-weight:700;margin-bottom:6px;line-height:1.3;cursor:pointer" onclick="openDetail(\''+naechste.id+'\')">'+esc(naechste.titel)+'</div>';
@@ -5237,7 +5305,13 @@ function openDetail(id){
       '<button onclick="setStatusModal(\''+id+'\',\''+x[0]+'\')" style="font-size:11px;padding:4px 10px;border-radius:8px;border:'+(a.status===x[0]?'2px':'1px')+' solid '+(a.status===x[0]?'var(--text)':'var(--bd)')+';background:'+(a.status===x[0]?x[2]:'var(--sf)')+';color:'+(a.status===x[0]?x[3]:'var(--t2)')+';cursor:pointer;font-family:inherit;font-weight:'+(a.status===x[0]?600:400)+'">'+x[1]+'</button>'
     ).join('')+'</div></div>';
   const _detTzLbl=a.zielId&&istBereich(a.zielId)?'Thema':'Meilenstein';
-  h+='<div class="fl"><label>'+_detTzLbl+'</label><select id="det-tz" onchange="setTeilziel(\''+id+'\',this.value)"><option value="">— kein '+_detTzLbl+' —</option>'+(a.zielId?(zielObj(a.zielId)?.teilziele||[]).filter(tz=>(tz.status||'aktiv')==='aktiv').map(tz=>'<option value="'+tz.id+'"'+(a.teilzielId===tz.id?' selected':'')+'>'+esc(tz.name)+'</option>').join(''):'')+'</select></div>';
+  h+='<div class="fl"><label>'+_detTzLbl+'</label>';
+  if(a.zielId){
+    h+=msPickerWithAdd('det-tz',a.pid,a.teilzielId||'','setTeilziel(\''+id+'\',this.value)',a.zielId);
+  } else {
+    h+='<select id="det-tz" onchange="setTeilziel(\''+id+'\',this.value)" disabled style="opacity:.5"><option>— erst Ziel wählen —</option></select>';
+  }
+  h+='</div>';
   h+='<div class="fl"><label style="display:flex;align-items:center;gap:8px;text-transform:none;font-size:13px;font-weight:400;cursor:pointer"><input type="checkbox" id="det-vert"'+(a.vertraulich?' checked':'')+' style="width:auto" onchange="saveDetailField(\''+id+'\',\'vertraulich\',this.checked)"> 🔒 Vertraulich</label>'+(a.vertraulich?'<div style="font-size:11px;color:var(--t3);margin-top:2px">Sichtbar für: Geschäftsführung, Zuständiger &amp; Ersteller</div>':'')+'</div>';
   h+='<div class="fl"><label>Checkliste</label>'+stepsHtml(a,true)+'</div>';
   h+='</div></details>';
@@ -5300,10 +5374,20 @@ async function setStatusModal(id,st){
 async function setTeilziel(id,tzid){
   const a=S.aufgaben.find(x=>x.id===id);if(!a||a._busy)return;
   a._busy=true;
-  const prev={teilzielId:a.teilzielId};
+  const prev={teilzielId:a.teilzielId,zielId:a.zielId};
   a.teilzielId=tzid||null;
-  const ok=await dbPatch('aufgaben',id,{teilziel_id:tzid||null});
-  if(!ok){a.teilzielId=prev.teilzielId;toast('⚠ Fehler beim Speichern','var(--red)');}
+  const patch={teilziel_id:tzid||null};
+  // Wenn neuer MS zu anderem Ziel gehört → Ziel mitziehen
+  if(tzid){
+    for(const z of S.ziele){
+      if((z.teilziele||[]).some(t=>t.id===tzid)){
+        if(String(a.zielId)!==String(z.id)){a.zielId=z.id;patch.ziel_id=z.id;}
+        break;
+      }
+    }
+  }
+  const ok=await dbPatch('aufgaben',id,patch);
+  if(!ok){a.teilzielId=prev.teilzielId;a.zielId=prev.zielId;toast('⚠ Fehler beim Speichern','var(--red)');}
   a._busy=false;
   render();
 }
@@ -5611,15 +5695,41 @@ function rZiele(){
       out+='</div>';
     }
 
-    // Meilensteine — kompakter Link zum Monat-Tab
+    // Meilensteine — inline, ausklappbar bei >5
     const myTZ=(z.teilziele||[]).filter(tz=>(!tz.vertraulich||isGF()||tz.verantwortlichId===aP)&&(tz.status||'aktiv')==='aktiv');
-    const tzErledigt=(z.teilziele||[]).filter(tz=>tz.erledigt).length;
+    const tzErledigtAll=(z.teilziele||[]).filter(tz=>tz.erledigt).length;
     if(myTZ.length||isGF()){
-      out+='<div style="border-top:1px solid '+f.bd+';padding-top:10px;margin-bottom:2px">';
-      out+='<div style="display:flex;align-items:center;justify-content:space-between">';
-      out+='<div style="font-size:11px;color:var(--t2)">🗓 <strong>'+myTZ.length+'</strong> Meilenstein'+(myTZ.length!==1?'e':'')+(tzErledigt?' · '+tzErledigt+' abgeschlossen':'')+'</div>';
-      out+='<button onclick="nav(\'monat\')" style="font-size:11px;padding:3px 10px;border-radius:8px;border:1px solid '+f.bd+';background:'+f.bg+';color:'+f.tc+';cursor:pointer;font-family:inherit;font-weight:600">→ Monat-Tab</button>';
-      out+='</div></div>';
+      const collapseKey='zcard_ms_'+z.id;
+      const collapsed=myTZ.length>5&&localStorage.getItem(collapseKey)!=='1';
+      const showTZ=collapsed?myTZ.slice(0,5):myTZ;
+      out+='<div style="border-top:1px solid '+f.bd+';padding-top:10px;margin-bottom:8px">';
+      out+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">';
+      out+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3)">🗓 Meilensteine'+(myTZ.length?' · '+myTZ.length:'')+(tzErledigtAll?' · '+tzErledigtAll+' erledigt':'')+'</div>';
+      out+='<button onclick="nav(\'monat\')" style="font-size:10px;padding:3px 9px;border-radius:7px;border:1px solid '+f.bd+';background:transparent;color:'+f.tc+';cursor:pointer;font-family:inherit;font-weight:500">Timeline →</button>';
+      out+='</div>';
+      if(myTZ.length){
+        out+='<div style="display:flex;flex-direction:column;gap:4px">';
+        showTZ.forEach(tz=>{
+          const tzA=S.aufgaben.filter(a=>a.teilzielId===tz.id);
+          const tzErl=tzA.filter(a=>a.status==='erledigt').length;
+          const pct=tzA.length?Math.round(tzErl/tzA.length*100):0;
+          const datum=tz.datum?tz.datum.slice(8)+'.'+tz.datum.slice(5,7)+'.':'';
+          const faell=tz.datum&&tz.datum<TODAY&&!tz.erledigt;
+          out+='<div style="display:flex;align-items:center;gap:8px;padding:6px 9px;border:1px solid '+f.bd+';border-radius:8px;background:var(--sf)">';
+          if(canManageTZ(z.id))out+='<input type="checkbox" '+(tz.erledigt?'checked':'')+' onclick="event.stopPropagation();toggleTZ(\''+z.id+'\',\''+tz.id+'\')" style="flex-shrink:0;margin:0;width:14px;height:14px;accent-color:'+f.tc+';cursor:pointer">';
+          out+='<div onclick="editTZ(\''+z.id+'\',\''+tz.id+'\')" style="flex:1;cursor:pointer;min-width:0">';
+          out+='<div style="font-size:12px;font-weight:600;color:var(--text)'+(tz.erledigt?';text-decoration:line-through;opacity:.5':'')+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(tz.name)+'</div>';
+          if(tzA.length)out+='<div style="margin-top:3px;height:3px;background:var(--bd);border-radius:99px;overflow:hidden"><div style="height:100%;background:'+f.tc+';width:'+pct+'%"></div></div>';
+          out+='</div>';
+          if(datum)out+='<span style="font-size:10px;color:'+(faell?'var(--red)':'var(--t3)')+';font-weight:'+(faell?'700':'400')+';flex-shrink:0">'+datum+'</span>';
+          if(tzA.length)out+='<span style="font-size:10px;color:var(--t3);flex-shrink:0">'+tzErl+'/'+tzA.length+'</span>';
+          out+='</div>';
+        });
+        out+='</div>';
+        if(collapsed)out+='<button onclick="localStorage.setItem(\''+collapseKey+'\',\'1\');rZiele();" style="margin-top:6px;width:100%;font-size:10px;padding:5px;border-radius:7px;border:1px dashed '+f.bd+';background:transparent;color:var(--t2);cursor:pointer;font-family:inherit">+ '+(myTZ.length-5)+' weitere zeigen</button>';
+        else if(myTZ.length>5)out+='<button onclick="localStorage.removeItem(\''+collapseKey+'\');rZiele();" style="margin-top:6px;width:100%;font-size:10px;padding:5px;border-radius:7px;border:1px dashed '+f.bd+';background:transparent;color:var(--t2);cursor:pointer;font-family:inherit">↑ weniger zeigen</button>';
+      }
+      out+='</div>';
     }
 
     // Aufgaben ohne Teilziel
@@ -6181,7 +6291,7 @@ function openNeu(pf={}){
     +'<div class="fl"><label>Priorität</label><div style="display:flex;gap:6px;margin-top:2px">'
     +['P1','P2','P3'].map(pr=>{const bg=pr==='P1'?'var(--red-bg)':pr==='P2'?'var(--blue-bg)':'var(--gray-bg)';const tc=pr==='P1'?'var(--red)':pr==='P2'?'var(--blue)':'var(--t2)';return'<button id="pbp-'+pr+'" onclick="selPrioBtn(this,\''+pr+'\')" style="font-size:12px;padding:4px 11px;border-radius:8px;border:1px solid '+tc+';background:'+bg+';color:'+tc+';cursor:pointer;font-family:inherit">'+pr+'</button>';}).join('')
     +'</div></div>'
-    +'<div class="fl"><label>Meilenstein <span style="font-weight:400;color:var(--t2)">(für Paddel-Punkt)</span></label><select id="ntz" onchange="updateNeuPaddelHint();const o=this.options[this.selectedIndex];const d=o?.dataset?.datum;const dl=document.getElementById(\'ndl\');if(d&&dl)dl.value=d;">'+msOpts+'</select></div>'
+    +'<div class="fl"><label>Meilenstein <span style="font-weight:400;color:var(--t2)">(für Paddel-Punkt)</span></label>'+msPickerWithAdd('ntz',defaultPid,pf.teilzielId||'','updateNeuPaddelHint();const o=this.options[this.selectedIndex];const d=o?.dataset?.datum;const dl=document.getElementById(\'ndl\');if(d&&dl)dl.value=d;',pf.zielId||null)+'</div>'
     +'<div id="neu-paddel-hint" style="font-size:11px;color:var(--t2);background:var(--gray-bg);border:1px dashed var(--bd);border-radius:8px;padding:8px 10px;margin-bottom:10px;line-height:1.4">⚠️ <b>Kein Meilenstein gewählt</b> → kein Paddel-Punkt beim Erledigen. Wähle oben einen Meilenstein, damit diese Aufgabe auf ein Ziel einzahlt.</div>'
     +'<div class="mf" style="margin-bottom:8px"><button class="btn btn-gr" onclick="cm()">Abbrechen</button><button class="btn btn-dk" onclick="saveNeu()">Speichern</button></div>'
     +'<div style="text-align:center;margin-bottom:4px"><button onclick="const m=document.getElementById(\'neu-mehr\');const open=m.style.display!==\'none\';m.style.display=open?\'none\':\'block\';this.textContent=open?\'Mehr ↓\':\'Weniger ↑\'" style="font-size:11px;color:var(--t3);background:none;border:none;cursor:pointer;font-family:inherit;padding:2px 8px">Mehr ↓</button></div>'
