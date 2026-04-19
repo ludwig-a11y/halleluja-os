@@ -1429,6 +1429,15 @@ function toggleCleanupSettings(){
   const el=document.getElementById('cleanup-settings');
   if(el)el.style.display=el.style.display==='none'?'block':'none';
 }
+function toggleCleanupAcc(){
+  const body=document.getElementById('cleanup-acc-body');
+  const chev=document.getElementById('cleanup-acc-chev');
+  if(!body)return;
+  const open=body.style.display==='block';
+  body.style.display=open?'none':'block';
+  if(chev)chev.textContent=open?'▾':'▴';
+  try{localStorage.setItem('cleanup_acc_'+aP,open?'0':'1');}catch(e){}
+}
 function setCleanupStart(pid,hour){
   localStorage.setItem('cleanup_start_'+pid,String(hour));
   render();
@@ -4118,6 +4127,41 @@ function rWoche(){
 
   // ── Leading Indicator #2: Ausführungs-Muster aus Missed-Deadlines ──
   out+=missPatternCardHtml(aP);
+
+  // ── Cleanup-Einsicht (Accordion) ──
+  {
+    const cleanupItems=myA.filter(a=>
+      !a.teilzielId&&
+      !(a.dl&&a.dl<=TODAY)&&
+      !['erledigt','zurueckgegeben','archiviert'].includes(a.status)&&
+      a.inboxStatus!=='neu'
+    ).sort((a,b)=>{const po={'P1':0,'P2':1,'P3':2};return(po[a.prio]??3)-(po[b.prio]??3);});
+    if(cleanupItems.length){
+      const msOpts=meilensteinOptgroups(aP,'');
+      const accOpen=localStorage.getItem('cleanup_acc_'+aP)==='1';
+      out+='<div style="background:var(--sf);border:1px solid var(--bd);border-radius:12px;margin-bottom:14px;overflow:hidden">';
+      out+='<div onclick="toggleCleanupAcc()" style="display:flex;align-items:center;gap:10px;padding:12px 14px;cursor:pointer">';
+      out+='<span style="font-size:14px">🧹</span>';
+      out+='<span style="font-size:13px;font-weight:700;flex:1">Cleanup</span>';
+      out+='<span style="background:var(--gray-bg);color:var(--t2);font-size:10px;font-weight:700;padding:2px 9px;border-radius:99px">'+cleanupItems.length+'</span>';
+      out+='<span id="cleanup-acc-chev" style="color:var(--t3);font-size:12px">'+(accOpen?'▴':'▾')+'</span>';
+      out+='</div>';
+      out+='<div id="cleanup-acc-body" style="display:'+(accOpen?'block':'none')+';padding:0 14px 12px;border-top:1px solid var(--bd)">';
+      out+='<div style="font-size:11px;color:var(--t3);margin:10px 0">Tasks ohne Meilenstein — Meilenstein zuordnen, um sie in den P1/P2-Flow zu holen.</div>';
+      cleanupItems.forEach(a=>{
+        const prioCol=prioColor(a.prio);
+        out+='<div style="background:var(--gray-bg);border:1px solid var(--bd);border-radius:10px;padding:8px 10px;margin-bottom:6px">';
+        out+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">';
+        if(a.prio)out+='<span style="font-size:10px;font-weight:700;color:'+prioCol+';min-width:18px">'+a.prio+'</span>';
+        out+='<span style="flex:1;font-size:12px;cursor:pointer;overflow:hidden;text-overflow:ellipsis" onclick="openDetail(\''+a.id+'\')">'+esc(a.titel)+'</span>';
+        out+='<button onclick="fertig(\''+a.id+'\')" style="flex-shrink:0;font-size:10px;padding:4px 8px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);cursor:pointer;font-family:inherit" title="Erledigen">✓</button>';
+        out+='</div>';
+        out+='<select onchange="setTeilziel(\''+a.id+'\',this.value)" style="width:100%;box-sizing:border-box;font-size:11px;padding:4px 8px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);font-family:inherit">'+msOpts+'</select>';
+        out+='</div>';
+      });
+      out+='</div></div>';
+    }
+  }
 
   // ── Für dich: Wolken & Ideen (eingehend, nicht selbst erstellt) ──
   {
