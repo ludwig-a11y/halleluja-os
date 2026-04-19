@@ -1,0 +1,346 @@
+{
+  "name": "Slack → Halleluja OS Aufgabe",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "halleluja-aufgabe",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "wh-aufgabe",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Slack slash command: /aufgabe [Titel] [@Person] [P1/P2/P3] [bis DD.MM]\nconst text = $json.body.text || '';\nconst senderSlackId = $json.body.user_id || '';\n\n// Prio extrahieren\nlet prio = null;\nconst prioMatch = text.match(/\\b(P[123])\\b/i);\nif (prioMatch) prio = prioMatch[1].toUpperCase();\n\n// Deadline extrahieren (bis DD.MM oder bis DD.MM.YYYY)\nlet dl = null;\nconst dlMatch = text.match(/bis\\s+(\\d{1,2})\\.(\\d{1,2})(?:\\.(\\d{2,4}))?/i);\nif (dlMatch) {\n  const d = dlMatch[1].padStart(2,'0');\n  const m = dlMatch[2].padStart(2,'0');\n  const y = dlMatch[3] ? (dlMatch[3].length===2 ? '20'+dlMatch[3] : dlMatch[3]) : new Date().getFullYear().toString();\n  dl = y + '-' + m + '-' + d;\n}\n\n// @Person extrahieren (Slack: <@U12345> oder <@U12345|name>)\nlet targetSlackId = null;\nconst mentionMatch = text.match(/<@(U[A-Z0-9]+)(?:\\|[^>]*)?>/i);\nif (mentionMatch) targetSlackId = mentionMatch[1];\n\n// Titel = Rest\nlet titel = text\n  .replace(/<@U[A-Z0-9]+(?:\\|[^>]*)?>/gi, '')\n  .replace(/\\bP[123]\\b/gi, '')\n  .replace(/bis\\s+\\d{1,2}\\.\\d{1,2}(?:\\.\\d{2,4})?/gi, '')\n  .replace(/\\s+/g, ' ')\n  .trim();\n\nreturn {\n  titel,\n  prio,\n  dl,\n  senderSlackId,\n  targetSlackId: targetSlackId || null,\n  hasTitel: !!titel\n};"
+      },
+      "id": "parse",
+      "name": "Parse Command",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "has-titel",
+              "leftValue": "={{ $json.hasTitel }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-titel",
+      "name": "Hat Titel?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [700, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "❌ Bitte einen Titel angeben.\nBeispiel: `/aufgabe Website updaten @Christina P1`"
+      },
+      "id": "err-kein-titel",
+      "name": "Fehler: Kein Titel",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [920, 480]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://zkxeuphsbufdvskkuahk.supabase.co/rest/v1/personen",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "select", "value": "id,name,slack_id,stufe" },
+            { "name": "slack_id", "value": "=eq.{{ $json.senderSlackId }}" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "sb_publishable_41EMxtYZYsYL5KR1KS_RrA_1mV1SRAL" },
+            { "name": "Authorization", "value": "Bearer sb_publishable_41EMxtYZYsYL5KR1KS_RrA_1mV1SRAL" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "get-sender",
+      "name": "Sender holen",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [920, 160]
+    },
+    {
+      "parameters": {
+        "jsCode": "const parsed = $('Parse Command').first().json;\nconst senderArr = $('Sender holen').first().json;\n\n// Sender ist ein Array (Supabase gibt Array zurück)\nconst sender = Array.isArray(senderArr) ? senderArr[0] : senderArr;\n\nif (!sender || !sender.id) {\n  return { error: true, message: '❌ Dein Slack-Account ist nicht mit Halleluja OS verknüpft.\\nBitte deine Slack-ID in der App unter Team → Bearbeiten eintragen.' };\n}\n\n// Target bestimmen\nlet targetSlackId = parsed.targetSlackId || parsed.senderSlackId;\n\nreturn {\n  senderId: sender.id,\n  senderName: sender.name,\n  targetSlackId,\n  titel: parsed.titel,\n  prio: parsed.prio,\n  dl: parsed.dl,\n  isSelf: !parsed.targetSlackId,\n  error: false\n};"
+      },
+      "id": "check-sender",
+      "name": "Check Sender",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1140, 160]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "no-error",
+              "leftValue": "={{ $json.error }}",
+              "rightValue": false,
+              "operator": { "type": "boolean", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-sender-ok",
+      "name": "Sender OK?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1360, 160]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.message }}"
+      },
+      "id": "err-sender",
+      "name": "Fehler: Sender",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1580, 340]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://zkxeuphsbufdvskkuahk.supabase.co/rest/v1/personen",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "select", "value": "id,name,slack_id" },
+            { "name": "slack_id", "value": "=eq.{{ $json.targetSlackId }}" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "sb_publishable_41EMxtYZYsYL5KR1KS_RrA_1mV1SRAL" },
+            { "name": "Authorization", "value": "Bearer sb_publishable_41EMxtYZYsYL5KR1KS_RrA_1mV1SRAL" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "get-target",
+      "name": "Target holen",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1580, 40]
+    },
+    {
+      "parameters": {
+        "jsCode": "const prev = $('Check Sender').first().json;\nconst targetArr = $('Target holen').first().json;\nconst target = Array.isArray(targetArr) ? targetArr[0] : targetArr;\n\nif (!target || !target.id) {\n  return {\n    error: true,\n    message: '❌ Person nicht gefunden. Ist die Slack-ID in Halleluja OS eingetragen?'\n  };\n}\n\nconst isAndere = prev.senderId !== target.id;\nconst now = Date.now();\n\nconst aufgabe = {\n  id: 'a' + now,\n  pid: target.id,\n  titel: prev.titel,\n  typ: 'operativ',\n  status: isAndere ? 'zugewiesen' : (prev.prio ? 'backlog' : 'neu'),\n  prio: prev.prio || null,\n  ziel_id: null,\n  teilziel_id: null,\n  geplant: 1,\n  gebucht: 0,\n  dl: prev.dl || null,\n  dl_type: prev.dl ? 'bis' : null,\n  ua: [],\n  notiz: null,\n  akt_seit: null,\n  vertraulich: false,\n  recurring: null,\n  erstellt_von: prev.senderId\n};\n\n// Bestätigungstext\nlet confirm = '✅ *Aufgabe angelegt:* ' + prev.titel;\nif (prev.prio) confirm += ' · ' + prev.prio;\nif (prev.dl) confirm += ' · bis ' + prev.dl.split('-').reverse().join('.');\nconfirm += ' · für ' + target.name;\nif (isAndere) confirm += ' _(wird benachrichtigt)_';\n\nreturn { aufgabe, confirm, error: false, isAndere, targetSlackId: target.slack_id, targetName: target.name, senderName: prev.senderName, titel: prev.titel, prio: prev.prio, dl: prev.dl };"
+      },
+      "id": "build-aufgabe",
+      "name": "Aufgabe bauen",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1800, 40]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "no-error2",
+              "leftValue": "={{ $json.error }}",
+              "rightValue": false,
+              "operator": { "type": "boolean", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-target-ok",
+      "name": "Target OK?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [2020, 40]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.message }}"
+      },
+      "id": "err-target",
+      "name": "Fehler: Target",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [2240, 220]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://zkxeuphsbufdvskkuahk.supabase.co/rest/v1/aufgaben",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "sb_publishable_41EMxtYZYsYL5KR1KS_RrA_1mV1SRAL" },
+            { "name": "Authorization", "value": "Bearer sb_publishable_41EMxtYZYsYL5KR1KS_RrA_1mV1SRAL" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.aufgabe) }}",
+        "options": {}
+      },
+      "id": "insert-aufgabe",
+      "name": "In Supabase speichern",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2240, -60]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $('Aufgabe bauen').first().json.confirm }}"
+      },
+      "id": "success-response",
+      "name": "Erfolg!",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [2460, -60]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "is-andere",
+              "leftValue": "={{ $('Aufgabe bauen').first().json.isAndere }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-notify",
+      "name": "Andere Person?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [2460, 120]
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Aufgabe bauen').first().json.targetSlackId }}"
+        },
+        "text": "={{ '📋 *Neue Aufgabe von ' + $('Aufgabe bauen').first().json.senderName + '*\\n\\n*' + $('Aufgabe bauen').first().json.titel + '*' + ($('Aufgabe bauen').first().json.prio ? '\\nPriorität: ' + $('Aufgabe bauen').first().json.prio : '') + ($('Aufgabe bauen').first().json.dl ? '\\nDeadline: ' + $('Aufgabe bauen').first().json.dl : '') }}",
+        "otherOptions": {}
+      },
+      "id": "slack-notify-target",
+      "name": "DM an Person",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [2680, 40],
+      "credentials": {
+        "slackApi": {
+          "id": "SLACK_CREDENTIAL_ID",
+          "name": "Slack account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [{ "node": "Parse Command", "type": "main", "index": 0 }]
+      ]
+    },
+    "Parse Command": {
+      "main": [
+        [{ "node": "Hat Titel?", "type": "main", "index": 0 }]
+      ]
+    },
+    "Hat Titel?": {
+      "main": [
+        [{ "node": "Sender holen", "type": "main", "index": 0 }],
+        [{ "node": "Fehler: Kein Titel", "type": "main", "index": 0 }]
+      ]
+    },
+    "Sender holen": {
+      "main": [
+        [{ "node": "Check Sender", "type": "main", "index": 0 }]
+      ]
+    },
+    "Check Sender": {
+      "main": [
+        [{ "node": "Sender OK?", "type": "main", "index": 0 }]
+      ]
+    },
+    "Sender OK?": {
+      "main": [
+        [{ "node": "Target holen", "type": "main", "index": 0 }],
+        [{ "node": "Fehler: Sender", "type": "main", "index": 0 }]
+      ]
+    },
+    "Target holen": {
+      "main": [
+        [{ "node": "Aufgabe bauen", "type": "main", "index": 0 }]
+      ]
+    },
+    "Aufgabe bauen": {
+      "main": [
+        [{ "node": "Target OK?", "type": "main", "index": 0 }]
+      ]
+    },
+    "Target OK?": {
+      "main": [
+        [
+          { "node": "In Supabase speichern", "type": "main", "index": 0 },
+          { "node": "Andere Person?", "type": "main", "index": 0 }
+        ],
+        [{ "node": "Fehler: Target", "type": "main", "index": 0 }]
+      ]
+    },
+    "In Supabase speichern": {
+      "main": [
+        [{ "node": "Erfolg!", "type": "main", "index": 0 }]
+      ]
+    },
+    "Andere Person?": {
+      "main": [
+        [{ "node": "DM an Person", "type": "main", "index": 0 }],
+        []
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

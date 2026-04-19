@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<title>Mockup: Big 3 + Tages-P1</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #e5e4e2; padding: 40px 32px; color: #1a1a1a; }
+
+  .section-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #999; margin: 0 0 20px; padding-bottom: 10px; border-bottom: 1px solid #d4d0cb; }
+  .row { display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 56px; align-items: flex-start; }
+  .col { flex-shrink: 0; width: 300px; }
+  .col.wide { width: 360px; }
+  .step-num { font-size: 10px; font-weight: 700; color: #aaa; margin-bottom: 8px; letter-spacing: .3px; text-transform: uppercase; }
+  .arrow { display: flex; align-items: center; justify-content: center; width: 28px; align-self: center; color: #ccc; font-size: 22px; flex-shrink: 0; padding-top: 22px; }
+
+  /* Phone shell */
+  .phone { background: #f8f8f7; border-radius: 18px; overflow: hidden; box-shadow: 0 2px 16px rgba(0,0,0,.10); }
+  .topbar { background: #1a1a1a; padding: 13px 16px; display: flex; align-items: center; justify-content: space-between; }
+  .t-name { color: #fff; font-size: 13px; font-weight: 600; }
+  .t-sub  { color: #777; font-size: 11px; }
+  .body { padding: 14px; }
+  .sec { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: #bbb; margin-bottom: 8px; }
+
+  /* Modal overlay */
+  .modal-dim { background: rgba(0,0,0,.28); }
+  .modal { background: #fff; border-radius: 16px; margin: 10px; padding: 18px 16px 14px; }
+  .modal-title { font-size: 15px; font-weight: 700; color: #111; margin-bottom: 3px; }
+  .modal-sub { font-size: 11px; color: #aaa; margin-bottom: 14px; }
+  .divider { border: none; border-top: 1px solid #f0f0ee; margin: 12px 0; }
+  .mlabel { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: #bbb; margin-bottom: 7px; }
+
+  /* Ziel options */
+  .ziel-grid { display: grid; gap: 5px; margin-bottom: 12px; }
+  .zopt { border: 1.5px solid #e5e5e3; border-radius: 8px; padding: 8px 11px; font-size: 12px; font-weight: 600; cursor: pointer; color: #888; }
+  .zopt.sel  { border-color: #15803d; color: #15803d; background: #f0fdf4; }
+  .zopt.unsel { opacity: .38; }
+
+  /* Big 3 inputs */
+  .big3-wrap { display: grid; gap: 7px; margin-bottom: 12px; }
+  .big3-item { display: flex; align-items: center; gap: 9px; background: #fafafa; border: 1px solid #e5e5e3; border-radius: 9px; padding: 9px 11px; }
+  .big3-num { font-size: 13px; font-weight: 800; color: #15803d; width: 14px; flex-shrink: 0; }
+  .big3-num.empty { color: #d4d0cb; }
+  .big3-input { border: none; background: transparent; font-family: inherit; font-size: 13px; color: #111; outline: none; flex: 1; }
+  .big3-input::placeholder { color: #ccc; }
+
+  /* Buttons */
+  .mfoot { display: flex; gap: 8px; }
+  .btn-sec  { flex: 1; font-size: 12px; padding: 9px; border-radius: 8px; border: 1px solid #e5e5e3; background: #fff; color: #666; font-family: inherit; cursor: pointer; }
+  .btn-prim { flex: 2; font-size: 12px; font-weight: 700; padding: 9px; border-radius: 8px; border: none; background: #15803d; color: #fff; font-family: inherit; cursor: pointer; }
+
+  /* ── TAGES-P1 PROMPT ── */
+  .p1-prompt {
+    background: #1a1a1a; border-radius: 12px; padding: 16px;
+    margin-bottom: 14px; cursor: pointer;
+  }
+  .p1-prompt-q {
+    font-size: 12px; color: rgba(255,255,255,.5); margin-bottom: 8px; line-height: 1.4; font-style: italic;
+  }
+  .p1-prompt-q strong { color: rgba(255,255,255,.9); font-style: normal; }
+  .p1-prompt-input {
+    width: 100%; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.15);
+    border-radius: 8px; padding: 9px 12px; font-family: inherit; font-size: 13px;
+    color: #fff; outline: none;
+  }
+  .p1-prompt-input::placeholder { color: rgba(255,255,255,.3); }
+  .p1-prompt-hint { font-size: 10px; color: rgba(255,255,255,.25); margin-top: 7px; }
+
+  /* ── TAGES-P1 GESETZT ── */
+  .p1-set {
+    background: #1a1a1a; border-radius: 12px; padding: 14px 16px;
+    margin-bottom: 14px; display: flex; align-items: center; gap: 12px;
+  }
+  .p1-set-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: rgba(255,255,255,.35); margin-bottom: 3px; }
+  .p1-set-text { font-size: 14px; font-weight: 700; color: #fff; flex: 1; }
+  .p1-set-check { width: 28px; height: 28px; border-radius: 8px; border: 2px solid rgba(255,255,255,.2); flex-shrink: 0; display: flex; align-items: center; justify-content: center; color: rgba(255,255,255,.3); font-size: 14px; }
+
+  /* Big 3 focus card */
+  .focus-card { background: #fff; border: 1px solid #86efac; border-left: 3px solid #15803d; border-radius: 0 10px 10px 0; padding: 12px 14px; margin-bottom: 14px; }
+  .focus-kw { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: #15803d; margin-bottom: 6px; }
+  .b3-row { display: flex; align-items: center; gap: 8px; padding: 3px 0; }
+  .b3-check { width: 16px; height: 16px; border-radius: 4px; border: 1.5px solid #d4d0cb; flex-shrink: 0; }
+  .b3-check.done { background: #15803d; border-color: #15803d; display: flex; align-items: center; justify-content: center; }
+  .b3-check.done::after { content: '✓'; color: #fff; font-size: 9px; font-weight: 800; }
+  .b3-text { font-size: 12px; color: #111; flex: 1; }
+  .b3-text.done { color: #bbb; text-decoration: line-through; }
+
+  /* Tasks */
+  .task { display: flex; align-items: center; gap: 9px; padding: 7px 0; border-top: 1px solid #efefed; }
+  .check { width: 16px; height: 16px; border-radius: 4px; border: 1.5px solid #d4d0cb; flex-shrink: 0; }
+  .check.done { background: #15803d; border-color: #15803d; display: flex; align-items: center; justify-content: center; }
+  .check.done::after { content: '✓'; color: #fff; font-size: 9px; font-weight: 800; }
+  .t-title { font-size: 12px; flex: 1; color: #111; }
+  .t-title.done { color: #bbb; text-decoration: line-through; }
+  .p1-tag { font-size: 10px; font-weight: 700; color: #c2410c; background: #fff7ed; padding: 1px 5px; border-radius: 4px; }
+
+  /* Banner */
+  .banner { background: #15803d; border-radius: 11px; padding: 13px 15px; display: flex; align-items: center; gap: 11px; margin-bottom: 14px; cursor: pointer; }
+  .banner-icon { font-size: 20px; }
+  .banner-title { font-size: 13px; font-weight: 700; color: #fff; }
+  .banner-sub { font-size: 11px; color: rgba(255,255,255,.55); margin-top: 1px; }
+  .banner-arrow { margin-left: auto; color: rgba(255,255,255,.35); font-size: 16px; }
+
+  /* Reset chips */
+  .chips { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 10px; }
+  .chip-g { font-size: 11px; background: #f0fdf4; border: 1px solid #86efac; color: #15803d; padding: 2px 8px; border-radius: 99px; font-weight: 600; }
+  .chip-r { font-size: 11px; background: #fff7ed; border: 1px solid #fed7aa; color: #c2410c; padding: 2px 8px; border-radius: 99px; font-weight: 600; }
+
+  /* Textarea */
+  .field { margin-bottom: 11px; }
+  .field label { font-size: 11px; font-weight: 700; color: #555; display: block; margin-bottom: 4px; }
+  .opt { font-weight: 400; color: #bbb; }
+  textarea { width: 100%; padding: 8px 10px; border: 1px solid #e5e5e3; border-radius: 8px; font-family: inherit; font-size: 12px; color: #111; background: #fafafa; resize: none; outline: none; line-height: 1.4; }
+
+  /* GF */
+  .pcard { background: #fff; border: 1px solid #e5e5e3; border-radius: 12px; margin-bottom: 8px; overflow: hidden; }
+  .phead { display: flex; align-items: center; gap: 9px; padding: 10px 14px; background: #f8f8f7; }
+  .av { width: 28px; height: 28px; border-radius: 99px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: #fff; flex-shrink: 0; }
+  .pname { font-size: 13px; font-weight: 600; flex: 1; }
+  .pill { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 99px; border: 1px solid; }
+  .score { font-size: 12px; font-weight: 700; }
+  .score.red { color: #c2410c; }
+  .score.green { color: #15803d; }
+  .prow { padding: 7px 14px; font-size: 12px; border-top: 1px solid #f0f0ee; line-height: 1.5; }
+  .prow.warn { background: #fffbeb; }
+  .prow.next { background: #f0fdf4; border-top-color: #d1fae5; }
+  .lbl { font-weight: 700; margin-right: 3px; }
+  .pending { font-size: 11px; color: #f59e0b; font-weight: 600; }
+  .b3g { display: flex; align-items: center; gap: 6px; padding: 2px 0; font-size: 11px; color: #444; }
+  .b3g .dot { width: 6px; height: 6px; border-radius: 99px; flex-shrink: 0; }
+</style>
+</head>
+<body>
+
+<!-- ══════════════ TEIL 1: TAGES-P1 ══════════════ -->
+<div class="section-title">Teil 1 — Tägliche Frage · P1</div>
+<div class="row">
+
+  <!-- Morgens: Frage noch offen -->
+  <div class="col">
+    <div class="step-num">① Morgens — P1 noch nicht gesetzt</div>
+    <div class="phone">
+      <div class="topbar"><span class="t-name">Christoph</span><span class="t-sub">Mo · 8:02</span></div>
+      <div class="body">
+        <div class="p1-prompt">
+          <div class="p1-prompt-q">
+            <strong>Was ist das eine Ding,</strong><br>
+            das heute alles andere einfacher oder überflüssig macht?
+          </div>
+          <input class="p1-prompt-input" type="text" placeholder="Dein P1 für heute…">
+          <div class="p1-prompt-hint">Enter zum Speichern</div>
+        </div>
+        <div class="sec">Aufgaben</div>
+        <div class="task"><div class="check"></div><span class="t-title">Gröger Nachfass-Mail</span></div>
+        <div class="task"><div class="check"></div><span class="t-title">5 neue Leads qualifizieren</span></div>
+        <div class="task"><div class="check"></div><span class="t-title">Pipeline aufräumen</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="arrow">›</div>
+
+  <!-- P1 gesetzt, Tag läuft -->
+  <div class="col">
+    <div class="step-num">② P1 gesetzt — Tag läuft</div>
+    <div class="phone">
+      <div class="topbar"><span class="t-name">Christoph</span><span class="t-sub">Mo · 8:04</span></div>
+      <div class="body">
+        <div class="p1-set">
+          <div style="flex:1">
+            <div class="p1-set-label">Mein P1 heute</div>
+            <div class="p1-set-text">Gröger anrufen — Abschluss holen</div>
+          </div>
+          <div class="p1-set-check">○</div>
+        </div>
+        <div class="sec">Aufgaben</div>
+        <div class="task"><div class="check"></div><span class="t-title">Gröger anrufen — Abschluss</span><span class="p1-tag">P1</span></div>
+        <div class="task"><div class="check"></div><span class="t-title">5 neue Leads qualifizieren</span></div>
+        <div class="task"><div class="check"></div><span class="t-title">Pipeline aufräumen</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="arrow">›</div>
+
+  <!-- P1 erledigt -->
+  <div class="col">
+    <div class="step-num">③ P1 erledigt ✓</div>
+    <div class="phone">
+      <div class="topbar"><span class="t-name">Christoph</span><span class="t-sub">Mo · 11:30</span></div>
+      <div class="body">
+        <div class="p1-set" style="background:#15803d">
+          <div style="flex:1">
+            <div class="p1-set-label">Mein P1 heute</div>
+            <div class="p1-set-text">Gröger anrufen — Abschluss holen</div>
+          </div>
+          <div class="p1-set-check" style="background:rgba(255,255,255,.2);border-color:rgba(255,255,255,.4);color:#fff;font-size:16px">✓</div>
+        </div>
+        <div class="sec">Aufgaben</div>
+        <div class="task"><div class="check done"></div><span class="t-title done">Gröger anrufen — Abschluss</span></div>
+        <div class="task"><div class="check"></div><span class="t-title">5 neue Leads qualifizieren</span></div>
+        <div class="task"><div class="check"></div><span class="t-title">Pipeline aufräumen</span></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ══════════════ TEIL 2: WÖCHENTLICHE BIG 3 ══════════════ -->
+<div class="section-title">Teil 2 — Wöchentliche Big 3</div>
+<div class="row">
+
+  <!-- Big 3 planen -->
+  <div class="col wide">
+    <div class="step-num">④ Freitag / Montag — Big 3 planen</div>
+    <div class="phone modal-dim">
+      <div class="topbar"><span class="t-name">Christoph</span><span class="t-sub">Fr · KW 17</span></div>
+      <div class="modal">
+        <div class="modal-title">Big 3 — KW 18</div>
+        <div class="modal-sub">Was macht alles andere einfacher oder überflüssig?</div>
+
+        <div class="mlabel">An welchem Ziel?</div>
+        <div class="ziel-grid">
+          <div class="zopt sel">Monatsziel: 40 Saunen April</div>
+          <div class="zopt unsel">Podcast-Strategie</div>
+          <div class="zopt unsel">Messe Mai</div>
+        </div>
+
+        <div class="big3-wrap">
+          <div class="big3-item">
+            <span class="big3-num">1</span>
+            <input class="big3-input" type="text" value="Gröger Abschluss KW 18">
+          </div>
+          <div class="big3-item">
+            <span class="big3-num">2</span>
+            <input class="big3-input" type="text" value="5 neue Demo-Termine vereinbart">
+          </div>
+          <div class="big3-item">
+            <span class="big3-num empty">3</span>
+            <input class="big3-input" type="text" placeholder="Drittes Ergebnis… (optional)">
+          </div>
+        </div>
+
+        <div class="mfoot">
+          <button class="btn-sec">Zurück</button>
+          <button class="btn-prim">Speichern ✓</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="arrow">›</div>
+
+  <!-- Mein Tag mit Big 3 sichtbar -->
+  <div class="col">
+    <div class="step-num">⑤ Mein Tag — Big 3 als Kompass</div>
+    <div class="phone">
+      <div class="topbar"><span class="t-name">Christoph</span><span class="t-sub">Mi · KW 18</span></div>
+      <div class="body">
+        <!-- P1 gesetzt -->
+        <div class="p1-set">
+          <div style="flex:1">
+            <div class="p1-set-label">Mein P1 heute</div>
+            <div class="p1-set-text">Demo mit Müller vorbereiten</div>
+          </div>
+          <div class="p1-set-check">○</div>
+        </div>
+        <!-- Big 3 darunter -->
+        <div class="focus-card">
+          <div class="focus-kw">Big 3 · KW 18 · Monatsziel: 40 Saunen</div>
+          <div class="b3-row"><div class="b3-check done"></div><span class="b3-text done">Gröger Abschluss KW 18</span></div>
+          <div class="b3-row"><div class="b3-check"></div><span class="b3-text">5 neue Demo-Termine vereinbart</span></div>
+          <div class="b3-row"><div class="b3-check"></div><span class="b3-text" style="color:#ccc">—</span></div>
+        </div>
+        <div class="sec">Aufgaben</div>
+        <div class="task"><div class="check"></div><span class="t-title">Demo Müller vorbereiten</span><span class="p1-tag">P1</span></div>
+        <div class="task"><div class="check done"></div><span class="t-title done">Gröger — Vertrag zugesandt</span></div>
+        <div class="task"><div class="check"></div><span class="t-title">3 weitere Leads kontaktieren</span></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ══════════════ TEIL 3: FREITAGS RESET ══════════════ -->
+<div class="section-title">Teil 3 — Freitags Reset</div>
+<div class="row">
+
+  <!-- Reset Modal -->
+  <div class="col wide">
+    <div class="step-num">⑥ Freitag 16:00 — Reset + neue Big 3</div>
+    <div class="phone modal-dim">
+      <div class="topbar"><span class="t-name">Christoph</span><span class="t-sub">Fr · 16:05</span></div>
+      <div class="modal">
+        <div class="modal-title">Rückblick KW 18</div>
+        <div class="modal-sub" style="margin-bottom:10px">1 von 2 Big 3 erreicht</div>
+
+        <div class="chips">
+          <span class="chip-g">✓ Gröger Abschluss</span>
+          <span class="chip-r">✗ 5 Demos — nur 3</span>
+        </div>
+
+        <div class="field">
+          <label>Warum die Lücke? <span class="opt">(optional)</span></label>
+          <textarea rows="2">Leads brauchten mehr Zeit zur Entscheidung als erwartet</textarea>
+        </div>
+
+        <hr class="divider">
+        <div class="modal-sub" style="margin-bottom:8px;color:#111;font-size:13px;font-weight:700">Was macht KW 19 alles einfacher?</div>
+
+        <div class="ziel-grid" style="margin-bottom:10px">
+          <div class="zopt sel">Monatsziel: 40 Saunen April</div>
+        </div>
+
+        <div class="big3-wrap">
+          <div class="big3-item">
+            <span class="big3-num">1</span>
+            <input class="big3-input" type="text" value="5 offene Demos zu Abschluss bringen">
+          </div>
+          <div class="big3-item">
+            <span class="big3-num">2</span>
+            <input class="big3-input" type="text" value="Pipeline für Mai aufbauen">
+          </div>
+          <div class="big3-item">
+            <span class="big3-num empty">3</span>
+            <input class="big3-input" type="text" placeholder="Optional…">
+          </div>
+        </div>
+
+        <div class="mfoot">
+          <button class="btn-sec">Später</button>
+          <button class="btn-prim">Abschicken ✓</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="arrow">›</div>
+
+  <!-- GF Ansicht -->
+  <div class="col wide" style="width:320px">
+    <div class="step-num">⑦ GF — Team-Tab Überblick</div>
+    <div class="phone">
+      <div class="topbar"><span class="t-name">Ludwig · Team</span><span class="t-sub">KW 18 → 19</span></div>
+      <div class="body">
+        <div class="sec" style="margin-bottom:10px">Wochenpläne</div>
+
+        <div class="pcard">
+          <div class="phead">
+            <div class="av" style="background:#15803d">C</div>
+            <div class="pname">Christoph</div>
+            <span class="pill" style="color:#15803d;background:#f0fdf4;border-color:#86efac">40 Saunen</span>
+            <span class="score red" style="margin-left:6px">1/2</span>
+          </div>
+          <div class="prow warn"><span class="lbl" style="color:#c2410c">⚠</span>Leads brauchten mehr Entscheidungszeit</div>
+          <div class="prow next">
+            <div class="b3g"><div class="dot" style="background:#15803d"></div>5 Demos zu Abschluss</div>
+            <div class="b3g"><div class="dot" style="background:#15803d"></div>Pipeline für Mai</div>
+          </div>
+        </div>
+
+        <div class="pcard">
+          <div class="phead">
+            <div class="av" style="background:#1d4ed8">S</div>
+            <div class="pname">Simon</div>
+            <span class="pill" style="color:#1d4ed8;background:#eff6ff;border-color:#93c5fd">Podcast</span>
+            <span class="score green" style="margin-left:6px">3/3</span>
+          </div>
+          <div class="prow next">
+            <div class="b3g"><div class="dot" style="background:#1d4ed8"></div>Episode live + 200 Aufrufe</div>
+            <div class="b3g"><div class="dot" style="background:#1d4ed8"></div>5 Partner-Anfragen</div>
+          </div>
+        </div>
+
+        <div class="pcard">
+          <div class="phead">
+            <div class="av" style="background:#7c3aed">A</div>
+            <div class="pname">Anna</div>
+            <span class="pending" style="margin-left:auto">⏳ Ausstehend</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

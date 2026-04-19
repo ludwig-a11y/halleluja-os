@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<title>Mockup: Teilziele Design</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f1f0ef; padding: 32px; color: #1a1a1a; }
+  h2 { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: #a0a0a0; margin: 0 0 12px; }
+  .section { margin-bottom: 40px; }
+  .label { font-size: 10px; font-weight: 700; background: #e0e0e0; color: #666; padding: 3px 8px; border-radius: 4px; display: inline-block; margin-bottom: 16px; }
+
+  /* Shared Ziel-Sektion */
+  .ziel {
+    background: #f0fdf4;
+    border: 1px solid #86efac;
+    border-left: 3px solid #15803d;
+    border-radius: 0 8px 8px 0;
+    padding: 16px 20px;
+    max-width: 620px;
+  }
+  .ziel-title { font-size: 15px; font-weight: 700; color: #111; margin-bottom: 3px; }
+  .ziel-sub { font-size: 11px; color: #a0a0a0; margin-bottom: 10px; }
+  .progress-bar { height: 5px; background: #e5e5e3; border-radius: 99px; margin-bottom: 8px; overflow: hidden; }
+  .progress-fill { height: 100%; border-radius: 99px; background: #a16207; width: 15%; }
+  .status { font-size: 11px; color: #a16207; font-weight: 600; margin-bottom: 14px; }
+
+  /* Teilziele section label */
+  .tz-label-old { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: #a0a0a0; margin-bottom: 8px; }
+  .tz-label-new { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: #15803d; margin-bottom: 8px; }
+
+  /* ── OPTION A: aktuell (grau) ── */
+  .tz-card-a {
+    border: 1px solid #e5e5e3;
+    border-radius: 10px;
+    margin-bottom: 8px;
+    overflow: hidden;
+  }
+  .tz-card-a .head { background: #f8f8f7; display: flex; align-items: center; gap: 10px; padding: 10px 12px; }
+  .tz-card-a .body { background: #fff; border-top: 1px solid #e5e5e3; padding: 8px 12px 8px 37px; display: flex; align-items: center; gap: 8px; font-size: 12px; }
+  .tz-card-a .foot { background: #f8f8f7; border-top: 1px solid #e5e5e3; padding: 7px 12px; }
+
+  /* ── OPTION B: Weiß mit Zielfarbe-Border ── */
+  .tz-card-b {
+    border: 1px solid #86efac;
+    border-radius: 10px;
+    margin-bottom: 8px;
+    overflow: hidden;
+  }
+  .tz-card-b .head { background: #fff; display: flex; align-items: center; gap: 10px; padding: 10px 12px; }
+  .tz-card-b .body { background: #fff; border-top: 1px solid #bbf7d0; padding: 8px 12px 8px 37px; display: flex; align-items: center; gap: 8px; font-size: 12px; }
+  .tz-card-b .foot { background: #f0fdf4; border-top: 1px solid #bbf7d0; padding: 7px 12px; }
+
+  /* ── OPTION C: Leicht getönter Ziel-Hintergrund + stärkere Border ── */
+  .tz-card-c {
+    border: 1.5px solid #86efac;
+    border-left: 3px solid #15803d;
+    border-radius: 0 9px 9px 0;
+    margin-bottom: 8px;
+    overflow: hidden;
+  }
+  .tz-card-c .head { background: #fff; display: flex; align-items: center; gap: 10px; padding: 10px 12px; }
+  .tz-card-c .body { background: #fff; border-top: 1px solid #bbf7d0; padding: 8px 12px 8px 37px; display: flex; align-items: center; gap: 8px; font-size: 12px; }
+  .tz-card-c .foot { background: #f0fdf4; border-top: 1px solid #bbf7d0; padding: 7px 12px; }
+
+  /* Shared elements */
+  input[type=checkbox] { width: 15px; height: 15px; accent-color: #15803d; flex-shrink: 0; margin: 0; }
+  .tz-name { font-size: 13px; font-weight: 600; color: #111; flex: 1; }
+  .tz-meta { font-size: 10px; color: #a0a0a0; }
+  .dot { font-size: 8px; color: #a0a0a0; }
+  .dot-blue { font-size: 8px; color: #1d4ed8; }
+  .task-name { flex: 1; color: #111; }
+  .prio { font-size: 10px; padding: 1px 6px; border-radius: 99px; background: #fff7ed; color: #c2410c; font-weight: 700; }
+
+  /* + Aufgabe button variants */
+  .btn-aufgabe-a { font-size: 11px; padding: 3px 10px; border-radius: 6px; border: 1px solid #e5e5e3; background: #fff; color: #6b6b6b; cursor: pointer; font-family: inherit; }
+  .btn-aufgabe-b { font-size: 11px; padding: 3px 10px; border-radius: 6px; border: 1px solid #86efac; background: #fff; color: #15803d; cursor: pointer; font-family: inherit; }
+
+  /* + Teilziel button variants */
+  .btn-tz-a { font-size: 11px; padding: 5px 12px; border-radius: 8px; border: 1.5px dashed #e5e5e3; background: transparent; color: #a0a0a0; cursor: pointer; font-family: inherit; }
+  .btn-tz-new { font-size: 13px; font-weight: 600; padding: 8px 18px; border-radius: 8px; border: none; background: #15803d; color: #fff; cursor: pointer; font-family: inherit; }
+
+  /* + Aufgabe hinzufügen secondary */
+  .btn-aufgabe-sec { font-size: 11px; padding: 8px 14px; border-radius: 8px; border: 1px solid #e5e5e3; background: transparent; color: #6b6b6b; cursor: pointer; font-family: inherit; }
+  .btn-aufgabe-sec-green { font-size: 11px; padding: 8px 14px; border-radius: 8px; border: 1px solid #86efac; background: transparent; color: #15803d; cursor: pointer; font-family: inherit; }
+
+  .footer-btns { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
+  .sep { border-top: 1px solid #d1fae5; margin: 14px 0; }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════ -->
+<div class="section">
+  <div class="label">AKTUELL (zum Vergleich)</div>
+  <div class="ziel">
+    <div class="ziel-title">Monatsziel: 40 Saunen im April verkaufen</div>
+    <div class="ziel-sub">Ludwig</div>
+    <div class="progress-bar"><div class="progress-fill"></div></div>
+    <div class="status">⚠ Unter Plan</div>
+    <div class="sep"></div>
+    <div class="tz-label-old">Teilziele</div>
+
+    <!-- TZ Card A (aktuell) -->
+    <div class="tz-card-a">
+      <div class="head">
+        <input type="checkbox">
+        <div style="flex:1">
+          <div class="tz-name">Pipeline aufgebaut KW16</div>
+          <div class="tz-meta">Ludwig · 18.04.</div>
+        </div>
+        <button class="btn-aufgabe-a">···</button>
+      </div>
+      <div class="foot"><button class="btn-aufgabe-a">+ Aufgabe</button></div>
+    </div>
+
+    <div class="tz-card-a">
+      <div class="head">
+        <input type="checkbox">
+        <div style="flex:1">
+          <div class="tz-name">Content für Podcast vorbereiten</div>
+          <div class="tz-meta">Simon</div>
+        </div>
+      </div>
+      <div class="body"><span class="dot">●</span><span class="task-name">Werkststudenten einstellen</span><span class="tz-meta">Simon</span><span class="prio">P2</span></div>
+      <div class="foot"><button class="btn-aufgabe-a">+ Aufgabe</button></div>
+    </div>
+
+    <div class="footer-btns">
+      <button class="btn-tz-a">+ Teilziel</button>
+      <button class="btn-aufgabe-sec">+ Aufgabe</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════ -->
+<div class="section">
+  <div class="label">OPTION B — Weiße Cards + Zielfarbe-Akzent</div>
+  <div class="ziel">
+    <div class="ziel-title">Monatsziel: 40 Saunen im April verkaufen</div>
+    <div class="ziel-sub">Ludwig</div>
+    <div class="progress-bar"><div class="progress-fill"></div></div>
+    <div class="status">⚠ Unter Plan</div>
+    <div class="sep"></div>
+    <div class="tz-label-new">Teilziele</div>
+
+    <div class="tz-card-b">
+      <div class="head">
+        <input type="checkbox">
+        <div style="flex:1">
+          <div class="tz-name">Pipeline aufgebaut KW16</div>
+          <div class="tz-meta">Ludwig · 18.04.</div>
+        </div>
+        <button class="btn-aufgabe-b">···</button>
+      </div>
+      <div class="foot"><button class="btn-aufgabe-b">+ Aufgabe</button></div>
+    </div>
+
+    <div class="tz-card-b">
+      <div class="head">
+        <input type="checkbox">
+        <div style="flex:1">
+          <div class="tz-name">Content für Podcast vorbereiten</div>
+          <div class="tz-meta">Simon</div>
+        </div>
+      </div>
+      <div class="body"><span class="dot-blue">●</span><span class="task-name">Werkststudenten einstellen</span><span class="tz-meta">Simon</span><span class="prio">P2</span></div>
+      <div class="foot"><button class="btn-aufgabe-b">+ Aufgabe</button></div>
+    </div>
+
+    <div class="footer-btns">
+      <button class="btn-tz-new">+ Teilziel</button>
+      <button class="btn-aufgabe-sec-green">+ Aufgabe</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════ -->
+<div class="section">
+  <div class="label">OPTION C — Weiße Cards mit eigenem linken Streifen</div>
+  <div class="ziel">
+    <div class="ziel-title">Monatsziel: 40 Saunen im April verkaufen</div>
+    <div class="ziel-sub">Ludwig</div>
+    <div class="progress-bar"><div class="progress-fill"></div></div>
+    <div class="status">⚠ Unter Plan</div>
+    <div class="sep"></div>
+    <div class="tz-label-new">Teilziele</div>
+
+    <div class="tz-card-c">
+      <div class="head">
+        <input type="checkbox">
+        <div style="flex:1">
+          <div class="tz-name">Pipeline aufgebaut KW16</div>
+          <div class="tz-meta">Ludwig · 18.04.</div>
+        </div>
+        <button class="btn-aufgabe-b">···</button>
+      </div>
+      <div class="foot"><button class="btn-aufgabe-b">+ Aufgabe</button></div>
+    </div>
+
+    <div class="tz-card-c">
+      <div class="head">
+        <input type="checkbox">
+        <div style="flex:1">
+          <div class="tz-name">Content für Podcast vorbereiten</div>
+          <div class="tz-meta">Simon</div>
+        </div>
+      </div>
+      <div class="body"><span class="dot-blue">●</span><span class="task-name">Werkststudenten einstellen</span><span class="tz-meta">Simon</span><span class="prio">P2</span></div>
+      <div class="foot"><button class="btn-aufgabe-b">+ Aufgabe</button></div>
+    </div>
+
+    <div class="footer-btns">
+      <button class="btn-tz-new">+ Teilziel</button>
+      <button class="btn-aufgabe-sec-green">+ Aufgabe</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

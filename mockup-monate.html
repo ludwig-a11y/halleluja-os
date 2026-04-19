@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mockup: Ziele mit Monats-Pillen</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,system-ui,sans-serif;background:#f5f5f3;color:#1a1a1a;padding:20px;max-width:800px;margin:0 auto}
+.header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+.header h1{font-size:18px;font-weight:700}
+.btn-neu{font-size:13px;padding:8px 16px;border-radius:8px;background:#1a1a1a;color:#fff;border:none;cursor:pointer;font-weight:600}
+
+/* Monats-Pillen */
+.month-bar{display:flex;gap:4px;margin-bottom:20px;overflow-x:auto;padding:4px 0}
+.month-pill{font-size:11px;font-weight:600;padding:6px 14px;border-radius:99px;border:1.5px solid #e5e5e3;background:#fff;color:#888;cursor:pointer;white-space:nowrap;transition:all .15s}
+.month-pill:hover{border-color:#aaa;color:#555}
+.month-pill.active{background:#1a1a1a;color:#fff;border-color:#1a1a1a}
+.month-pill.past{background:#f0fdf4;border-color:#86efac;color:#15803d}
+.month-pill .dot{display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:4px;vertical-align:middle}
+
+/* Jahres-Fortschritt */
+.year-bar{background:#fff;border:1px solid #e5e5e3;border-radius:12px;padding:14px 16px;margin-bottom:20px}
+.year-label{font-size:11px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+.year-track{height:8px;background:#f5f5f3;border-radius:99px;overflow:hidden;margin-bottom:6px}
+.year-fill{height:100%;background:linear-gradient(90deg,#15803d,#22c55e);border-radius:99px;transition:width .3s}
+.year-stats{display:flex;justify-content:space-between;font-size:11px;color:#888}
+.year-stats strong{color:#1a1a1a}
+
+/* Ziel-Karte */
+.ziel{background:#fff;border:1px solid #e5e5e3;border-radius:14px;margin-bottom:12px;overflow:hidden}
+.ziel-header{padding:14px 16px;border-left:3px solid;display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.ziel-name{font-size:14px;font-weight:700}
+.ziel-meta{font-size:11px;color:#888;margin-top:3px}
+.ziel-badge{font-size:10px;font-weight:700;padding:3px 10px;border-radius:99px;white-space:nowrap}
+.ziel-kpis{display:flex;gap:16px;padding:10px 16px;border-top:1px solid #f0f0ee}
+.kpi{text-align:center}
+.kpi-val{font-size:18px;font-weight:800}
+.kpi-label{font-size:10px;color:#888;margin-top:2px}
+.kpi-target{font-size:10px;color:#aaa}
+
+/* Meilensteine */
+.meilensteine{padding:10px 16px;border-top:1px solid #f0f0ee}
+.ms-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+.ms-item{display:flex;align-items:center;gap:8px;padding:6px 0;font-size:12px}
+.ms-check{width:16px;height:16px;border-radius:5px;border:1.5px solid #ccc;display:flex;align-items:center;justify-content:center;font-size:9px;flex-shrink:0}
+.ms-check.done{background:#15803d;border-color:#15803d;color:#fff}
+.ms-text.done{color:#888;text-decoration:line-through}
+.ms-date{font-size:10px;color:#aaa;margin-left:auto}
+
+/* Monats-Timeline unten */
+.timeline{background:#fff;border:1px solid #e5e5e3;border-radius:14px;padding:16px;margin-top:20px}
+.timeline-title{font-size:12px;font-weight:700;margin-bottom:12px}
+.tl-row{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.tl-label{font-size:11px;font-weight:600;width:120px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tl-bar-bg{flex:1;height:20px;background:#f5f5f3;border-radius:6px;position:relative;overflow:hidden}
+.tl-bar-fill{height:100%;border-radius:6px;display:flex;align-items:center;padding-left:8px}
+.tl-bar-fill span{font-size:9px;font-weight:700;color:#fff}
+.tl-months{display:flex;flex:1}
+.tl-months span{flex:1;font-size:9px;text-align:center;color:#aaa;border-left:1px solid #eee;padding:2px 0}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Ziele</h1>
+  <button class="btn-neu">+ Neues Ziel</button>
+</div>
+
+<!-- Monats-Pillen -->
+<div class="month-bar">
+  <div class="month-pill past"><span class="dot" style="background:#15803d"></span>Jan</div>
+  <div class="month-pill past"><span class="dot" style="background:#15803d"></span>Feb</div>
+  <div class="month-pill past"><span class="dot" style="background:#15803d"></span>Mär</div>
+  <div class="month-pill active">Apr</div>
+  <div class="month-pill">Mai</div>
+  <div class="month-pill">Jun</div>
+  <div class="month-pill">Jul</div>
+  <div class="month-pill">Aug</div>
+  <div class="month-pill">Sep</div>
+  <div class="month-pill" style="border-color:#c2410c;color:#c2410c;font-weight:800">🎯 Okt</div>
+  <div class="month-pill">Nov</div>
+  <div class="month-pill">Dez</div>
+</div>
+
+<!-- Jahres-Fortschritt -->
+<div class="year-bar">
+  <div class="year-label">Jahresziel: 5 Mio Umsatz/Monat bis Oktober</div>
+  <div class="year-track"><div class="year-fill" style="width:10%"></div></div>
+  <div class="year-stats">
+    <span>Aktuell: <strong>500k/Mo</strong></span>
+    <span>Ziel: <strong>5 Mio/Mo</strong></span>
+    <span>10% erreicht</span>
+  </div>
+</div>
+
+<!-- Ziel 1: Aktiver Monat -->
+<div class="ziel">
+  <div class="ziel-header" style="border-color:#15803d">
+    <div>
+      <div class="ziel-name">40 Saunen im April verkaufen</div>
+      <div class="ziel-meta">Ludwig · Apr 2026 · 🔥 Firmen-Fokus</div>
+    </div>
+    <div class="ziel-badge" style="background:#fff7ed;color:#c2410c">KW 15 · 3/40</div>
+  </div>
+  <div class="ziel-kpis">
+    <div class="kpi">
+      <div class="kpi-val" style="color:#c2410c">3</div>
+      <div class="kpi-label">Termine</div>
+      <div class="kpi-target">Ziel: 12</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-val" style="color:#c2410c">0</div>
+      <div class="kpi-label">Verkauft</div>
+      <div class="kpi-target">Ziel: 15</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-val" style="color:#888">0</div>
+      <div class="kpi-label">Neuer KPI</div>
+      <div class="kpi-target">Ziel: 10</div>
+    </div>
+  </div>
+  <div class="meilensteine">
+    <div class="ms-title" style="color:#15803d">Meilensteine</div>
+    <div class="ms-item">
+      <div class="ms-check done">✓</div>
+      <span class="ms-text done">Pipeline aufgebaut KW16</span>
+      <span class="ms-date">KW 14</span>
+    </div>
+    <div class="ms-item">
+      <div class="ms-check"></div>
+      <span class="ms-text">Content für Podcast vorbereiten</span>
+      <span class="ms-date">KW 16</span>
+    </div>
+    <div class="ms-item">
+      <div class="ms-check"></div>
+      <span class="ms-text">Vertriebspartner aufbauen</span>
+      <span class="ms-date">KW 17</span>
+    </div>
+  </div>
+</div>
+
+<!-- Ziel 2 -->
+<div class="ziel">
+  <div class="ziel-header" style="border-color:#1d4ed8">
+    <div>
+      <div class="ziel-name">Marketing - Presales - Conversion</div>
+      <div class="ziel-meta">Stefan · Apr–Jun 2026</div>
+    </div>
+    <div class="ziel-badge" style="background:#eff6ff;color:#1d4ed8">Läuft</div>
+  </div>
+  <div class="meilensteine">
+    <div class="ms-title" style="color:#1d4ed8">Meilensteine</div>
+    <div class="ms-item">
+      <div class="ms-check done">✓</div>
+      <span class="ms-text done">Landingpage live</span>
+      <span class="ms-date">KW 13</span>
+    </div>
+    <div class="ms-item">
+      <div class="ms-check"></div>
+      <span class="ms-text">Conversion steigern auf 3%</span>
+      <span class="ms-date">KW 18</span>
+    </div>
+  </div>
+</div>
+
+<!-- Ziel 3: Grau (nicht dieser Monat) -->
+<div class="ziel" style="opacity:.5">
+  <div class="ziel-header" style="border-color:#888">
+    <div>
+      <div class="ziel-name">Buchhaltung mit KI unterstützen</div>
+      <div class="ziel-meta">Kristina · Mai–Jul 2026</div>
+    </div>
+    <div class="ziel-badge" style="background:#f5f5f3;color:#888">Ab Mai</div>
+  </div>
+</div>
+
+<!-- Timeline -->
+<div class="timeline">
+  <div class="timeline-title">Ziel-Timeline 2026</div>
+  <div style="display:flex;margin-bottom:4px;margin-left:128px">
+    <div class="tl-months">
+      <span>Jan</span><span>Feb</span><span>Mär</span><span style="font-weight:700;color:#1a1a1a">Apr</span><span>Mai</span><span>Jun</span><span>Jul</span><span>Aug</span><span>Sep</span><span style="color:#c2410c;font-weight:700">Okt</span><span>Nov</span><span>Dez</span>
+    </div>
+  </div>
+  <div class="tl-row">
+    <div class="tl-label">40 Saunen</div>
+    <div class="tl-bar-bg">
+      <div class="tl-bar-fill" style="width:8.3%;margin-left:25%;background:#15803d"><span>Apr</span></div>
+    </div>
+  </div>
+  <div class="tl-row">
+    <div class="tl-label">Marketing</div>
+    <div class="tl-bar-bg">
+      <div class="tl-bar-fill" style="width:25%;margin-left:25%;background:#1d4ed8"><span>Apr–Jun</span></div>
+    </div>
+  </div>
+  <div class="tl-row">
+    <div class="tl-label">Buchhaltung KI</div>
+    <div class="tl-bar-bg">
+      <div class="tl-bar-fill" style="width:25%;margin-left:33%;background:#888"><span>Mai–Jul</span></div>
+    </div>
+  </div>
+  <div class="tl-row">
+    <div class="tl-label">Kundenbindung</div>
+    <div class="tl-bar-bg">
+      <div class="tl-bar-fill" style="width:50%;margin-left:25%;background:#b45309"><span>Apr–Sep</span></div>
+    </div>
+  </div>
+  <div class="tl-row">
+    <div class="tl-label" style="color:#c2410c;font-weight:700">🎯 5 Mio/Mo</div>
+    <div class="tl-bar-bg">
+      <div class="tl-bar-fill" style="width:83%;background:linear-gradient(90deg,#15803d,#c2410c)"><span>Jan → Okt</span></div>
+    </div>
+  </div>
+</div>
+
+<div style="margin-top:30px;padding:16px;background:#fff7ed;border:1px solid #fed7aa;border-radius:12px;font-size:12px;color:#c2410c">
+  <strong>Konzept:</strong><br>
+  • Monats-Pillen oben filtern Ziele nach Zeitraum<br>
+  • Vergangene Monate = grün (erledigt) oder rot (verfehlt)<br>
+  • Aktueller Monat = schwarz/aktiv<br>
+  • Ziele die nicht in diesem Monat sind = ausgegraut<br>
+  • Timeline unten zeigt alle Ziele auf der Jahresachse<br>
+  • 🎯 markiert das große Jahresziel
+</div>
+
+</body>
+</html>

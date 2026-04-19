@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f5f7;padding:24px;color:#111}
+:root{
+  --bd:#e5e7eb;--sf:#fff;--gray-bg:#f9fafb;--t2:#555;--t3:#999;
+  --red:#dc2626;--red-bg:#fef2f2;--red-bd:#fecaca;
+  --blue:#2563eb;--blue-bg:#eff6ff;--blue-bd:#bfdbfe;
+  --amber:#d97706;--amber-bg:#fffbeb;--amber-bd:#fde68a;
+}
+.w{max-width:580px;margin:0 auto}
+.label{font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin:28px 0 10px}
+
+/* Task card inside inbox */
+.task{background:#fff;border-radius:10px;padding:12px 14px;margin-bottom:8px}
+.task:last-child{margin-bottom:0}
+.task-title{font-size:14px;font-weight:600;margin-bottom:3px}
+.task-from{font-size:11px;color:var(--t3);margin-bottom:10px}
+.btns{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px}
+.btn-p{font-size:11px;padding:5px 13px;border-radius:8px;cursor:pointer;font-family:inherit;font-weight:500;border:1px solid var(--bd);background:var(--gray-bg);color:var(--t2)}
+.btn-p.sel{border:2px solid #111;font-weight:700}
+.btn-p.p1{background:var(--red-bg);color:var(--red);border-color:var(--red-bd)}
+.btn-p.p1.sel{border:2px solid var(--red)}
+.oder{font-size:10px;color:var(--t3);display:flex;align-items:center;gap:6px}
+.btn-idee{font-size:11px;padding:4px 11px;border-radius:8px;border:1px solid var(--blue-bd);background:var(--blue-bg);color:var(--blue);cursor:pointer;font-family:inherit}
+.btn-rnd{font-size:11px;padding:4px 11px;border-radius:8px;border:1px solid var(--bd);background:var(--gray-bg);color:var(--t2);cursor:pointer;font-family:inherit}
+
+/* ── A: Aktuell (Amber) ── */
+.inbox-a{background:var(--amber-bg);border:1px solid var(--amber-bd);border-radius:14px;padding:14px 16px;margin-bottom:8px}
+.inbox-a .head{font-size:10px;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px}
+
+/* ── B: Cleaner Blau ── */
+.inbox-b{background:#fff;border:1.5px solid var(--blue-bd);border-radius:14px;padding:14px 16px;margin-bottom:8px}
+.inbox-b .head{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.inbox-b .head-badge{background:var(--blue);color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px}
+.inbox-b .head-title{font-size:13px;font-weight:600}
+.inbox-b .task{background:var(--gray-bg);border:1px solid var(--bd)}
+
+/* ── C: Dark / Premium ── */
+.inbox-c{background:#111;border-radius:14px;padding:14px 16px;margin-bottom:8px}
+.inbox-c .head{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.inbox-c .head-badge{background:rgba(255,255,255,.15);color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px}
+.inbox-c .head-title{font-size:13px;font-weight:600;color:#fff}
+.inbox-c .task{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1)}
+.inbox-c .task-title{color:#fff}
+.inbox-c .task-from{color:rgba(255,255,255,.5)}
+.inbox-c .btn-p{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.2);color:rgba(255,255,255,.7)}
+.inbox-c .btn-p.p1{background:rgba(220,38,38,.3);color:#fca5a5;border-color:rgba(220,38,38,.4)}
+.inbox-c .btn-p.sel{border:2px solid #fff;color:#fff}
+.inbox-c .oder{color:rgba(255,255,255,.3)}
+.inbox-c .btn-idee{background:rgba(37,99,235,.3);border-color:rgba(37,99,235,.4);color:#93c5fd}
+.inbox-c .btn-rnd{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.15);color:rgba(255,255,255,.5)}
+
+/* ── D: Links-Border Akzent ── */
+.inbox-d{background:#fff;border:1px solid var(--bd);border-left:3px solid #111;border-radius:0 12px 12px 0;padding:14px 16px;margin-bottom:8px}
+.inbox-d .head{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.inbox-d .head-dot{width:6px;height:6px;border-radius:50%;background:#111}
+.inbox-d .head-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t2)}
+.inbox-d .count{margin-left:auto;font-size:11px;color:var(--t3);background:var(--gray-bg);border:1px solid var(--bd);padding:1px 8px;border-radius:99px}
+</style>
+</head>
+<body>
+<div class="w">
+
+<div class="label">A — Aktuell (Amber) · zu laut?</div>
+<div class="inbox-a">
+  <div class="head">Inbox — Priorität bestätigen</div>
+  <div class="task">
+    <div class="task-title">Neue BWA an Bänker einfordern</div>
+    <div class="task-from">von Ludwig · Vorschlag: P1</div>
+    <div class="btns"><button class="btn-p p1 sel">P1</button><button class="btn-p">P2</button><button class="btn-p">P3</button><button class="btn-p">Kein Prio</button></div>
+    <div class="oder">oder: <button class="btn-idee">💡 Idee</button><button class="btn-rnd">🎲 Random</button></div>
+  </div>
+</div>
+
+<div class="label">B — Blau / Clean · neutral & klar</div>
+<div class="inbox-b">
+  <div class="head">
+    <span class="head-badge">1 neu</span>
+    <span class="head-title">Inbox</span>
+  </div>
+  <div class="task">
+    <div class="task-title">Neue BWA an Bänker einfordern</div>
+    <div class="task-from">von Ludwig · Vorschlag: P1</div>
+    <div class="btns"><button class="btn-p p1 sel">P1</button><button class="btn-p">P2</button><button class="btn-p">P3</button><button class="btn-p">Kein Prio</button></div>
+    <div class="oder">oder: <button class="btn-idee">💡 Idee</button><button class="btn-rnd">🎲 Random</button></div>
+  </div>
+</div>
+
+<div class="label">C — Dark / Premium · macht es wichtig ohne Stress</div>
+<div class="inbox-c">
+  <div class="head">
+    <span class="head-badge">1 neu</span>
+    <span class="head-title">Inbox</span>
+  </div>
+  <div class="task">
+    <div class="task-title">Neue BWA an Bänker einfordern</div>
+    <div class="task-from">von Ludwig · Vorschlag: P1</div>
+    <div class="btns"><button class="btn-p p1 sel">P1</button><button class="btn-p">P2</button><button class="btn-p">P3</button><button class="btn-p">Kein Prio</button></div>
+    <div class="oder">oder: <button class="btn-idee">💡 Idee</button><button class="btn-rnd">🎲 Random</button></div>
+  </div>
+</div>
+
+<div class="label">D — Minimalist · Links-Akzent</div>
+<div class="inbox-d">
+  <div class="head">
+    <div class="head-dot"></div>
+    <span class="head-title">Inbox</span>
+    <span class="count">1</span>
+  </div>
+  <div class="task">
+    <div class="task-title">Neue BWA an Bänker einfordern</div>
+    <div class="task-from">von Ludwig · Vorschlag: P1</div>
+    <div class="btns"><button class="btn-p p1 sel">P1</button><button class="btn-p">P2</button><button class="btn-p">P3</button><button class="btn-p">Kein Prio</button></div>
+    <div class="oder">oder: <button class="btn-idee">💡 Idee</button><button class="btn-rnd">🎲 Random</button></div>
+  </div>
+</div>
+
+</div>
+</body>
+</html>

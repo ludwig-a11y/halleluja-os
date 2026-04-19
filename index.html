@@ -3942,8 +3942,8 @@ function stepsHtml(a,ed){
       const sPid=u.pid||a.pid;
       const sp=person(sPid);
       const isOwner=!u.pid||u.pid===a.pid;
-      out+='<div class="sr" id="sr-'+a.id+'-'+i+'" onclick="toggleStep(\''+a.id+'\','+i+')" style="gap:6px">'
-        +'<div class="sc'+(u.d?' dn':'')+'">'+( u.d?'<span style="color:var(--inv-t);font-size:8px">✓</span>':'')+'</div>'
+      out+='<div class="sr" id="sr-'+a.id+'-'+i+'" style="gap:6px">'
+        +'<div class="sc'+(u.d?' dn':'')+'" onclick="toggleStep(\''+a.id+'\','+i+')" style="cursor:pointer">'+( u.d?'<span style="color:var(--inv-t);font-size:8px">✓</span>':'')+'</div>'
         +'<span class="sl'+(u.d?' dn':'')+'">'+u.t+'</span>';
       if(ed){
         out+='<select onclick="event.stopPropagation()" onchange="assignStepPid(\''+a.id+'\','+i+',this.value)" style="margin-left:auto;font-size:10px;padding:2px 6px;border-radius:6px;border:1px solid '+(isOwner?'var(--bd)':'var(--blue-bd)')+';background:'+(isOwner?'var(--gray-bg)':'var(--blue-bg)')+';color:'+(isOwner?'var(--t3)':'var(--blue)')+';cursor:pointer;font-family:inherit;flex-shrink:0;max-width:90px;font-weight:600">';
@@ -3957,7 +3957,7 @@ function stepsHtml(a,ed){
     });
     out+='</div>';
   }
-  if(ed)out+='<div style="display:flex;gap:6px;margin-top:6px"><input class="asi" id="si-'+a.id+'" placeholder="+ Schritt…" onkeydown="if(event.key===\'Enter\')addStep(\''+a.id+'\')"><button onclick="addStep(\''+a.id+'\')" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);cursor:pointer">+</button></div>';
+  if(ed)out+='<div style="display:flex;gap:6px;margin-top:6px"><input class="asi" id="si-'+a.id+'" placeholder="+ Eintrag…" onkeydown="if(event.key===\'Enter\')addStep(\''+a.id+'\')"><button onclick="addStep(\''+a.id+'\')" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);cursor:pointer">+</button></div>';
   return out;
 }
 async function cycleStepPid(id,i){
@@ -4483,7 +4483,7 @@ function rTag(){
       hero+='<div class="tn" style="font-size:36px;color:var(--hero-t)">'+fmt(s)+'</div>';
       hero+='<div style="font-size:13px;opacity:.5">/ '+fmtH(a.geplant)+'</div></div>';
       hero+='<div style="height:4px;background:rgba(255,255,255,.15);border-radius:99px;overflow:hidden"><div class="tf" style="height:100%;background:var(--hero-t);width:'+pct+'%"></div></div></div>';
-      if(a.ua&&a.ua.length){const uD=a.ua.filter(u=>u.d).length;hero+='<div style="margin-bottom:16px;font-size:12px;opacity:.7">'+uD+'/'+a.ua.length+' Schritte erledigt</div>';}
+      if(a.ua&&a.ua.length){const uD=a.ua.filter(u=>u.d).length;hero+='<div style="margin-bottom:16px;font-size:12px;opacity:.7">'+uD+'/'+a.ua.length+' Checkliste erledigt</div>';}
       hero+='<div style="display:flex;gap:10px">';
       hero+='<button onclick="fertig(\''+a.id+'\')" style="flex:1;padding:13px;border-radius:12px;background:var(--hero-t);color:var(--hero);border:none;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;transition:opacity .15s,transform .1s" onmousedown="this.style.transform=\'scale(.97)\'" onmouseup="this.style.transform=\'scale(1)\'">✓ Erledigt</button>';
       hero+='<button onclick="focusModus(\''+a.id+'\')" title="Fokus-Modus" style="padding:13px 16px;border-radius:12px;background:rgba(255,255,255,.15);color:#fff;border:none;font-family:inherit;font-size:14px;cursor:pointer;transition:background .15s" onmouseenter="this.style.background=\'rgba(255,255,255,.25)\'" onmouseleave="this.style.background=\'rgba(255,255,255,.15)\'">⊙</button>';
@@ -4550,12 +4550,23 @@ function rTag(){
         if(fromN)hero+='<span style="font-size:10px;opacity:.35">von '+esc(fromN.name)+'</span>';
         hero+='</div>';
         if(naechste.notiz)hero+='<div style="font-size:12px;opacity:.5;font-style:italic;margin-bottom:14px">'+esc(naechste.notiz)+'</div>';
+        // ── Checkliste (private Gedankenstütze) ──
+        hero+='<div style="margin-bottom:12px;padding:10px 12px;background:rgba(255,255,255,.06);border-radius:10px">';
+        hero+='<div style="font-size:9px;font-weight:700;opacity:.5;letter-spacing:.6px;text-transform:uppercase;margin-bottom:8px">Checkliste</div>';
         if(naechste.ua&&naechste.ua.length){
-          hero+='<div style="margin-bottom:16px;padding:10px 12px;background:rgba(255,255,255,.06);border-radius:10px">';
-          naechste.ua.forEach((u,i)=>{hero+='<div class="sr" onclick="toggleStep(\''+naechste.id+'\','+i+')" style="padding:4px 0"><div style="width:14px;height:14px;border-radius:3px;flex-shrink:0;display:flex;align-items:center;justify-content:center;'+(u.d?'background:var(--hero-t);border:1.5px solid var(--hero-t)':'border:1.5px solid rgba(255,255,255,.25)')+'">'+(u.d?'<span style="color:var(--hero);font-size:8px;font-weight:800">✓</span>':'')+'</div><span style="font-size:12px;'+(u.d?'opacity:.35;text-decoration:line-through':'opacity:.8')+'">'+u.t+'</span></div>';});
+          naechste.ua.forEach((u,i)=>{hero+='<div class="sr" style="padding:4px 0"><div onclick="toggleStep(\''+naechste.id+'\','+i+')" style="width:14px;height:14px;border-radius:3px;flex-shrink:0;cursor:pointer;display:flex;align-items:center;justify-content:center;'+(u.d?'background:var(--hero-t);border:1.5px solid var(--hero-t)':'border:1.5px solid rgba(255,255,255,.25)')+'">'+(u.d?'<span style="color:var(--hero);font-size:8px;font-weight:800">✓</span>':'')+'</div><span style="font-size:12px;'+(u.d?'opacity:.35;text-decoration:line-through':'opacity:.8')+'">'+u.t+'</span></div>';});
+        }
+        hero+='<div style="display:flex;gap:6px;margin-top:8px"><input class="asi" id="si-'+naechste.id+'" placeholder="+ Eintrag…" onkeydown="if(event.key===\'Enter\')addStep(\''+naechste.id+'\')" style="font-size:12px;padding:6px 10px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);color:#fff;border-radius:8px"><button onclick="addStep(\''+naechste.id+'\')" style="font-size:11px;padding:5px 10px;border-radius:6px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.08);color:rgba(255,255,255,.5);cursor:pointer">+</button></div>';
+        hero+='</div>';
+        // ── Unteraufgaben (echte delegierbare Commitments) ──
+        {
+          const subs=S.aufgaben.filter(x=>x.parentId===naechste.id&&x.status!=='archiviert');
+          hero+='<div style="margin-bottom:16px;padding:10px 12px;background:rgba(255,255,255,.06);border-radius:10px;border:1px dashed rgba(255,255,255,.15)">';
+          hero+='<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px"><div style="font-size:9px;font-weight:700;opacity:.6;letter-spacing:.6px;text-transform:uppercase">Unteraufgaben</div>'+(subs.length?'<span style="font-size:10px;opacity:.5">('+subs.filter(x=>x.status==='erledigt').length+'/'+subs.length+')</span>':'')+'</div>';
+          subs.forEach(su=>{const sp=person(su.pid);const done=su.status==='erledigt';hero+='<div onclick="openDetail(\''+su.id+'\')" style="display:flex;align-items:center;gap:8px;padding:5px 0;cursor:pointer;font-size:12px"><span style="opacity:'+(done?'.35':'.9')+';'+(done?'text-decoration:line-through':'')+';flex:1">'+esc(su.titel)+'</span>'+(sp&&sp.id!==aP?'<span style="font-size:9px;color:#93c5fd;font-weight:600">'+esc(safeName(sp).split(' ')[0])+'</span>':'')+'</div>';});
+          hero+='<button onclick="openNeu({parent_id:\''+naechste.id+'\',pid:\''+aP+'\',zielId:\''+(naechste.zielId||'')+'\',teilzielId:\''+(naechste.teilzielId||'')+'\'})" style="margin-top:6px;font-size:11px;padding:6px 10px;border-radius:7px;background:rgba(255,255,255,.1);color:rgba(255,255,255,.75);border:1px solid rgba(255,255,255,.15);cursor:pointer;font-family:inherit;font-weight:600">+ Unteraufgabe</button>';
           hero+='</div>';
         }
-        hero+='<div style="display:flex;gap:6px;margin-bottom:16px"><input class="asi" id="si-'+naechste.id+'" placeholder="+ Schritt hinzufügen…" onkeydown="if(event.key===\'Enter\')addStep(\''+naechste.id+'\')" style="font-size:12px;padding:6px 10px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);color:#fff;border-radius:8px"><button onclick="addStep(\''+naechste.id+'\')" style="font-size:11px;padding:5px 10px;border-radius:6px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.08);color:rgba(255,255,255,.5);cursor:pointer">+</button></div>';
         hero+='<div style="display:flex;gap:10px">';
         hero+='<button onclick="focusModus(\''+naechste.id+'\')" style="flex:1;padding:14px;border-radius:12px;background:var(--hero-t);color:var(--hero);border:none;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer;box-shadow:0 0 24px rgba(255,255,255,.12);transition:all .15s" onmouseenter="this.style.boxShadow=\'0 0 32px rgba(255,255,255,.25)\'" onmouseleave="this.style.boxShadow=\'0 0 24px rgba(255,255,255,.12)\'" onmousedown="this.style.transform=\'scale(.98)\'" onmouseup="this.style.transform=\'scale(1)\'">▶ Starten</button>';
         hero+='<button onclick="openDetail(\''+naechste.id+'\')" style="padding:14px 18px;border-radius:12px;background:rgba(255,255,255,.1);color:rgba(255,255,255,.5);border:none;font-family:inherit;font-size:13px;font-weight:500;cursor:pointer;transition:background .15s" onmouseenter="this.style.background=\'rgba(255,255,255,.2)\'" onmouseleave="this.style.background=\'rgba(255,255,255,.1)\'">···</button>';
@@ -5118,26 +5129,14 @@ async function toggleStep(id,i){
   const prevStatus=a.status;const prevAktSeit=a.aktSeit;const prevGebucht=a.gebucht;
   try{
     a.ua[i].d=!a.ua[i].d;
-    const allDone=a.ua.every(u=>u.d)&&a.ua.length;
     const patch={ua:a.ua};
-    if(allDone){
-      // Zeitbuchung wie bei fertig()
-      if(a.status==='aktiv'){a.gebucht=Math.round(((a.gebucht||0)+(Date.now()-(a.aktSeit||Date.now()))/3600000)*100)/100;patch.gebucht=a.gebucht;}
-      a.status='erledigt';a.aktSeit=null;a.updated_at=new Date().toISOString();
-      patch.status='erledigt';patch.akt_seit=null;patch.updated_at=a.updated_at;
-    }
-    // mini celebration for single step check-off
-    if(!wasDone&&a.ua[i].d&&!allDone){
+    // mini celebration for single step check-off (Checkliste = Gedankenstütze, never auto-completes task)
+    if(!wasDone&&a.ua[i].d){
       const row=document.getElementById('sr-'+id+'-'+i);
       if(row){row.classList.add('done-flash');const cb=row.querySelector('.sc');if(cb)cb.classList.add('pop');}
     }
     const ok=await dbPatch('aufgaben',id,patch);
-    if(!ok){a.ua[i].d=wasDone;a.status=prevStatus;a.aktSeit=prevAktSeit;a.gebucht=prevGebucht;toast('⚠ Fehler beim Speichern');}
-    else if(allDone){
-      if(a.teilzielId) showPaddelCelebration(a.pid);
-      else toast('✓ Erledigt · ohne Meilenstein-Zuordnung kein Paddel-Punkt');
-      checkP1Done(a.pid);
-    }
+    if(!ok){a.ua[i].d=wasDone;toast('⚠ Fehler beim Speichern');}
   }catch(e){console.error('toggleStep',e);a.ua[i].d=wasDone;a.status=prevStatus;a.aktSeit=prevAktSeit;a.gebucht=prevGebucht;}
   finally{
     a._busy=false;
@@ -5188,7 +5187,7 @@ function openDetail(id){
   h+='<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px">'+typTag(a)+prioTag(a.prio,a.id,canChangePrio(a))+(zN?'<span class="tag" style="background:var(--gray-bg);color:var(--t2)">'+esc(zN)+'</span>':'')+(tzN?'<span class="tag" style="background:var(--purple-bg);color:var(--purple)">'+esc(tzN)+'</span>':'')+(d?'<span class="tag" style="background:'+d.bg+';color:'+d.c+'">'+d.l+'</span>':'')+(a.vertraulich?'<span class="lock">vertraulich</span>':'')+(from?'<span class="tag" style="background:var(--gray-bg);color:var(--t2)">von '+esc(from.name)+'</span>':'')+'</div>';
   if(zust)h+='<div style="font-size:12px;color:var(--t2);margin-bottom:10px">'+esc(zust.name)+'</div>';
   if(a.notiz)h+='<div style="font-size:13px;color:var(--text);margin-bottom:12px;padding:10px 12px;background:var(--gray-bg);border-radius:8px;white-space:pre-wrap;line-height:1.5">'+esc(a.notiz)+'</div>';
-  if(a.ua&&a.ua.length)h+='<div style="margin-bottom:12px"><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);margin-bottom:6px">Schritte</div>'+stepsHtml(a,false)+'</div>';
+  if(a.ua&&a.ua.length)h+='<div style="margin-bottom:12px"><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);margin-bottom:6px">Checkliste</div>'+stepsHtml(a,false)+'</div>';
   // ── Unteraufgaben ──
   const kinder=S.aufgaben.filter(x=>String(x.parentId||'')===String(id));
   h+='<div style="margin-bottom:12px">';
@@ -5240,7 +5239,7 @@ function openDetail(id){
   const _detTzLbl=a.zielId&&istBereich(a.zielId)?'Thema':'Meilenstein';
   h+='<div class="fl"><label>'+_detTzLbl+'</label><select id="det-tz" onchange="setTeilziel(\''+id+'\',this.value)"><option value="">— kein '+_detTzLbl+' —</option>'+(a.zielId?(zielObj(a.zielId)?.teilziele||[]).filter(tz=>(tz.status||'aktiv')==='aktiv').map(tz=>'<option value="'+tz.id+'"'+(a.teilzielId===tz.id?' selected':'')+'>'+esc(tz.name)+'</option>').join(''):'')+'</select></div>';
   h+='<div class="fl"><label style="display:flex;align-items:center;gap:8px;text-transform:none;font-size:13px;font-weight:400;cursor:pointer"><input type="checkbox" id="det-vert"'+(a.vertraulich?' checked':'')+' style="width:auto" onchange="saveDetailField(\''+id+'\',\'vertraulich\',this.checked)"> 🔒 Vertraulich</label>'+(a.vertraulich?'<div style="font-size:11px;color:var(--t3);margin-top:2px">Sichtbar für: Geschäftsführung, Zuständiger &amp; Ersteller</div>':'')+'</div>';
-  h+='<div class="fl"><label>Schritte</label>'+stepsHtml(a,true)+'</div>';
+  h+='<div class="fl"><label>Checkliste</label>'+stepsHtml(a,true)+'</div>';
   h+='</div></details>';
   // ── Footer ──
   h+='<div class="mf"><button class="btn btn-red" onclick="delAufgabe(\''+id+'\')">Löschen</button><button class="btn btn-gr" onclick="cm()">Schließen</button></div>';
@@ -6205,8 +6204,8 @@ function openNeu(pf={}){
     +'<label style="display:flex;align-items:center;gap:6px;text-transform:none;font-size:12px;font-weight:400;color:var(--t3);cursor:pointer;margin:0"><select id="nrec" style="width:auto;padding:4px 8px;font-size:11px;border:1px solid var(--bd);border-radius:6px;color:var(--t2);background:var(--sf)"><option value="">Einmalig</option><option value="daily">🔄 Täglich</option><option value="weekly">🔄 Wöchentlich</option><option value="monthly">🔄 Monatlich</option></select></label>'
     +'<label style="display:flex;align-items:center;gap:6px;text-transform:none;font-size:12px;font-weight:400;color:var(--t3);cursor:pointer;margin:0"><input type="checkbox" id="nvert" style="width:auto" onchange="document.getElementById(\'nvert-hint\').style.display=this.checked?\'block\':\'none\'"> 🔒 Vertraulich</label><div id="nvert-hint" style="display:none;font-size:10px;color:var(--t3);margin-top:2px">Sichtbar für: Geschäftsführung, Zuständiger &amp; Ersteller</div>'
     +'</div>'
-    +'<div class="fl"><label>Schritte</label><div id="neu-steps"></div>'
-    +'<div style="display:flex;gap:6px"><input class="asi" id="neu-step-input" placeholder="+ Schritt…" onkeydown="if(event.key===\'Enter\'){event.preventDefault();addNeuStep()}" style="font-size:12px;padding:6px 10px"><button onclick="addNeuStep()" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);cursor:pointer">+</button></div></div>'
+    +'<div class="fl"><label>Checkliste</label><div id="neu-steps"></div>'
+    +'<div style="display:flex;gap:6px"><input class="asi" id="neu-step-input" placeholder="+ Eintrag…" onkeydown="if(event.key===\'Enter\'){event.preventDefault();addNeuStep()}" style="font-size:12px;padding:6px 10px"><button onclick="addNeuStep()" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);cursor:pointer">+</button></div></div>'
     +'<div class="fl"><label>Notiz</label><input id="nno" value="'+(pf.notiz||'')+'" placeholder="Optional…"></div>'
     +'</div>';
   window._neuSteps=[];
@@ -6402,7 +6401,7 @@ DAUER: [Zahl in Stunden, z.B. 0.5 oder 2]`;
     const details=[];
     if(prioMatch)details.push(prioMatch);
     if(dauerMatch)details.push(dauerMatch+'h');
-    if(steps.length)details.push(steps.length+' Schritte');
+    if(steps.length)details.push(steps.length+' Einträge');
     if(details.length)h+='<span style="font-size:10px;color:var(--t3);align-self:center">'+details.join(' · ')+'</span>';
     h+='</div></div>';
     box.innerHTML=h;

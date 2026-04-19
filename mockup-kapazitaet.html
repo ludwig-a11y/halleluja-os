@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Kapazität Mockup</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f5f7;padding:24px;color:#111}
+  :root{
+    --red:#dc2626;--red-bg:#fef2f2;--red-bd:#fecaca;
+    --amber:#d97706;--amber-bg:#fffbeb;--amber-bd:#fde68a;
+    --blue:#2563eb;--blue-bg:#eff6ff;--blue-bd:#bfdbfe;
+    --green:#16a34a;--green-bg:#f0fdf4;
+    --gray:#6b7280;--gray-bg:#f9fafb;--bd:#e5e7eb;
+    --sf:#fff;--text:#111;--t2:#555;--t3:#999;
+  }
+  .card{background:#fff;border:1px solid var(--bd);border-radius:16px;padding:18px 20px;margin-bottom:16px;max-width:420px}
+  .name{font-size:20px;font-weight:700;margin-bottom:4px}
+  .sub{font-size:12px;color:var(--t3);margin-bottom:18px}
+
+  /* Kapazitäts-Block */
+  .kap-block{background:var(--gray-bg);border:1px solid var(--bd);border-radius:12px;padding:14px 16px;margin-bottom:12px}
+  .kap-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);margin-bottom:12px}
+  .kap-row{margin-bottom:10px}
+  .kap-row:last-child{margin-bottom:0}
+  .kap-label{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px}
+  .kap-label-left{font-size:12px;font-weight:600;color:var(--t2);display:flex;align-items:center;gap:6px}
+  .kap-label-right{font-size:12px;font-weight:700}
+  .kap-label-right.ok{color:var(--green)}
+  .kap-label-right.warn{color:var(--amber)}
+  .kap-label-right.over{color:var(--red)}
+  .bar-bg{height:8px;background:#e5e7eb;border-radius:99px;overflow:hidden}
+  .bar-fill{height:100%;border-radius:99px;transition:width .4s}
+  .bar-fill.blue{background:var(--blue)}
+  .bar-fill.amber{background:var(--amber)}
+  .bar-fill.red{background:var(--red)}
+  .bar-fill.green{background:var(--green)}
+  .bar-fill.gray{background:#d1d5db}
+  .badge-prio{font-size:10px;padding:2px 7px;border-radius:99px;font-weight:600}
+  .p1{background:var(--red-bg);color:var(--red)}
+  .p2{background:#fff7ed;color:#c2410c}
+  .p3{background:var(--gray-bg);color:var(--t2);border:1px solid var(--bd)}
+
+  .divider{height:1px;background:var(--bd);margin:12px 0}
+
+  .random-row{display:flex;align-items:center;justify-content:space-between;padding:6px 0}
+  .random-label{font-size:12px;color:var(--t3);display:flex;align-items:center;gap:6px}
+  .random-count{font-size:12px;font-weight:600;color:var(--t3);background:var(--gray-bg);border:1px solid var(--bd);padding:2px 10px;border-radius:99px}
+
+  /* Variante 2 — kompakter */
+  .kap2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+  .kap2-item{background:var(--gray-bg);border:1px solid var(--bd);border-radius:10px;padding:10px 12px}
+  .kap2-label{font-size:10px;color:var(--t3);margin-bottom:4px;display:flex;align-items:center;gap:4px}
+  .kap2-val{font-size:20px;font-weight:800;line-height:1}
+  .kap2-max{font-size:11px;color:var(--t3);font-weight:400}
+  .kap2-bar{margin-top:6px}
+
+  .section-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);margin-bottom:12px;margin-top:4px}
+
+  /* Variante 3 — inline im Tag-Header */
+  .tag-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+  .tag-name{font-size:18px;font-weight:700}
+  .kap-pill{display:flex;gap:8px}
+  .pill{font-size:11px;padding:4px 10px;border-radius:99px;font-weight:600;display:flex;align-items:center;gap:4px}
+  .pill.ok{background:var(--green-bg);color:var(--green)}
+  .pill.warn{background:var(--amber-bg);color:var(--amber)}
+  .pill.over{background:var(--red-bg);color:var(--red)}
+</style>
+</head>
+<body>
+
+<div style="max-width:420px;margin:0 auto">
+
+  <div style="font-size:13px;font-weight:600;color:var(--t3);margin-bottom:20px;text-transform:uppercase;letter-spacing:.5px">Variante A — Bars mit Labels</div>
+
+  <div class="card">
+    <div class="name">Christoph</div>
+    <div class="sub">Montag, 14. April · 40h Woche · Fokuszeit 08:00–12:00</div>
+
+    <div class="kap-block">
+      <div class="kap-title">Kapazität diese Woche</div>
+
+      <!-- Fokuszeit P1+P2 -->
+      <div class="kap-row">
+        <div class="kap-label">
+          <div class="kap-label-left">
+            <span>Fokuszeit</span>
+            <span class="badge-prio p1">P1</span>
+            <span class="badge-prio p2">P2</span>
+          </div>
+          <div class="kap-label-right warn">22 / 20h</div>
+        </div>
+        <div class="bar-bg">
+          <div class="bar-fill red" style="width:100%"></div>
+        </div>
+        <div style="font-size:10px;color:var(--red);margin-top:4px;font-weight:600">⚠ 2h überlastet — P1 oder P2 delegieren oder verschieben</div>
+      </div>
+
+      <!-- Restzeit P3 -->
+      <div class="kap-row">
+        <div class="kap-label">
+          <div class="kap-label-left">
+            <span>Restzeit</span>
+            <span class="badge-prio p3">P3</span>
+          </div>
+          <div class="kap-label-right ok">8 / 20h</div>
+        </div>
+        <div class="bar-bg">
+          <div class="bar-fill green" style="width:40%"></div>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- Random -->
+      <div class="random-row">
+        <div class="random-label">🎲 Random — wenn Luft ist</div>
+        <div class="random-count">5 Aufgaben</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Variante OK State -->
+  <div class="card">
+    <div class="name">Lukas</div>
+    <div class="sub">Montag, 14. April · 40h Woche · Fokuszeit 09:00–11:00</div>
+
+    <div class="kap-block">
+      <div class="kap-title">Kapazität diese Woche</div>
+
+      <div class="kap-row">
+        <div class="kap-label">
+          <div class="kap-label-left">
+            <span>Fokuszeit</span>
+            <span class="badge-prio p1">P1</span>
+            <span class="badge-prio p2">P2</span>
+          </div>
+          <div class="kap-label-right ok">11 / 20h</div>
+        </div>
+        <div class="bar-bg">
+          <div class="bar-fill blue" style="width:55%"></div>
+        </div>
+      </div>
+
+      <div class="kap-row">
+        <div class="kap-label">
+          <div class="kap-label-left">
+            <span>Restzeit</span>
+            <span class="badge-prio p3">P3</span>
+          </div>
+          <div class="kap-label-right warn">17 / 20h</div>
+        </div>
+        <div class="bar-bg">
+          <div class="bar-fill amber" style="width:85%"></div>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+      <div class="random-row">
+        <div class="random-label">🎲 Random — wenn Luft ist</div>
+        <div class="random-count">2 Aufgaben</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Trennlinie -->
+  <div style="font-size:13px;font-weight:600;color:var(--t3);margin:28px 0 20px;text-transform:uppercase;letter-spacing:.5px">Variante B — Kompakt als Zahlen</div>
+
+  <div class="card">
+    <div class="name">Christoph</div>
+    <div class="sub">Montag, 14. April · 40h Woche</div>
+
+    <div class="kap2">
+      <div class="kap2-item" style="border-color:var(--red-bd);background:var(--red-bg)">
+        <div class="kap2-label">⚡ Fokus <span class="badge-prio p1" style="font-size:9px">P1</span><span class="badge-prio p2" style="font-size:9px">P2</span></div>
+        <div class="kap2-val" style="color:var(--red)">22<span class="kap2-max"> / 20h</span></div>
+        <div class="kap2-bar"><div class="bar-bg"><div class="bar-fill red" style="width:100%"></div></div></div>
+      </div>
+      <div class="kap2-item">
+        <div class="kap2-label">📋 Restzeit <span class="badge-prio p3" style="font-size:9px">P3</span></div>
+        <div class="kap2-val" style="color:var(--green)">8<span class="kap2-max"> / 20h</span></div>
+        <div class="kap2-bar"><div class="bar-bg"><div class="bar-fill green" style="width:40%"></div></div></div>
+      </div>
+    </div>
+    <div class="random-row" style="background:var(--gray-bg);border-radius:8px;padding:8px 10px">
+      <div class="random-label">🎲 Random — wenn Luft ist</div>
+      <div class="random-count">5 Aufgaben</div>
+    </div>
+  </div>
+
+  <!-- Variante C — Pills im Header -->
+  <div style="font-size:13px;font-weight:600;color:var(--t3);margin:28px 0 20px;text-transform:uppercase;letter-spacing:.5px">Variante C — Dezent im Header</div>
+
+  <div class="card">
+    <div class="tag-header">
+      <div class="tag-name">Mein Tag</div>
+      <div class="kap-pill">
+        <div class="pill over">⚡ 22/20h</div>
+        <div class="pill ok">📋 8/20h</div>
+      </div>
+    </div>
+    <div style="font-size:12px;color:var(--t3);background:var(--red-bg);border:1px solid var(--red-bd);border-radius:10px;padding:10px 12px">
+      ⚠ Fokuszeit überlastet · P1/P2 delegieren oder nächste Woche
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

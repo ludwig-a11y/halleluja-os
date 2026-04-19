@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "briefing",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["serve", "-l", "4322", "/Users/ludwigbauer/Desktop/n8n/halleluja-os"],
+      "port": 4322
+    }
+  ]
+}
