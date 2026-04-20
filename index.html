@@ -3069,7 +3069,32 @@ function getPaddelCount(pid){
     const v=Math.max(0,isTaeglich?(S.kpiValsWeek[pid+'-'+k.id]||0):(kpiVal(k)||0));
     return sum+v;
   },0);
-  return aufgabenPts+kpiPts+p1KpiPts;
+  // Wochenziele (big3_N_done=true): 3 Pts pro erledigtem Wochenziel diese Woche.
+  // Modell B: Wochenziel IST der Outcome; sein Check ist P1-äquivalent.
+  // Doppelzählung wird verhindert: wenn ein Task exakten Titel-Match zum big3_N hat
+  // und schon als P1 gezählt wurde, reduzieren wir hier um 3.
+  const {kw:_curKw,jahr:_curJahr}=getKW();
+  const wrThis=(S.wochenresets||[]).find(r=>String(r.pid)===String(pid)&&r.kw===_curKw&&r.jahr===_curJahr);
+  let big3Pts=0;
+  if(wrThis){
+    [1,2,3].forEach(n=>{
+      if(!wrThis['big3_'+n+'_done'])return;
+      big3Pts+=3;
+      const txt=(wrThis['big3_'+n]||'').toLowerCase().trim();
+      const tz=wrThis['big3_'+n+'_tz_id'];
+      if(!txt||!tz)return;
+      // Check ob ein Task exakt gespiegelt existiert (Legacy-Duplikat) und in aufgabenPts schon gezählt wurde
+      const dupe=S.aufgaben.find(a=>a.pid===pid&&a.status==='erledigt'&&a.prio==='P1'&&String(a.teilzielId)===String(tz)&&(a.titel||'').toLowerCase().trim()===txt);
+      if(dupe&&dupe.updated_at){
+        const dt=new Date(dupe.updated_at);
+        if(!isNaN(dt.getTime())){
+          const d=localDate(dt);
+          if(d>=monday&&d<=sunday)big3Pts-=3; // Doppelzählung korrigieren
+        }
+      }
+    });
+  }
+  return aufgabenPts+kpiPts+p1KpiPts+big3Pts;
 }
 function showKonfetti(){
   const canvas=document.createElement('canvas');
@@ -3314,14 +3339,9 @@ async function saveOnboarding(){
   if(!ev1){toast('⚠️ Mindestens ein Wochenziel eingeben');return;}
   const evs=[ev1,document.getElementById('onb-ev2')?.value.trim()||'',document.getElementById('onb-ev3')?.value.trim()||''];
   const tzId=window._onb.tzId;const zielId=window._onb.zielId;
-  const friday=getFriday();
-  const aufgaben=evs.filter(Boolean).map(titel=>{
-    const id=nid('a');
-    const rec={id,pid:aP,titel,typ:'strategisch',status:'backlog',prio:'P1',ziel_id:zielId,teilziel_id:tzId,
-      geplant:1,gebucht:0,dl:friday,dl_type:'bis',ua:[],notiz:'',akt_seit:null,vertraulich:false,erstellt_von:aP};
-    S.aufgaben.push(normalizeAufgabe(rec));return rec;
-  });
-  await Promise.all(aufgaben.map(r=>dbInsert('aufgaben',r)));
+  // Kein Auto-Task pro Wochenziel (Modell B — Ovens/Keller):
+  // Wochenziel IST der Outcome, nicht Preparation dafür. Tasks entstehen on-the-fly
+  // wenn der User sie braucht (via "+ Aufgabe"-Button), nicht automatisch beim Setup.
   const{kw,jahr}=getKW();
   const wrId=nid('wr');
   const wrRec={id:wrId,pid:aP,kw,jahr,focus_ziel_id:zielId,
@@ -4134,12 +4154,13 @@ function rWoche(){
       out+='<div style="width:18px;height:18px;border-radius:5px;flex-shrink:0;'+(done?'background:'+f.tc+';border:1.5px solid '+f.tc+';display:flex;align-items:center;justify-content:center':'border:1.5px solid '+f.bd)+'">'+(done?'<span style="color:#fff;font-size:10px;font-weight:800">✓</span>':'')+'</div>';
       out+='<span style="font-size:13px;font-weight:500;flex:1;'+(done?'color:var(--t2);text-decoration:line-through':'color:var(--text)')+'">'+txt+'</span>';
       out+='</div>';
-      // Aufgaben die zu diesem Big-3 gehören — nur mit Titel-Match, sonst verteilen sich alle Monatsziel-Tasks auf jede Card
+      // Aufgaben die zu diesem Big-3 gehören — Fuzzy-Match + Legacy-Mirror-Duplikate unterdrücken
       if(tzId){
         const bTxt=(wr['big3_'+n]||'').toLowerCase().trim();
+        const isMirror=a=>bTxt&&(a.titel||'').toLowerCase().trim()===bTxt; // Legacy: Task war 1:1-Kopie
         const matchTitle=a=>{if(!bTxt)return true;const t=(a.titel||'').toLowerCase();return t.includes(bTxt.slice(0,Math.min(20,bTxt.length)))||bTxt.includes(t.slice(0,Math.min(20,t.length)));};
-        const tzAufgaben=myA.filter(a=>a.teilzielId===tzId&&a.status!=='erledigt'&&matchTitle(a));
-        const tzErledigt=myA.filter(a=>a.teilzielId===tzId&&a.status==='erledigt'&&matchTitle(a));
+        const tzAufgaben=myA.filter(a=>a.teilzielId===tzId&&a.status!=='erledigt'&&matchTitle(a)&&!isMirror(a));
+        const tzErledigt=myA.filter(a=>a.teilzielId===tzId&&a.status==='erledigt'&&matchTitle(a)&&!isMirror(a));
         if(tzAufgaben.length||tzErledigt.length){
           out+='<div style="padding-left:28px;padding-bottom:4px">';
           tzAufgaben.forEach(a=>{
@@ -4727,12 +4748,14 @@ function rTag(){
       const txt=wrItemName(wrAktuell,n);if(!txt)return;
       const done=wrAktuell[doneF];
       const tzId=wrAktuell['big3_'+n+'_tz_id']||null;
-      // Linked-Task nur wenn Titel zum Wochenziel-Text matcht — sonst picken alle 3 Cards denselben ersten Task.
+      // Linked-Task: Fuzzy-Match mit Wochenziel-Text, aber Mirror-Duplikate (exakter Titel-Match) ausgeschlossen
+      // — die sind Legacy-Artefakte, das Wochenziel selbst ist der Outcome.
       const big3Txt=(wrAktuell['big3_'+n]||'').toLowerCase().trim();
       const linkedTask=tzId?S.aufgaben.find(a=>{
         if(a.pid!==aP||String(a.teilzielId)!==String(tzId)||a.status==='erledigt'||a.prio!=='P1')return false;
+        const tLow=(a.titel||'').toLowerCase().trim();
+        if(big3Txt&&tLow===big3Txt)return false; // Mirror-Duplikat ignorieren
         if(!big3Txt)return true;
-        const tLow=(a.titel||'').toLowerCase();
         return tLow.includes(big3Txt.slice(0,Math.min(20,big3Txt.length)))||big3Txt.includes(tLow.slice(0,Math.min(20,tLow.length)));
       }):null;
       out+='<div style="background:var(--sf);border:1.5px solid '+(done?'var(--green-bd)':'var(--bd)')+';border-radius:12px;padding:12px 14px;margin-bottom:7px;display:flex;align-items:center;gap:10px;transition:border-color .2s">';
@@ -4758,7 +4781,7 @@ function rTag(){
             }
           }
           const _nA=prefillTzId?'{prio:\'P1\',teilzielId:\''+prefillTzId+'\'}':'{prio:\'P1\'}';
-          out+='<button onclick="openNeu('+_nA+')" style="flex-shrink:0;padding:8px 14px;border-radius:9px;background:var(--gray-bg);color:var(--t2);border:1.5px dashed var(--bd);font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap" title="Aufgabe für dieses Wochenziele anlegen">+ Aufgabe</button>';
+          out+='<button onclick="openNeu('+_nA+')" style="flex-shrink:0;padding:8px 14px;border-radius:9px;background:var(--gray-bg);color:var(--t2);border:1.5px dashed var(--bd);font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap" title="Optional: Wochenziel in kleinere Aufgaben aufbrechen, wenn es zu groß ist. Sonst reicht der Checkbox-Haken.">+ Aufgabe</button>';
         }
       }
       out+='</div>';
