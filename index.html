@@ -4552,17 +4552,27 @@ function rTag(){
       hero+='<button onclick="pauseA(\''+a.id+'\')" style="padding:13px 16px;border-radius:12px;background:rgba(255,255,255,.15);color:#fff;border:none;font-family:inherit;font-size:14px;cursor:pointer;transition:background .15s" onmouseenter="this.style.background=\'rgba(255,255,255,.25)\'" onmouseleave="this.style.background=\'rgba(255,255,255,.15)\'">⏸</button>';
       hero+='<button onclick="openDetail(\''+a.id+'\')" style="padding:13px 16px;border-radius:12px;background:rgba(255,255,255,.15);color:#fff;border:none;font-family:inherit;font-size:14px;cursor:pointer;transition:background .15s" onmouseenter="this.style.background=\'rgba(255,255,255,.25)\'" onmouseleave="this.style.background=\'rgba(255,255,255,.15)\'">···</button>';
       hero+='</div>';
-      hero+='<div style="margin-top:12px;border-top:1px solid rgba(255,255,255,.15);padding-top:12px"><div style="font-size:9px;font-weight:700;opacity:.5;letter-spacing:.6px;text-transform:uppercase;margin-bottom:6px">Checkliste</div>'+stepsHtml(a,true)+'</div>';
-      // ── Unteraufgaben (auch in aktivem Hero) ──
+      // ── Checkliste + Unteraufgaben (schlank wenn leer) ──
       {
+        const hasUaA=a.ua&&a.ua.length;
         const subsA=S.aufgaben.filter(x=>x.parentId===a.id&&x.status!=='archiviert');
-        hero+='<div style="margin-top:10px;padding:10px 12px;background:rgba(255,255,255,.06);border-radius:10px;border:1px dashed rgba(255,255,255,.15)">';
-        hero+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:'+(subsA.length?'8':'0')+'px">';
-        hero+='<div style="font-size:9px;font-weight:700;opacity:.6;letter-spacing:.6px;text-transform:uppercase">Unteraufgaben'+(subsA.length?' · '+subsA.filter(x=>x.status==='erledigt').length+'/'+subsA.length:'')+'</div>';
-        hero+='<button onclick="openNeu({parent_id:\''+a.id+'\',pid:\''+aP+'\',zielId:\''+(a.zielId||'')+'\',teilzielId:\''+(a.teilzielId||'')+'\'})" style="margin-left:auto;font-size:10px;padding:4px 9px;border-radius:6px;background:rgba(255,255,255,.12);color:rgba(255,255,255,.8);border:1px solid rgba(255,255,255,.2);cursor:pointer;font-family:inherit;font-weight:600">+ Neu</button>';
-        hero+='</div>';
-        subsA.forEach(su=>{const sp=person(su.pid);const done=su.status==='erledigt';hero+='<div onclick="openDetail(\''+su.id+'\')" style="display:flex;align-items:center;gap:8px;padding:5px 0;cursor:pointer;font-size:12px"><span style="opacity:'+(done?'.35':'.9')+';'+(done?'text-decoration:line-through':'')+';flex:1">'+esc(su.titel)+'</span>'+(sp&&sp.id!==aP?'<span style="font-size:9px;color:#93c5fd;font-weight:600">'+esc(safeName(sp).split(' ')[0])+'</span>':'')+'</div>';});
-        hero+='</div>';
+        const hasSubsA=subsA.length>0;
+        if(hasUaA){
+          hero+='<div style="margin-top:12px;border-top:1px solid rgba(255,255,255,.15);padding-top:12px"><div style="font-size:9px;font-weight:700;opacity:.5;letter-spacing:.6px;text-transform:uppercase;margin-bottom:6px">Checkliste · '+a.ua.filter(u=>u.d).length+'/'+a.ua.length+'</div>'+stepsHtml(a,true)+'</div>';
+        }
+        if(hasSubsA){
+          hero+='<div style="margin-top:10px;padding:10px 12px;background:rgba(255,255,255,.06);border-radius:10px;border:1px dashed rgba(255,255,255,.15)">';
+          hero+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">';
+          hero+='<div style="font-size:9px;font-weight:700;opacity:.6;letter-spacing:.6px;text-transform:uppercase">Unteraufgaben · '+subsA.filter(x=>x.status==='erledigt').length+'/'+subsA.length+'</div>';
+          hero+='<button onclick="openNeu({parent_id:\''+a.id+'\',pid:\''+aP+'\',zielId:\''+(a.zielId||'')+'\',teilzielId:\''+(a.teilzielId||'')+'\'})" style="margin-left:auto;font-size:10px;padding:4px 9px;border-radius:6px;background:rgba(255,255,255,.12);color:rgba(255,255,255,.8);border:1px solid rgba(255,255,255,.2);cursor:pointer;font-family:inherit;font-weight:600">+ Neu</button>';
+          hero+='</div>';
+          subsA.forEach(su=>{const sp=person(su.pid);const done=su.status==='erledigt';hero+='<div onclick="openDetail(\''+su.id+'\')" style="display:flex;align-items:center;gap:8px;padding:5px 0;cursor:pointer;font-size:12px"><span style="opacity:'+(done?'.35':'.9')+';'+(done?'text-decoration:line-through':'')+';flex:1">'+esc(su.titel)+'</span>'+(sp&&sp.id!==aP?'<span style="font-size:9px;color:#93c5fd;font-weight:600">'+esc(safeName(sp).split(' ')[0])+'</span>':'')+'</div>';});
+          hero+='</div>';
+        }
+        const linkPartsA=[];
+        if(!hasUaA)linkPartsA.push('<button onclick="openDetail(\''+a.id+'\')" style="font-size:11px;padding:5px 10px;border-radius:6px;background:transparent;color:rgba(255,255,255,.55);border:1px dashed rgba(255,255,255,.2);cursor:pointer;font-family:inherit">+ Checkliste</button>');
+        if(!hasSubsA)linkPartsA.push('<button onclick="openNeu({parent_id:\''+a.id+'\',pid:\''+aP+'\',zielId:\''+(a.zielId||'')+'\',teilzielId:\''+(a.teilzielId||'')+'\'})" style="font-size:11px;padding:5px 10px;border-radius:6px;background:transparent;color:rgba(255,255,255,.55);border:1px dashed rgba(255,255,255,.2);cursor:pointer;font-family:inherit">+ Unteraufgabe</button>');
+        if(linkPartsA.length)hero+='<div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">'+linkPartsA.join('')+'</div>';
       }
       hero+='</div>';
       if(aktiv.length>1)aktiv.slice(1).forEach(a2=>{
@@ -4629,25 +4639,38 @@ function rTag(){
         if(fromN)hero+='<span style="font-size:10px;opacity:.35">von '+esc(fromN.name)+'</span>';
         hero+='</div>';
         if(naechste.notiz)hero+='<div style="font-size:12px;opacity:.5;font-style:italic;margin-bottom:14px">'+esc(naechste.notiz)+'</div>';
-        // ── Checkliste (private Gedankenstütze) ──
-        hero+='<div style="margin-bottom:12px;padding:10px 12px;background:rgba(255,255,255,.06);border-radius:10px">';
-        hero+='<div style="font-size:9px;font-weight:700;opacity:.5;letter-spacing:.6px;text-transform:uppercase;margin-bottom:8px">Checkliste</div>';
-        if(naechste.ua&&naechste.ua.length){
-          naechste.ua.forEach((u,i)=>{hero+='<div class="sr" style="padding:4px 0"><div onclick="toggleStep(\''+naechste.id+'\','+i+')" style="width:14px;height:14px;border-radius:3px;flex-shrink:0;cursor:pointer;display:flex;align-items:center;justify-content:center;'+(u.d?'background:var(--hero-t);border:1.5px solid var(--hero-t)':'border:1.5px solid rgba(255,255,255,.25)')+'">'+(u.d?'<span style="color:var(--hero);font-size:8px;font-weight:800">✓</span>':'')+'</div><span style="font-size:12px;'+(u.d?'opacity:.35;text-decoration:line-through':'opacity:.8')+'">'+u.t+'</span></div>';});
-        }
-        hero+='<div style="display:flex;gap:6px;margin-top:8px"><input class="asi" id="si-'+naechste.id+'" placeholder="+ Eintrag…" onkeydown="if(event.key===\'Enter\')addStep(\''+naechste.id+'\')" style="font-size:12px;padding:6px 10px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);color:#fff;border-radius:8px"><button onclick="addStep(\''+naechste.id+'\')" style="font-size:11px;padding:5px 10px;border-radius:6px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.08);color:rgba(255,255,255,.5);cursor:pointer">+</button></div>';
-        hero+='</div>';
-        // ── Unteraufgaben (echte delegierbare Commitments) ──
+        // ── Checkliste + Unteraufgaben (schlank wenn leer) ──
         {
+          const hasUa=naechste.ua&&naechste.ua.length;
           const subs=S.aufgaben.filter(x=>x.parentId===naechste.id&&x.status!=='archiviert');
-          hero+='<div style="margin-bottom:16px;padding:10px 12px;background:rgba(255,255,255,.06);border-radius:10px;border:1px dashed rgba(255,255,255,.15)">';
-          // Header mit Button rechts — Button NICHT unter der Liste
-          hero+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:'+(subs.length?'8':'0')+'px">';
-          hero+='<div style="font-size:9px;font-weight:700;opacity:.6;letter-spacing:.6px;text-transform:uppercase">Unteraufgaben'+(subs.length?' · '+subs.filter(x=>x.status==='erledigt').length+'/'+subs.length:'')+'</div>';
-          hero+='<button onclick="openNeu({parent_id:\''+naechste.id+'\',pid:\''+aP+'\',zielId:\''+(naechste.zielId||'')+'\',teilzielId:\''+(naechste.teilzielId||'')+'\'})" style="margin-left:auto;font-size:10px;padding:4px 9px;border-radius:6px;background:rgba(255,255,255,.12);color:rgba(255,255,255,.8);border:1px solid rgba(255,255,255,.2);cursor:pointer;font-family:inherit;font-weight:600">+ Neu</button>';
-          hero+='</div>';
-          subs.forEach(su=>{const sp=person(su.pid);const done=su.status==='erledigt';hero+='<div onclick="openDetail(\''+su.id+'\')" style="display:flex;align-items:center;gap:8px;padding:5px 0;cursor:pointer;font-size:12px"><span style="opacity:'+(done?'.35':'.9')+';'+(done?'text-decoration:line-through':'')+';flex:1">'+esc(su.titel)+'</span>'+(sp&&sp.id!==aP?'<span style="font-size:9px;color:#93c5fd;font-weight:600">'+esc(safeName(sp).split(' ')[0])+'</span>':'')+'</div>';});
-          hero+='</div>';
+          const hasSubs=subs.length>0;
+          // Checkliste: volle Box nur wenn Einträge da, sonst nur Input
+          if(hasUa){
+            hero+='<div style="margin-bottom:10px;padding:10px 12px;background:rgba(255,255,255,.06);border-radius:10px">';
+            hero+='<div style="font-size:9px;font-weight:700;opacity:.5;letter-spacing:.6px;text-transform:uppercase;margin-bottom:8px">Checkliste · '+naechste.ua.filter(u=>u.d).length+'/'+naechste.ua.length+'</div>';
+            naechste.ua.forEach((u,i)=>{hero+='<div class="sr" style="padding:4px 0"><div onclick="toggleStep(\''+naechste.id+'\','+i+')" style="width:14px;height:14px;border-radius:3px;flex-shrink:0;cursor:pointer;display:flex;align-items:center;justify-content:center;'+(u.d?'background:var(--hero-t);border:1.5px solid var(--hero-t)':'border:1.5px solid rgba(255,255,255,.25)')+'">'+(u.d?'<span style="color:var(--hero);font-size:8px;font-weight:800">✓</span>':'')+'</div><span style="font-size:12px;'+(u.d?'opacity:.35;text-decoration:line-through':'opacity:.8')+'">'+u.t+'</span></div>';});
+            hero+='<div style="display:flex;gap:6px;margin-top:8px"><input class="asi" id="si-'+naechste.id+'" placeholder="+ Eintrag…" onkeydown="if(event.key===\'Enter\')addStep(\''+naechste.id+'\')" style="font-size:12px;padding:6px 10px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);color:#fff;border-radius:8px"><button onclick="addStep(\''+naechste.id+'\')" style="font-size:11px;padding:5px 10px;border-radius:6px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.08);color:rgba(255,255,255,.5);cursor:pointer">+</button></div>';
+            hero+='</div>';
+          }
+          // Unteraufgaben: volle Box nur wenn Subs da, sonst nichts (wird unten als Link-Row gezeigt)
+          if(hasSubs){
+            hero+='<div style="margin-bottom:10px;padding:10px 12px;background:rgba(255,255,255,.06);border-radius:10px;border:1px dashed rgba(255,255,255,.15)">';
+            hero+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">';
+            hero+='<div style="font-size:9px;font-weight:700;opacity:.6;letter-spacing:.6px;text-transform:uppercase">Unteraufgaben · '+subs.filter(x=>x.status==='erledigt').length+'/'+subs.length+'</div>';
+            hero+='<button onclick="openNeu({parent_id:\''+naechste.id+'\',pid:\''+aP+'\',zielId:\''+(naechste.zielId||'')+'\',teilzielId:\''+(naechste.teilzielId||'')+'\'})" style="margin-left:auto;font-size:10px;padding:4px 9px;border-radius:6px;background:rgba(255,255,255,.12);color:rgba(255,255,255,.8);border:1px solid rgba(255,255,255,.2);cursor:pointer;font-family:inherit;font-weight:600">+ Neu</button>';
+            hero+='</div>';
+            subs.forEach(su=>{const sp=person(su.pid);const done=su.status==='erledigt';hero+='<div onclick="openDetail(\''+su.id+'\')" style="display:flex;align-items:center;gap:8px;padding:5px 0;cursor:pointer;font-size:12px"><span style="opacity:'+(done?'.35':'.9')+';'+(done?'text-decoration:line-through':'')+';flex:1">'+esc(su.titel)+'</span>'+(sp&&sp.id!==aP?'<span style="font-size:9px;color:#93c5fd;font-weight:600">'+esc(safeName(sp).split(' ')[0])+'</span>':'')+'</div>';});
+            hero+='</div>';
+          }
+          // Kompakte Link-Row wenn beide leer ODER als Ergänzung wenn nur eines gefüllt
+          const linkParts=[];
+          if(!hasUa)linkParts.push('<button onclick="document.getElementById(\'si-inline-'+naechste.id+'\')?.focus()||openDetail(\''+naechste.id+'\')" style="font-size:11px;padding:5px 10px;border-radius:6px;background:transparent;color:rgba(255,255,255,.55);border:1px dashed rgba(255,255,255,.2);cursor:pointer;font-family:inherit">+ Checkliste</button>');
+          if(!hasSubs)linkParts.push('<button onclick="openNeu({parent_id:\''+naechste.id+'\',pid:\''+aP+'\',zielId:\''+(naechste.zielId||'')+'\',teilzielId:\''+(naechste.teilzielId||'')+'\'})" style="font-size:11px;padding:5px 10px;border-radius:6px;background:transparent;color:rgba(255,255,255,.55);border:1px dashed rgba(255,255,255,.2);cursor:pointer;font-family:inherit">+ Unteraufgabe</button>');
+          if(linkParts.length)hero+='<div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">'+linkParts.join('')+'</div>';
+          // Inline-Input für Schnell-Checkliste wenn komplett leer
+          if(!hasUa){
+            hero+='<input id="si-inline-'+naechste.id+'" placeholder="Erster Checkliste-Eintrag…" onkeydown="if(event.key===\'Enter\'&&this.value.trim()){document.getElementById(\'si-'+naechste.id+'\')||this.setAttribute(\'data-aid\',\''+naechste.id+'\');const inp=this;inp.id=\'si-'+naechste.id+'\';addStep(\''+naechste.id+'\');}" style="display:none;width:100%;box-sizing:border-box;font-size:12px;padding:7px 10px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);color:#fff;border-radius:8px;margin-bottom:12px;font-family:inherit">';
+          }
         }
         hero+='<div style="display:flex;gap:10px">';
         hero+='<button onclick="focusModus(\''+naechste.id+'\')" style="flex:1;padding:14px;border-radius:12px;background:var(--hero-t);color:var(--hero);border:none;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer;box-shadow:0 0 24px rgba(255,255,255,.12);transition:all .15s" onmouseenter="this.style.boxShadow=\'0 0 32px rgba(255,255,255,.25)\'" onmouseleave="this.style.boxShadow=\'0 0 24px rgba(255,255,255,.12)\'" onmousedown="this.style.transform=\'scale(.98)\'" onmouseup="this.style.transform=\'scale(1)\'">▶ Starten</button>';
