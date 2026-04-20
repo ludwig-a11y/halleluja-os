@@ -7028,7 +7028,7 @@ function openNeu(pf={}){
     +(hasAI?'<button onclick="aiAnalyze()" style="font-size:11px;padding:5px 10px;border-radius:7px;border:1px solid var(--bd);background:var(--gray-bg);color:var(--t2);cursor:pointer;font-family:inherit;flex-shrink:0;white-space:nowrap" title="KI-Hebel-Analyse starten">✨ KI</button>':'')
     +'</div></div>'
     +'<div id="ai-suggestion" style="display:none"></div>'
-    +'<div class="fl"><label>Wer?</label><input type="hidden" id="np" value="'+defaultPid+'"><div style="display:flex;flex-wrap:wrap;gap:5px">'+S.personen.map(p=>'<div onclick="this.parentNode.querySelectorAll(\'.pp\').forEach(x=>{x.style.background=\'var(--sf)\';x.style.color=\'var(--t2)\';x.style.borderColor=\'var(--bd)\'});this.style.background=\'var(--inv)\';this.style.color=\'var(--inv-t)\';this.style.borderColor=\'var(--inv)\';document.getElementById(\'np\').value=\''+p.id+'\'" class="pp" style="cursor:pointer;font-size:12px;font-weight:600;padding:5px 12px;border-radius:99px;border:1.5px solid '+(p.id===defaultPid?'var(--inv)':'var(--bd)')+';background:'+(p.id===defaultPid?'var(--inv)':'var(--sf)')+';color:'+(p.id===defaultPid?'var(--inv-t)':'var(--t2)')+';white-space:nowrap">'+esc(p.name.split(' ')[0])+'</div>').join('')+'</div></div>'
+    +'<div class="fl"><label>Wer?</label><input type="hidden" id="np" value="'+defaultPid+'"><div style="display:flex;flex-wrap:wrap;gap:5px">'+S.personen.map(p=>'<div onclick="this.parentNode.querySelectorAll(\'.pp\').forEach(x=>{x.style.background=\'var(--sf)\';x.style.color=\'var(--t2)\';x.style.borderColor=\'var(--bd)\'});this.style.background=\'var(--inv)\';this.style.color=\'var(--inv-t)\';this.style.borderColor=\'var(--inv)\';document.getElementById(\'np\').value=\''+p.id+'\';refreshNeuMsForPerson(\''+p.id+'\')" class="pp" style="cursor:pointer;font-size:12px;font-weight:600;padding:5px 12px;border-radius:99px;border:1.5px solid '+(p.id===defaultPid?'var(--inv)':'var(--bd)')+';background:'+(p.id===defaultPid?'var(--inv)':'var(--sf)')+';color:'+(p.id===defaultPid?'var(--inv-t)':'var(--t2)')+';white-space:nowrap">'+esc(p.name.split(' ')[0])+'</div>').join('')+'</div></div>'
     +'<div class="fl"><label>Priorität</label><div style="display:flex;gap:6px;margin-top:2px">'
     +['P1','P2','P3'].map(pr=>{const bg=pr==='P1'?'var(--red-bg)':pr==='P2'?'var(--blue-bg)':'var(--gray-bg)';const tc=pr==='P1'?'var(--red)':pr==='P2'?'var(--blue)':'var(--t2)';return'<button id="pbp-'+pr+'" onclick="selPrioBtn(this,\''+pr+'\')" style="font-size:12px;padding:4px 11px;border-radius:8px;border:1px solid '+tc+';background:'+bg+';color:'+tc+';cursor:pointer;font-family:inherit">'+pr+'</button>';}).join('')
     +'</div></div>'
@@ -7069,28 +7069,68 @@ function openNeu(pf={}){
   else setTimeout(()=>updateNeuPaddelHint(),50);
 }
 // updateNeuTZ() entfernt — Ziel-Select wurde durch Monatsziel-Select (ntz) ersetzt
+function refreshNeuMsForPerson(newPid){
+  // Auto-Preselect: nächstes eigenes aktives MS des neuen Assignees
+  const mine=S.ziele
+    .filter(z=>(!z.vertraulich||isGF())&&z.status!=='vorschlag')
+    .flatMap(z=>(z.teilziele||[])
+      .filter(t=>!t.erledigt&&(t.status||'aktiv')==='aktiv'&&String(t.verantwortlichId)===String(newPid))
+      .map(t=>t))
+    .sort((a,b)=>(a.datum||'9999').localeCompare(b.datum||'9999'));
+  const autoTzId=mine.length?mine[0].id:'';
+  const sel=document.getElementById('ntz');
+  if(sel){
+    sel.innerHTML=meilensteinOptgroups(newPid,autoTzId);
+    // Deadline aus neu-ausgewähltem MS übernehmen
+    if(autoTzId){
+      const opt=sel.options[sel.selectedIndex];
+      const d=opt&&opt.dataset?opt.dataset.datum:'';
+      const dl=document.getElementById('ndl');
+      if(d&&dl)dl.value=d;
+    }
+    // "+ Neu"-Button: nur sichtbar wenn Assignee = aktueller User (fremde MS legt man nicht selbst an)
+    const addBtn=sel.parentNode&&sel.parentNode.querySelector('button');
+    if(addBtn)addBtn.style.display=(String(newPid)===String(aP))?'':'none';
+    // QuickForm ggf. zumachen, falls gerade offen
+    const f=document.getElementById('ntz-addform');
+    if(f)f.style.display='none';
+  }
+  updateNeuPaddelHint();
+}
 function updateNeuPaddelHint(){
   const hint=document.getElementById('neu-paddel-hint');if(!hint)return;
   const tzSel=document.getElementById('ntz');
   const tzVal=tzSel?tzSel.value:'';
   const pidEl=document.getElementById('np');
   const pid=pidEl?pidEl.value:aP;
-  // Hat der User überhaupt aktive eigene Monatsziele?
+  // Hat der Assignee überhaupt aktive eigene Monatsziele (sichtbar für aktuellen User)?
   const hatMS=S.ziele.some(z=>(!z.vertraulich||isGF())&&z.status!=='vorschlag'&&(z.teilziele||[]).some(t=>!t.erledigt&&(t.status||'aktiv')==='aktiv'&&String(t.verantwortlichId)===String(pid)));
+  const isSelf=String(pid)===String(aP);
+  const pObj=S.personen.find(x=>String(x.id)===String(pid));
+  const pName=pObj?(pObj.name.split(' ')[0]||pObj.name):'Kollege';
+  const whoShort=isSelf?'du':pName;
+  const whoPossess=isSelf?'dein':pName+'s';
   if(tzVal){
-    hint.innerHTML='✅ <b>Monatsziel zugeordnet</b> → Paddel-Punkt beim Erledigen (P1 = 3🏅, P2 = 1🏅). Sichtbar im Heute-Tab & in der Kaskade.';
+    const onWhose=isSelf?'dein Paddel':(pName+'s Paddel');
+    hint.innerHTML='✅ <b>Monatsziel zugeordnet</b> → Paddel-Punkt beim Erledigen (P1 = 3🏅, P2 = 1🏅). Zählt auf '+onWhose+' ein, sichtbar in '+whoPossess+' Heute-Tab.';
     hint.style.background='var(--green-bg)';
     hint.style.borderColor='var(--green-bd)';
     hint.style.color='var(--green)';
   }else if(!hatMS){
-    // Fallback: User hat noch gar kein Monatsziel
-    hint.innerHTML='🌱 <b>Du hast noch kein Monatsziel.</b> Diese Aufgabe landet im <b>Cleanup-Bucket</b> — du siehst sie nicht als P1 im Heute-Tab und sie zählt nicht fürs Paddel.<br><button type="button" onclick="cm();openFokusCoach(\'kaskade\')" style="margin-top:8px;font-size:11px;padding:5px 11px;border-radius:7px;border:none;background:var(--inv);color:var(--inv-t);cursor:pointer;font-family:inherit;font-weight:700">🌱 Kaskade-Session starten →</button>';
+    // Fallback: Assignee hat kein MS (oder keines sichtbar)
+    if(isSelf){
+      hint.innerHTML='🌱 <b>Du hast noch kein Monatsziel.</b> Diese Aufgabe landet im <b>Cleanup-Bucket</b> — du siehst sie nicht als P1 im Heute-Tab und sie zählt nicht fürs Paddel.<br><button type="button" onclick="cm();openFokusCoach(\'kaskade\')" style="margin-top:8px;font-size:11px;padding:5px 11px;border-radius:7px;border:none;background:var(--inv);color:var(--inv-t);cursor:pointer;font-family:inherit;font-weight:700">🌱 Kaskade-Session starten →</button>';
+    }else{
+      hint.innerHTML='🌱 <b>'+esc(pName)+' hat noch kein sichtbares Monatsziel.</b> Aufgabe landet in '+esc(pName)+'s <b>Cleanup-Bucket</b> — nicht als P1 im Heute-Tab, zählt nicht fürs Paddel. '+esc(pName)+' kann nach Erhalt selbst zuordnen (oder ggf. ist ein MS vertraulich).';
+    }
     hint.style.background='var(--amber-bg)';
     hint.style.borderColor='var(--amber-bd)';
     hint.style.color='var(--t2)';
   }else{
-    // User hat MS, hat aber keines gewählt (oder abgewählt)
-    hint.innerHTML='⚠️ <b>Kein Monatsziel gewählt.</b> Konsequenz: landet im <b>Cleanup-Bucket</b>, erscheint nicht als P1 im Heute-Tab, zählt nicht fürs Paddel. Oben im Dropdown eins wählen.';
+    // Assignee hat MS, aber keines gewählt
+    const whoseBucket=isSelf?'Cleanup-Bucket':(esc(pName)+'s Cleanup-Bucket');
+    const whoseTag=isSelf?'Heute-Tab':(esc(pName)+'s Heute-Tab');
+    hint.innerHTML='⚠️ <b>Kein Monatsziel gewählt.</b> Konsequenz: landet in '+whoseBucket+', erscheint nicht als P1 in '+whoseTag+', zählt nicht fürs Paddel. Oben im Dropdown eins wählen — '+esc(whoShort)+' kann nach Erhalt umhängen.';
     hint.style.background='var(--amber-bg)';
     hint.style.borderColor='var(--amber-bd)';
     hint.style.color='var(--t2)';
