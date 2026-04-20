@@ -5640,12 +5640,218 @@ function openAddMonatszielFromMonat(){
 }
 // ─── Ende MONAT-TAB ───────────────────────────────────────────────
 
+// ─── FOKUS-COACH ──────────────────────────────────────────────────
+// Bridge-Tool: OS generiert kontextuellen Report + rollen-spezifischen Coach-Prompt,
+// User führt die Session in claude.ai / ChatGPT (externe Intelligenz),
+// Output wird als Vorschläge zurück ins OS gepflegt.
+// Leitidee: Gary Kellers "The One Thing" + Pareto-Extrem (80/20 zweimal = 4%/64%).
+
+const FOKUS_PROMPTS={
+  gf:{
+    label:'Geschäftsführung',
+    denker:['Sam Ovens','Alex Hormozi','Ray Dalio'],
+    addon:'Denke wie Sam Ovens ("Build the glue, not what exists"), Alex Hormozi ("Volume negates luck, Focus creates it") und Ray Dalio ("Pain + Reflection = Progress"). Stelle die unangenehmen Fragen. Zwinge mich zu Entscheidungen, nicht zu Optionen. Wenn ich vage werde, bohre nach. Prüfe, ob meine Ziele einen echten Constraint adressieren oder nur Busywork sind.'
+  },
+  marketing:{
+    label:'Marketing',
+    denker:['Jeremy Haynes','Russell Brunson','Alex Cattoni'],
+    addon:'Denke wie Jeremy Haynes (Data-driven Attribution, "Was kostet dich 1 Kunde und was bringt er?"), Russell Brunson (Funnel-Stacking, Hook-Story-Offer) und Alex Cattoni (Conversion-Copy, emotionaler Kern). Frage: Welcher Kanal skaliert wirklich? Welches Angebot ist unschlagbar? Wo verliert der Funnel die meisten Leads?'
+  },
+  sales:{
+    label:'Sales',
+    denker:['Chris Voss','Alex Hormozi','Jeb Blount'],
+    addon:'Denke wie Chris Voss (Tactical Empathy, Calibrated Questions), Alex Hormozi ($100M Offer — Value Equation) und Jeb Blount (Fanatical Prospecting). Frage: Welcher Schritt in der Pipeline hat die höchste Drop-Rate? Ist das Angebot glasklar? Wird genug Pipeline gefüllt?'
+  },
+  ops:{
+    label:'Operations / Assistenz',
+    denker:['Tim Ferriss','Cal Newport'],
+    addon:'Denke wie Tim Ferriss (80/20 Delegation, Eliminate > Automate > Delegate) und Cal Newport (Deep Work, wenige Prioritäten). Frage: Was gehört auf die "Not-to-do"-Liste? Welcher Prozess kostet am meisten Zeit? Wo steckt unnötige Koordination?'
+  }
+};
+
+function fokusBasisPrompt(){
+  return 'Du bist mein Fokus-Coach. Kein Ja-Sager. Sokratisch, aber entscheidungsorientiert.\n\n'
+    +'**Leitidee: Pareto-Extrem (80/20 zweimal angewendet = 4% der Handlungen → 64% des Ergebnisses).**\n'
+    +'Ich will nicht die Top-20%-Hebel finden, sondern die Top-4%. Gary Keller: "Was ist die EINE Sache, die ich tun kann, so dass durch deren Erledigung alles andere leichter oder unnötig wird?"\n\n'
+    +'**Prozess (bitte genau so):**\n'
+    +'1. Lies den Status-Report unten sorgfältig. Benenne 1-3 Beobachtungen/Spannungen, die dir auffallen (was passt nicht zusammen, was fehlt, was wirkt wie Busywork).\n'
+    +'2. Stelle mir max. 3 sokratische Rückfragen, die mich zu den 4%-Hebeln bringen. Keine Generik ("Was ist dir wichtig?"), sondern konkret anhand meiner Daten.\n'
+    +'3. Nach meinen Antworten: Schlage kreative Lateral-Perspektiven vor ("Was, wenn du das Gegenteil machst?", "Was würde passieren, wenn du diese Aufgabe streichst?").\n'
+    +'4. Erst ganz am Ende: Formuliere 1-2 scharfe Quartalsziele (messbar — Zahl oder klares Ja/Nein) und 3-5 konkrete Aufgaben.\n\n'
+    +'**Output-Format am Ende (WICHTIG — damit ich\'s zurück ins OS pflegen kann, exakt diese Zeilen):**\n'
+    +'```\n'
+    +'QUARTALSZIEL: <messbarer Titel> | <YYYY-MM-DD Deadline>\n'
+    +'AUFGABE: <Titel> | P1 | <YYYY-MM-DD Deadline>\n'
+    +'AUFGABE: <Titel> | P2 | <YYYY-MM-DD Deadline>\n'
+    +'```\n';
+}
+
+function generateFokusReport(pid){
+  const p=person(pid); if(!p)return '';
+  const {kw,jahr}=getKW();
+  const today=TODAY;
+  const curQ=Math.ceil((new Date().getMonth()+1)/3);
+  // Ziele (aktiv, eigen)
+  const meineZ=S.ziele.filter(z=>z.status==='aktiv'&&(String(z.verantwortlichId)===String(pid)||(z.teilziele||[]).some(tz=>String(tz.verantwortlichId)===String(pid))));
+  // Momentum
+  const mom=getMomentumScore(pid);
+  // Wochenresets (letzte 4)
+  const wrs=(S.wochenresets||[]).filter(r=>String(r.pid)===String(pid)).slice(0,4);
+  // Aktuelle Woche
+  const wrNow=dieseWocheReset(pid);
+  // Offene P1 (top 8)
+  const offP1=S.aufgaben.filter(a=>String(a.pid)===String(pid)&&a.prio==='P1'&&a.status!=='erledigt'&&a.status!=='idee').slice(0,8);
+  // Offene P2 (count)
+  const offP2Count=S.aufgaben.filter(a=>String(a.pid)===String(pid)&&a.prio==='P2'&&a.status!=='erledigt'&&a.status!=='idee').length;
+
+  let r='# Fokus-Status: '+p.name+' ('+(p.rolle||'')+')\n';
+  r+='Datum: '+today+' · KW '+kw+'/'+jahr+' · Q'+curQ+'\n\n';
+
+  r+='## Momentum-Score\n';
+  if(mom.score===null)r+='Noch keine Wochenresets erfasst.\n';
+  else r+='**'+mom.score+'/100** — letzte 4 Wochen: '+mom.done+' von '+(mom.done+mom.missedBig3)+' Wochenzielen geliefert'+(mom.missedWeeks?' ('+mom.missedWeeks+' Wochen ohne Reset)':'')+'.\n';
+  r+='\n';
+
+  r+='## Aktive Quartalsziele ('+meineZ.length+')\n';
+  if(!meineZ.length)r+='_Keine aktiven Ziele._\n';
+  else meineZ.forEach(z=>{
+    const tzs=(z.teilziele||[]).filter(tz=>String(tz.verantwortlichId)===String(pid)||isGF());
+    r+='- **'+z.name+'**'+(z.monat_ende?' (bis '+z.monat_ende+')':'')+'\n';
+    tzs.slice(0,6).forEach(tz=>{
+      r+='  - Monatsziel: '+tz.name+(tz.bis_datum?' (bis '+tz.bis_datum+')':'')+(tz.erledigt?' ✓':'')+'\n';
+    });
+  });
+  r+='\n';
+
+  r+='## Diese Woche (KW '+kw+')\n';
+  if(wrNow){
+    [['big3_1','big3_1_done'],['big3_2','big3_2_done'],['big3_3','big3_3_done']].forEach(([tf,df],i)=>{
+      if(wrNow[tf])r+=(i+1)+'. '+wrNow[tf]+(wrNow[df]?' ✓':' ○')+'\n';
+    });
+  } else r+='_Kein Wochenreset für diese Woche._\n';
+  r+='\n';
+
+  r+='## Letzte 4 Wochen — Lieferquote\n';
+  if(!wrs.length)r+='_Keine Historie._\n';
+  else wrs.forEach(wr=>{
+    const d=[wr.big3_1_done,wr.big3_2_done,wr.big3_3_done].filter(Boolean).length;
+    const t=[wr.big3_1,wr.big3_2,wr.big3_3].filter(Boolean).length;
+    r+='- KW '+wr.kw+'/'+wr.jahr+': '+d+'/'+t+' geliefert'+(wr.learning?' — Learning: "'+String(wr.learning).slice(0,100)+'"':'')+'\n';
+  });
+  r+='\n';
+
+  r+='## Offene P1-Aufgaben ('+offP1.length+(offP1.length>=8?'+':'')+')\n';
+  if(!offP1.length)r+='_Keine offenen P1._\n';
+  else offP1.forEach(a=>{
+    const z=a.zielId?zielObj(a.zielId):null;
+    r+='- '+a.titel+(a.dl?' (bis '+a.dl+')':'')+(z?' · Ziel: '+z.name:' · **ohne Ziel-Anbindung**')+'\n';
+  });
+  r+='\nOffene P2: '+offP2Count+'\n\n';
+
+  r+='## Metadaten\n';
+  r+='- Heute: '+today+'\n';
+  r+='- Quartal endet: '+(new Date().getFullYear())+'-'+(''+(curQ*3)).padStart(2,'0')+'-XX\n';
+  return r;
+}
+
+function openFokusCoach(){
+  if(!aP){toast('Bitte einloggen');return;}
+  const p=me(); if(!p){toast('Kein Profil');return;}
+  const defRole=isGF()?'gf':(p.rolle&&/market/i.test(p.rolle)?'marketing':(p.rolle&&/sales|vertrieb/i.test(p.rolle)?'sales':'ops'));
+  const report=generateFokusReport(aP);
+  let h='<div class="mt">🎯 Fokus-Session</div>';
+  h+='<div style="font-size:12px;color:var(--t2);margin-bottom:12px;line-height:1.55">Dieses Tool ist eine <b>Brücke</b>: Das OS kennt deine Daten, Claude kennt die Denkmodelle. Zusammen findet ihr die <b>4%-Hebel</b> (Pareto-Extrem). Keine Formulare — echter Dialog.</div>';
+  // Prozess sichtbar (User-Anforderung: "damit jeder den Prozess versteht")
+  h+='<div style="background:var(--blue-bg);border:1px solid var(--blue-bd);border-left:3px solid var(--blue);border-radius:0 8px 8px 0;padding:11px 14px;margin-bottom:14px">'
+    +'<div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--blue);margin-bottom:6px">Prozess</div>'
+    +'<ol style="font-size:12px;color:var(--t2);margin:0;padding-left:18px;line-height:1.7">'
+    +'<li><b>Report unten</b> zeigt deinen aktuellen Status (Ziele, Momentum, offene P1s, letzte Wochen).</li>'
+    +'<li><b>Rolle wählen</b> — das entscheidet, welche Denker Claude aktiviert (Hormozi, Ovens, Dalio, Haynes …).</li>'
+    +'<li><b>Kopieren & Claude öffnen</b> — Prompt + Report landen im Clipboard, claude.ai öffnet sich in neuem Tab.</li>'
+    +'<li>Im Chat: <b>Sokratischer Dialog</b>. Claude fragt zurück, bevor er Lösungen ausspuckt.</li>'
+    +'<li>Am Ende kopierst du Claude\'s Output-Block (QUARTALSZIEL / AUFGABE) hierher zurück → <b>als Vorschlag an GF angelegt</b>.</li>'
+    +'</ol></div>';
+  h+='<div style="background:var(--sf);border:1px solid var(--bd);border-radius:9px;padding:11px 14px;margin-bottom:14px">'
+    +'<div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--t2);margin-bottom:4px">💡 Pareto-Extrem</div>'
+    +'<div style="font-size:12px;color:var(--t2);line-height:1.55">80/20 auf 80/20 angewendet = <b>4% der Handlungen erzeugen 64% des Ergebnisses</b>. Die Fokus-Session sucht nicht die wichtigsten 20%, sondern die wichtigsten 4%. Gary Kellers Kernfrage: <i>"Was ist die EINE Sache, durch deren Erledigung alles andere leichter oder unnötig wird?"</i></div></div>';
+  h+='<div class="fl"><label>Rolle / Denker-Pairing</label><select id="fkRole" onchange="fkUpdatePrompt()">';
+  Object.entries(FOKUS_PROMPTS).forEach(([k,v])=>{h+='<option value="'+k+'"'+(k===defRole?' selected':'')+'>'+v.label+' — '+v.denker.join(', ')+'</option>';});
+  h+='</select></div>';
+  h+='<div class="fl"><label>Dein Status-Report <span style="color:var(--t3);font-weight:400">(editierbar)</span></label><textarea id="fkReport" style="min-height:180px;font-family:ui-monospace,\'SF Mono\',Menlo,monospace;font-size:11px;line-height:1.5">'+esc(report)+'</textarea></div>';
+  h+='<div class="fl"><label>Coach-Prompt <span style="color:var(--t3);font-weight:400">(editierbar)</span></label><textarea id="fkPrompt" style="min-height:160px;font-family:ui-monospace,\'SF Mono\',Menlo,monospace;font-size:11px;line-height:1.5"></textarea></div>';
+  h+='<div style="display:flex;gap:8px;margin-bottom:16px"><button class="btn btn-dk" onclick="fkCopyOpen()" style="flex:1">📋 Kopieren & Claude öffnen →</button></div>';
+  h+='<div style="border-top:1px solid var(--bd);padding-top:14px;margin-top:8px">'
+    +'<div style="font-size:12px;font-weight:700;text-transform:uppercase;color:var(--t2);margin-bottom:8px">Zurück aus Claude</div>'
+    +'<div style="font-size:11px;color:var(--t3);margin-bottom:8px;line-height:1.5">Füge den Output-Block am Ende deines Claude-Chats hier ein. Jede <b>QUARTALSZIEL</b>-Zeile wird als Ziel-Vorschlag an GF angelegt, jede <b>AUFGABE</b>-Zeile als Aufgabe in deine Liste.</div>'
+    +'<div class="fl"><textarea id="fkReturn" placeholder="QUARTALSZIEL: 30k MRR bis Q2 | 2026-06-30\nAUFGABE: Sales-Script v2 finalisieren | P1 | 2026-04-30\nAUFGABE: Jeremy-Haynes-Attribution-Setup | P2 | 2026-05-15" style="min-height:110px;font-family:ui-monospace,\'SF Mono\',Menlo,monospace;font-size:11px;line-height:1.5"></textarea></div>'
+    +'<div style="display:flex;gap:8px"><button class="btn btn-gr" onclick="cm()" style="flex:1">Schließen</button><button class="btn btn-dk" onclick="fkParseReturn()" style="flex:1">Als Vorschläge anlegen →</button></div>'
+    +'</div>';
+  document.getElementById('mb').innerHTML=h;
+  document.getElementById('ovl').classList.add('open');
+  fkUpdatePrompt();
+}
+
+function fkUpdatePrompt(){
+  const roleSel=document.getElementById('fkRole'); if(!roleSel)return;
+  const role=roleSel.value;
+  const pd=FOKUS_PROMPTS[role];
+  document.getElementById('fkPrompt').value=fokusBasisPrompt()+'\n**Rollen-Kontext: '+pd.label+'**\n'+pd.addon+'\n';
+}
+
+async function fkCopyOpen(){
+  const prompt=document.getElementById('fkPrompt').value;
+  const report=document.getElementById('fkReport').value;
+  const text=prompt+'\n\n---\n\n# Mein Status-Report\n\n'+report;
+  let copied=false;
+  try{await navigator.clipboard.writeText(text);copied=true;}catch(e){}
+  if(copied)toast('✓ In Zwischenablage — Claude öffnet sich');
+  else toast('Clipboard-Fehler — bitte manuell kopieren');
+  setTimeout(()=>{try{window.open('https://claude.ai/new','_blank','noopener');}catch(e){}},250);
+}
+
+async function fkParseReturn(){
+  const raw=(document.getElementById('fkReturn').value||'').trim();
+  if(!raw){toast('Nichts zum Einfügen');return;}
+  const lines=raw.split(/\r?\n/).map(l=>l.trim()).filter(l=>l&&!l.startsWith('```'));
+  let zCount=0,aCount=0,skip=0;
+  for(const line of lines){
+    const m=line.match(/^(QUARTALSZIEL|ZIEL|AUFGABE|TASK|TODO)\s*:\s*(.+)$/i);
+    if(!m){skip++;continue;}
+    const typ=m[1].toUpperCase();
+    const parts=m[2].split('|').map(s=>s.trim()).filter(Boolean);
+    if(typ==='QUARTALSZIEL'||typ==='ZIEL'){
+      const name=parts[0]; if(!name||name.length<5){skip++;continue;}
+      const dl=parts[1]&&/^\d{4}-\d{2}-\d{2}$/.test(parts[1])?parts[1]:null;
+      const id=nid('z');
+      const rec={id,name,farbe:0,pct:0,verantwortlich_id:String(aP),vertraulich:false,status:'vorschlag',vorgeschlagen_von:String(aP)};
+      if(dl)rec.monat_ende=dl.slice(0,7);
+      try{await dbInsert('ziele',rec);S.ziele.push({...rec,verantwortlichId:aP,kpis:[],teilziele:[]});zCount++;}catch(e){skip++;}
+    } else if(typ==='AUFGABE'||typ==='TASK'||typ==='TODO'){
+      const titel=parts[0]; if(!titel||titel.length<3){skip++;continue;}
+      let prio='P2';
+      for(const pp of parts.slice(1)){if(/^P1$/i.test(pp))prio='P1';else if(/^P2$/i.test(pp))prio='P2';else if(/^P3$/i.test(pp))prio='P3';}
+      let dl=null;
+      for(const pp of parts.slice(1)){if(/^\d{4}-\d{2}-\d{2}$/.test(pp))dl=pp;}
+      const id=nid('a');
+      const rec={id,titel,pid:String(aP),prio,status:'offen',erstellt_von:String(aP)};
+      if(dl)rec.dl=dl;
+      try{await dbInsert('aufgaben',rec);S.aufgaben.push(normalizeAufgabe(rec));aCount++;}catch(e){skip++;}
+    } else skip++;
+  }
+  const summary='✓ '+zCount+' Ziel-Vorschlag'+(zCount!==1?'e':'')+' · '+aCount+' Aufgabe'+(aCount!==1?'n':'')+(skip?' · '+skip+' Zeile'+(skip!==1?'n':'')+' ignoriert':'');
+  toast(summary);
+  cm();
+  if(typeof rZiele==='function')rZiele();
+  if(typeof rStart==='function')rStart();
+}
+// ─── Ende FOKUS-COACH ────────────────────────────────────────────
+
 function rZiele(){
   const vorschlaege=S.ziele.filter(z=>z.status==='vorschlag');
   const meineVorschlaege=vorschlaege.filter(z=>String(z.vorgeschlagen_von)===String(aP));
   let out='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">'
     +'<div style="font-size:16px;font-weight:700">Ziele'+(isGF()&&vorschlaege.length?' <span style="font-size:11px;background:var(--amber);color:#fff;border-radius:99px;padding:1px 7px;font-weight:700;vertical-align:middle">'+vorschlaege.length+'</span>':'')+'</div>'
-    +(isGF()?'<div style="display:flex;gap:8px"><button class="btn btn-dk" onclick="addZiel()">+ Neues Ziel</button><button class="btn" style="border:1px solid var(--bd);background:var(--gray-bg);color:var(--t2)" onclick="addBereich()">📁 + Bereich</button></div>':'<button class="btn btn-dk" onclick="vorschlagenZiel()">+ Ziel vorschlagen</button>')
+    +(isGF()?'<div style="display:flex;gap:8px"><button class="btn" style="border:1px solid var(--bd);background:var(--sf);color:var(--t2)" onclick="openFokusCoach()">🎯 Fokus-Session</button><button class="btn btn-dk" onclick="addZiel()">+ Neues Ziel</button><button class="btn" style="border:1px solid var(--bd);background:var(--gray-bg);color:var(--t2)" onclick="addBereich()">📁 + Bereich</button></div>':'<div style="display:flex;gap:8px"><button class="btn" style="border:1px solid var(--bd);background:var(--sf);color:var(--t2)" onclick="openFokusCoach()">🎯 Fokus-Session</button><button class="btn btn-dk" onclick="vorschlagenZiel()">+ Ziel vorschlagen</button></div>')
     +'</div>';
   if(isGF()&&vorschlaege.length){
     out+='<div style="background:var(--amber-bg);border:1.5px solid var(--amber-bd);border-radius:12px;padding:14px 16px;margin-bottom:20px">';
