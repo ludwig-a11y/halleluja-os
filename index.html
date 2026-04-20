@@ -7005,7 +7005,18 @@ function openNeu(pf={}){
   window._aiDebounce=null;
   window._neuParentId=pf.parent_id||null;
   const defaultPid=pf.pid||aP;
-  const msOpts=meilensteinOptgroups(defaultPid,pf.teilzielId||'');
+  // Auto-Preselect: nächstes eigenes aktives Monatsziel als Fallback (verhindert Cleanup-Orphans)
+  let autoTzId=pf.teilzielId||'';
+  if(!autoTzId){
+    const mine=S.ziele
+      .filter(z=>(!z.vertraulich||isGF())&&z.status!=='vorschlag')
+      .flatMap(z=>(z.teilziele||[])
+        .filter(t=>!t.erledigt&&(t.status||'aktiv')==='aktiv'&&String(t.verantwortlichId)===String(defaultPid))
+        .map(t=>t))
+      .sort((a,b)=>(a.datum||'9999').localeCompare(b.datum||'9999'));
+    if(mine.length)autoTzId=mine[0].id;
+  }
+  const msOpts=meilensteinOptgroups(defaultPid,autoTzId);
   const hasAI=true;
   // Parent-Kontext: wenn Unteraufgabe, zeige Parent explizit an
   const parentTask=window._neuParentId?S.aufgaben.find(x=>x.id===window._neuParentId):null;
@@ -7021,7 +7032,7 @@ function openNeu(pf={}){
     +'<div class="fl"><label>Priorität</label><div style="display:flex;gap:6px;margin-top:2px">'
     +['P1','P2','P3'].map(pr=>{const bg=pr==='P1'?'var(--red-bg)':pr==='P2'?'var(--blue-bg)':'var(--gray-bg)';const tc=pr==='P1'?'var(--red)':pr==='P2'?'var(--blue)':'var(--t2)';return'<button id="pbp-'+pr+'" onclick="selPrioBtn(this,\''+pr+'\')" style="font-size:12px;padding:4px 11px;border-radius:8px;border:1px solid '+tc+';background:'+bg+';color:'+tc+';cursor:pointer;font-family:inherit">'+pr+'</button>';}).join('')
     +'</div></div>'
-    +'<div class="fl"><label>Monatsziel <span style="font-weight:400;color:var(--t2)">(für Paddel-Punkt)</span></label>'+msPickerWithAdd('ntz',defaultPid,pf.teilzielId||'','updateNeuPaddelHint();const o=this.options[this.selectedIndex];const d=o?.dataset?.datum;const dl=document.getElementById(\'ndl\');if(d&&dl)dl.value=d;',pf.zielId||null)+'</div>'
+    +'<div class="fl"><label>Monatsziel <span style="font-weight:400;color:var(--t2)">(für Paddel-Punkt)</span></label>'+msPickerWithAdd('ntz',defaultPid,autoTzId,'updateNeuPaddelHint();const o=this.options[this.selectedIndex];const d=o?.dataset?.datum;const dl=document.getElementById(\'ndl\');if(d&&dl)dl.value=d;',pf.zielId||null)+'</div>'
     +'<div id="neu-paddel-hint" style="font-size:11px;color:var(--t2);background:var(--gray-bg);border:1px dashed var(--bd);border-radius:8px;padding:8px 10px;margin-bottom:10px;line-height:1.4">⚠️ <b>Kein Monatsziel gewählt</b> → kein Paddel-Punkt beim Erledigen. Wähle oben ein Monatsziel, damit diese Aufgabe auf ein Ziel einzahlt.</div>'
     +'<div class="mf" style="margin-bottom:8px"><button class="btn btn-gr" onclick="cm()">Abbrechen</button><button class="btn btn-dk" onclick="saveNeu()">Speichern</button></div>'
     +'<div style="text-align:center;margin-bottom:4px"><button onclick="const m=document.getElementById(\'neu-mehr\');const open=m.style.display!==\'none\';m.style.display=open?\'none\':\'block\';this.textContent=open?\'Mehr ↓\':\'Weniger ↑\'" style="font-size:11px;color:var(--t3);background:none;border:none;cursor:pointer;font-family:inherit;padding:2px 8px">Mehr ↓</button></div>'
@@ -7055,21 +7066,33 @@ function openNeu(pf={}){
     const m=document.getElementById('neu-mehr');if(m)m.style.display='block';
   }
   if(pf.teilzielId)setTimeout(()=>{const s=document.getElementById('ntz');if(s){s.value=pf.teilzielId;updateNeuPaddelHint();}},100);
+  else setTimeout(()=>updateNeuPaddelHint(),50);
 }
 // updateNeuTZ() entfernt — Ziel-Select wurde durch Monatsziel-Select (ntz) ersetzt
 function updateNeuPaddelHint(){
   const hint=document.getElementById('neu-paddel-hint');if(!hint)return;
   const tzSel=document.getElementById('ntz');
   const tzVal=tzSel?tzSel.value:'';
+  const pidEl=document.getElementById('np');
+  const pid=pidEl?pidEl.value:aP;
+  // Hat der User überhaupt aktive eigene Monatsziele?
+  const hatMS=S.ziele.some(z=>(!z.vertraulich||isGF())&&z.status!=='vorschlag'&&(z.teilziele||[]).some(t=>!t.erledigt&&(t.status||'aktiv')==='aktiv'&&String(t.verantwortlichId)===String(pid)));
   if(tzVal){
-    hint.innerHTML='✅ <b>Monatsziel zugeordnet</b> → Paddel-Punkt beim Erledigen (P1 = 3🏅, P2 = 1🏅).';
+    hint.innerHTML='✅ <b>Monatsziel zugeordnet</b> → Paddel-Punkt beim Erledigen (P1 = 3🏅, P2 = 1🏅). Sichtbar im Heute-Tab & in der Kaskade.';
     hint.style.background='var(--green-bg)';
     hint.style.borderColor='var(--green-bd)';
     hint.style.color='var(--green)';
+  }else if(!hatMS){
+    // Fallback: User hat noch gar kein Monatsziel
+    hint.innerHTML='🌱 <b>Du hast noch kein Monatsziel.</b> Diese Aufgabe landet im <b>Cleanup-Bucket</b> — du siehst sie nicht als P1 im Heute-Tab und sie zählt nicht fürs Paddel.<br><button type="button" onclick="cm();openFokusCoach(\'kaskade\')" style="margin-top:8px;font-size:11px;padding:5px 11px;border-radius:7px;border:none;background:var(--inv);color:var(--inv-t);cursor:pointer;font-family:inherit;font-weight:700">🌱 Kaskade-Session starten →</button>';
+    hint.style.background='var(--amber-bg)';
+    hint.style.borderColor='var(--amber-bd)';
+    hint.style.color='var(--t2)';
   }else{
-    hint.innerHTML='⚠️ <b>Kein Monatsziel gewählt</b> → kein Paddel-Punkt beim Erledigen. Unter <i>Mehr ↓</i> → Ziel + Monatsziel zuordnen für Paddel.';
-    hint.style.background='var(--gray-bg)';
-    hint.style.borderColor='var(--bd)';
+    // User hat MS, hat aber keines gewählt (oder abgewählt)
+    hint.innerHTML='⚠️ <b>Kein Monatsziel gewählt.</b> Konsequenz: landet im <b>Cleanup-Bucket</b>, erscheint nicht als P1 im Heute-Tab, zählt nicht fürs Paddel. Oben im Dropdown eins wählen.';
+    hint.style.background='var(--amber-bg)';
+    hint.style.borderColor='var(--amber-bd)';
     hint.style.color='var(--t2)';
   }
   // Sync liebevolle Reibung hint for Event without milestone
