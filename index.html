@@ -6130,39 +6130,121 @@ function fkPreviewReturn(){
   const {items,ignored}=fkClassifyLines(raw);
   const total=items.ziele.length+items.monatsziele.length+items.wochenziele.length+items.aufgaben.length;
   if(!total){toast('⚠️ Kein Output-Format erkannt — bitte Zeilen wie "QUARTALSZIEL:", "MONATSZIEL:" etc. prüfen');return;}
-  let h='<div class="mt">Vorschau — was kommt an?</div>';
-  h+='<div style="font-size:12px;color:var(--t2);margin-bottom:14px">Prüfe, ob das stimmt. Du kannst immer noch zurück und die Zeilen anpassen.</div>';
-  if(items.ziele.length){
-    h+='<div style="margin-bottom:12px"><div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--t2);margin-bottom:6px">🎯 '+items.ziele.length+' Quartalsziel'+(items.ziele.length!==1?'e':'')+(isGF()?' (direkt aktiv)':' (Vorschlag an GF)')+'</div>';
-    items.ziele.forEach(it=>{h+='<div style="background:var(--sf);border:1px solid var(--bd);border-radius:8px;padding:9px 12px;margin-bottom:5px"><div style="font-size:13px;font-weight:600">'+esc(it.name)+'</div>'+(it.dl?'<div style="font-size:11px;color:var(--t3);margin-top:2px">bis '+it.dl+'</div>':'')+'</div>';});
+  // Store mutable copy for editing
+  window._fkEditItems={
+    ziele:items.ziele.map(it=>({...it})),
+    monatsziele:items.monatsziele.map(it=>({...it})),
+    wochenziele:items.wochenziele.map(it=>({...it})),
+    aufgaben:items.aufgaben.map(it=>({...it})),
+    ignored:ignored.slice()
+  };
+  fkRenderEdit();
+}
+
+function fkRenderEdit(){
+  const E=window._fkEditItems;if(!E)return;
+  const inp='font-size:13px;padding:6px 8px;border:1px solid var(--bd);border-radius:6px;background:var(--sf);color:var(--text);font-family:inherit';
+  const rmBtn='background:none;border:none;color:var(--t3);cursor:pointer;font-size:18px;padding:0 4px;line-height:1';
+  let h='<div class="mt">✎ Bearbeiten & Anlegen</div>';
+  h+='<div style="font-size:12px;color:var(--t2);margin-bottom:14px">Letzter Schritt: Formulierungen feinjustieren. Noch ist nichts angelegt.</div>';
+  if(E.ziele.length){
+    h+='<div style="margin-bottom:14px"><div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--t2);margin-bottom:6px">🎯 Quartalsziele <span style="font-weight:400;text-transform:none;color:'+(isGF()?'var(--green)':'var(--orange)')+'">'+(isGF()?'(direkt aktiv)':'(Vorschlag an GF)')+'</span></div>';
+    E.ziele.forEach((it,i)=>{
+      h+='<div style="background:var(--sf);border:1px solid var(--bd);border-radius:8px;padding:8px;margin-bottom:6px;display:flex;gap:6px;align-items:center">';
+      h+='<input id="fe-z-'+i+'" value="'+esc(it.name||'')+'" style="flex:1;'+inp+'">';
+      h+='<input id="fe-z-dl-'+i+'" type="month" value="'+esc((it.dl||'').slice(0,7))+'" style="width:140px;'+inp+'" title="Monat">';
+      h+='<button type="button" onclick="fkEditRemove(\'ziele\','+i+')" style="'+rmBtn+'">×</button></div>';
+    });
     h+='</div>';
   }
-  if(items.monatsziele.length){
-    h+='<div style="margin-bottom:12px"><div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--t2);margin-bottom:6px">📅 '+items.monatsziele.length+' Monatsziel'+(items.monatsziele.length!==1?'e':'')+'</div>';
-    items.monatsziele.forEach(it=>{h+='<div style="background:var(--sf);border:1px solid var(--bd);border-radius:8px;padding:9px 12px;margin-bottom:5px"><div style="font-size:13px;font-weight:600">'+esc(it.name)+'</div>'+(it.dl||it.parentKeyword?'<div style="font-size:11px;color:var(--t3);margin-top:2px">'+(it.dl?'bis '+it.dl:'')+(it.dl&&it.parentKeyword?' · ':'')+(it.parentKeyword?'Parent: '+esc(it.parentKeyword):'')+'</div>':'')+'</div>';});
+  if(E.monatsziele.length){
+    h+='<div style="margin-bottom:14px"><div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--t2);margin-bottom:6px">📅 Monatsziele</div>';
+    E.monatsziele.forEach((it,i)=>{
+      h+='<div style="background:var(--sf);border:1px solid var(--bd);border-radius:8px;padding:8px;margin-bottom:6px;display:flex;gap:6px;align-items:center">';
+      h+='<input id="fe-m-'+i+'" value="'+esc(it.name||'')+'" style="flex:1;'+inp+'">';
+      h+='<input id="fe-m-dl-'+i+'" type="date" value="'+esc(it.dl||'')+'" style="width:150px;'+inp+'">';
+      h+='<button type="button" onclick="fkEditRemove(\'monatsziele\','+i+')" style="'+rmBtn+'">×</button></div>';
+    });
     h+='</div>';
   }
-  if(items.wochenziele.length){
-    h+='<div style="margin-bottom:12px"><div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--t2);margin-bottom:6px">🎯 '+items.wochenziele.length+' Wochenziel'+(items.wochenziele.length!==1?'e':'')+' → Wochenreset</div>';
-    items.wochenziele.slice(0,3).forEach(it=>{h+='<div style="background:var(--sf);border:1px solid var(--bd);border-radius:8px;padding:9px 12px;margin-bottom:5px;font-size:13px;font-weight:600">'+esc(it.titel)+'</div>';});
-    if(items.wochenziele.length>3)h+='<div style="font-size:10px;color:var(--t3);margin-top:4px">⚠️ Nur 3 passen in big3 — '+(items.wochenziele.length-3)+' werden ignoriert</div>';
+  if(E.wochenziele.length){
+    h+='<div style="margin-bottom:14px"><div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--t2);margin-bottom:6px">🎯 Wochenziele <span style="font-weight:400;color:var(--t3);text-transform:none">(direkt ins big3 — max. 3)</span></div>';
+    E.wochenziele.forEach((it,i)=>{
+      const over=i>=3;
+      h+='<div style="background:'+(over?'var(--amber-bg)':'var(--sf)')+';border:1px solid '+(over?'var(--amber-bd)':'var(--bd)')+';border-radius:8px;padding:8px;margin-bottom:6px;display:flex;gap:6px;align-items:center">';
+      h+='<span style="font-size:11px;font-weight:700;color:'+(over?'var(--orange)':'var(--t3)')+';padding:0 6px;min-width:18px">'+(over?'⚠':(i+1))+'</span>';
+      h+='<input id="fe-w-'+i+'" value="'+esc(it.titel||'')+'" style="flex:1;'+inp+'">';
+      h+='<button type="button" onclick="fkEditRemove(\'wochenziele\','+i+')" style="'+rmBtn+'">×</button></div>';
+    });
+    if(E.wochenziele.length>3)h+='<div style="font-size:10px;color:var(--orange);margin-top:2px">⚠ Ab Position 4 werden Wochenziele ignoriert.</div>';
     h+='</div>';
   }
-  if(items.aufgaben.length){
-    h+='<div style="margin-bottom:12px"><div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--t2);margin-bottom:6px">✓ '+items.aufgaben.length+' Aufgabe'+(items.aufgaben.length!==1?'n':'')+'</div>';
-    items.aufgaben.forEach(it=>{h+='<div style="background:var(--sf);border:1px solid var(--bd);border-radius:8px;padding:9px 12px;margin-bottom:5px;display:flex;align-items:center;gap:8px"><span style="font-size:10px;font-weight:700;background:'+(it.prio==='P1'?'var(--red-bg);color:var(--red)':'var(--gray-bg);color:var(--t3)')+';padding:2px 7px;border-radius:5px">'+it.prio+'</span><span style="flex:1;font-size:13px">'+esc(it.titel)+'</span>'+(it.dl?'<span style="font-size:11px;color:var(--t3)">bis '+it.dl+'</span>':'')+'</div>';});
+  if(E.aufgaben.length){
+    h+='<div style="margin-bottom:14px"><div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--t2);margin-bottom:6px">✓ Aufgaben</div>';
+    E.aufgaben.forEach((it,i)=>{
+      h+='<div style="background:var(--sf);border:1px solid var(--bd);border-radius:8px;padding:8px;margin-bottom:6px;display:flex;gap:6px;align-items:center;flex-wrap:wrap">';
+      h+='<select id="fe-a-prio-'+i+'" style="'+inp+';padding:6px 6px">';
+      ['P1','P2','P3'].forEach(pr=>{h+='<option value="'+pr+'"'+(it.prio===pr?' selected':'')+'>'+pr+'</option>';});
+      h+='</select>';
+      h+='<input id="fe-a-'+i+'" value="'+esc(it.titel||'')+'" style="flex:1;min-width:180px;'+inp+'">';
+      h+='<input id="fe-a-dl-'+i+'" type="date" value="'+esc(it.dl||'')+'" style="width:140px;'+inp+'">';
+      h+='<button type="button" onclick="fkEditRemove(\'aufgaben\','+i+')" style="'+rmBtn+'">×</button></div>';
+    });
     h+='</div>';
   }
-  if(ignored.length){
-    h+='<details style="margin-bottom:12px"><summary style="font-size:11px;color:var(--amber);cursor:pointer;padding:4px 0">⚠️ '+ignored.length+' Zeile'+(ignored.length!==1?'n':'')+' nicht erkannt (klicken)</summary>';
+  if(E.ignored && E.ignored.length){
+    h+='<details style="margin-bottom:12px"><summary style="font-size:11px;color:var(--amber);cursor:pointer;padding:4px 0">⚠️ '+E.ignored.length+' Zeile'+(E.ignored.length!==1?'n':'')+' nicht erkannt (klicken)</summary>';
     h+='<div style="margin-top:6px;background:var(--amber-bg);border:1px solid var(--amber-bd);border-radius:8px;padding:9px 12px">';
-    ignored.slice(0,10).forEach(l=>{h+='<div style="font-family:ui-monospace,Menlo,monospace;font-size:10px;color:var(--t2);line-height:1.5">'+esc(l.slice(0,120))+'</div>';});
-    if(ignored.length>10)h+='<div style="font-size:10px;color:var(--t3);margin-top:4px">… und '+(ignored.length-10)+' weitere</div>';
-    h+='<div style="font-size:10px;color:var(--t3);margin-top:6px;line-height:1.5">Diese Zeilen matchen kein bekanntes Format (QUARTALSZIEL/MONATSZIEL/WOCHENZIEL/AUFGABE). Falls wichtig: zurück gehen und Format anpassen.</div>';
+    E.ignored.slice(0,10).forEach(l=>{h+='<div style="font-family:ui-monospace,Menlo,monospace;font-size:10px;color:var(--t2);line-height:1.5">'+esc(l.slice(0,120))+'</div>';});
+    if(E.ignored.length>10)h+='<div style="font-size:10px;color:var(--t3);margin-top:4px">… und '+(E.ignored.length-10)+' weitere</div>';
+    h+='<div style="font-size:10px;color:var(--t3);margin-top:6px;line-height:1.5">Matchen kein bekanntes Format. Falls wichtig: Zurück und im Report-Textfeld korrigieren.</div>';
     h+='</div></details>';
   }
-  h+='<div class="mf"><button class="btn btn-gr" onclick="fkBackToCoach()" style="flex:1">← Zurück</button><button class="btn btn-dk" onclick="fkCommitReturn()" style="flex:1">✓ Anlegen</button></div>';
+  h+='<div class="mf"><button class="btn btn-gr" onclick="fkBackToCoach()" style="flex:1">← Zurück</button><button class="btn btn-dk" onclick="fkCommitFromEdit()" style="flex:1">✓ Anlegen</button></div>';
   document.getElementById('mb').innerHTML=h;
+}
+
+function fkEditReadBack(){
+  const E=window._fkEditItems;if(!E)return;
+  E.ziele.forEach((it,i)=>{
+    const n=document.getElementById('fe-z-'+i);const d=document.getElementById('fe-z-dl-'+i);
+    if(n)it.name=n.value.trim();
+    if(d)it.dl=d.value?d.value+'-01':'';
+  });
+  E.monatsziele.forEach((it,i)=>{
+    const n=document.getElementById('fe-m-'+i);const d=document.getElementById('fe-m-dl-'+i);
+    if(n)it.name=n.value.trim();
+    if(d)it.dl=d.value||'';
+  });
+  E.wochenziele.forEach((it,i)=>{
+    const n=document.getElementById('fe-w-'+i);
+    if(n)it.titel=n.value.trim();
+  });
+  E.aufgaben.forEach((it,i)=>{
+    const n=document.getElementById('fe-a-'+i);const p=document.getElementById('fe-a-prio-'+i);const d=document.getElementById('fe-a-dl-'+i);
+    if(n)it.titel=n.value.trim();
+    if(p)it.prio=p.value;
+    if(d)it.dl=d.value||'';
+  });
+}
+
+function fkEditRemove(kind,i){
+  if(!window._fkEditItems)return;
+  fkEditReadBack();
+  window._fkEditItems[kind].splice(i,1);
+  fkRenderEdit();
+}
+
+async function fkCommitFromEdit(){
+  fkEditReadBack();
+  const E=window._fkEditItems;if(!E){toast('Keine Items');return;}
+  E.ziele=E.ziele.filter(it=>it.name&&it.name.length>=3);
+  E.monatsziele=E.monatsziele.filter(it=>it.name&&it.name.length>=3);
+  E.wochenziele=E.wochenziele.filter(it=>it.titel&&it.titel.length>=3);
+  E.aufgaben=E.aufgaben.filter(it=>it.titel&&it.titel.length>=3);
+  const total=E.ziele.length+E.monatsziele.length+E.wochenziele.length+E.aufgaben.length;
+  if(!total){toast('Nichts mehr übrig zum Anlegen');return;}
+  await fkCommitReturn({ziele:E.ziele,monatsziele:E.monatsziele,wochenziele:E.wochenziele,aufgaben:E.aufgaben});
 }
 
 function fkBackToCoach(){
@@ -6170,10 +6252,14 @@ function fkBackToCoach(){
   setTimeout(()=>{const t=document.getElementById('fkReturn');if(t&&window._fkRawReturn)t.value=window._fkRawReturn;},20);
 }
 
-async function fkCommitReturn(){
-  const raw=window._fkRawReturn||((document.getElementById('fkReturn')||{}).value||'').trim();
-  if(!raw){toast('Nichts zum Einfügen');return;}
-  const {items}=fkClassifyLines(raw);
+async function fkCommitReturn(itemsArg){
+  let items;
+  if(itemsArg){items=itemsArg;}
+  else{
+    const raw=window._fkRawReturn||((document.getElementById('fkReturn')||{}).value||'').trim();
+    if(!raw){toast('Nichts zum Einfügen');return;}
+    items=fkClassifyLines(raw).items;
+  }
   let zCount=0,tzCount=0,wzCount=0,aCount=0,skip=0,orphanTasks=0;
   const created={ziele:[],monatsziele:[],wochenziele:[],aufgaben:[]};
   // Pass 2a: Quartalsziele — GF legt direkt aktiv an, sonst Vorschlag
