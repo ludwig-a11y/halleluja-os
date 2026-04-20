@@ -2423,46 +2423,49 @@ function openWochenreset(){
   const modalTitel=wr?'Wochenziele bearbeiten — KW '+kw:(_resetZwang?'📅 KW '+(kw+1)+' planen':istRueckblick?'Wochenrückblick KW '+kw:'Wochenplanung KW '+nextKw);
   // Im Zwang-Modus: Warum-Lücke kam aus Schritt 1, hier als hidden input
   const zwangBlockiertInput=_resetZwang?'<input type="hidden" id="wr-blockiert" value="'+esc(window._wrBlockiertZwang||'')+'">':'';
+  // ── Primärer Planungs-Pfad: Fokus-Coach ──
+  // Das alte manuelle Picker-UI ist in einem Collapse als Notfall-Fallback versteckt.
+  const coachCta='<div style="background:var(--sf);border:1.5px solid var(--inv);border-radius:12px;padding:16px 18px;margin-bottom:14px">'
+    +'<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t2);margin-bottom:6px">Planung — Schritt 2 von 2</div>'
+    +'<div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:4px">Wochenziele mit Claude durchdenken</div>'
+    +'<div style="font-size:12px;color:var(--t2);margin-bottom:12px;line-height:1.5">Statt aus einer Liste picken: der Coach bekommt deine Retro-Antworten + Kaskade und schlägt 3 scharfe Wochenziele vor. Editierbar, bevor committet wird.</div>'
+    +'<button onclick="cm();window._fkFromWochenreset=true;openFokusCoach(\'woche\')" class="btn btn-dk" style="width:100%;padding:12px;font-size:14px;font-weight:700">🎯 Mit Fokus-Coach planen →</button>'
+    +'</div>';
+  const manualFallback='<details style="margin-bottom:14px"><summary style="font-size:11px;color:var(--t3);cursor:pointer;padding:6px 0">↓ Manuell planen (Notfall-Fallback — falls Claude nicht verfügbar)</summary>'
+    +'<div style="margin-top:10px;padding:12px;border:1px dashed var(--bd);border-radius:10px;background:var(--gray-bg)">'
+    // Step 1: Monatsziel wählen
+    +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">'
+    +'<span style="background:var(--inv);color:var(--inv-t);font-size:12px;font-weight:800;width:22px;height:22px;border-radius:99px;display:flex;align-items:center;justify-content:center;flex-shrink:0">1</span>'
+    +'<span style="font-size:14px;font-weight:700;color:var(--text)">Monatsziel wählen</span>'
+    +'</div>'
+    +'<input type="hidden" id="wr-ziel" value="'+selZielId+'">'
+    +'<input type="hidden" id="wr-focus-tz" value="'+selTZId+'">'
+    +(wr?'<textarea id="wr-blockiert" style="display:none">'+esc(wr.blockiert||'')+'</textarea>':'')
+    +'<div style="margin-left:32px">'+msHtml+'</div>'
+    // Step 2: Wochenziele
+    +'<div style="display:flex;align-items:center;gap:10px;margin-top:14px;margin-bottom:6px">'
+    +'<span style="background:'+(selTZId?'var(--inv)':'var(--bd)')+';color:'+(selTZId?'var(--inv-t)':'var(--t3)')+';font-size:12px;font-weight:800;width:22px;height:22px;border-radius:99px;display:flex;align-items:center;justify-content:center;flex-shrink:0">2</span>'
+    +'<span id="wr-step2-label" style="font-size:14px;font-weight:700;color:'+(selTZId?'var(--text)':'var(--t3)')+'">Wochenziele</span>'
+    +'</div>'
+    +(selTZId?'<div id="wr-step2-sub" style="font-size:11px;color:var(--t2);margin-bottom:6px;margin-left:32px">Wähle aus Vorschlägen oder trage eigene ein (max. 3)</div>':'<div id="wr-step2-sub" style="font-size:11px;color:var(--t3);margin-bottom:6px;margin-left:32px">Zuerst oben ein Monatsziel wählen</div>')
+    +'<div id="wr-tz-section" style="margin-left:32px"></div>'
+    // Plan B inline
+    +'<div style="margin-top:12px;padding-top:10px;border-top:1px dashed var(--bd)">'
+    +'<div style="font-size:11px;font-weight:700;color:var(--t2);margin-bottom:4px">Plan B (optional)</div>'
+    +'<textarea id="wr-hindernis" rows="2" placeholder="Was könnte dazwischenkommen?" style="width:100%;padding:6px 8px;border:1px solid var(--bd);border-radius:6px;font-family:inherit;font-size:12px;resize:vertical;margin-bottom:4px;box-sizing:border-box">'+esc(wr?.blockiert||'')+'</textarea>'
+    +'<textarea id="wr-wenndann" rows="2" placeholder="Wenn das passiert, dann…" style="width:100%;padding:6px 8px;border:1px solid var(--bd);border-radius:6px;font-family:inherit;font-size:12px;resize:vertical;box-sizing:border-box">'+esc(wr?.wenn_dann||'')+'</textarea>'
+    +'</div>'
+    +'<div class="mf" style="margin-top:12px"><button class="btn btn-dk" onclick="saveWochenreset()" style="flex:1">🤝 Manuell committen</button></div>'
+    +'</div></details>';
   document.getElementById('mb').innerHTML=
     '<div class="mt">'+modalTitel+'</div>'
     +zwangBlockiertInput
     +(_resetZwang?'':summaryHtml)
     +(rueckblickHtml?'<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px">'+rueckblickHtml+'</div>':'')
     +wrCascadeHtml()
-    /* Alte "Highlight/Bremsen"-Felder entfernt — §6 Phase A übernimmt die Reflektion strukturiert. */
-
-    // ── Step 1: Monatsziel wählen ──
-    +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">'
-    +'<span style="background:var(--inv);color:var(--inv-t);font-size:12px;font-weight:800;width:24px;height:24px;border-radius:99px;display:flex;align-items:center;justify-content:center;flex-shrink:0">1</span>'
-    +'<span style="font-size:16px;font-weight:700;color:var(--text)">Monatsziel wählen</span>'
-    +'</div>'
-    +'<div style="font-size:12px;color:var(--t2);margin-bottom:10px;margin-left:34px">Welchen Monatsziel bringst du diese Woche voran?</div>'
-    +'<input type="hidden" id="wr-ziel" value="'+selZielId+'">'
-    +'<input type="hidden" id="wr-focus-tz" value="'+selTZId+'">'
-    +(wr?'<textarea id="wr-blockiert" style="display:none">'+esc(wr.blockiert||'')+'</textarea>':'')
-    +'<div style="margin-left:34px">'+msHtml+'</div>'
-
-    // ── Step 2: Wochenziele ──
-    +'<div style="display:flex;align-items:center;gap:10px;margin-top:18px;margin-bottom:6px">'
-    +'<span style="background:'+(selTZId?'var(--inv)':'var(--bd)')+';color:'+(selTZId?'var(--inv-t)':'var(--t3)')+';font-size:12px;font-weight:800;width:24px;height:24px;border-radius:99px;display:flex;align-items:center;justify-content:center;flex-shrink:0">2</span>'
-    +'<span id="wr-step2-label" style="font-size:16px;font-weight:700;color:'+(selTZId?'var(--text)':'var(--t3)')+'">Wochenziele</span>'
-    +'</div>'
-    +(selTZId?'<div id="wr-step2-sub" style="font-size:12px;color:var(--t2);margin-bottom:8px;margin-left:34px">Wähle aus Vorschlägen oder trage eigene ein (max. 3)</div>':'<div id="wr-step2-sub" style="font-size:12px;color:var(--t3);margin-bottom:8px;margin-left:34px">Zuerst oben ein Monatsziel auswählen</div>')
-    +'<div id="wr-tz-section" style="margin-left:34px"></div>'
-
-    // ── Step 3: Plan B ──
-    +'<details style="margin-top:18px"><summary style="display:flex;align-items:center;gap:10px;cursor:pointer;list-style:none">'
-    +'<span style="background:var(--bd);color:var(--t3);font-size:12px;font-weight:800;width:24px;height:24px;border-radius:99px;display:flex;align-items:center;justify-content:center;flex-shrink:0">3</span>'
-    +'<span style="font-size:16px;font-weight:700;color:var(--t2)">Plan B <span style="font-size:12px;font-weight:400;color:var(--t3)">— wenn es schwierig wird (optional)</span></span>'
-    +'</summary>'
-    +'<div style="margin-left:34px;margin-top:8px">'
-    +'<textarea id="wr-hindernis" rows="2" placeholder="Was könnte diese Woche dazwischenkommen?" style="width:100%;padding:8px;border:1px solid var(--bd);border-radius:8px;font-family:inherit;font-size:13px;resize:vertical;margin-bottom:6px;box-sizing:border-box">'+esc(wr?.blockiert||'')+'</textarea>'
-    +'<textarea id="wr-wenndann" rows="2" placeholder="Wenn das passiert, dann mache ich…" style="width:100%;padding:8px;border:1px solid var(--bd);border-radius:8px;font-family:inherit;font-size:13px;resize:vertical;box-sizing:border-box">'+esc(wr?.wenn_dann||'')+'</textarea>'
-    +'</div></details>'
-
-    +(_resetZwang
-      ?'<div class="mf" style="justify-content:flex-end"><button class="btn btn-dk" onclick="saveWochenreset()" style="min-width:200px">🤝 Commitment eingehen</button></div>'
-      :'<div class="mf"><button class="btn btn-gr" onclick="cm()">Abbrechen</button><button class="btn btn-dk" onclick="saveWochenreset()">🤝 Commitment eingehen</button></div>');
+    +coachCta
+    +manualFallback
+    +(_resetZwang?'':'<div class="mf" style="justify-content:flex-end"><button class="btn btn-gr" onclick="cm()">Später</button></div>');
   document.getElementById('ovl').classList.add('open');
   if(selZielId){
     updateWRTZSection();
