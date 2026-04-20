@@ -1931,9 +1931,12 @@ async function saveBeobachtung(){
 }
 
 function wrItemName(wr,n){
+  // Wochenziel-Text (big3_N) ist primär. Nur wenn leer: Fallback auf Monatsziel-Name.
+  const txt=wr['big3_'+n];
+  if(txt&&String(txt).trim())return txt;
   const tzId=wr['big3_'+n+'_tz_id'];
   if(tzId){const tz=S.ziele.flatMap(z=>z.teilziele||[]).find(t=>t.id===tzId);if(tz)return tz.name;}
-  return wr['big3_'+n]||null;
+  return null;
 }
 // Brian Johnson "Heroic" Score: Commitment-Integrität messbar machen
 // 1 Pt pro Big-3 · +2 Bonus bei Perfect Week (3/3) · Streak zählt aufeinanderfolgende Perfect Weeks
@@ -4131,10 +4134,12 @@ function rWoche(){
       out+='<div style="width:18px;height:18px;border-radius:5px;flex-shrink:0;'+(done?'background:'+f.tc+';border:1.5px solid '+f.tc+';display:flex;align-items:center;justify-content:center':'border:1.5px solid '+f.bd)+'">'+(done?'<span style="color:#fff;font-size:10px;font-weight:800">✓</span>':'')+'</div>';
       out+='<span style="font-size:13px;font-weight:500;flex:1;'+(done?'color:var(--t2);text-decoration:line-through':'color:var(--text)')+'">'+txt+'</span>';
       out+='</div>';
-      // Aufgaben die zu diesem Big-3 Teilziel gehören
+      // Aufgaben die zu diesem Big-3 gehören — nur mit Titel-Match, sonst verteilen sich alle Monatsziel-Tasks auf jede Card
       if(tzId){
-        const tzAufgaben=myA.filter(a=>a.teilzielId===tzId&&a.status!=='erledigt');
-        const tzErledigt=myA.filter(a=>a.teilzielId===tzId&&a.status==='erledigt');
+        const bTxt=(wr['big3_'+n]||'').toLowerCase().trim();
+        const matchTitle=a=>{if(!bTxt)return true;const t=(a.titel||'').toLowerCase();return t.includes(bTxt.slice(0,Math.min(20,bTxt.length)))||bTxt.includes(t.slice(0,Math.min(20,t.length)));};
+        const tzAufgaben=myA.filter(a=>a.teilzielId===tzId&&a.status!=='erledigt'&&matchTitle(a));
+        const tzErledigt=myA.filter(a=>a.teilzielId===tzId&&a.status==='erledigt'&&matchTitle(a));
         if(tzAufgaben.length||tzErledigt.length){
           out+='<div style="padding-left:28px;padding-bottom:4px">';
           tzAufgaben.forEach(a=>{
@@ -4722,7 +4727,14 @@ function rTag(){
       const txt=wrItemName(wrAktuell,n);if(!txt)return;
       const done=wrAktuell[doneF];
       const tzId=wrAktuell['big3_'+n+'_tz_id']||null;
-      const linkedTask=tzId?S.aufgaben.find(a=>a.pid===aP&&String(a.teilzielId)===String(tzId)&&a.status!=='erledigt'&&a.prio==='P1'):null;
+      // Linked-Task nur wenn Titel zum Wochenziel-Text matcht — sonst picken alle 3 Cards denselben ersten Task.
+      const big3Txt=(wrAktuell['big3_'+n]||'').toLowerCase().trim();
+      const linkedTask=tzId?S.aufgaben.find(a=>{
+        if(a.pid!==aP||String(a.teilzielId)!==String(tzId)||a.status==='erledigt'||a.prio!=='P1')return false;
+        if(!big3Txt)return true;
+        const tLow=(a.titel||'').toLowerCase();
+        return tLow.includes(big3Txt.slice(0,Math.min(20,big3Txt.length)))||big3Txt.includes(tLow.slice(0,Math.min(20,tLow.length)));
+      }):null;
       out+='<div style="background:var(--sf);border:1.5px solid '+(done?'var(--green-bd)':'var(--bd)')+';border-radius:12px;padding:12px 14px;margin-bottom:7px;display:flex;align-items:center;gap:10px;transition:border-color .2s">';
       // Checkbox
       out+='<div onclick="toggleBig3(\''+wrAktuell.id+'\',\''+doneF+'\')" style="width:20px;height:20px;border-radius:5px;flex-shrink:0;cursor:pointer;'+(done?'background:var(--green);border:1.5px solid var(--green);display:flex;align-items:center;justify-content:center':'border:1.5px solid var(--bd)')+'">'+(done?'<span style="color:#fff;font-size:11px;font-weight:800">✓</span>':'')+'</div>';
