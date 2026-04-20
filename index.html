@@ -6340,7 +6340,12 @@ function openNeu(pf={}){
   const defaultPid=pf.pid||aP;
   const msOpts=meilensteinOptgroups(defaultPid,pf.teilzielId||'');
   const hasAI=true;
-  document.getElementById('mb').innerHTML='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px"><div class="mt" style="margin-bottom:0">Neue Aufgabe</div><button onclick="cm();openMeeting()" style="font-size:11px;padding:4px 10px;border-radius:7px;border:1px solid var(--bd);background:var(--gray-bg);color:var(--t2);cursor:pointer;font-family:inherit;white-space:nowrap">📝 Aus Meeting</button></div>'
+  // Parent-Kontext: wenn Unteraufgabe, zeige Parent explizit an
+  const parentTask=window._neuParentId?S.aufgaben.find(x=>x.id===window._neuParentId):null;
+  const isSub=!!parentTask;
+  const headerTitle=isSub?'↳ Neue Unteraufgabe':'Neue Aufgabe';
+  const parentBanner=isSub?'<div style="background:var(--blue-bg);border:1px solid var(--blue-bd);border-left:3px solid var(--blue);border-radius:0 8px 8px 0;padding:8px 12px;margin-bottom:14px;display:flex;align-items:center;gap:8px"><span style="font-size:10px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.5px;white-space:nowrap">Teil von</span><span style="font-size:12px;color:var(--text);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(parentTask.titel)+'</span></div>':'';
+  document.getElementById('mb').innerHTML='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:'+(isSub?'10':'16')+'px"><div class="mt" style="margin-bottom:0">'+headerTitle+'</div>'+(isSub?'':'<button onclick="cm();openMeeting()" style="font-size:11px;padding:4px 10px;border-radius:7px;border:1px solid var(--bd);background:var(--gray-bg);color:var(--t2);cursor:pointer;font-family:inherit;white-space:nowrap">📝 Aus Meeting</button>')+'</div>'+parentBanner
     +'<div class="fl"><label>Was soll gemacht werden?</label><div style="display:flex;gap:6px"><input id="nt" value="'+(pf.titel||'')+'" placeholder="Aufgabe, Todo, Meeting-Ergebnis…" autofocus style="flex:1" oninput="aiDebounce()">'
     +(hasAI?'<button onclick="aiAnalyze()" style="font-size:11px;padding:5px 10px;border-radius:7px;border:1px solid var(--bd);background:var(--gray-bg);color:var(--t2);cursor:pointer;font-family:inherit;flex-shrink:0;white-space:nowrap" title="KI-Hebel-Analyse starten">✨ KI</button>':'')
     +'</div></div>'
