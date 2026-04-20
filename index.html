@@ -5988,9 +5988,10 @@ function openFokusCoach(scope){
   scope=scope&&FOKUS_SCOPES[scope]?scope:'quartal';
   window._fkScope=scope;
   const defRole=isGF()?'gf':(p.rolle&&/market/i.test(p.rolle)?'marketing':(p.rolle&&/sales|vertrieb/i.test(p.rolle)?'sales':'ops'));
+  window._fkRole=defRole;
   const sc=FOKUS_SCOPES[scope];
+  const rolePd=FOKUS_PROMPTS[defRole];
   let h='<div class="mt">🎯 Fokus-Session</div>';
-  h+='<div style="font-size:12px;color:var(--t2);margin-bottom:12px;line-height:1.55">Eine <b>Deep-Thinking-Session</b>, keine 2-Minuten-Pflicht. OS kennt deine Daten, Claude die Denkmodelle. Ihr findet die <b>4%-Hebel</b> (Pareto-Extrem).</div>';
   // Scope-Pillen
   h+='<div style="display:flex;gap:6px;margin-bottom:14px">';
   Object.entries(FOKUS_SCOPES).forEach(([k,v])=>{
@@ -5998,28 +5999,49 @@ function openFokusCoach(scope){
     h+='<button onclick="fkSwitchScope(\''+k+'\')" style="flex:1;padding:9px 10px;border-radius:9px;border:1.5px solid '+(act?'var(--inv)':'var(--bd)')+';background:'+(act?'var(--inv)':'var(--sf)')+';color:'+(act?'var(--inv-t)':'var(--t2)')+';font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;text-align:center;line-height:1.3">'+v.label+'<div style="font-size:10px;font-weight:500;margin-top:2px;opacity:.8">'+v.subtitle.split(' — ')[0]+'</div></button>';
   });
   h+='</div>';
-  // Kernfrage für diesen Scope
-  h+='<div style="background:var(--blue-bg);border:1px solid var(--blue-bd);border-left:3px solid var(--blue);border-radius:0 8px 8px 0;padding:11px 14px;margin-bottom:14px">'
-    +'<div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--blue);margin-bottom:4px">Kernfrage · '+sc.label+'</div>'
+  // Kernfrage (primärer Inhalt — alles andere ist Beiwerk)
+  h+='<div style="background:var(--blue-bg);border:1px solid var(--blue-bd);border-left:3px solid var(--blue);border-radius:0 8px 8px 0;padding:12px 14px;margin-bottom:12px">'
+    +'<div style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--blue);margin-bottom:5px">Kernfrage</div>'
     +'<div style="font-size:13px;color:var(--text);line-height:1.55;font-style:italic">'+esc(sc.frage)+'</div></div>';
-  h+='<div style="background:var(--sf);border:1px solid var(--bd);border-radius:9px;padding:11px 14px;margin-bottom:14px">'
-    +'<div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--t2);margin-bottom:4px">💡 Pareto-Extrem</div>'
-    +'<div style="font-size:12px;color:var(--t2);line-height:1.55">80/20 auf 80/20 angewendet = <b>4% der Handlungen erzeugen 64% des Ergebnisses</b>. Gary Keller: <i>"Was ist die EINE Sache, durch deren Erledigung alles andere leichter oder unnötig wird?"</i></div></div>';
-  h+='<div class="fl"><label>Rolle / Denker-Pairing</label><select id="fkRole" onchange="fkUpdatePrompt()">';
+  // Rolle als Text (auto-detected), klickbar zum Ändern
+  h+='<div id="fkRoleLine" style="font-size:12px;color:var(--t2);margin-bottom:14px">Als <b>'+rolePd.label+'</b> mit '+rolePd.denker.join(', ')+' · <a onclick="fkEditRole()" style="color:var(--blue);cursor:pointer;text-decoration:underline">ändern</a></div>';
+  h+='<div id="fkRoleEdit" style="display:none;margin-bottom:14px"><select id="fkRole" onchange="fkSetRole()">';
   Object.entries(FOKUS_PROMPTS).forEach(([k,v])=>{h+='<option value="'+k+'"'+(k===defRole?' selected':'')+'>'+v.label+' — '+v.denker.join(', ')+'</option>';});
   h+='</select></div>';
-  h+='<div class="fl"><label>Dein Status-Report <span style="color:var(--t3);font-weight:400">(editierbar)</span></label><textarea id="fkReport" style="min-height:180px;font-family:ui-monospace,\'SF Mono\',Menlo,monospace;font-size:11px;line-height:1.5"></textarea></div>';
-  h+='<div class="fl"><label>Coach-Prompt <span style="color:var(--t3);font-weight:400">(editierbar)</span></label><textarea id="fkPrompt" style="min-height:160px;font-family:ui-monospace,\'SF Mono\',Menlo,monospace;font-size:11px;line-height:1.5"></textarea></div>';
-  h+='<div style="display:flex;gap:8px;margin-bottom:16px"><button class="btn btn-dk" onclick="fkCopyOpen()" style="flex:1">📋 Kopieren & Claude öffnen →</button></div>';
-  h+='<div style="border-top:1px solid var(--bd);padding-top:14px;margin-top:8px">'
+  // Primary CTA — direkt und offensichtlich
+  h+='<button class="btn btn-dk" onclick="fkCopyOpen()" style="width:100%;margin-bottom:14px;padding:14px;font-size:14px">📋 Kopieren & Claude öffnen →</button>';
+  // Advanced: collapsed by default
+  h+='<details style="margin-bottom:14px"><summary style="font-size:11px;color:var(--t3);cursor:pointer;padding:6px 0;list-style:none">⚙️ Prompt & Report anpassen (optional)</summary>'
+    +'<div style="margin-top:10px">'
+    +'<div class="fl"><label style="font-size:11px">Status-Report <span style="color:var(--t3);font-weight:400">(editierbar)</span></label><textarea id="fkReport" style="min-height:140px;font-family:ui-monospace,\'SF Mono\',Menlo,monospace;font-size:11px;line-height:1.5"></textarea></div>'
+    +'<div class="fl"><label style="font-size:11px">Coach-Prompt <span style="color:var(--t3);font-weight:400">(editierbar)</span></label><textarea id="fkPrompt" style="min-height:140px;font-family:ui-monospace,\'SF Mono\',Menlo,monospace;font-size:11px;line-height:1.5"></textarea></div>'
+    +'</div></details>';
+  // Return-Section
+  h+='<div style="border-top:1px solid var(--bd);padding-top:14px;margin-top:4px">'
     +'<div style="font-size:12px;font-weight:700;text-transform:uppercase;color:var(--t2);margin-bottom:8px">Zurück aus Claude</div>'
     +'<div id="fkReturnHint" style="font-size:11px;color:var(--t3);margin-bottom:8px;line-height:1.5"></div>'
     +'<div class="fl"><textarea id="fkReturn" style="min-height:110px;font-family:ui-monospace,\'SF Mono\',Menlo,monospace;font-size:11px;line-height:1.5"></textarea></div>'
-    +'<div style="display:flex;gap:8px"><button class="btn btn-gr" onclick="cm()" style="flex:1">Schließen</button><button class="btn btn-dk" onclick="fkParseReturn()" style="flex:1">Als Vorschläge anlegen →</button></div>'
+    +'<div style="display:flex;gap:8px"><button class="btn btn-gr" onclick="cm()" style="flex:1">Schließen</button><button class="btn btn-dk" onclick="fkPreviewReturn()" style="flex:1">Vorschau →</button></div>'
     +'</div>';
   document.getElementById('mb').innerHTML=h;
   document.getElementById('ovl').classList.add('open');
   fkRefreshForScope();
+}
+
+function fkEditRole(){
+  document.getElementById('fkRoleLine').style.display='none';
+  document.getElementById('fkRoleEdit').style.display='block';
+}
+
+function fkSetRole(){
+  const sel=document.getElementById('fkRole');
+  if(!sel)return;
+  window._fkRole=sel.value;
+  const pd=FOKUS_PROMPTS[sel.value];
+  const line=document.getElementById('fkRoleLine');
+  if(line){line.innerHTML='Als <b>'+pd.label+'</b> mit '+pd.denker.join(', ')+' · <a onclick="fkEditRole()" style="color:var(--blue);cursor:pointer;text-decoration:underline">ändern</a>';line.style.display='block';}
+  document.getElementById('fkRoleEdit').style.display='none';
+  fkUpdatePrompt();
 }
 
 function fkSwitchScope(scope){
@@ -6041,11 +6063,11 @@ function fkRefreshForScope(){
 }
 
 function fkUpdatePrompt(){
-  const roleSel=document.getElementById('fkRole'); if(!roleSel)return;
-  const role=roleSel.value;
-  const pd=FOKUS_PROMPTS[role];
+  const role=window._fkRole||'gf';
+  const pd=FOKUS_PROMPTS[role]||FOKUS_PROMPTS.gf;
   const scope=window._fkScope||'quartal';
-  document.getElementById('fkPrompt').value=fokusBasisPrompt(scope)+'\n**Rollen-Kontext: '+pd.label+'**\n'+pd.addon+'\n';
+  const el=document.getElementById('fkPrompt');
+  if(el)el.value=fokusBasisPrompt(scope)+'\n**Rollen-Kontext: '+pd.label+'**\n'+pd.addon+'\n';
 }
 
 async function fkCopyOpen(){
@@ -6059,47 +6081,109 @@ async function fkCopyOpen(){
   setTimeout(()=>{try{window.open('https://claude.ai/new','_blank','noopener');}catch(e){}},250);
 }
 
-async function fkParseReturn(){
-  const raw=(document.getElementById('fkReturn').value||'').trim();
-  if(!raw){toast('Nichts zum Einfügen');return;}
+// Pass 1: klassifizieren ohne DB-Writes — für Preview UND Commit verwendet
+function fkClassifyLines(raw){
   const lines=raw.split(/\r?\n/).map(l=>l.trim()).filter(l=>l&&!l.startsWith('```'));
-  let zCount=0,tzCount=0,wzCount=0,aCount=0,skip=0,orphanTasks=0;
-  // 2-Pass-Parser: erst alles klassifizieren, dann in Kaskaden-Reihenfolge anlegen
-  // (Quartal → Monat → Woche → Aufgabe). So finden Aufgaben den neu angelegten
-  // Monatsziel auch dann, wenn er erst NACH ihnen in Claudes Output steht.
   const items={ziele:[],monatsziele:[],wochenziele:[],aufgaben:[]};
+  const ignored=[];
+  // Fuzzier regex: erlaubt Leerzeichen vor dem Doppelpunkt, case-insensitive, Varianten
+  const pattern=/^(QUARTALSZIEL|QUARTAL|Q-ZIEL|ZIEL|GOAL|MONATSZIEL|MONAT|MEILENSTEIN|MS|WOCHENZIEL|WOCHE|BIG3|BIG-3|AUFGABE|TASK|TODO|ACTION)\s*[:\-—]\s*(.+)$/i;
   for(const line of lines){
-    const m=line.match(/^(QUARTALSZIEL|ZIEL|MONATSZIEL|MEILENSTEIN|WOCHENZIEL|BIG3|AUFGABE|TASK|TODO)\s*:\s*(.+)$/i);
-    if(!m){skip++;continue;}
-    const typ=m[1].toUpperCase();
+    const m=line.match(pattern);
+    if(!m){if(line.length>3)ignored.push(line);continue;}
+    const typRaw=m[1].toUpperCase();
     const parts=m[2].split('|').map(s=>s.trim()).filter(Boolean);
-    if(typ==='QUARTALSZIEL'||typ==='ZIEL'){
-      const name=parts[0]; if(!name||name.length<5){skip++;continue;}
+    // Normalize type keywords
+    let typ='';
+    if(/^(QUARTALSZIEL|QUARTAL|Q-ZIEL|ZIEL|GOAL)$/.test(typRaw))typ='QUARTALSZIEL';
+    else if(/^(MONATSZIEL|MONAT|MEILENSTEIN|MS)$/.test(typRaw))typ='MONATSZIEL';
+    else if(/^(WOCHENZIEL|WOCHE|BIG3|BIG-3)$/.test(typRaw))typ='WOCHENZIEL';
+    else if(/^(AUFGABE|TASK|TODO|ACTION)$/.test(typRaw))typ='AUFGABE';
+    if(typ==='QUARTALSZIEL'){
+      const name=parts[0]; if(!name||name.length<5){ignored.push(line);continue;}
       const dl=parts[1]&&/^\d{4}-\d{2}-\d{2}$/.test(parts[1])?parts[1]:null;
-      items.ziele.push({name,dl});
-    } else if(typ==='MONATSZIEL'||typ==='MEILENSTEIN'){
-      const name=parts[0]; if(!name||name.length<5){skip++;continue;}
+      items.ziele.push({name,dl,_raw:line});
+    } else if(typ==='MONATSZIEL'){
+      const name=parts[0]; if(!name||name.length<5){ignored.push(line);continue;}
       const dl=parts[1]&&/^\d{4}-\d{2}-\d{2}$/.test(parts[1])?parts[1]:null;
-      items.monatsziele.push({name,dl,parentKeyword:parts[2]||''});
-    } else if(typ==='WOCHENZIEL'||typ==='BIG3'){
-      const titel=parts[0]; if(!titel||titel.length<3){skip++;continue;}
-      items.wochenziele.push(titel);
-    } else if(typ==='AUFGABE'||typ==='TASK'||typ==='TODO'){
-      const titel=parts[0]; if(!titel||titel.length<3){skip++;continue;}
+      items.monatsziele.push({name,dl,parentKeyword:parts[2]||'',_raw:line});
+    } else if(typ==='WOCHENZIEL'){
+      const titel=parts[0]; if(!titel||titel.length<3){ignored.push(line);continue;}
+      items.wochenziele.push({titel,_raw:line});
+    } else if(typ==='AUFGABE'){
+      const titel=parts[0]; if(!titel||titel.length<3){ignored.push(line);continue;}
       let prio='P2';
       for(const pp of parts.slice(1)){if(/^P1$/i.test(pp))prio='P1';else if(/^P2$/i.test(pp))prio='P2';else if(/^P3$/i.test(pp))prio='P3';}
       let dl=null;
       for(const pp of parts.slice(1)){if(/^\d{4}-\d{2}-\d{2}$/.test(pp))dl=pp;}
-      items.aufgaben.push({titel,prio,dl});
-    } else skip++;
+      items.aufgaben.push({titel,prio,dl,_raw:line});
+    }
   }
-  // Pass 2a: Quartalsziele
+  return{items,ignored};
+}
+
+// #4: Vorschau-Modal — zeigt was verstanden/ignoriert wurde, bevor committed wird
+function fkPreviewReturn(){
+  const raw=(document.getElementById('fkReturn').value||'').trim();
+  if(!raw){toast('Nichts zum Einfügen');return;}
+  window._fkRawReturn=raw;
+  const {items,ignored}=fkClassifyLines(raw);
+  const total=items.ziele.length+items.monatsziele.length+items.wochenziele.length+items.aufgaben.length;
+  if(!total){toast('⚠️ Kein Output-Format erkannt — bitte Zeilen wie "QUARTALSZIEL:", "MONATSZIEL:" etc. prüfen');return;}
+  let h='<div class="mt">Vorschau — was kommt an?</div>';
+  h+='<div style="font-size:12px;color:var(--t2);margin-bottom:14px">Prüfe, ob das stimmt. Du kannst immer noch zurück und die Zeilen anpassen.</div>';
+  if(items.ziele.length){
+    h+='<div style="margin-bottom:12px"><div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--t2);margin-bottom:6px">🎯 '+items.ziele.length+' Quartalsziel'+(items.ziele.length!==1?'e':'')+(isGF()?' (direkt aktiv)':' (Vorschlag an GF)')+'</div>';
+    items.ziele.forEach(it=>{h+='<div style="background:var(--sf);border:1px solid var(--bd);border-radius:8px;padding:9px 12px;margin-bottom:5px"><div style="font-size:13px;font-weight:600">'+esc(it.name)+'</div>'+(it.dl?'<div style="font-size:11px;color:var(--t3);margin-top:2px">bis '+it.dl+'</div>':'')+'</div>';});
+    h+='</div>';
+  }
+  if(items.monatsziele.length){
+    h+='<div style="margin-bottom:12px"><div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--t2);margin-bottom:6px">📅 '+items.monatsziele.length+' Monatsziel'+(items.monatsziele.length!==1?'e':'')+'</div>';
+    items.monatsziele.forEach(it=>{h+='<div style="background:var(--sf);border:1px solid var(--bd);border-radius:8px;padding:9px 12px;margin-bottom:5px"><div style="font-size:13px;font-weight:600">'+esc(it.name)+'</div>'+(it.dl||it.parentKeyword?'<div style="font-size:11px;color:var(--t3);margin-top:2px">'+(it.dl?'bis '+it.dl:'')+(it.dl&&it.parentKeyword?' · ':'')+(it.parentKeyword?'Parent: '+esc(it.parentKeyword):'')+'</div>':'')+'</div>';});
+    h+='</div>';
+  }
+  if(items.wochenziele.length){
+    h+='<div style="margin-bottom:12px"><div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--t2);margin-bottom:6px">🎯 '+items.wochenziele.length+' Wochenziel'+(items.wochenziele.length!==1?'e':'')+' → Wochenreset</div>';
+    items.wochenziele.slice(0,3).forEach(it=>{h+='<div style="background:var(--sf);border:1px solid var(--bd);border-radius:8px;padding:9px 12px;margin-bottom:5px;font-size:13px;font-weight:600">'+esc(it.titel)+'</div>';});
+    if(items.wochenziele.length>3)h+='<div style="font-size:10px;color:var(--t3);margin-top:4px">⚠️ Nur 3 passen in big3 — '+(items.wochenziele.length-3)+' werden ignoriert</div>';
+    h+='</div>';
+  }
+  if(items.aufgaben.length){
+    h+='<div style="margin-bottom:12px"><div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--t2);margin-bottom:6px">✓ '+items.aufgaben.length+' Aufgabe'+(items.aufgaben.length!==1?'n':'')+'</div>';
+    items.aufgaben.forEach(it=>{h+='<div style="background:var(--sf);border:1px solid var(--bd);border-radius:8px;padding:9px 12px;margin-bottom:5px;display:flex;align-items:center;gap:8px"><span style="font-size:10px;font-weight:700;background:'+(it.prio==='P1'?'var(--red-bg);color:var(--red)':'var(--gray-bg);color:var(--t3)')+';padding:2px 7px;border-radius:5px">'+it.prio+'</span><span style="flex:1;font-size:13px">'+esc(it.titel)+'</span>'+(it.dl?'<span style="font-size:11px;color:var(--t3)">bis '+it.dl+'</span>':'')+'</div>';});
+    h+='</div>';
+  }
+  if(ignored.length){
+    h+='<details style="margin-bottom:12px"><summary style="font-size:11px;color:var(--amber);cursor:pointer;padding:4px 0">⚠️ '+ignored.length+' Zeile'+(ignored.length!==1?'n':'')+' nicht erkannt (klicken)</summary>';
+    h+='<div style="margin-top:6px;background:var(--amber-bg);border:1px solid var(--amber-bd);border-radius:8px;padding:9px 12px">';
+    ignored.slice(0,10).forEach(l=>{h+='<div style="font-family:ui-monospace,Menlo,monospace;font-size:10px;color:var(--t2);line-height:1.5">'+esc(l.slice(0,120))+'</div>';});
+    if(ignored.length>10)h+='<div style="font-size:10px;color:var(--t3);margin-top:4px">… und '+(ignored.length-10)+' weitere</div>';
+    h+='<div style="font-size:10px;color:var(--t3);margin-top:6px;line-height:1.5">Diese Zeilen matchen kein bekanntes Format (QUARTALSZIEL/MONATSZIEL/WOCHENZIEL/AUFGABE). Falls wichtig: zurück gehen und Format anpassen.</div>';
+    h+='</div></details>';
+  }
+  h+='<div class="mf"><button class="btn btn-gr" onclick="fkBackToCoach()" style="flex:1">← Zurück</button><button class="btn btn-dk" onclick="fkCommitReturn()" style="flex:1">✓ Anlegen</button></div>';
+  document.getElementById('mb').innerHTML=h;
+}
+
+function fkBackToCoach(){
+  openFokusCoach(window._fkScope||'quartal');
+  setTimeout(()=>{const t=document.getElementById('fkReturn');if(t&&window._fkRawReturn)t.value=window._fkRawReturn;},20);
+}
+
+async function fkCommitReturn(){
+  const raw=window._fkRawReturn||((document.getElementById('fkReturn')||{}).value||'').trim();
+  if(!raw){toast('Nichts zum Einfügen');return;}
+  const {items}=fkClassifyLines(raw);
+  let zCount=0,tzCount=0,wzCount=0,aCount=0,skip=0,orphanTasks=0;
+  const created={ziele:[],monatsziele:[],wochenziele:[],aufgaben:[]};
+  // Pass 2a: Quartalsziele — GF legt direkt aktiv an, sonst Vorschlag
   let lastZielId=null;
+  const gfDirekt=isGF();
   for(const it of items.ziele){
     const id=nid('z');
-    const rec={id,name:it.name,farbe:0,pct:0,verantwortlich_id:String(aP),vertraulich:false,status:'vorschlag',vorgeschlagen_von:String(aP)};
+    const rec={id,name:it.name,farbe:0,pct:0,verantwortlich_id:String(aP),vertraulich:false,status:gfDirekt?'aktiv':'vorschlag',vorgeschlagen_von:String(aP)};
     if(it.dl)rec.monat_ende=it.dl.slice(0,7);
-    try{await dbInsert('ziele',rec);S.ziele.push({...rec,verantwortlichId:aP,kpis:[],teilziele:[]});zCount++;lastZielId=id;}catch(e){skip++;}
+    try{await dbInsert('ziele',rec);S.ziele.push({...rec,verantwortlichId:aP,kpis:[],teilziele:[]});zCount++;lastZielId=id;created.ziele.push({id,name:it.name,status:rec.status});}catch(e){skip++;}
   }
   // Pass 2b: Monatsziele
   let lastTzId=null;
@@ -6121,7 +6205,7 @@ async function fkParseReturn(){
       await dbInsert('teilziele',rec);
       const z=S.ziele.find(x=>x.id===zielId);
       if(z){z.teilziele=z.teilziele||[];z.teilziele.push({...rec,zielId,verantwortlichId:aP,datum:it.dl||''});}
-      tzCount++;lastTzId=id;
+      tzCount++;lastTzId=id;created.monatsziele.push({id,name:it.name,zielId});
     }catch(e){skip++;}
   }
   // sessionParentTz: bester verfügbarer MS für Aufgaben UND Wochenziele.
@@ -6156,7 +6240,7 @@ async function fkParseReturn(){
         if(!wr['big3_'+n]){
           wr['big3_'+n]=txt;wr['big3_'+n+'_tz_id']=sessionParentTz||null;wr['big3_'+n+'_done']=false;
           patch['big3_'+n]=txt;patch['big3_'+n+'_tz_id']=sessionParentTz||null;patch['big3_'+n+'_done']=false;
-          wzCount++;
+          wzCount++;created.wochenziele.push({text:txt,slot:n,tzId:sessionParentTz||null});
           break;
         }
       }
@@ -6171,21 +6255,55 @@ async function fkParseReturn(){
     if(it.dl)rec.dl=it.dl;
     if(sessionParentTz)rec.teilziel_id=sessionParentTz;
     else orphanTasks++;
-    try{await dbInsert('aufgaben',rec);S.aufgaben.push(normalizeAufgabe(rec));aCount++;}catch(e){skip++;}
+    try{await dbInsert('aufgaben',rec);S.aufgaben.push(normalizeAufgabe(rec));aCount++;created.aufgaben.push({id,titel:it.titel,prio:it.prio,orphan:!sessionParentTz});}catch(e){skip++;}
   }
-  const pieces=[];
-  if(zCount)pieces.push(zCount+' Quartalsziel-Vorschlag'+(zCount!==1?'e':''));
-  if(tzCount)pieces.push(tzCount+' Monatsziel'+(tzCount!==1?'e':''));
-  if(wzCount)pieces.push(wzCount+' Wochenziel'+(wzCount!==1?'e':''));
-  if(aCount)pieces.push(aCount+' Aufgabe'+(aCount!==1?'n':''));
-  let summary='✓ '+(pieces.length?pieces.join(' · '):'nichts angelegt')+(skip?' · '+skip+' Zeile'+(skip!==1?'n':'')+' ignoriert':'');
-  if(orphanTasks)summary+=' · ⚠️ '+orphanTasks+' Aufgabe'+(orphanTasks!==1?'n':'')+' ohne Monatsziel-Anbindung (bitte manuell zuordnen)';
-  toast(summary);
-  cm();
+  // Refresh views im Hintergrund
   if(typeof rZiele==='function')rZiele();
   if(typeof rStart==='function')rStart();
   if(typeof rWoche==='function')rWoche();
   if(typeof rMonat==='function')rMonat();
+  // Outcome-Summary im Modal anzeigen (Kaskaden-Baum)
+  fkShowOutcome(created,{skip,orphanTasks,gfDirekt});
+}
+
+function fkShowOutcome(c,meta){
+  const total=c.ziele.length+c.monatsziele.length+c.wochenziele.length+c.aufgaben.length;
+  let h='<div style="font-size:18px;font-weight:700;margin-bottom:6px">✓ Angelegt</div>';
+  h+='<div style="font-size:12px;color:var(--t3);margin-bottom:14px">'+total+' Einträge in deine Kaskade übernommen'+(meta.skip?' · '+meta.skip+' Zeile'+(meta.skip!==1?'n':'')+' übersprungen':'')+'</div>';
+  if(!total){
+    h+='<div style="background:var(--amber-bg);border:1px solid var(--amber-bd);border-radius:10px;padding:12px;font-size:13px;color:var(--t2)">Nichts wurde angelegt. Prüfe das Format deiner Zeilen (z.B. <code>QUARTALSZIEL: ...</code>).</div>';
+  } else {
+    h+='<div style="background:var(--sf);border:1px solid var(--bd);border-radius:10px;padding:14px 16px;font-family:ui-monospace,Menlo,monospace;font-size:12.5px;line-height:1.7">';
+    // Quartalsziele
+    c.ziele.forEach(z=>{
+      const badge=z.status==='aktiv'?'<span style="font-size:10px;background:var(--green-bg);color:var(--green);border:1px solid var(--green-bd);padding:1px 6px;border-radius:99px;margin-left:6px;font-weight:700">aktiv</span>':'<span style="font-size:10px;background:var(--amber-bg);color:var(--orange);border:1px solid var(--amber-bd);padding:1px 6px;border-radius:99px;margin-left:6px;font-weight:700">Vorschlag an GF</span>';
+      h+='<div style="margin-bottom:4px">🎯 <b>Q:</b> '+esc(z.name)+badge+'</div>';
+    });
+    c.monatsziele.forEach(m=>{h+='<div style="margin-bottom:4px;padding-left:'+(c.ziele.length?'18':'0')+'px">📅 <b>M:</b> '+esc(m.name)+'</div>';});
+    if(c.wochenziele.length){
+      const pad=(c.ziele.length||c.monatsziele.length)?'36px':'0';
+      c.wochenziele.forEach(w=>{h+='<div style="margin-bottom:4px;padding-left:'+pad+'">🎯 <b>W'+w.slot+':</b> '+esc(w.text)+'</div>';});
+    }
+    if(c.aufgaben.length){
+      const pad=(c.ziele.length||c.monatsziele.length||c.wochenziele.length)?'54px':'0';
+      c.aufgaben.forEach(a=>{
+        const warn=a.orphan?' <span style="font-size:10px;color:var(--orange)">⚠ ohne Monatsziel</span>':'';
+        h+='<div style="margin-bottom:4px;padding-left:'+pad+'">✓ <span style="font-size:10px;background:var(--gray-bg);color:var(--t2);border:1px solid var(--bd);padding:1px 5px;border-radius:4px;font-weight:700">'+a.prio+'</span> '+esc(a.titel)+warn+'</div>';
+      });
+    }
+    h+='</div>';
+    if(meta.orphanTasks){
+      h+='<div style="margin-top:12px;background:var(--amber-bg);border:1px solid var(--amber-bd);border-radius:9px;padding:10px 12px;font-size:12px;color:var(--t2)">⚠️ '+meta.orphanTasks+' Aufgabe'+(meta.orphanTasks!==1?'n':'')+' ohne Monatsziel — zählen nicht fürs Paddel. Manuell zuordnen im Ziele-Tab.</div>';
+    }
+    if(c.ziele.length && !meta.gfDirekt){
+      h+='<div style="margin-top:12px;background:var(--blue-bg,rgba(56,114,224,.08));border:1px solid var(--blue-bd,rgba(56,114,224,.25));border-radius:9px;padding:10px 12px;font-size:12px;color:var(--t2)">💡 Deine Quartalsziele warten auf GF-Freigabe. Monatsziele & Aufgaben sind bereits aktiv.</div>';
+    }
+  }
+  h+='<div class="mf" style="margin-top:18px"><button class="btn btn-gr" onclick="cm()" style="flex:1">Schließen</button>';
+  if(c.wochenziele.length||c.aufgaben.length)h+='<button class="btn btn-dk" onclick="cm();show(\'start\')" style="flex:1">Zum Heute-Tab →</button>';
+  h+='</div>';
+  const mb=document.getElementById('mb');
+  if(mb){mb.innerHTML=h;const ovl=document.getElementById('ovl');if(ovl)ovl.classList.add('open');}
 }
 // ─── Ende FOKUS-COACH ────────────────────────────────────────────
 
