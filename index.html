@@ -5558,6 +5558,7 @@ function rMonat(){
     +'<div style="font-size:11px;color:var(--t3)">'+monatName+' '+jetzt.getFullYear()+'</div></div>'
     +'<div style="display:flex;gap:8px">'
     +'<button onclick="openFokusCoach(\'monat\')" class="btn" style="font-size:12px;border:1px solid var(--bd);background:var(--sf);color:var(--t2)">🎯 Fokus</button>'
+    +'<button onclick="openFokusCoach(\'monat_pivot\')" class="btn" style="font-size:12px;border:1px solid var(--amber-bd);background:var(--amber-bg);color:var(--amber)" title="Taktischer Pivot — aktiven MS hinterfragen">🔄 Pivot</button>'
     +'<button onclick="openAddMonatszielFromMonat()" class="btn btn-dk" style="font-size:12px">+ Monatsziel</button>'
     +'</div>'
     +'</div>';
@@ -5738,6 +5739,15 @@ const FOKUS_SCOPES={
     returnPlaceholder:'MONATSZIEL: 40 qualifizierte Leads bis Monatsende | 2026-05-15 | 30k MRR\nWOCHENZIEL: 10 Discovery-Calls gebucht\nWOCHENZIEL: Landingpage A/B-Test live\nWOCHENZIEL: Outreach-Liste Tier-1 (200 Kontakte) sauber\nAUFGABE: Outreach-Template v3 schreiben | P1 | 2026-04-23',
     returnHint:'<b>MONATSZIEL</b> wird als Monatsziel unter dem gewählten Quartalsziel angelegt (neu = Vorschlag an GF). <b>WOCHENZIEL</b> kommt in deinen aktuellen Wochenreset (max 3). <b>AUFGABE</b> in deine Liste.'
   },
+  monat_pivot:{
+    label:'🔄 Monat-Pivot',
+    subtitle:'Taktischer Pivot — MS neu denken',
+    frage:'Der aktive Monatsziel scheint nicht zu tragen (zu steil, falscher Hebel, oder Realität hat sich geändert). Quartalsziel bleibt — aber was ist der bessere Meilenstein für den Rest des Monats, und was folgt daraus für diese Woche?',
+    outputHint:'1 ersetzender oder neu formulierter Monatsziel (messbar), 3 Wochenziele als unmittelbarer nächster Schritt, optional 2-3 Aufgaben als Action-Breakdown',
+    outputFormat:'MONATSZIEL: <neuer/geschärfter Titel> | <YYYY-MM-DD Deadline> | <Quartalsziel-Stichwort>\nWOCHENZIEL: <messbarer Outcome diese Woche>\nWOCHENZIEL: <messbarer Outcome diese Woche>\nWOCHENZIEL: <messbarer Outcome diese Woche>\nAUFGABE: <Titel> | P1 | <YYYY-MM-DD Deadline>',
+    returnPlaceholder:'MONATSZIEL: 40 qualifizierte Leads bis Monatsende (statt 60 Gespräche) | 2026-05-15 | 30k MRR\nWOCHENZIEL: ICP-Definition scharf (3 Kunden interviewt)\nWOCHENZIEL: Outbound-Liste Tier-1 Clean (100 Kontakte)\nWOCHENZIEL: Discovery-Template v2 validiert\nAUFGABE: Kundeninterviews terminieren | P1 | 2026-04-22',
+    returnHint:'<b>MONATSZIEL</b> wird als NEUER Monatsziel unter dem bestehenden Quartalsziel angelegt (alter MS bleibt stehen — du kannst ihn manuell als "abgelehnt" markieren oder abschließen). <b>WOCHENZIEL</b> (max 3) überschreibt die big3 im aktuellen Wochenreset. <b>AUFGABE</b> hängt am neuen MS. <i>Quartalsziel bleibt unangetastet.</i>'
+  },
   kaskade:{
     label:'🌱 Kaskade',
     subtitle:'Full-Stack — Onboarding & Pivot',
@@ -5867,6 +5877,47 @@ function generateFokusReport(pid,scope){
       r+='- KW '+wr.kw+'/'+wr.jahr+': '+d+'/'+t+(wr.learning?' — "'+String(wr.learning).slice(0,100)+'"':'')+'\n';
     });
     r+='\n## Metadaten\n- Heute: '+today+'\n- Aktuelles Quartal: Q'+curQ+'\n- Quartalsende: '+(new Date().getFullYear())+'-'+(''+(curQ*3)).padStart(2,'0')+'-XX\n';
+  } else if(scope==='monat_pivot'){
+    // Pivot-Framing — Quartalsziel bleibt, aktiver MS wird hinterfragt
+    const aktiverMS=aktiveTZ[0]||null;
+    r+='## Kontext\n_Das ist ein **taktischer Pivot auf Monatsebene**. Das Quartalsziel bleibt — aber der aktive Monatsziel hat sich als falscher Hebel gezeigt (zu steil, falsche Annahme, Realität ändert sich). Hinterfrage den aktiven MS hart, bevor du Alternativen vorschlägst. Was stimmt nicht? Was war die unterliegende Annahme, die sich als falsch erwiesen hat?_\n\n';
+    r+='## Quartalsziel (bleibt — Parent-Commitment)\n';
+    if(!meineZ.length)r+='_Keines — Pivot auf Monatsebene ohne Parent-Ziel möglich, aber ungewöhnlich._\n';
+    else meineZ.forEach(z=>{r+='- **'+z.name+'**'+(z.monat_ende?' (bis '+z.monat_ende+')':'')+'\n';});
+    r+='\n## Aktiver Monatsziel — der, der hinterfragt wird\n';
+    if(!aktiverMS)r+='_Keiner — dann ist das eher eine reguläre Monats-Session (Scope: Monat).\n';
+    else{
+      const tasks=S.aufgaben.filter(a=>a.teilzielId===aktiverMS.id);
+      const done=tasks.filter(a=>a.status==='erledigt').length;
+      const daysLeft=aktiverMS.datum?Math.ceil((new Date(aktiverMS.datum)-new Date(today))/86400000):null;
+      const daysPlanned=aktiverMS.datum?Math.ceil((new Date(aktiverMS.datum)-new Date(aktiverMS.created_at||today))/86400000):null;
+      r+='- **'+aktiverMS.name+'**'+(aktiverMS.datum?' (bis '+aktiverMS.datum+(daysLeft!==null?', **'+daysLeft+' Tage Rest**':'')+')':'')+'\n';
+      r+='  Fortschritt: '+done+'/'+tasks.length+' Tasks erledigt'+(tasks.length===0?' — keine Tasks angelegt, das ist ein Indiz':'')+'\n';
+      r+='  Parent-Quartalsziel: '+aktiverMS.ziel.name+'\n';
+      const offene=tasks.filter(a=>a.status!=='erledigt').slice(0,4);
+      if(offene.length){r+='  Offene Tasks unter diesem MS:\n';offene.forEach(a=>{r+='    · '+a.titel+(a.dl?' (bis '+a.dl+')':'')+' · '+a.prio+'\n';});}
+    }
+    r+='\n## Aktuelle Woche — was bewegt sich (oder nicht)\n';
+    if(wrNow){
+      [['big3_1','big3_1_done'],['big3_2','big3_2_done'],['big3_3','big3_3_done']].forEach(([tf,df],i)=>{
+        if(wrNow[tf])r+=(i+1)+'. '+wrNow[tf]+(wrNow[df]?' ✓':' ○')+'\n';
+      });
+    } else r+='_Kein Wochenreset aktiv — auch ein Indiz._\n';
+    r+='\n## Signal: letzte 4 Wochen — Lieferquote & Hauptthemen\n';
+    if(!wrs.length)r+='_Keine Historie._\n';
+    else wrs.forEach(wr=>{
+      const d=[wr.big3_1_done,wr.big3_2_done,wr.big3_3_done].filter(Boolean).length;
+      const t=[wr.big3_1,wr.big3_2,wr.big3_3].filter(Boolean).length;
+      r+='- KW '+wr.kw+'/'+wr.jahr+': '+d+'/'+t+(wr.haupt_thema?' · Hauptthema: **'+wr.haupt_thema+'**':'')+(wr.learning?' — "'+String(wr.learning).slice(0,100)+'"':'')+'\n';
+    });
+    r+='\n## Frühere Monatsziel-Reviews (Plan vs. Ausführung)\n';
+    if(!reviewedTZ.length)r+='_Noch keine Reviews — keine Diagnose-Daten._\n';
+    else reviewedTZ.forEach(tz=>{
+      const icon={ja:'✅',teilweise:'〜',nein:'❌'}[tz.review_erreicht]||'○';
+      const grund=tz.review_grund==='plan'?' · **Plan zu steil**':tz.review_grund==='ausfuehrung'?' · **Ausführung**':'';
+      r+='- '+icon+' '+tz.name+grund+(tz.review_learning?' — "'+String(tz.review_learning).slice(0,80)+'"':'')+'\n';
+    });
+    r+='\n## Metadaten\n- Heute: '+today+'\n- Monatsende: '+today.slice(0,7)+'-Ende\n';
   } else if(scope==='monat'){
     r+='## Aktive Quartalsziele (Parent-Kontext)\n';
     if(!meineZ.length)r+='_Keine aktiven Ziele — erst Quartal klären oder frei starten._\n';
