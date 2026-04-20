@@ -2172,7 +2172,7 @@ function wrCascadeHtml(){
       +(meta?'<div style="font-size:10px;color:var(--t2);margin-top:3px">'+meta+'</div>':'')
       +'</div>';
   };
-  const z1=card('🌟','Ziel (3 Monate)',focusZ?.name,focusZ&&zTotal?(zDone+'/'+zTotal+' Meilensteine'):'',focusZ?('openZiel(\''+focusZ.id+'\')'):'',
+  const z1=card('🌟','Ziel (3 Monate)',focusZ?.name,focusZ&&zTotal?(zDone+'/'+zTotal+' Meilensteine'):'','',
     'Kein aktives Ziel — jetzt setzen');
   const tzMeta=focusTZ?((tzTotal?tzDone+'/'+tzTotal+' Aufgaben':'')+(focusTZ.datum?(tzTotal?' · ':'')+'bis '+focusTZ.datum.slice(8)+'.'+focusTZ.datum.slice(5,7)+'.':'')):'';
   const z2=card('🎯','Meilenstein (4 Wochen)',focusTZ?.name,tzMeta,'',
