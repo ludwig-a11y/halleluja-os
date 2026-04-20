@@ -4766,23 +4766,27 @@ function rTag(){
       out+='<div style="font-size:13px;font-weight:600;'+(done?'color:var(--t3);text-decoration:line-through':'color:var(--text)')+';line-height:1.35">'+esc(txt)+'</div>';
       if(linkedTask)out+='<div style="font-size:10px;color:var(--t3);margin-top:2px">↳ '+esc(linkedTask.titel.length>40?linkedTask.titel.slice(0,40)+'…':linkedTask.titel)+'</div>';
       out+='</div>';
-      // Los-Button
+      // Aktions-Buttons: "+ Aufgabe" ist IMMER sichtbar (auch wenn linkedTask existiert),
+      // damit man Wochenziele jederzeit in mehrere Aufgaben aufbrechen kann.
       if(!done){
+        let prefillTzId=tzId;
+        if(!prefillTzId&&wrAktuell.focus_ziel_id){
+          const fokusZ=S.ziele.find(z=>z.id===wrAktuell.focus_ziel_id);
+          if(fokusZ){
+            const activeMS=(fokusZ.teilziele||[]).filter(t=>!t.erledigt&&(t.status||'aktiv')==='aktiv').sort((a,b)=>(a.datum||'9999').localeCompare(b.datum||'9999'))[0];
+            if(activeMS)prefillTzId=activeMS.id;
+          }
+        }
+        const _nA=prefillTzId?'{prio:\'P1\',teilzielId:\''+prefillTzId+'\'}':'{prio:\'P1\'}';
+        out+='<div style="display:flex;gap:6px;flex-shrink:0">';
+        // Sekundär: + Aufgabe (immer sichtbar)
+        out+='<button onclick="openNeu('+_nA+')" style="padding:8px 12px;border-radius:9px;background:var(--gray-bg);color:var(--t2);border:1.5px dashed var(--bd);font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap" title="Aufgabe unter diesem Wochenziel anlegen">+ Aufgabe</button>';
+        // Primär: Los (wenn linkedTask) oder nichts extra (dann reicht die Wochenziel-Checkbox)
         if(linkedTask){
           const isAktiv=linkedTask.status==='aktiv';
-          out+='<button onclick="'+(isAktiv?'focusModus(\''+linkedTask.id+'\')':'startenA(\''+linkedTask.id+'\')')+'" style="flex-shrink:0;padding:8px 16px;border-radius:9px;background:var(--inv);color:var(--inv-t);border:none;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap">'+(isAktiv?'🔥 Weiter':'▶ Los')+'</button>';
-        } else {
-          let prefillTzId=tzId;
-          if(!prefillTzId&&wrAktuell.focus_ziel_id){
-            const fokusZ=S.ziele.find(z=>z.id===wrAktuell.focus_ziel_id);
-            if(fokusZ){
-              const activeMS=(fokusZ.teilziele||[]).filter(t=>!t.erledigt&&(t.status||'aktiv')==='aktiv').sort((a,b)=>(a.datum||'9999').localeCompare(b.datum||'9999'))[0];
-              if(activeMS)prefillTzId=activeMS.id;
-            }
-          }
-          const _nA=prefillTzId?'{prio:\'P1\',teilzielId:\''+prefillTzId+'\'}':'{prio:\'P1\'}';
-          out+='<button onclick="openNeu('+_nA+')" style="flex-shrink:0;padding:8px 14px;border-radius:9px;background:var(--gray-bg);color:var(--t2);border:1.5px dashed var(--bd);font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap" title="Optional: Wochenziel in kleinere Aufgaben aufbrechen, wenn es zu groß ist. Sonst reicht der Checkbox-Haken.">+ Aufgabe</button>';
+          out+='<button onclick="'+(isAktiv?'focusModus(\''+linkedTask.id+'\')':'startenA(\''+linkedTask.id+'\')')+'" style="padding:8px 16px;border-radius:9px;background:var(--inv);color:var(--inv-t);border:none;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap">'+(isAktiv?'🔥 Weiter':'▶ Los')+'</button>';
         }
+        out+='</div>';
       }
       out+='</div>';
     });
