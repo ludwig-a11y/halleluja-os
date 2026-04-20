@@ -7879,21 +7879,28 @@ async function mdExtract(){
   const personList=S.personen.map(p=>p.id+'='+p.name).join(', ');
   const zielList=S.ziele.map(z=>z.id+'='+z.name).join(', ');
   const sys='Du bist ein Assistent für Halleluja OS (Team-Management-Tool für Halleluja Sauna Austria).\n\n'
-    +'Analysiere das folgende Meeting-Transkript und extrahiere ALLE konkreten Aufgaben und To-Dos.\n\n'
+    +'Analysiere das Meeting-Transkript und extrahiere ALLE konkreten Items: Aufgaben, Wochenziele, Monatsziele und Quartalsziele.\n\n'
     +'Team-Mitglieder (id=Name): '+personList+'\n'
     +(zielList?'Aktive Ziele (id=Name): '+zielList+'\n':'')
     +'Heute: '+TODAY+'\n\n'
-    +'Für jede Aufgabe extrahiere:\n'
-    +'- titel: Klare, aktionsorientierte Beschreibung (z.B. "Newsletter an Kundenliste versenden", nicht nur "Newsletter")\n'
-    +'- pid: Die person_id der zuständigen Person (MUSS exakt eine ID aus der Team-Liste sein). Wenn unklar wer zuständig ist → null\n'
-    +'- prio: "P1" (dringend/kritisch), "P2" (wichtig/bald), "P3" (nice-to-have/irgendwann) oder null wenn nicht erkennbar\n'
-    +'- dl: Deadline als "YYYY-MM-DD" wenn im Gespräch genannt. Relative Angaben ("bis Freitag", "nächste Woche", "Ende April") in echtes Datum umrechnen basierend auf heute='+TODAY+'. Wenn keine Deadline → null\n'
-    +'- kontext: Ein kurzer Satz, warum diese Aufgabe entstanden ist (Kontext aus dem Meeting)\n'
-    +'- ziel_id: Falls die Aufgabe klar zu einem der aktiven Ziele passt, die ziel_id. Sonst null\n\n'
+    +'Für jedes Item extrahiere:\n'
+    +'- titel: Klare Beschreibung. Aktionen aktionsorientiert ("Newsletter versenden"), Ziele ergebnisorientiert ("30 Neukunden im Mai")\n'
+    +'- typ: Klassifiziere JEDEN Eintrag:\n'
+    +'    "aufgabe"     → konkrete Aktion die jemand ausführt ("senden", "schreiben", "anrufen", "erledigen", "prüfen", "erstellen")\n'
+    +'    "wochenziel"  → Ergebnis/Zustand der DIESE WOCHE erreicht sein soll (dl ≤ 7 Tage ODER "diese Woche", "bis Freitag")\n'
+    +'    "monatsziel"  → Ergebnis/Zustand in 1–5 Wochen (dl 8–35 Tage ODER "bis Ende Monat", "nächste Wochen")\n'
+    +'    "quartalsziel"→ Ergebnis/Zustand in 5–16 Wochen (dl 36–120 Tage ODER Quartal-/Jahresformulierungen)\n'
+    +'    Faustregel: Verben die TATEN beschreiben → aufgabe. Substantive/Zustände/Ziele → ziel (je nach Zeitraum)\n'
+    +'- typ_unsicher: true wenn du dir nicht sicher bist, sonst weglassen\n'
+    +'- pid: person_id der zuständigen Person (exakt aus Team-Liste). null wenn unklar\n'
+    +'- prio: "P1"/"P2"/"P3" oder null. Nur für aufgaben relevant\n'
+    +'- dl: Deadline "YYYY-MM-DD". Relative Angaben ("bis Freitag", "Ende April") umrechnen basierend auf heute='+TODAY+'. null wenn keine\n'
+    +'- kontext: Ein kurzer Satz Kontext aus dem Meeting\n'
+    +'- ziel_id: Falls klar zu einem aktiven Ziel passend, die ziel_id. Sonst null\n\n'
     +'WICHTIG:\n'
-    +'- Extrahiere NUR echte Aufgaben (Dinge die jemand TUN muss), keine Diskussionspunkte oder Fragen\n'
+    +'- Extrahiere echte Aufgaben UND Ziel-Aussagen. Keine reinen Diskussionspunkte\n'
     +'- Antworte NUR mit einem JSON-Array, keine Erklärungen, kein Markdown-Codeblock\n'
-    +'- Beispiel: [{"titel":"Newsletter versenden","pid":"abc123","prio":"P1","dl":"2026-04-18","kontext":"Thomas hat Christina gebeten","ziel_id":null}]';
+    +'- Beispiel: [{"titel":"Newsletter versenden","typ":"aufgabe","pid":"abc123","prio":"P1","dl":"2026-04-25","kontext":"Thomas bat Christina","ziel_id":null},{"titel":"30 Neukunden gewinnen","typ":"monatsziel","pid":null,"prio":null,"dl":"2026-05-31","kontext":"Quartalsziel des Sales-Teams","ziel_id":"xyz789"}]';
   try{
     const resp=await fetch('https://halleluja-app.germanywestcentral.cloudapp.azure.com/n8n/webhook/ki-proxy',{
       method:'POST',headers:{'Content-Type':'application/json'},
@@ -7922,40 +7929,74 @@ async function mdExtract(){
 
 function mdRenderPreview(){
   const m=document.getElementById('mb');
-  let html='<div class="mt">📝 Meeting Dump — '+_mdTasks.length+' Aufgaben gefunden</div>';
-  html+='<div style="font-size:12px;color:var(--t3);margin-bottom:14px">Prüfe und bearbeite die Aufgaben. Entferne was nicht passt, dann „Aufgaben anlegen".</div>';
+  const total=_mdTasks.length;
   const personOpts=S.personen.map(p=>'<option value="'+p.id+'">'+esc(p.name)+'</option>').join('');
-  _mdTasks.forEach((t,i)=>{
-    const p=t.pid?person(t.pid):null;
-    html+='<div id="md-row-'+i+'" style="background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:14px;margin-bottom:10px">';
-    html+='<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:8px">';
-    html+='<input type="checkbox" checked id="md-chk-'+i+'" style="margin-top:4px;accent-color:var(--blue);width:16px;height:16px" onchange="mdUpdateCount()">';
-    html+='<input type="text" id="md-titel-'+i+'" value="'+esc(t.titel)+'" style="flex:1;font-size:14px;font-weight:600;border:1px solid var(--bd);border-radius:8px;padding:6px 10px;font-family:inherit;background:var(--sf);color:var(--text)">';
-    html+='<button onclick="mdRemoveRow('+i+')" style="font-size:14px;border:none;background:none;cursor:pointer;padding:4px;color:var(--t3)" title="Entfernen">✕</button>';
-    html+='</div>';
-    html+='<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">';
-    html+='<select id="md-pid-'+i+'" style="font-size:14px;padding:8px 10px;border:1px solid var(--bd);border-radius:8px;font-family:inherit;background:var(--sf);color:var(--text);min-height:40px;flex:1;min-width:120px">';
-    html+='<option value="">— Zuständig —</option>'+personOpts+'</select>';
-    html+='<select id="md-prio-'+i+'" style="font-size:14px;padding:8px 10px;border:1px solid var(--bd);border-radius:8px;font-family:inherit;background:var(--sf);min-height:40px">';
-    html+='<option value="">— Prio —</option>';
-    html+='<option value="P1"'+(t.prio==='P1'?' selected':'')+'>🔴 P1</option>';
-    html+='<option value="P2"'+(t.prio==='P2'?' selected':'')+'>🔵 P2</option>';
-    html+='<option value="P3"'+(t.prio==='P3'?' selected':'')+'>🟢 P3</option>';
-    html+='</select>';
-    html+='<input type="date" id="md-dl-'+i+'" value="'+(t.dl||'')+'" style="font-size:14px;padding:8px 10px;border:1px solid var(--bd);border-radius:8px;font-family:inherit;background:var(--sf);color:var(--text);min-height:40px">';
-    html+='</div>';
-    if(S.ziele.length){html+='<div style="margin-top:6px;padding-left:26px"><select id="md-ziel-'+i+'" style="font-size:13px;padding:6px 10px;border:1px solid var(--bd);border-radius:7px;font-family:inherit;background:var(--sf);color:var(--text)"><option value="">— Ziel —</option>'+S.ziele.filter(z=>z.status!=='vorschlag').map(z=>'<option value="'+z.id+'"'+(t.ziel_id===z.id?' selected':'')+'>'+esc(z.name).slice(0,40)+'</option>').join('')+'</select></div>';}
-    if(t.kontext){html+='<div style="font-size:11px;color:var(--t2);margin-top:8px;font-style:italic;padding-left:26px">💬 '+esc(t.kontext)+'</div>';}
-    html+='</div>';
+  const zielOpts='<option value="">— Ziel —</option>'+S.ziele.filter(z=>z.status!=='vorschlag').map(z=>'<option value="'+z.id+'">'+esc(z.name).slice(0,38)+'</option>').join('');
+  const TYPEN={aufgabe:{icon:'📋',label:'Aufgabe',color:'var(--t2)'},wochenziel:{icon:'📅',label:'Wochenziel',color:'var(--blue)'},monatsziel:{icon:'🎯',label:'Monatsziel',color:'var(--purple)'},quartalsziel:{icon:'🌟',label:'Quartalsziel',color:'var(--amber)'}};
+  const typSelect=(i,cur)=>'<select id="md-typ-'+i+'" onchange="mdUpdateCount()" style="font-size:11px;padding:3px 7px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);font-family:inherit">'
+    +Object.entries(TYPEN).map(([v,{icon,label}])=>'<option value="'+v+'"'+(v===cur?' selected':'')+'>'+icon+' '+label+'</option>').join('')+'</select>';
+  const renderRow=(t,i)=>{
+    const typ=t.typ||'aufgabe';const ti=TYPEN[typ]||TYPEN.aufgabe;
+    let r='<div id="md-row-'+i+'" style="background:var(--sf);border:1px solid var(--bd);border-left:3px solid '+ti.color+';border-radius:0 12px 12px 0;padding:12px 14px;margin-bottom:8px">';
+    r+='<div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:8px">';
+    r+='<input type="checkbox" checked id="md-chk-'+i+'" style="margin-top:5px;accent-color:var(--blue);width:15px;height:15px;flex-shrink:0" onchange="mdUpdateCount()">';
+    r+='<input type="text" id="md-titel-'+i+'" value="'+esc(t.titel)+'" style="flex:1;font-size:13px;font-weight:600;border:1px solid var(--bd);border-radius:8px;padding:6px 10px;font-family:inherit;background:var(--sf);color:var(--text)">';
+    if(t.typ_unsicher)r+='<span title="KI unsicher — bitte Typ prüfen" style="font-size:14px;cursor:help;flex-shrink:0">❓</span>';
+    r+='<button onclick="mdRemoveRow('+i+')" style="font-size:13px;border:none;background:none;cursor:pointer;padding:4px;color:var(--t3);flex-shrink:0">✕</button>';
+    r+='</div>';
+    r+='<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;padding-left:23px">';
+    r+=typSelect(i,typ);
+    if(typ==='aufgabe'){
+      r+='<select id="md-pid-'+i+'" style="font-size:12px;padding:4px 8px;border:1px solid var(--bd);border-radius:7px;font-family:inherit;background:var(--sf);color:var(--text);flex:1;min-width:90px"><option value="">— Zuständig —</option>'+personOpts+'</select>';
+      r+='<select id="md-prio-'+i+'" style="font-size:12px;padding:4px 8px;border:1px solid var(--bd);border-radius:7px;font-family:inherit;background:var(--sf)"><option value="">Prio</option><option value="P1"'+(t.prio==='P1'?' selected':'')+'>🔴 P1</option><option value="P2"'+(t.prio==='P2'?' selected':'')+'>🔵 P2</option><option value="P3"'+(t.prio==='P3'?' selected':'')+'>🟢 P3</option></select>';
+      r+='<input type="date" id="md-dl-'+i+'" value="'+(t.dl||'')+'" style="font-size:12px;padding:4px 8px;border:1px solid var(--bd);border-radius:7px;font-family:inherit;background:var(--sf);color:var(--text)">';
+      if(S.ziele.length)r+='<select id="md-ziel-'+i+'" style="font-size:12px;padding:4px 8px;border:1px solid var(--bd);border-radius:7px;font-family:inherit;background:var(--sf);color:var(--text)">'+zielOpts+'</select>';
+    }else if(typ==='wochenziel'){
+      r+='<select id="md-pid-'+i+'" style="font-size:12px;padding:4px 8px;border:1px solid var(--bd);border-radius:7px;font-family:inherit;background:var(--sf);color:var(--text);flex:1;min-width:90px"><option value="">— Wessen Wochenziel? —</option>'+personOpts+'</select>';
+      r+='<span style="font-size:11px;color:var(--blue);white-space:nowrap">→ Wochenplan KW '+getKW().kw+'</span>';
+    }else if(typ==='monatsziel'){
+      r+='<input type="date" id="md-dl-'+i+'" value="'+(t.dl||'')+'" style="font-size:12px;padding:4px 8px;border:1px solid var(--bd);border-radius:7px;font-family:inherit;background:var(--sf);color:var(--text)">';
+      if(S.ziele.length)r+='<select id="md-ziel-'+i+'" style="font-size:12px;padding:4px 8px;border:1px solid var(--bd);border-radius:7px;font-family:inherit;background:var(--sf);color:var(--text);flex:1">'+zielOpts+'</select>';
+    }else if(typ==='quartalsziel'){
+      r+='<select id="md-pid-'+i+'" style="font-size:12px;padding:4px 8px;border:1px solid var(--bd);border-radius:7px;font-family:inherit;background:var(--sf);color:var(--text)"><option value="">— Zuständig —</option>'+personOpts+'</select>';
+      r+='<input type="date" id="md-dl-'+i+'" value="'+(t.dl||'')+'" style="font-size:12px;padding:4px 8px;border:1px solid var(--bd);border-radius:7px;font-family:inherit;background:var(--sf);color:var(--text)">';
+    }
+    r+='</div>';
+    if(t.kontext)r+='<div style="font-size:11px;color:var(--t2);margin-top:6px;font-style:italic;padding-left:23px">💬 '+esc(t.kontext)+'</div>';
+    r+='</div>';
+    return r;
+  };
+  // Group by typ with section headers
+  const groups=[
+    {key:'aufgabe',icon:'📋',label:'Aufgaben',color:'var(--t2)'},
+    {key:'wochenziel',icon:'📅',label:'Wochenziele',color:'var(--blue)'},
+    {key:'monatsziel',icon:'🎯',label:'Monatsziele',color:'var(--purple)'},
+    {key:'quartalsziel',icon:'🌟',label:'Quartalsziele',color:'var(--amber)'},
+  ];
+  let html='<div class="mt">📝 Meeting Dump — '+total+' Items erkannt</div>';
+  html+='<div style="font-size:12px;color:var(--t3);margin-bottom:14px">KI hat klassifiziert. Typ korrigieren wenn nötig, dann alles anlegen.</div>';
+  groups.forEach(({key,icon,label,color})=>{
+    const items=_mdTasks.map((t,i)=>({t,i})).filter(({t})=>(t.typ||'aufgabe')===key);
+    if(!items.length)return;
+    html+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:'+color+';margin-bottom:6px;margin-top:14px">'+icon+' '+label+' · '+items.length+'</div>';
+    items.forEach(({t,i})=>{html+=renderRow(t,i);});
   });
+  const wr=dieseWocheReset(aP);
+  const woZ=_mdTasks.filter(t=>t.typ==='wochenziel').length;
+  const usedSlots=[wr?.big3_1,wr?.big3_2,wr?.big3_3].filter(Boolean).length;
+  if(woZ&&!wr)html+='<div style="font-size:11px;color:var(--amber);background:var(--amber-bg);border:1px solid var(--amber-bd);border-radius:8px;padding:8px 10px;margin:8px 0">⚠️ Kein aktiver Wochenplan — Wochenziele werden als Aufgaben gespeichert bis du einen Wochenplan erstellst.</div>';
+  else if(woZ&&wr&&usedSlots+woZ>3)html+='<div style="font-size:11px;color:var(--amber);background:var(--amber-bg);border:1px solid var(--amber-bd);border-radius:8px;padding:8px 10px;margin:8px 0">⚠️ Wochenplan hat nur noch '+(3-usedSlots)+' freie Slot(s) — übrige Wochenziele werden als Aufgaben gespeichert.</div>';
   html+='<div style="display:flex;align-items:center;gap:10px;margin-top:16px;padding-top:14px;border-top:1px solid var(--bd)">';
   html+='<button class="btn btn-gr" onclick="openMeeting()">← Zurück</button>';
   html+='<div style="flex:1"></div>';
-  html+='<span style="font-size:12px;color:var(--t3)" id="md-count">'+_mdTasks.length+' ausgewählt</span>';
-  html+='<button class="btn btn-dk" onclick="mdConfirm()" style="padding:10px 24px;font-size:14px;font-weight:700">✓ Aufgaben anlegen</button>';
+  html+='<span style="font-size:12px;color:var(--t3)" id="md-count">'+total+' ausgewählt</span>';
+  html+='<button class="btn btn-dk" onclick="mdConfirm()" style="padding:10px 24px;font-size:14px;font-weight:700">✓ Alles anlegen</button>';
   html+='</div>';
   m.innerHTML=html;
-  _mdTasks.forEach((t,i)=>{const sel=document.getElementById('md-pid-'+i);if(sel&&t.pid)sel.value=t.pid;});
+  _mdTasks.forEach((t,i)=>{
+    const ps=document.getElementById('md-pid-'+i);if(ps&&t.pid)ps.value=t.pid;
+    const zs=document.getElementById('md-ziel-'+i);if(zs&&t.ziel_id)zs.value=t.ziel_id;
+  });
 }
 
 function mdRemoveRow(i){
@@ -7973,46 +8014,93 @@ async function mdConfirm(){
   const toCreate=[];
   _mdTasks.forEach((t,i)=>{
     const chk=document.getElementById('md-chk-'+i);if(!chk||!chk.checked)return;
-    const titel=document.getElementById('md-titel-'+i).value.trim();if(!titel)return;
-    const pid=document.getElementById('md-pid-'+i).value||aP;
-    const prio=document.getElementById('md-prio-'+i).value||null;
-    const dl=document.getElementById('md-dl-'+i).value||null;
+    const titel=document.getElementById('md-titel-'+i)?.value.trim();if(!titel)return;
+    const typ=document.getElementById('md-typ-'+i)?.value||(t.typ||'aufgabe');
+    const pid=document.getElementById('md-pid-'+i)?.value||null;
+    const prio=document.getElementById('md-prio-'+i)?.value||null;
+    const dl=document.getElementById('md-dl-'+i)?.value||null;
     const zielSel=document.getElementById('md-ziel-'+i);
     const ziel_id=(zielSel?zielSel.value:'')||t.ziel_id||null;
-    toCreate.push({titel,pid,prio,dl,ziel_id,kontext:t.kontext||''});
+    toCreate.push({titel,typ,pid,prio,dl,ziel_id,kontext:t.kontext||''});
   });
   if(!toCreate.length)return;
   const m=document.getElementById('mb');
   m.innerHTML='<div class="mt">📝 Meeting Dump</div>'
     +'<div style="text-align:center;padding:40px">'
-    +'<div style="font-size:14px;color:var(--purple);font-weight:600">⟳ Erstelle '+toCreate.length+' Aufgaben…</div>'
+    +'<div style="font-size:14px;color:var(--purple);font-weight:600">⟳ Lege '+toCreate.length+' Items an…</div>'
     +'<div id="md-progress" style="margin-top:12px;font-size:12px;color:var(--t3)">0 / '+toCreate.length+'</div>'
     +'</div>';
-  let created=0;
+  let cntA=0,cntW=0,cntM=0,cntQ=0;
+  const wr=dieseWocheReset(aP);
+  let wrSlot=[wr?.big3_1,wr?.big3_2,wr?.big3_3].filter(Boolean).length;
+  const wrPatch={};
   for(const t of toCreate){
-    const isOther=t.pid!==aP;
-    const id=nid('a');
-    const rec={id,pid:t.pid,titel:t.titel,typ:t.ziel_id?'strategisch':'operativ',
-      status:isOther?'zugewiesen':(t.prio?'backlog':'neu'),
-      prio:t.prio,ziel_id:t.ziel_id,teilziel_id:null,
-      geplant:1,gebucht:0,dl:t.dl,dl_type:t.dl?'bis':null,
-      ua:[],notiz:t.kontext?'Meeting: '+t.kontext:null,
-      akt_seit:null,vertraulich:false,erstellt_von:aP,
-      inbox_status:isOther?'neu':(!t.prio?'neu':null)};  // #9: self-assign ohne Prio auch in Inbox-Triage
-    S.aufgaben.push(normalizeAufgabe(rec));
-    await dbInsert('aufgaben',rec);
-    if(isOther){
-      const tp=person(t.pid);
-      if(tp&&tp.slack_id)notify('aufgabe_zugewiesen',{aufgabe:t.titel,fuer:{id:t.pid,name:tp.name,slack_id:tp.slack_id},prio:t.prio,dl:t.dl});
+    if(t.typ==='aufgabe'||!t.typ){
+      const pid=t.pid||aP;const isOther=pid!==aP;
+      const id=nid('a');
+      const rec={id,pid,titel:t.titel,typ:t.ziel_id?'strategisch':'operativ',
+        status:isOther?'zugewiesen':(t.prio?'backlog':'neu'),
+        prio:t.prio,ziel_id:t.ziel_id,teilziel_id:null,
+        geplant:1,gebucht:0,dl:t.dl,dl_type:t.dl?'bis':null,
+        ua:[],notiz:t.kontext?'Meeting: '+t.kontext:null,
+        akt_seit:null,vertraulich:false,erstellt_von:aP,
+        inbox_status:isOther?'neu':(!t.prio?'neu':null)};
+      S.aufgaben.push(normalizeAufgabe(rec));
+      await dbInsert('aufgaben',rec);
+      if(isOther){const tp=person(pid);if(tp?.slack_id)notify('aufgabe_zugewiesen',{aufgabe:t.titel,fuer:{id:pid,name:tp.name,slack_id:tp.slack_id},prio:t.prio,dl:t.dl});}
+      cntA++;
+    }else if(t.typ==='wochenziel'){
+      if(wr&&wrSlot<3){
+        const slot='big3_'+(wrSlot+1);
+        wrPatch[slot]=t.titel;
+        wr[slot]=t.titel;
+        wrSlot++;cntW++;
+      }else{
+        // Kein Wochenplan oder voll → als Aufgabe P1
+        const pid=t.pid||aP;const id=nid('a');
+        const rec={id,pid,titel:t.titel,typ:'operativ',status:'backlog',prio:'P1',
+          ziel_id:null,teilziel_id:null,geplant:1,gebucht:0,dl:t.dl||getFriday(),
+          dl_type:'bis',ua:[],notiz:t.kontext?'Meeting: '+t.kontext:null,
+          akt_seit:null,vertraulich:false,erstellt_von:aP,inbox_status:null};
+        S.aufgaben.push(normalizeAufgabe(rec));
+        await dbInsert('aufgaben',rec);cntA++;
+      }
+    }else if(t.typ==='monatsziel'){
+      const id=nid('tz');
+      const rec={id,ziel_id:t.ziel_id||null,name:t.titel,datum:t.dl||null,
+        status:'aktiv',erledigt:false,erstellt_von:aP,erstellt_am:new Date().toISOString()};
+      if(!S.ziele.find(z=>z.id===t.ziel_id)){rec.ziel_id=null;}
+      // Push to local state
+      const z=S.ziele.find(z=>z.id===rec.ziel_id);
+      if(z){z.teilziele=z.teilziele||[];z.teilziele.push(rec);}
+      await dbInsert('teilziele',rec);cntM++;
+    }else if(t.typ==='quartalsziel'){
+      const id=nid('z');
+      const rec={id,name:t.titel,status:'aktiv',erledigt:false,
+        datum:t.dl||null,farbe:0,
+        erstellt_von:aP,erstellt_am:new Date().toISOString(),teilziele:[]};
+      S.ziele.push(rec);
+      await dbInsert('ziele',rec);cntQ++;
     }
-    created++;
-    const prog=document.getElementById('md-progress');if(prog)prog.textContent=created+' / '+toCreate.length;
+    const prog=document.getElementById('md-progress');
+    if(prog)prog.textContent=(cntA+cntW+cntM+cntQ)+' / '+toCreate.length;
   }
+  // Flush Wochenziel-Patches
+  if(wr&&Object.keys(wrPatch).length){
+    Object.assign(wr,wrPatch);
+    await dbPatch('wochenresets',wr.id,wrPatch);
+  }
+  const summary=[];
+  if(cntA)summary.push(cntA+' Aufgabe'+(cntA!==1?'n':''));
+  if(cntW)summary.push(cntW+' Wochenziel'+(cntW!==1?'e':''));
+  if(cntM)summary.push(cntM+' Monatsziel'+(cntM!==1?'e':''));
+  if(cntQ)summary.push(cntQ+' Quartalsziel'+(cntQ!==1?'e':''));
   m.innerHTML='<div class="mt">📝 Meeting Dump</div>'
     +'<div style="text-align:center;padding:40px">'
     +'<div style="font-size:48px;margin-bottom:12px">✅</div>'
-    +'<div style="font-size:20px;font-weight:700;margin-bottom:6px">'+created+' Aufgaben angelegt</div>'
-    +'<div style="font-size:13px;color:var(--t3);margin-bottom:20px">Zugewiesene Personen werden automatisch per Slack benachrichtigt.</div>'
+    +'<div style="font-size:20px;font-weight:700;margin-bottom:8px">Alles angelegt</div>'
+    +'<div style="font-size:13px;color:var(--t2);margin-bottom:20px">'+summary.join(' · ')+'</div>'
+    +'<div style="font-size:12px;color:var(--t3);margin-bottom:20px">Zugewiesene Personen werden per Slack benachrichtigt.</div>'
     +'<div style="display:flex;justify-content:center"><button class="btn btn-dk" onclick="cm();render()" style="padding:10px 24px;font-size:14px">Fertig</button></div>'
     +'</div>';
 }
