@@ -5738,6 +5738,15 @@ const FOKUS_SCOPES={
     returnPlaceholder:'MONATSZIEL: 40 qualifizierte Leads bis Monatsende | 2026-05-15 | 30k MRR\nWOCHENZIEL: 10 Discovery-Calls gebucht\nWOCHENZIEL: Landingpage A/B-Test live\nWOCHENZIEL: Outreach-Liste Tier-1 (200 Kontakte) sauber\nAUFGABE: Outreach-Template v3 schreiben | P1 | 2026-04-23',
     returnHint:'<b>MONATSZIEL</b> wird als Monatsziel unter dem gewählten Quartalsziel angelegt (neu = Vorschlag an GF). <b>WOCHENZIEL</b> kommt in deinen aktuellen Wochenreset (max 3). <b>AUFGABE</b> in deine Liste.'
   },
+  kaskade:{
+    label:'🌱 Kaskade',
+    subtitle:'Full-Stack — Onboarding & Pivot',
+    frage:'Was ist das Bild für die nächsten 90 Tage, was bedeutet das konkret für den nächsten Monat, und was davon ist diese Woche lieferbar? Dreimal Pareto-Extrem — von groß nach klein, ohne dass die Ebenen sich widersprechen.',
+    outputHint:'1 Quartalsziel, 1 Monatsziel als erster Meilenstein darunter, 3 Wochenziele für diese Woche, 3-5 konkrete Aufgaben als Action-Breakdown — alles kaskadenlogisch aufeinander aufbauend',
+    outputFormat:'QUARTALSZIEL: <messbarer Titel> | <YYYY-MM-DD Deadline>\nMONATSZIEL: <messbarer Titel> | <YYYY-MM-DD Deadline>\nWOCHENZIEL: <messbarer Outcome diese Woche>\nWOCHENZIEL: <messbarer Outcome diese Woche>\nWOCHENZIEL: <messbarer Outcome diese Woche>\nAUFGABE: <Titel> | P1 | <YYYY-MM-DD Deadline>\nAUFGABE: <Titel> | P2 | <YYYY-MM-DD Deadline>',
+    returnPlaceholder:'QUARTALSZIEL: 30k MRR bis Ende Q2 | 2026-06-30\nMONATSZIEL: 40 qualifizierte Leads/Monat | 2026-05-15\nWOCHENZIEL: 10 Discovery-Calls gebucht\nWOCHENZIEL: Landingpage v3 live + Tracking\nWOCHENZIEL: Outreach-Welle 1 versendet (50 Kontakte)\nAUFGABE: Outreach-Template v3 schreiben | P1 | 2026-04-22\nAUFGABE: Calendly-Link einrichten | P1 | 2026-04-21',
+    returnHint:'Eine Session — drei Ebenen. <b>QUARTALSZIEL</b> → Vorschlag an GF. <b>MONATSZIEL</b> hängt sich unter das Quartalsziel. <b>WOCHENZIEL</b> (max 3) gehen in den aktuellen Wochenreset. <b>AUFGABE</b> wird an den Monatsziel gehängt. Ideal für Onboarding oder wenn du komplett neu denken willst.'
+  },
   woche:{
     label:'🎯 Woche',
     subtitle:'7 Tage — 3 Wochenziele',
@@ -5793,7 +5802,56 @@ function generateFokusReport(pid,scope){
   r+='\n';
 
   // ── Scope-spezifische Sektionen ──
-  if(scope==='quartal'){
+  if(scope==='kaskade'){
+    // Onboarding + Pivot — alles auf den Tisch, damit Claude das Gesamtbild sieht
+    const neuerUser=!meineZ.length&&!aktiveTZ.length&&!wrNow;
+    r+='## Kontext\n';
+    r+=neuerUser
+      ?'_Frischer Start — noch keine Ziele, Monatsziele oder Wochen erfasst. Claude soll von null her denken und eine sinnvolle Kaskade vorschlagen._\n'
+      :'_Es gibt bereits Daten (siehe unten). Diese Session ist ein **Pivot**: hinterfrage bestehende Ziele, bevor du neue vorschlägst. Was davon bleibt gültig, was ist überholt?_\n';
+    r+='\n## Aktive Quartalsziele ('+meineZ.length+')\n';
+    if(!meineZ.length)r+='_Keine._\n';
+    else meineZ.forEach(z=>{
+      r+='- **'+z.name+'**'+(z.monat_ende?' (bis '+z.monat_ende+')':'')+'\n';
+      const tzs=(z.teilziele||[]).filter(tz=>String(tz.verantwortlichId)===String(pid)||isGF());
+      tzs.slice(0,4).forEach(tz=>{r+='  - MS: '+tz.name+(tz.datum?' (bis '+tz.datum+')':'')+(tz.erledigt?' ✓':tz.review_done?' [reviewed]':'')+'\n';});
+    });
+    r+='\n## Aktive Monatsziele ('+aktiveTZ.length+')\n';
+    if(!aktiveTZ.length)r+='_Keine._\n';
+    else aktiveTZ.slice(0,5).forEach(tz=>{
+      const tasks=S.aufgaben.filter(a=>a.teilzielId===tz.id);
+      const done=tasks.filter(a=>a.status==='erledigt').length;
+      r+='- '+tz.name+(tz.datum?' (bis '+tz.datum+')':'')+' · '+done+'/'+tasks.length+' Tasks · Parent: '+tz.ziel.name+'\n';
+    });
+    r+='\n## Review-Historie (letzte Monatsziele, Plan-vs-Ausführung)\n';
+    if(!reviewedTZ.length)r+='_Noch keine Reviews._\n';
+    else reviewedTZ.forEach(tz=>{
+      const icon={ja:'✅',teilweise:'〜',nein:'❌'}[tz.review_erreicht]||'○';
+      const grund=tz.review_grund==='plan'?' · Plan zu steil':tz.review_grund==='ausfuehrung'?' · Ausführung':'';
+      r+='- '+icon+' '+tz.name+grund+(tz.review_learning?' — "'+String(tz.review_learning).slice(0,80)+'"':'')+'\n';
+    });
+    r+='\n## Aktuelle Woche (KW '+kw+')\n';
+    if(wrNow){
+      [['big3_1','big3_1_done'],['big3_2','big3_2_done'],['big3_3','big3_3_done']].forEach(([tf,df],i)=>{
+        r+=(i+1)+'. '+(wrNow[tf]||'_leer_')+(wrNow[tf]?(wrNow[df]?' ✓':' ○'):'')+'\n';
+      });
+    } else r+='_Kein Wochenreset — wird bei Output automatisch angelegt._\n';
+    r+='\n## Letzte 4 Wochen — Lieferquote + Learnings\n';
+    if(!wrs.length)r+='_Keine Historie._\n';
+    else wrs.forEach(wr=>{
+      const d=[wr.big3_1_done,wr.big3_2_done,wr.big3_3_done].filter(Boolean).length;
+      const t=[wr.big3_1,wr.big3_2,wr.big3_3].filter(Boolean).length;
+      r+='- KW '+wr.kw+'/'+wr.jahr+': '+d+'/'+t+(wr.haupt_thema?' · '+wr.haupt_thema:'')+(wr.learning?' — "'+String(wr.learning).slice(0,100)+'"':'')+'\n';
+    });
+    r+='\n## Offene P1-Aufgaben ('+offP1.length+(offP1.length>=8?'+':'')+')\n';
+    if(!offP1.length)r+='_Keine._\n';
+    else offP1.forEach(a=>{
+      const tz=a.teilzielId?alleTZ.find(t=>t.id===a.teilzielId):null;
+      r+='- '+a.titel+(a.dl?' (bis '+a.dl+')':'')+(tz?' · MS: '+tz.name:' · **ohne MS-Anbindung**')+'\n';
+    });
+    r+='\nOffene P2: '+offP2Count+'\n';
+    r+='\n## Metadaten\n- Heute: '+today+'\n- Aktuelles Quartal: Q'+curQ+' (endet '+(new Date().getFullYear())+'-'+(''+(curQ*3)).padStart(2,'0')+'-XX)\n- Wochenende (Freitag): '+(()=>{const d=new Date(today);d.setDate(d.getDate()+(5-d.getDay()+7)%7);return d.toISOString().slice(0,10);})()+'\n';
+  } else if(scope==='quartal'){
     r+='## Aktive Quartalsziele ('+meineZ.length+')\n';
     if(!meineZ.length)r+='_Keine aktiven Ziele — wir starten frisch._\n';
     else meineZ.forEach(z=>{
@@ -6080,7 +6138,7 @@ function rZiele(){
   const meineVorschlaege=vorschlaege.filter(z=>String(z.vorgeschlagen_von)===String(aP));
   let out='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">'
     +'<div style="font-size:16px;font-weight:700">Ziele'+(isGF()&&vorschlaege.length?' <span style="font-size:11px;background:var(--amber);color:#fff;border-radius:99px;padding:1px 7px;font-weight:700;vertical-align:middle">'+vorschlaege.length+'</span>':'')+'</div>'
-    +(isGF()?'<div style="display:flex;gap:8px"><button class="btn" style="border:1px solid var(--bd);background:var(--sf);color:var(--t2)" onclick="openFokusCoach(\'quartal\')">🎯 Fokus-Session</button><button class="btn btn-dk" onclick="addZiel()">+ Neues Ziel</button><button class="btn" style="border:1px solid var(--bd);background:var(--gray-bg);color:var(--t2)" onclick="addBereich()">📁 + Bereich</button></div>':'<div style="display:flex;gap:8px"><button class="btn" style="border:1px solid var(--bd);background:var(--sf);color:var(--t2)" onclick="openFokusCoach(\'quartal\')">🎯 Fokus-Session</button><button class="btn btn-dk" onclick="vorschlagenZiel()">+ Ziel vorschlagen</button></div>')
+    +(isGF()?'<div style="display:flex;gap:8px"><button class="btn" style="border:1px solid var(--bd);background:var(--sf);color:var(--t2)" onclick="openFokusCoach(\'kaskade\')">🌱 Kaskade-Session</button><button class="btn btn-dk" onclick="addZiel()">+ Neues Ziel</button><button class="btn" style="border:1px solid var(--bd);background:var(--gray-bg);color:var(--t2)" onclick="addBereich()">📁 + Bereich</button></div>':'<div style="display:flex;gap:8px"><button class="btn" style="border:1px solid var(--bd);background:var(--sf);color:var(--t2)" onclick="openFokusCoach(\'kaskade\')">🌱 Kaskade-Session</button><button class="btn btn-dk" onclick="vorschlagenZiel()">+ Ziel vorschlagen</button></div>')
     +'</div>';
   if(isGF()&&vorschlaege.length){
     out+='<div style="background:var(--amber-bg);border:1.5px solid var(--amber-bd);border-radius:12px;padding:14px 16px;margin-bottom:20px">';
