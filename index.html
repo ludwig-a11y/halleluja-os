@@ -378,7 +378,7 @@ function zieleOptgroups(pid,selId=''){
   if(bereiche.length)out+='<optgroup label="📁 Bereiche">'+bereiche.map(z=>'<option value="'+z.id+'"'+(selId===z.id?' selected':'')+'>📁 '+esc(z.name)+'</option>').join('')+'</optgroup>';
   return out;
 }
-// Meilenstein-zentrische Auswahl: Meilensteine (aktiv) gruppiert nach Ziel/Bereich.
+// Monatsziel-zentrische Auswahl: Monatsziele (aktiv) gruppiert nach Ziel/Bereich.
 // Liefert <option>s mit data-ziel-id, data-datum. Aufrufer deriviert ziel_id aus Auswahl.
 function meilensteinOptgroups(pid,selTzId=''){
   const sichtbar=S.ziele.filter(z=>(!z.vertraulich||isGF())&&z.status!=='vorschlag');
@@ -397,7 +397,7 @@ function meilensteinOptgroups(pid,selTzId=''){
       }).join('')+'</optgroup>';
     }).join('');
   };
-  let out='<option value="">— kein Meilenstein —</option>';
+  let out='<option value="">— kein Monatsziel —</option>';
   out+=mkGroup('Meine',meine);
   out+=mkGroup('Andere',andere);
   out+=mkGroup('Bereiche',bereiche);
@@ -419,7 +419,7 @@ function meilensteinOptgroups(pid,selTzId=''){
   }
   return out;
 }
-// Meilenstein-Picker mit Inline-„+ Neu" Button
+// Monatsziel-Picker mit Inline-„+ Neu" Button
 // selectId: id des <select>
 // pid: Person (für Optgroup-Sortierung & Verantwortlichkeit des neuen MS)
 // selTzId: vorausgewählte TZ
@@ -430,12 +430,12 @@ function msPickerWithAdd(selectId,pid,selTzId,onChangeAttr,fixedZielId){
   const oc=onChangeAttr?' onchange="'+onChangeAttr.replace(/"/g,'&quot;')+'"':'';
   let h='<div style="display:flex;gap:6px;align-items:stretch">';
   h+='<select id="'+selectId+'" style="flex:1"'+oc+'>'+msOpts+'</select>';
-  h+='<button type="button" onclick="toggleQuickMsForm(\''+selectId+'\')" style="flex-shrink:0;padding:0 10px;border-radius:8px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);cursor:pointer;font-family:inherit;font-size:11px;font-weight:600;white-space:nowrap" title="Neuen Meilenstein anlegen">+ Neu</button>';
+  h+='<button type="button" onclick="toggleQuickMsForm(\''+selectId+'\')" style="flex-shrink:0;padding:0 10px;border-radius:8px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);cursor:pointer;font-family:inherit;font-size:11px;font-weight:600;white-space:nowrap" title="Neues Monatsziel anlegen">+ Neu</button>';
   h+='</div>';
   const zOpts=S.ziele.filter(z=>z.status!=='vorschlag'&&z.status!=='archiviert'&&(!z.vertraulich||isGF()||String(z.verantwortlichId)===String(pid))&&canManageTZ(z.id)).map(z=>'<option value="'+z.id+'"'+(fixedZielId&&z.id===fixedZielId?' selected':'')+'>'+(z.status==='bereich'?'📁 ':'')+esc(z.name)+'</option>').join('');
   const fixed=!!fixedZielId;
   h+='<div id="'+selectId+'-addform" style="display:none;margin-top:8px;padding:10px;border:1px dashed var(--bd);border-radius:8px;background:var(--gray-bg)">';
-  h+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t2);margin-bottom:8px">➕ Neuer Meilenstein</div>';
+  h+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t2);margin-bottom:8px">➕ Neues Monatsziel</div>';
   h+='<div style="display:flex;flex-direction:column;gap:6px">';
   if(!fixed)h+='<select id="'+selectId+'-zid" style="font-size:12px;padding:6px 8px;border:1px solid var(--bd);border-radius:6px;background:var(--sf);color:var(--text);font-family:inherit"><option value="">Ziel wählen…</option>'+zOpts+'</select>';
   else h+='<input type="hidden" id="'+selectId+'-zid" value="'+fixedZielId+'">';
@@ -476,7 +476,7 @@ async function saveQuickMs(selectId,pid){
     sel.dispatchEvent(new Event('change'));
   }
   toggleQuickMsForm(selectId);
-  toast('✓ Meilenstein angelegt');
+  toast('✓ Monatsziel angelegt');
 }
 function wochenTage(){
   const today=new Date(),dow=today.getDay(),diff=dow===0?-6:1-dow;
@@ -771,7 +771,7 @@ const canChangePrio=a=>{
   return false;
 };
 const canManageTZ=zid=>{const z=zielObj(zid);return z&&(isGF()||z.verantwortlichId===aP);};
-function tzLabel(zid,plural){return istBereich(zid)?(plural?'Themen':'Thema'):(plural?'Meilensteine':'Meilenstein');}
+function tzLabel(zid,plural){return istBereich(zid)?(plural?'Themen':'Thema'):(plural?'Monatsziele':'Monatsziel');}
 function toggleBereich(zid){if(!window._bereichOpen)window._bereichOpen={};window._bereichOpen[zid]=!window._bereichOpen[zid];const _y=window.scrollY;rZiele();requestAnimationFrame(()=>window.scrollTo(0,_y));}
 
 function myTeamIds(){
@@ -912,7 +912,7 @@ async function incrementKpi(kpiId,pid){
   render();
   if(k.sonder)showSonderCelebration(pid,k.label,newVal,k.ziel);
   else if(k.prio==='P1'&&k.teilzielId)showPaddelCelebration(pid);
-  else toast('+1 · ohne Meilenstein+P1 kein Paddel-Punkt');
+  else toast('+1 · ohne Monatsziel+P1 kein Paddel-Punkt');
 }
 function showSonderCelebration(pid,label,val,ziel){
   const p=person(pid);
@@ -1353,7 +1353,7 @@ async function klassifiziereAlsRandom(id){
   await dbPatch('aufgaben',id,{typ:'random',prio:null,status:'backlog'});
   render();
 }
-// _updateMsLabels, aufgabeZuMeilenstein, saveMeilensteinFromAufgabe, klassifiziereAlsIdee entfernt:
+// _updateMsLabels, aufgabeZuMonatsziel, saveMonatszielFromAufgabe, klassifiziereAlsIdee entfernt:
 function rMorgenPreview(pid){
   if(new Date().getHours()<17)return'';
   const tomorrow=localDate(new Date(new Date(TODAY+'T12:00:00').getTime()+86400000));
@@ -1404,7 +1404,7 @@ function rMorgenPreview(pid){
 }
 
 // ─── DEADLINE-ALARM (Konzept A) ─────────────────────────────────
-// Aufgaben mit dl<=TODAY, die NICHT als Ergebnisvorhaben sichtbar sind.
+// Aufgaben mit dl<=TODAY, die NICHT als Wochenziele sichtbar sind.
 // Deadline = Commitment, unabhängig von Priorität.
 function rDeadlineAlarm(pid){
   const wr=dieseWocheReset(pid);
@@ -1441,7 +1441,7 @@ function rDeadlineAlarm(pid){
 }
 
 // ─── CLEANUP (Konzept B) ────────────────────────────────────────
-// Aufgaben ohne Meilenstein, sichtbar ab konfigurierbarer Uhrzeit (min 15:00).
+// Aufgaben ohne Monatsziel, sichtbar ab konfigurierbarer Uhrzeit (min 15:00).
 // "Fokus endet. Jetzt aufräumen." Zählt nicht fürs Paddel.
 function rCleanup(pid){
   const cfgKey='cleanup_start_'+pid;
@@ -1476,7 +1476,7 @@ function rCleanup(pid){
     h+='<button onclick="setCleanupStart(\''+pid+'\','+h2+')" style="font-size:11px;padding:5px 12px;border-radius:7px;border:1px solid '+(sel?'var(--inv)':'var(--bd)')+';background:'+(sel?'var(--inv)':'var(--sf)')+';color:'+(sel?'var(--inv-t)':'var(--t2)')+';cursor:pointer;font-family:inherit;font-weight:'+(sel?'700':'500')+'">'+h2+':00</button>';
   });
   h+='</div></div>';
-  h+='<div style="font-size:11px;color:var(--t3);margin:8px 0 10px">Aufgaben ohne Meilenstein — zählt nicht fürs Paddel.</div>';
+  h+='<div style="font-size:11px;color:var(--t3);margin:8px 0 10px">Aufgaben ohne Monatsziel — zählt nicht fürs Paddel.</div>';
   items.forEach(a=>{
     const prioCol=prioColor(a.prio);
     h+='<div style="background:var(--gray-bg);border:1px solid var(--bd);border-radius:10px;padding:9px 12px;margin-bottom:6px;display:flex;align-items:center;gap:10px">';
@@ -1546,8 +1546,8 @@ function rInbox(pid){
       expanded+='</select>';
     }
     if(meineTZ.length){
-      expanded+='<select onchange="if(this.value)inboxAcceptMeilenstein(\''+a.id+'\',this.value)" style="font-size:11px;padding:5px 8px;border-radius:8px;border:1px solid var(--blue-bd);background:var(--blue-bg);color:var(--blue);font-family:inherit;cursor:pointer;font-weight:600">';
-      expanded+='<option value="">'+(bereitsTZ?'🎯 Meilenstein ändern…':'🎯 Meilenstein…')+'</option>';
+      expanded+='<select onchange="if(this.value)inboxAcceptMonatsziel(\''+a.id+'\',this.value)" style="font-size:11px;padding:5px 8px;border-radius:8px;border:1px solid var(--blue-bd);background:var(--blue-bg);color:var(--blue);font-family:inherit;cursor:pointer;font-weight:600">';
+      expanded+='<option value="">'+(bereitsTZ?'🎯 Monatsziel ändern…':'🎯 Monatsziel…')+'</option>';
       meineTZ.forEach(t=>expanded+='<option value="'+t.id+'"'+(a.teilzielId===t.id?' selected':'')+'>'+esc(t.zielName)+' › '+esc(t.name)+'</option>');
       if(bereitsTZ)expanded+='<option value="__keep__">✓ behalten &amp; annehmen</option>';
       expanded+='</select>';
@@ -1562,7 +1562,7 @@ function rInbox(pid){
   h+='</details>';
   return h;
 }
-async function inboxAcceptMeilenstein(id,tzId){
+async function inboxAcceptMonatsziel(id,tzId){
   const a=S.aufgaben.find(x=>x.id===id);if(!a||a._busy)return;
   const keep=tzId==='__keep__';
   let newTzId=keep?a.teilzielId:tzId;
@@ -1610,7 +1610,7 @@ async function inboxArchive(id){
   toast('✓ Archiviert');render();
 }
 // ─── /INBOX ─────────────────────────────────────────────────────
-// Ideen-Pool + "→ Meilenstein"-Button aus Inbox entfernt (Iteration 2 §1c).
+// Ideen-Pool + "→ Monatsziel"-Button aus Inbox entfernt (Iteration 2 §1c).
 function rDelegBlock(pid){
   const delegated=S.aufgaben.filter(a=>a.erstelltVon===pid&&a.pid!==pid&&a.status!=='erledigt');
   if(!delegated.length)return'';
@@ -2118,7 +2118,7 @@ function openMomentumInfo(){
     +'<div style="margin-bottom:6px;padding:8px 10px;background:var(--amber-bg);border-left:3px solid var(--amber);border-radius:0 6px 6px 0;font-size:12px"><b>Freitag-Test:</b> Kannst du es Freitag abhaken? Dann ist es ein Big 3.</div>'
     +'<div style="font-size:12px;color:var(--t2);margin-bottom:6px">'
     +'✓ Größer als eine Aufgabe (&gt;4h Arbeit)<br>'
-    +'✓ Kleiner als ein Meilenstein (&lt;15h, in einer Woche schaffbar)<br>'
+    +'✓ Kleiner als ein Monatsziel (&lt;15h, in einer Woche schaffbar)<br>'
     +'✓ Ein <b>Ergebnis</b> — keine Aktivität'
     +'</div>'
     +'<div style="font-size:12px;color:var(--t3);margin-bottom:12px"><i>Beispiele:</i> „Angebot Kunde X — versendet", „3 Discovery-Calls geführt", „Landing-Page v2 live"</div>'
@@ -2147,7 +2147,7 @@ function wrCascadeHtml(){
   // Aktives Ziel: Fokus-Ziel der Person, oder erstes aktives Nicht-Bereich-Ziel
   const myZiele=(S.ziele||[]).filter(z=>z.status!=='bereich'&&z.status!=='vorschlag'&&!z.erledigt);
   const focusZ=myZiele.find(z=>z.focus)||myZiele[0]||null;
-  // Meilenstein: nächster nicht-erledigter TZ des aktiven Ziels (oder überhaupt)
+  // Monatsziel: nächster nicht-erledigter TZ des aktiven Ziels (oder überhaupt)
   const allTZ=focusZ?(focusZ.teilziele||[]).filter(t=>!t.erledigt&&(t.status||'aktiv')==='aktiv'):[];
   const tzSort=[...allTZ].sort((a,b)=>{
     if(!a.datum&&!b.datum)return 0;
@@ -2172,14 +2172,14 @@ function wrCascadeHtml(){
       +(meta?'<div style="font-size:10px;color:var(--t2);margin-top:3px">'+meta+'</div>':'')
       +'</div>';
   };
-  const z1=card('🌟','Ziel (3 Monate)',focusZ?.name,focusZ&&zTotal?(zDone+'/'+zTotal+' Meilensteine'):'','',
+  const z1=card('🌟','Ziel (3 Monate)',focusZ?.name,focusZ&&zTotal?(zDone+'/'+zTotal+' Monatsziele'):'','',
     'Kein aktives Ziel — jetzt setzen');
   const tzMeta=focusTZ?((tzTotal?tzDone+'/'+tzTotal+' Aufgaben':'')+(focusTZ.datum?(tzTotal?' · ':'')+'bis '+focusTZ.datum.slice(8)+'.'+focusTZ.datum.slice(5,7)+'.':'')):'';
-  const z2=card('🎯','Meilenstein (4 Wochen)',focusTZ?.name,tzMeta,'',
-    focusZ?'Kein offener Meilenstein':'—');
+  const z2=card('🎯','Monatsziel (4 Wochen)',focusTZ?.name,tzMeta,'',
+    focusZ?'Kein offener Monatsziel':'—');
   // Diese Woche: zeigt aktuell eingetragene Big-3-Slots live (fallback: Platzhalter)
   const w3=card('📅','Diese Woche','','<span id="wr-cas-b1" style="display:block">—</span><span id="wr-cas-b2" style="display:block">—</span><span id="wr-cas-b3" style="display:block">—</span>','',
-    'Deine Ergebnisvorhaben unten');
+    'Deine Wochenziele unten');
   return '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;margin-bottom:14px">'+z1+z2+w3+'</div>';
 }
 function openZiel(zid){
@@ -2210,7 +2210,7 @@ function openWrPhaseA(wr){
   h+=stepInd;
   if(st.step===1){
     h+=big3Html;
-    h+='<div style="font-size:15px;font-weight:700;margin-bottom:16px">Wie viele Ergebnisvorhaben hast du <em>geliefert</em>?</div>';
+    h+='<div style="font-size:15px;font-weight:700;margin-bottom:16px">Wie viele Wochenziele hast du <em>geliefert</em>?</div>';
     h+='<div style="display:flex;gap:10px;margin-bottom:24px">';
     [0,1,2,3].filter(n=>n<=big3Total||(big3Total===0&&n===0)).forEach(n=>{
       const sel=st.geliefert===n;
@@ -2323,7 +2323,7 @@ function openWochenreset(){
         b3html+='</div>';
       });
       if(b3html){
-        summaryHtml+='<div style="font-size:10px;font-weight:700;color:var(--t2);margin-bottom:4px">Ergebnisvorhaben</div>';
+        summaryHtml+='<div style="font-size:10px;font-weight:700;color:var(--t2);margin-bottom:4px">Wochenziele</div>';
         summaryHtml+=b3html;
         summaryHtml+='<div style="border-top:1px solid var(--bd);margin:10px 0"></div>';
       }
@@ -2362,9 +2362,9 @@ function openWochenreset(){
     });
   }
   const selZielId=wr?.focus_ziel_id||'';
-  // Vorausgewählter Meilenstein: aus bestehenden big3_tz_ids ableiten
+  // Vorausgewählter Monatsziel: aus bestehenden big3_tz_ids ableiten
   const selTZId=wr?([wr.big3_1_tz_id,wr.big3_2_tz_id,wr.big3_3_tz_id].find(Boolean)||''):'';
-  // Meilensteine-Buttons: Ziel als Kontext, Meilenstein als primäre Auswahl
+  // Monatsziele-Buttons: Ziel als Kontext, Monatsziel als primäre Auswahl
   const tzBtnWR=(t,z)=>{
     const f=FARBEN[z.farbe||0];const sel=t.id===selTZId;
     const isB=z.status==='bereich';
@@ -2374,7 +2374,7 @@ function openWochenreset(){
       +'<div style="font-size:10px;color:var(--t3);margin-top:2px">'+(isB?'📁 ':'')+'<span style="color:var(--t2)">'+esc(z.name.length>40?z.name.slice(0,40)+'…':z.name)+'</span>'+(dlLabel?' · '+dlLabel:'')+'</div>'
       +'</div>';
   };
-  // Meilensteine sammeln: Meine zuerst, dann Andere
+  // Monatsziele sammeln: Meine zuerst, dann Andere
   const alleZ=S.ziele.filter(z=>z.status!=='vorschlag');
   const myTZGroups=[],otherTZGroups=[];
   alleZ.forEach(z=>{
@@ -2387,34 +2387,34 @@ function openWochenreset(){
   myTZGroups.forEach(({z,tza})=>{tza.forEach(t=>{msHtml+=tzBtnWR(t,z);});});
   if(otherTZGroups.length){
     const totalOther=otherTZGroups.reduce((s,g)=>s+g.tza.length,0);
-    msHtml+='<details style="margin-top:6px"><summary style="font-size:11px;color:var(--t3);cursor:pointer;padding:4px 0">▸ Andere Meilensteine ('+totalOther+')</summary><div style="margin-top:6px">';
+    msHtml+='<details style="margin-top:6px"><summary style="font-size:11px;color:var(--t3);cursor:pointer;padding:4px 0">▸ Andere Monatsziele ('+totalOther+')</summary><div style="margin-top:6px">';
     otherTZGroups.forEach(({z,tza})=>{tza.forEach(t=>{msHtml+=tzBtnWR(t,z);});});
     msHtml+='</div></details>';
   }
-  // Inline-Meilenstein-Anlage (immer am Ende verfügbar, offen wenn keine Meilensteine existieren)
+  // Inline-Monatsziel-Anlage (immer am Ende verfügbar, offen wenn keine Monatsziele existieren)
   const meineZieleFuerInline=S.ziele.filter(z=>z.status!=='vorschlag'&&z.status!=='bereich'&&(String(z.verantwortlichId)===String(aP)||(z.teilziele||[]).some(t=>String(t.verantwortlichId)===String(aP))||isGF()));
   const inlineZielOpts=meineZieleFuerInline.map(z=>'<option value="'+z.id+'">'+esc(z.name)+'</option>').join('');
   const hasAnyMs=!!msHtml;
   const inlineOpen=!hasAnyMs;
   const inlineFormHtml=meineZieleFuerInline.length
     ? '<details '+(inlineOpen?'open':'')+' style="margin-top:8px;border:1px dashed var(--bd);border-radius:8px;padding:8px 10px;background:var(--gray-bg)">'
-      +'<summary style="font-size:11px;color:var(--t2);cursor:pointer;font-weight:600">+ Neuen Meilenstein schnell anlegen</summary>'
+      +'<summary style="font-size:11px;color:var(--t2);cursor:pointer;font-weight:600">+ Neues Monatsziel schnell anlegen</summary>'
       +'<div style="margin-top:8px;display:flex;flex-direction:column;gap:6px">'
-      +'<input id="wr-inline-tz-name" placeholder="Meilenstein-Titel" style="font-size:12px;padding:6px 8px;border:1px solid var(--bd);border-radius:6px;background:var(--sf);color:var(--text);font-family:inherit">'
+      +'<input id="wr-inline-tz-name" placeholder="Monatsziel-Titel" style="font-size:12px;padding:6px 8px;border:1px solid var(--bd);border-radius:6px;background:var(--sf);color:var(--text);font-family:inherit">'
       +'<div style="display:flex;gap:6px">'
       +'<select id="wr-inline-tz-ziel" style="flex:1;font-size:12px;padding:6px 8px;border:1px solid var(--bd);border-radius:6px;background:var(--sf);color:var(--text);font-family:inherit">'+inlineZielOpts+'</select>'
       +'<input type="date" id="wr-inline-tz-datum" style="font-size:12px;padding:6px 8px;border:1px solid var(--bd);border-radius:6px;background:var(--sf);color:var(--text);font-family:inherit">'
       +'</div>'
       +'<button onclick="saveInlineTZFromWR(event)" type="button" class="btn btn-dk" style="font-size:12px;padding:6px 10px;align-self:flex-start">Anlegen &amp; wählen</button>'
       +'</div></details>'
-    : '<div style="font-size:11px;color:var(--t3);padding:8px 0">Erst ein Ziel im <span onclick="nav(\'ziele\')" style="color:var(--blue);cursor:pointer;text-decoration:underline">Ziele-Tab</span> anlegen, dann kannst du hier Meilensteine hinzufügen.</div>';
+    : '<div style="font-size:11px;color:var(--t3);padding:8px 0">Erst ein Ziel im <span onclick="nav(\'ziele\')" style="color:var(--blue);cursor:pointer;text-decoration:underline">Ziele-Tab</span> anlegen, dann kannst du hier Monatsziele hinzufügen.</div>';
   if(!msHtml){
-    msHtml='<div style="font-size:12px;color:var(--t3);padding:4px 0 2px">Keine aktiven Meilensteine.</div>'+inlineFormHtml;
+    msHtml='<div style="font-size:12px;color:var(--t3);padding:4px 0 2px">Keine aktiven Monatsziele.</div>'+inlineFormHtml;
   } else {
     msHtml+=inlineFormHtml;
   }
 
-  const modalTitel=wr?'Ergebnisvorhaben bearbeiten — KW '+kw:(_resetZwang?'📅 KW '+(kw+1)+' planen':istRueckblick?'Wochenrückblick KW '+kw:'Wochenplanung KW '+nextKw);
+  const modalTitel=wr?'Wochenziele bearbeiten — KW '+kw:(_resetZwang?'📅 KW '+(kw+1)+' planen':istRueckblick?'Wochenrückblick KW '+kw:'Wochenplanung KW '+nextKw);
   // Im Zwang-Modus: Warum-Lücke kam aus Schritt 1, hier als hidden input
   const zwangBlockiertInput=_resetZwang?'<input type="hidden" id="wr-blockiert" value="'+esc(window._wrBlockiertZwang||'')+'">':'';
   document.getElementById('mb').innerHTML=
@@ -2425,23 +2425,23 @@ function openWochenreset(){
     +wrCascadeHtml()
     /* Alte "Highlight/Bremsen"-Felder entfernt — §6 Phase A übernimmt die Reflektion strukturiert. */
 
-    // ── Step 1: Meilenstein wählen ──
+    // ── Step 1: Monatsziel wählen ──
     +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">'
     +'<span style="background:var(--inv);color:var(--inv-t);font-size:12px;font-weight:800;width:24px;height:24px;border-radius:99px;display:flex;align-items:center;justify-content:center;flex-shrink:0">1</span>'
-    +'<span style="font-size:16px;font-weight:700;color:var(--text)">Meilenstein wählen</span>'
+    +'<span style="font-size:16px;font-weight:700;color:var(--text)">Monatsziel wählen</span>'
     +'</div>'
-    +'<div style="font-size:12px;color:var(--t2);margin-bottom:10px;margin-left:34px">Welchen Meilenstein bringst du diese Woche voran?</div>'
+    +'<div style="font-size:12px;color:var(--t2);margin-bottom:10px;margin-left:34px">Welchen Monatsziel bringst du diese Woche voran?</div>'
     +'<input type="hidden" id="wr-ziel" value="'+selZielId+'">'
     +'<input type="hidden" id="wr-focus-tz" value="'+selTZId+'">'
     +(wr?'<textarea id="wr-blockiert" style="display:none">'+esc(wr.blockiert||'')+'</textarea>':'')
     +'<div style="margin-left:34px">'+msHtml+'</div>'
 
-    // ── Step 2: Ergebnisvorhaben ──
+    // ── Step 2: Wochenziele ──
     +'<div style="display:flex;align-items:center;gap:10px;margin-top:18px;margin-bottom:6px">'
     +'<span style="background:'+(selTZId?'var(--inv)':'var(--bd)')+';color:'+(selTZId?'var(--inv-t)':'var(--t3)')+';font-size:12px;font-weight:800;width:24px;height:24px;border-radius:99px;display:flex;align-items:center;justify-content:center;flex-shrink:0">2</span>'
-    +'<span id="wr-step2-label" style="font-size:16px;font-weight:700;color:'+(selTZId?'var(--text)':'var(--t3)')+'">Ergebnisvorhaben für diese Woche</span>'
+    +'<span id="wr-step2-label" style="font-size:16px;font-weight:700;color:'+(selTZId?'var(--text)':'var(--t3)')+'">Wochenziele</span>'
     +'</div>'
-    +(selTZId?'<div id="wr-step2-sub" style="font-size:12px;color:var(--t2);margin-bottom:8px;margin-left:34px">Wähle aus Vorschlägen oder trage eigene ein (max. 3)</div>':'<div id="wr-step2-sub" style="font-size:12px;color:var(--t3);margin-bottom:8px;margin-left:34px">Zuerst oben einen Meilenstein auswählen</div>')
+    +(selTZId?'<div id="wr-step2-sub" style="font-size:12px;color:var(--t2);margin-bottom:8px;margin-left:34px">Wähle aus Vorschlägen oder trage eigene ein (max. 3)</div>':'<div id="wr-step2-sub" style="font-size:12px;color:var(--t3);margin-bottom:8px;margin-left:34px">Zuerst oben ein Monatsziel auswählen</div>')
     +'<div id="wr-tz-section" style="margin-left:34px"></div>'
 
     // ── Step 3: Plan B ──
@@ -2499,7 +2499,7 @@ function renderWrPhaseA(){
       +'<span style="font-size:12px;color:var(--t2);'+(done?'text-decoration:line-through':'')+'">'+esc(txt)+'</span>'
       +'</div>';
   });
-  if(!big3List)big3List='<div style="font-size:12px;color:var(--t3);padding:4px 0">Keine Ergebnisvorhaben für diese Woche eingetragen.</div>';
+  if(!big3List)big3List='<div style="font-size:12px;color:var(--t3);padding:4px 0">Keine Wochenziele eingetragen.</div>';
   // Q1: 0/1/2/3
   const q1Btns=[0,1,2,3].map(n=>{
     const sel=st.geliefert===n;
@@ -2532,7 +2532,7 @@ function renderWrPhaseA(){
   const html='<div class="mt">🔄 Rückblick · KW '+kw+'</div>'
     +'<div style="font-size:12px;color:var(--t2);margin-bottom:14px;padding:8px 12px;background:var(--gray-bg);border-left:3px solid var(--inv);border-radius:0 6px 6px 0;line-height:1.5">Ehrliche Reflektion zählt mehr als gute Zahlen. Niemand ist jede Woche bei 100%.</div>'
     +'<div style="background:var(--sf);border:1px solid var(--bd);border-radius:10px;padding:10px 14px;margin-bottom:18px">'
-    +'<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);margin-bottom:6px">Deine Ergebnisvorhaben</div>'
+    +'<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);margin-bottom:6px">Deine Wochenziele</div>'
     +big3List
     +'</div>'
     +'<div style="font-size:14px;font-weight:600;margin-bottom:4px">Wie viele hast du geliefert?</div>'
@@ -2562,7 +2562,7 @@ async function saveWrPhaseA(){
 }
 // ─── Ende §6 PHASE A ─────────────────────────────────────────────
 
-// Inline-Meilenstein-Anlage im Wochenreset-Modal (Fix #3: Freitag-Dead-End vermeiden)
+// Inline-Monatsziel-Anlage im Wochenreset-Modal (Fix #3: Freitag-Dead-End vermeiden)
 async function saveInlineTZFromWR(ev){
   if(ev)ev.preventDefault();
   const name=document.getElementById('wr-inline-tz-name')?.value.trim();
@@ -2576,7 +2576,7 @@ async function saveInlineTZFromWR(ev){
   z.teilziele=z.teilziele||[];
   z.teilziele.push({...rec,zielId:zid,verantwortlichId:aP,datum:datum||'',vertraulich:false,status:'aktiv'});
   await dbInsert('teilziele',rec);
-  toast('✓ Meilenstein angelegt');
+  toast('✓ Monatsziel angelegt');
   // Wochenreset-Modal neu rendern — der neue TZ wird über selTZId (=erster big3_tz_id) _nicht_ automatisch vorausgewählt,
   // deswegen setzen wir ihn manuell in window-state vor dem Re-Open.
   window._wrNewTzId=id;window._wrNewZielId=zid;
@@ -2616,9 +2616,9 @@ function updateWRTZSection(){
   const z=zielId?S.ziele.find(x=>x.id===zielId):null;
   const isBereich=z&&z.status==='bereich';
   const tzArr=z?(z.teilziele||[]).filter(t=>!t.erledigt&&(t.status||'aktiv')==='aktiv'):[];
-  const _lbl=isBereich?'Thema':'Meilenstein',_lblPl=isBereich?'Themen':'Meilensteine';
+  const _lbl=isBereich?'Thema':'Monatsziel',_lblPl=isBereich?'Themen':'Monatsziele';
   const step2Label=document.getElementById('wr-step2-label');
-  if(step2Label)step2Label.textContent='Ergebnisvorhaben für diese Woche';
+  if(step2Label)step2Label.textContent='Wochenziele';
   const step2Sub=document.getElementById('wr-step2-sub');
   if(step2Sub)step2Sub.textContent='Wähle aus Vorschlägen oder trage eigene ein (max. 3)';
   let html='';
@@ -2645,7 +2645,7 @@ function updateWRTZSection(){
 
   if(carryOver.length||p1Tasks.length){
     html+='<div style="margin-bottom:16px;padding:12px;background:var(--sf);border:1px solid var(--bd);border-radius:10px">';
-    html+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--t3);margin-bottom:10px">📋 Vorschläge für deine Ergebnisvorhaben</div>';
+    html+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--t3);margin-bottom:10px">📋 Vorschläge für deine Wochenziele</div>';
     if(carryOver.length){
       html+='<div style="font-size:10px;font-weight:600;color:var(--amber);text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px">🔁 Letzte Woche offen</div>';
       html+='<div style="display:flex;flex-direction:column;gap:4px;margin-bottom:10px">';
@@ -2661,7 +2661,7 @@ function updateWRTZSection(){
     html+='</div>';
   }
 
-  // ── Meilensteine des Fokus-Ziels ──────────────────────────────
+  // ── Monatsziele des Fokus-Ziels ──────────────────────────────
   const focusTZId=document.getElementById('wr-focus-tz')?.value||'';
   if(tzArr.length){
     const curMon=TODAY.slice(0,7);
@@ -2706,7 +2706,7 @@ function updateWRTZSection(){
     html+='</div>';
   });
   html+='</div>';
-  html+='<div style="margin-top:10px;padding:8px 11px;background:var(--amber-bg);border-left:3px solid var(--amber);border-radius:0 6px 6px 0;font-size:11px;color:var(--text)"><b>Freitag-Test:</b> Kannst du jedes Ergebnisvorhaben Freitag abhaken? Wenn nein → zu groß oder zu vage.</div>';
+  html+='<div style="margin-top:10px;padding:8px 11px;background:var(--amber-bg);border-left:3px solid var(--amber);border-radius:0 6px 6px 0;font-size:11px;color:var(--text)"><b>Freitag-Test:</b> Kannst du jedes Wochenziel Freitag abhaken? Wenn nein → zu groß oder zu vage.</div>';
   div.innerHTML=html;
 }
 
@@ -2723,7 +2723,7 @@ function _wrKandidatSelect(btnEl){
     const inp=document.getElementById('wr-b'+n);
     if(inp&&!inp.value.trim()){inp.value=text;_wrUpdateKandidaten();return;}
   }
-  toast('Maximal 3 Ergebnisvorhaben — leere zuerst einen Slot.');
+  toast('Maximal 3 Wochenziele — leere zuerst einen Slot.');
 }
 
 // Kandidaten-Buttons visuell mit aktuellen Slots abgleichen
@@ -2809,7 +2809,7 @@ async function saveWochenreset(){
   const newTzIds=[];
   for(const txt of newTzTexts){
     if(!txt){newTzIds.push(null);continue;}
-    // Für Ziele UND Bereiche: neuen Meilenstein/Thema anlegen
+    // Für Ziele UND Bereiche: neuen Monatsziel/Thema anlegen
     if(zielId){
       const tzId=nid('tz');
       const tzRec={id:tzId,ziel_id:zielId,name:txt,verantwortlich_id:String(aP),datum:'',erledigt:false,status:'aktiv'};
@@ -2882,7 +2882,7 @@ function openWochenresetZwang(){
       b3+='<span style="font-size:12px;'+(done?'color:var(--t3);text-decoration:line-through':'color:var(--text)')+'">'+esc(txt)+'</span>';
       b3+='</div>';
     });
-    if(b3){sum+='<div style="font-size:10px;font-weight:700;color:var(--t2);margin-bottom:4px">Ergebnisvorhaben</div>'+b3+'<div style="border-top:1px solid var(--bd);margin:10px 0"></div>';}
+    if(b3){sum+='<div style="font-size:10px;font-weight:700;color:var(--t2);margin-bottom:4px">Wochenziele</div>'+b3+'<div style="border-top:1px solid var(--bd);margin:10px 0"></div>';}
   }
   // Erledigte
   if(erlDW.length){
@@ -3039,11 +3039,11 @@ function getPaddelCount(pid){
   // Nur diese Woche (Mo–So)
   const{monday,sunday}=getWeekRange();
   // Aufgaben dieser Woche: P1=3, P2=1, P3=0
-  // WICHTIG: nur Ziel-alignte Tasks zählen (teilzielId gesetzt = über Meilenstein ans Ziel gebunden).
+  // WICHTIG: nur Ziel-alignte Tasks zählen (teilzielId gesetzt = über Monatsziel ans Ziel gebunden).
   // Leading Indicator = Ausführung von Taktik, die zum Ziel führt. Busywork ohne Ziel-Bezug gibt 0 Punkte.
   const aufgabenPts=S.aufgaben.filter(a=>{
     if(a.pid!==pid||a.status!=='erledigt'||!a.updated_at)return false;
-    if(!a.teilzielId)return false; // Kein Meilenstein-Bezug → 0 Punkte
+    if(!a.teilzielId)return false; // Kein Monatsziel-Bezug → 0 Punkte
     const dt=new Date(a.updated_at);
     if(isNaN(dt.getTime()))return false;
     const d=localDate(dt);
@@ -3058,7 +3058,7 @@ function getPaddelCount(pid){
     const pts=(lbl.includes('verkauf')||lbl.includes('sauna'))?5:3;
     return sum+v*pts;
   },0);
-  // P1-KPIs (nicht-Sonder) mit Meilenstein: 1 Paddel pro Increment diese Woche
+  // P1-KPIs (nicht-Sonder) mit Monatsziel: 1 Paddel pro Increment diese Woche
   const p1KpiPts=S.ziele.flatMap(z=>z.kpis||[]).filter(k=>
     String(k.pid)===String(pid)&&!k.sonder&&k.prio==='P1'&&k.teilzielId
   ).reduce((sum,k)=>{
@@ -3152,7 +3152,7 @@ function tryLogin(){
     _snoozeLoad();
     document.getElementById('login-screen').style.display='none';
     document.getElementById('app').style.display='flex';
-    updateBadge();render();checkOnboarding();checkMeilensteinReviews();setTimeout(()=>checkMissedDeadlines(),800);startSonderPoller();startDataPoller();handleDeepLink();checkDeepLink();
+    updateBadge();render();checkOnboarding();checkMonatszielReviews();setTimeout(()=>checkMissedDeadlines(),800);startSonderPoller();startDataPoller();handleDeepLink();checkDeepLink();
     gcalFetchToday();
   } else {
     document.getElementById('login-err').textContent='Falsche PIN.';pinIn='';updDots();
@@ -3164,7 +3164,7 @@ function checkOnboarding(){
   if(p.onboarding_done)return;
   const snoozeUntil=p.onboarding_snoozed_until;
   if(snoozeUntil&&snoozeUntil>=TODAY)return;
-  // Hat bereits Ziel + Meilenstein + Wochenreset → auto-done
+  // Hat bereits Ziel + Monatsziel + Wochenreset → auto-done
   const hatZiel=S.ziele.some(z=>String(z.verantwortlichId)===String(aP)&&z.status!=='bereich');
   const hatTZ=S.ziele.some(z=>(z.teilziele||[]).some(t=>String(t.verantwortlichId)===String(aP)));
   const hatWR=!!dieseWocheReset(aP);
@@ -3224,9 +3224,9 @@ function openOnboarding(step){
     const existTZ=z?(z.teilziele||[]).filter(t=>!t.erledigt&&(t.status||'aktiv')==='aktiv'):[];
     let tzExistHtml='';
     if(existTZ.length){
-      tzExistHtml+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);margin-bottom:8px">Bestehenden Meilenstein wählen</div>';
+      tzExistHtml+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);margin-bottom:8px">Bestehenden Monatsziel wählen</div>';
       tzExistHtml+=existTZ.map(t=>{const sel=t.id===window._onb.tzId;return'<div onclick="window._onb.tzId=\''+t.id+'\';document.querySelectorAll(\'.onb-tzw\').forEach(x=>{x.style.borderColor=\'var(--bd)\';x.style.background=\'var(--sf)\'});this.style.borderColor=\'var(--green)\';this.style.background=\'var(--green-bg)\';document.getElementById(\'onb-new-tz\').style.display=\'none\'" class="onb-tzw" style="cursor:pointer;border:1.5px solid '+(sel?'var(--green)':'var(--bd)')+';border-radius:8px;padding:9px 12px;margin-bottom:6px;background:'+(sel?'var(--green-bg)':'var(--sf)')+';font-size:13px;font-weight:600">'+esc(t.name)+(t.datum?'<span style="font-size:10px;color:var(--t3);font-weight:400;margin-left:6px">bis '+t.datum.slice(8)+'.'+t.datum.slice(5,7)+'.</span>':'')+'</div>';}).join('');
-      tzExistHtml+='<div style="text-align:center;font-size:11px;color:var(--t3);margin:10px 0">— oder neuen Meilenstein anlegen —</div>';
+      tzExistHtml+='<div style="text-align:center;font-size:11px;color:var(--t3);margin:10px 0">— oder neues Monatsziel anlegen —</div>';
     }
     const tzMinD=(()=>{const d=new Date(TODAY);d.setDate(d.getDate()+7);return d.toISOString().slice(0,10);})();
     const tzMaxD=(()=>{const d=new Date(TODAY);d.setDate(d.getDate()+35);return d.toISOString().slice(0,10);})();
@@ -3234,12 +3234,12 @@ function openOnboarding(step){
     ov.innerHTML='<div style="max-width:540px;margin:0 auto">'
       +'<div style="display:flex;gap:6px;margin-bottom:24px;padding-top:20px">'+prog(2)+'</div>'
       +'<div style="font-size:11px;color:var(--t3);margin-bottom:4px">↳ Ziel: <strong style="color:var(--text)">'+esc(zName)+'</strong></div>'
-      +'<div style="font-size:19px;font-weight:700;margin-bottom:4px">2 · Meilenstein (~4 Wochen)</div>'
+      +'<div style="font-size:19px;font-weight:700;margin-bottom:4px">2 · Monatsziel (~4 Wochen)</div>'
       +'<div style="font-size:12px;color:var(--t2);margin-bottom:10px;line-height:1.5">Was ist in ~4 Wochen messbar erreicht? Steil planen ist OK — Nicht-erreichen ist kein Versagen, wenn die Taktik sauber ausgeführt wurde.</div>'
-      +'<div style="font-size:11px;color:var(--t3);margin-bottom:14px;padding:8px 10px;background:var(--blue-bg);border-left:3px solid var(--blue);border-radius:0 6px 6px 0">Der Paddel-Score zeigt dir, ob deine Ausführung gut war — unabhängig davon, ob du den Meilenstein erreichst.</div>'
+      +'<div style="font-size:11px;color:var(--t3);margin-bottom:14px;padding:8px 10px;background:var(--blue-bg);border-left:3px solid var(--blue);border-radius:0 6px 6px 0">Der Paddel-Score zeigt dir, ob deine Ausführung gut war — unabhängig davon, ob du den Monatsziel erreichst.</div>'
       +tzExistHtml
       +'<div id="onb-new-tz">'
-      +'<div class="fl"><label>Meilenstein-Titel</label><input id="onb-tz-title" placeholder="z.B. 5 Neukunden gewonnen" oninput="onbCheckMeasurable(\'tz\')"></div>'
+      +'<div class="fl"><label>Monatsziel-Titel</label><input id="onb-tz-title" placeholder="z.B. 5 Neukunden gewonnen" oninput="onbCheckMeasurable(\'tz\')"></div>'
       +'<div id="onb-tz-hint" style="font-size:11px;margin:-6px 0 10px;padding:6px 10px;border-radius:6px;background:var(--gray-bg);color:var(--t3)">⚠️ Nicht messbar. Füge eine Zahl oder ein klares Kriterium hinzu.</div>'
       +'<div class="fl"><label>Bis wann?</label><input type="date" id="onb-tz-datum" min="'+tzMinD+'" max="'+tzMaxD+'" value="'+tzDefD+'"></div>'
       +'</div>'
@@ -3250,16 +3250,16 @@ function openOnboarding(step){
   } else if(step===3){
     const tzId=window._onb.tzId;
     const tz=S.ziele.flatMap(z=>z.teilziele||[]).find(t=>t.id===tzId);
-    const tzName=tz?tz.name:(window._onb.tzNeu?.name||'Dein Meilenstein');
+    const tzName=tz?tz.name:(window._onb.tzNeu?.name||'Dein Monatsziel');
     const evs=window._onb.evs||['','',''];
     ov.innerHTML='<div style="max-width:540px;margin:0 auto">'
       +'<div style="display:flex;gap:6px;margin-bottom:24px;padding-top:20px">'+prog(3)+'</div>'
-      +'<div style="font-size:11px;color:var(--t3);margin-bottom:4px">↳ Meilenstein: <strong style="color:var(--text)">'+esc(tzName)+'</strong></div>'
+      +'<div style="font-size:11px;color:var(--t3);margin-bottom:4px">↳ Monatsziel: <strong style="color:var(--text)">'+esc(tzName)+'</strong></div>'
       +'<div style="font-size:19px;font-weight:700;margin-bottom:4px">3 · Diese Woche</div>'
-      +'<div style="font-size:12px;color:var(--t2);margin-bottom:16px;line-height:1.5">Was lieferst du <b>diese Woche</b> konkret? Maximal 3 Ergebnisvorhaben — eines reicht auch.</div>'
-      +'<div class="fl"><label>Ergebnisvorhaben 1 <span style="font-weight:400;color:var(--red)">*</span></label><input id="onb-ev1" value="'+esc(evs[0]||'')+'" placeholder="Was lieferst du diese Woche?"></div>'
-      +'<div class="fl"><label>Ergebnisvorhaben 2 <span style="font-weight:400;color:var(--t3)">(optional)</span></label><input id="onb-ev2" value="'+esc(evs[1]||'')+'" placeholder="Optional…"></div>'
-      +'<div class="fl"><label>Ergebnisvorhaben 3 <span style="font-weight:400;color:var(--t3)">(optional)</span></label><input id="onb-ev3" value="'+esc(evs[2]||'')+'" placeholder="Optional…"></div>'
+      +'<div style="font-size:12px;color:var(--t2);margin-bottom:16px;line-height:1.5">Was lieferst du <b>diese Woche</b> konkret? Maximal 3 Wochenziele — eines reicht auch.</div>'
+      +'<div class="fl"><label>Wochenziele 1 <span style="font-weight:400;color:var(--red)">*</span></label><input id="onb-ev1" value="'+esc(evs[0]||'')+'" placeholder="Was lieferst du diese Woche?"></div>'
+      +'<div class="fl"><label>Wochenziele 2 <span style="font-weight:400;color:var(--t3)">(optional)</span></label><input id="onb-ev2" value="'+esc(evs[1]||'')+'" placeholder="Optional…"></div>'
+      +'<div class="fl"><label>Wochenziele 3 <span style="font-weight:400;color:var(--t3)">(optional)</span></label><input id="onb-ev3" value="'+esc(evs[2]||'')+'" placeholder="Optional…"></div>'
       +'<div style="display:flex;gap:8px;margin-top:20px">'
       +'<button onclick="openOnboarding(2)" style="padding:11px 16px;border-radius:10px;background:var(--sf);color:var(--t2);border:1px solid var(--bd);font-family:inherit;font-size:12px;cursor:pointer">← Zurück</button>'
       +'<button onclick="saveOnboarding()" style="flex:1;padding:13px;border-radius:10px;background:var(--green);color:#fff;border:none;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer">🎯 Loslegen!</button>'
@@ -3292,7 +3292,7 @@ async function onboardingNext(step){
   } else if(step===2){
     if(window._onb.tzId){openOnboarding(3);return;}
     const title=document.getElementById('onb-tz-title')?.value.trim()||'';
-    if(!title){toast('⚠️ Bitte Meilenstein-Titel eingeben');return;}
+    if(!title){toast('⚠️ Bitte Monatsziel-Titel eingeben');return;}
     if(!validateMeasurable(title)){toast('⚠️ Nicht messbar — füge eine Zahl oder ein Ja/Nein-Kriterium hinzu.');return;}
     const datum=document.getElementById('onb-tz-datum')?.value||'';
     if(!datum){toast('⚠️ Bitte Datum wählen');return;}
@@ -3308,7 +3308,7 @@ async function onboardingNext(step){
 }
 async function saveOnboarding(){
   const ev1=document.getElementById('onb-ev1')?.value.trim()||'';
-  if(!ev1){toast('⚠️ Mindestens ein Ergebnisvorhaben eingeben');return;}
+  if(!ev1){toast('⚠️ Mindestens ein Wochenziel eingeben');return;}
   const evs=[ev1,document.getElementById('onb-ev2')?.value.trim()||'',document.getElementById('onb-ev3')?.value.trim()||''];
   const tzId=window._onb.tzId;const zielId=window._onb.zielId;
   const friday=getFriday();
@@ -3355,7 +3355,7 @@ async function restartOnboarding(){
   // Manueller Re-Trigger (z.B. aus dem Profil) — setzt onboarding_done=false zurück
   // und öffnet den 3-Schritte-Flow. Snooze-Counter bleibt, damit User nicht endlos snoozen können.
   const p=me();if(!p)return;
-  if(!confirm('Onboarding neu starten? Dein bestehendes Ziel/Meilenstein/Wochenplan bleibt unverändert — nur der Flow wird erneut geöffnet.'))return;
+  if(!confirm('Onboarding neu starten? Dein bestehendes Ziel/Monatsziel/Wochenplan bleibt unverändert — nur der Flow wird erneut geöffnet.'))return;
   p.onboarding_done=false;p.onboarding_snoozed_until=null;
   await dbPatch('personen',aP,{onboarding_done:false,onboarding_snoozed_until:null});
   window._onb=null;
@@ -3390,7 +3390,7 @@ function getMissedTasks(){
   });
 }
 function checkMissedDeadlines(){
-  // Nicht triggern während Onboarding, Meilenstein-Review oder Wochenreset-Zwang aktiv sind
+  // Nicht triggern während Onboarding, Monatsziel-Review oder Wochenreset-Zwang aktiv sind
   if(window._onb)return;
   if(document.getElementById('mr-ovl'))return;
   if(_resetZwang)return;
@@ -3492,7 +3492,7 @@ async function missAction(action){
 function openSplitDialog(aid){
   const a=S.aufgaben.find(x=>x.id===aid);if(!a)return;
   document.getElementById('mb').innerHTML='<div class="mt">✂️ Aufgabe splitten</div>'
-    +'<div style="font-size:12px;color:var(--t2);margin-bottom:12px;line-height:1.4"><strong>'+esc(a.titel)+'</strong><br>Trage 2–3 kleinere Unteraufgaben ein. Die ursprüngliche Aufgabe wird beendet und die neuen werden als eigenständige P1-Aufgaben mit gleichem Meilenstein angelegt.</div>'
+    +'<div style="font-size:12px;color:var(--t2);margin-bottom:12px;line-height:1.4"><strong>'+esc(a.titel)+'</strong><br>Trage 2–3 kleinere Unteraufgaben ein. Die ursprüngliche Aufgabe wird beendet und die neuen werden als eigenständige P1-Aufgaben mit gleichem Monatsziel angelegt.</div>'
     +'<div class="fl"><label>Teil 1</label><input id="split-1" placeholder="z.B. Entwurf schreiben" autofocus></div>'
     +'<div class="fl"><label>Teil 2</label><input id="split-2" placeholder="z.B. Review einholen"></div>'
     +'<div class="fl"><label>Teil 3 <span style="font-weight:400;color:var(--t3)">(optional)</span></label><input id="split-3" placeholder=""></div>'
@@ -3528,7 +3528,7 @@ function continueMissStack(){
   openMissedStack();
 }
 // ─── §7 MEILENSTEIN-REVIEW ───────────────────────────────────────
-function checkMeilensteinReviews(){
+function checkMonatszielReviews(){
   const p=me();if(!p)return;
   // Find overdue teilziele belonging to current user that need a review
   const fällig=S.ziele.flatMap(z=>z.teilziele||[]).filter(t=>{
@@ -3538,9 +3538,9 @@ function checkMeilensteinReviews(){
     return t.datum<=TODAY;
   });
   if(!fällig.length)return;
-  openMeilensteinReview(fällig[0].id);
+  openMonatszielReview(fällig[0].id);
 }
-function openMeilensteinReview(tzId){
+function openMonatszielReview(tzId){
   const tz=S.ziele.flatMap(z=>z.teilziele||[]).find(t=>t.id===tzId);
   if(!tz)return;
   const z=S.ziele.find(zl=>zl.id===(tz.zielId||tz.ziel_id));
@@ -3553,7 +3553,7 @@ function openMeilensteinReview(tzId){
   if(!window._mrState[tzId])window._mrState[tzId]={step:1,erreicht:'',grund:'',learning:''};
   const st=window._mrState[tzId];
   const header='<div style="background:var(--sf);border-radius:16px;padding:24px;max-width:480px;width:100%;max-height:90vh;overflow-y:auto">'
-    +'<div style="font-size:11px;color:var(--t3);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">🎯 Meilenstein-Review</div>'
+    +'<div style="font-size:11px;color:var(--t3);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">🎯 Monatsziel-Review</div>'
     +'<div style="font-size:17px;font-weight:700;margin-bottom:4px">'+esc(tz.name)+'</div>'
     +'<div style="font-size:11px;color:var(--t2);margin-bottom:14px">'+(z?'↳ '+esc(z.name)+' · ':'')+'Fällig: '+(tz.datum?tz.datum.slice(8)+'.'+tz.datum.slice(5,7)+'.'+tz.datum.slice(0,4):'?')+'</div>'
     +'<div style="background:var(--gray-bg);border-radius:8px;padding:10px 12px;margin-bottom:18px;display:flex;align-items:center;gap:10px">'
@@ -3564,9 +3564,9 @@ function openMeilensteinReview(tzId){
   if(st.step===1){
     const opts=['ja','teilweise','nein'];
     const labels={ja:'✅ Ja — erreicht',teilweise:'〜 Teilweise erreicht',nein:'❌ Nein — nicht erreicht'};
-    body+='<div style="font-size:14px;font-weight:600;margin-bottom:14px">Meilenstein erreicht?</div>'
+    body+='<div style="font-size:14px;font-weight:600;margin-bottom:14px">Monatsziel erreicht?</div>'
       +'<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px">'
-      +opts.map(v=>{const sel=st.erreicht===v;return'<button onclick="window._mrState[\''+tzId+'\'].erreicht=\''+v+'\';openMeilensteinReview(\''+tzId+'\')" style="padding:12px 16px;border-radius:10px;border:1.5px solid '+(sel?'var(--inv)':'var(--bd)')+';background:'+(sel?'var(--inv)':'var(--sf)')+';color:'+(sel?'var(--inv-t)':'var(--text)')+';font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;text-align:left">'+labels[v]+'</button>';}).join('')
+      +opts.map(v=>{const sel=st.erreicht===v;return'<button onclick="window._mrState[\''+tzId+'\'].erreicht=\''+v+'\';openMonatszielReview(\''+tzId+'\')" style="padding:12px 16px;border-radius:10px;border:1.5px solid '+(sel?'var(--inv)':'var(--bd)')+';background:'+(sel?'var(--inv)':'var(--sf)')+';color:'+(sel?'var(--inv-t)':'var(--text)')+';font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;text-align:left">'+labels[v]+'</button>';}).join('')
       +'</div>';
     if(st.erreicht)body+='<button onclick="mrNext(\''+tzId+'\')" style="width:100%;padding:13px;border-radius:10px;background:var(--inv);color:var(--inv-t);border:none;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer">Weiter →</button>';
   } else if(st.step===2){
@@ -3574,7 +3574,7 @@ function openMeilensteinReview(tzId){
     body+='<div style="font-size:14px;font-weight:600;margin-bottom:6px">Was war die Hauptursache?</div>'
       +'<div style="font-size:12px;color:var(--t2);margin-bottom:14px">Hilft dir, in Zukunft besser zu planen.</div>'
       +'<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px">'
-      +gruende.map(([v,lbl,sub])=>{const sel=st.grund===v;return'<button onclick="window._mrState[\''+tzId+'\'].grund=\''+v+'\';openMeilensteinReview(\''+tzId+'\')" style="padding:12px 16px;border-radius:10px;border:1.5px solid '+(sel?'var(--inv)':'var(--bd)')+';background:'+(sel?'var(--inv)':'var(--sf)')+';color:'+(sel?'var(--inv-t)':'var(--text)')+';font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;text-align:left"><div>'+lbl+'</div><div style="font-size:11px;font-weight:400;color:'+(sel?'var(--inv-t)':'var(--t3)')+';margin-top:2px">'+sub+'</div></button>';}).join('')
+      +gruende.map(([v,lbl,sub])=>{const sel=st.grund===v;return'<button onclick="window._mrState[\''+tzId+'\'].grund=\''+v+'\';openMonatszielReview(\''+tzId+'\')" style="padding:12px 16px;border-radius:10px;border:1.5px solid '+(sel?'var(--inv)':'var(--bd)')+';background:'+(sel?'var(--inv)':'var(--sf)')+';color:'+(sel?'var(--inv-t)':'var(--text)')+';font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;text-align:left"><div>'+lbl+'</div><div style="font-size:11px;font-weight:400;color:'+(sel?'var(--inv-t)':'var(--t3)')+';margin-top:2px">'+sub+'</div></button>';}).join('')
       +'</div>';
     if(st.grund)body+='<button onclick="mrNext(\''+tzId+'\')" style="width:100%;padding:13px;border-radius:10px;background:var(--inv);color:var(--inv-t);border:none;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer">Weiter →</button>';
   } else if(st.step===3){
@@ -3582,7 +3582,7 @@ function openMeilensteinReview(tzId){
       +'<div style="font-size:12px;color:var(--t2);margin-bottom:12px">Max. 140 Zeichen — was nimmst du mit?</div>'
       +'<textarea id="mr-learning" maxlength="140" placeholder="Was habe ich gelernt?" style="width:100%;height:80px;padding:10px 12px;border-radius:8px;border:1px solid var(--bd);background:var(--sf);color:var(--text);font-family:inherit;font-size:13px;resize:none;box-sizing:border-box">'+esc(st.learning||'')+'</textarea>'
       +'<div style="display:flex;justify-content:flex-end;font-size:10px;color:var(--t3);margin:4px 0 16px" id="mr-chr">0/140</div>'
-      +'<button onclick="saveMeilensteinReview(\''+tzId+'\')" style="width:100%;padding:13px;border-radius:10px;background:var(--green);color:#fff;border:none;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer">Abschließen ✓</button>'
+      +'<button onclick="saveMonatszielReview(\''+tzId+'\')" style="width:100%;padding:13px;border-radius:10px;background:var(--green);color:#fff;border:none;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer">Abschließen ✓</button>'
       +'<script>setTimeout(()=>{const ta=document.getElementById(\'mr-learning\');const ch=document.getElementById(\'mr-chr\');if(ta&&ch){ch.textContent=ta.value.length+\'/140\';ta.addEventListener(\'input\',()=>{ch.textContent=ta.value.length+\'/140\';})}},50)<\/script>';
   }
   ov.innerHTML=header+body+'</div>';
@@ -3591,9 +3591,9 @@ function mrNext(tzId){
   const st=window._mrState&&window._mrState[tzId];if(!st)return;
   if(st.step===1){st.step=(st.erreicht==='ja'?3:2);}
   else if(st.step===2){st.step=3;}
-  openMeilensteinReview(tzId);
+  openMonatszielReview(tzId);
 }
-async function saveMeilensteinReview(tzId){
+async function saveMonatszielReview(tzId){
   const st=window._mrState&&window._mrState[tzId];if(!st)return;
   const learning=document.getElementById('mr-learning')?.value.trim()||'';
   if(learning.length<10){toast('⚠️ Learning-Satz zu kurz (min. 10 Zeichen)');return;}
@@ -3604,7 +3604,7 @@ async function saveMeilensteinReview(tzId){
   delete window._mrState[tzId]; // State bereinigen — verhindert pre-filled Modal bei erneutem Öffnen
   const ov=document.getElementById('mr-ovl');if(ov)ov.remove();
   toast('✓ Review gespeichert');
-  setTimeout(()=>checkMeilensteinReviews(),600); // Check if more overdue
+  setTimeout(()=>checkMonatszielReviews(),600); // Check if more overdue
 }
 function checkDiagnosePattern(){
   // Returns 'plan' | 'ausfuehrung' | null based on last 3 "nein" reviews
@@ -3621,7 +3621,7 @@ function checkDiagnosePattern(){
 }
 function getDiagnoseHint(){
   const pat=checkDiagnosePattern();if(!pat)return'';
-  if(pat==='plan')return'<div style="font-size:11px;padding:8px 10px;background:var(--amber-bg);border-left:3px solid var(--amber);border-radius:0 6px 6px 0;margin:-4px 0 12px">💡 Deine letzten 3 Meilensteine waren zu steil trotz guter Ausführung. Skaliere den Umfang runter.</div>';
+  if(pat==='plan')return'<div style="font-size:11px;padding:8px 10px;background:var(--amber-bg);border-left:3px solid var(--amber);border-radius:0 6px 6px 0;margin:-4px 0 12px">💡 Deine letzten 3 Monatsziele waren zu steil trotz guter Ausführung. Skaliere den Umfang runter.</div>';
   if(pat==='ausfuehrung')return'<div style="font-size:11px;padding:8px 10px;background:var(--red-bg);border-left:3px solid var(--red);border-radius:0 6px 6px 0;margin:-4px 0 12px">💡 Ausführungs-Problem, nicht Plan-Problem. Was hat dich die letzten 3 Male blockiert?</div>';
   return'';
 }
@@ -4117,7 +4117,7 @@ function rWoche(){
     const big3Left=big3DowLate?'var(--red)':f.tc;
     out+='<div style="background:var(--sf);border:1px solid '+big3Bd+';border-left:3px solid '+big3Left+';border-radius:0 12px 12px 0;padding:14px 16px;margin-bottom:14px">';
     out+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">';
-    out+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:'+f.tc+'">Ergebnisvorhaben · KW '+kw+'</div>';
+    out+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:'+f.tc+'">Wochenziele · KW '+kw+'</div>';
     const fzIsB=fz&&fz.status==='bereich';
     const fokusLabel=fz?(fzIsB?'📁 ':'')+esc(fz.name):'';
     out+='<span style="font-size:11px;color:'+(big3DowLate?'var(--red)':'var(--t2)')+'">'+big3Done+'/'+big3Total+' ✓'+(fokusLabel?' · '+fokusLabel:'')+'</span>';
@@ -4164,8 +4164,8 @@ function rWoche(){
     out+='</div>';
   }else{
     out+='<div style="background:var(--gray-bg);border:1.5px dashed var(--bd);border-radius:12px;padding:20px;text-align:center;margin-bottom:14px">';
-    out+='<div style="font-size:13px;color:var(--t2);margin-bottom:10px">Noch keine Ergebnisvorhaben für KW '+kw+'</div>';
-    out+='<button onclick="openWochenreset()" style="font-size:13px;font-weight:600;padding:9px 18px;border-radius:9px;background:var(--inv);color:var(--inv-t);border:none;cursor:pointer;font-family:inherit">Ergebnisvorhaben planen →</button>';
+    out+='<div style="font-size:13px;color:var(--t2);margin-bottom:10px">Noch keine Wochenziele für KW '+kw+'</div>';
+    out+='<button onclick="openWochenreset()" style="font-size:13px;font-weight:600;padding:9px 18px;border-radius:9px;background:var(--inv);color:var(--inv-t);border:none;cursor:pointer;font-family:inherit">Wochenziele planen →</button>';
     out+='</div>';
   }
 
@@ -4209,7 +4209,7 @@ function rWoche(){
       out+='<span id="cleanup-acc-chev" style="color:var(--t3);font-size:12px">'+(accOpen?'▴':'▾')+'</span>';
       out+='</div>';
       out+='<div id="cleanup-acc-body" style="display:'+(accOpen?'block':'none')+';padding:0 14px 12px;border-top:1px solid var(--bd)">';
-      out+='<div style="font-size:11px;color:var(--t3);margin:10px 0">Tasks ohne Meilenstein — Meilenstein zuordnen, um sie in den P1/P2-Flow zu holen.</div>';
+      out+='<div style="font-size:11px;color:var(--t3);margin:10px 0">Tasks ohne Monatsziel — Monatsziel zuordnen, um sie in den P1/P2-Flow zu holen.</div>';
       cleanupItems.forEach(a=>{
         const prioCol=prioColor(a.prio);
         out+='<div style="background:var(--gray-bg);border:1px solid var(--bd);border-radius:10px;padding:8px 10px;margin-bottom:6px">';
@@ -4405,7 +4405,7 @@ function rWoche(){
     out+='<div onclick="openWochenreset()" style="background:var(--green);color:#fff;border-radius:12px;padding:13px 15px;cursor:pointer;display:flex;align-items:center;gap:11px">'
       +'<span style="font-size:20px">📋</span>'
       +'<div style="flex:1"><div style="font-weight:700;font-size:13px">Wochenrückblick KW '+kw2+'</div>'
-      +'<div style="font-size:11px;opacity:.6;margin-top:1px">Ergebnisvorhaben auswerten · KW '+(kw2+1)+' planen</div></div>'
+      +'<div style="font-size:11px;opacity:.6;margin-top:1px">Wochenziele auswerten · KW '+(kw2+1)+' planen</div></div>'
       +'<span style="opacity:.4;font-size:16px">›</span></div>';
   }
 
@@ -4704,7 +4704,7 @@ function rTag(){
   // ── "Fixes heute" — ganz oben, damit keine Termine übersehen werden ──
   out+=rFixesHeute(aP);
 
-  // ── §2 Fokus: 3 Ergebnisvorhaben (HART) ──
+  // ── §2 Fokus: 3 Wochenziele (HART) ──
   const{kw:kwAkt}=getKW();
   const wrAktuell=dieseWocheReset(aP);
   if(wrAktuell&&(wrAktuell.big3_1||wrAktuell.big3_2)){
@@ -4715,7 +4715,7 @@ function rTag(){
     const allDone=doneCount===totalCount;
     out+='<div style="margin-bottom:14px">';
     out+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">';
-    out+='<span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:'+(allDone?'var(--green)':'var(--t3)')+'">'+(allDone?'🎉':'🎯')+' Ergebnisvorhaben · KW '+kwAkt+'</span>';
+    out+='<span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:'+(allDone?'var(--green)':'var(--t3)')+'">'+(allDone?'🎉':'🎯')+' Wochenziele · KW '+kwAkt+'</span>';
     out+='<span style="margin-left:auto;font-size:11px;font-weight:700;color:'+(allDone?'var(--green)':'var(--t3)')+'">'+doneCount+'/'+totalCount+'</span>';
     out+='</div>';
     [[1,'big3_1_done'],[2,'big3_2_done'],[3,'big3_3_done']].forEach(([n,doneF])=>{
@@ -4746,7 +4746,7 @@ function rTag(){
             }
           }
           const _nA=prefillTzId?'{prio:\'P1\',teilzielId:\''+prefillTzId+'\'}':'{prio:\'P1\'}';
-          out+='<button onclick="openNeu('+_nA+')" style="flex-shrink:0;padding:8px 14px;border-radius:9px;background:var(--gray-bg);color:var(--t2);border:1.5px dashed var(--bd);font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap" title="Aufgabe für dieses Ergebnisvorhaben anlegen">+ Aufgabe</button>';
+          out+='<button onclick="openNeu('+_nA+')" style="flex-shrink:0;padding:8px 14px;border-radius:9px;background:var(--gray-bg);color:var(--t2);border:1.5px dashed var(--bd);font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap" title="Aufgabe für dieses Wochenziele anlegen">+ Aufgabe</button>';
         }
       }
       out+='</div>';
@@ -4771,15 +4771,15 @@ function rTag(){
     out+='<div style="background:var(--amber-bg);border:1.5px solid var(--amber-bd);border-radius:12px;padding:16px 18px;margin-bottom:14px;text-align:center">';
     out+='<div style="font-size:22px;margin-bottom:8px">📋</div>';
     out+='<div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:6px">Kein Wochenplan</div>';
-    out+='<div style="font-size:12px;color:var(--t2);margin-bottom:12px;line-height:1.5">Ohne Wochenplan sind alle Aufgaben gleich wichtig — das heißt keine ist es wirklich. Setze jetzt deine 3 Ergebnisvorhaben.</div>';
+    out+='<div style="font-size:12px;color:var(--t2);margin-bottom:12px;line-height:1.5">Ohne Wochenplan sind alle Aufgaben gleich wichtig — das heißt keine ist es wirklich. Setze jetzt deine 3 Wochenziele.</div>';
     out+='<button onclick="nav(\'woche\')" style="padding:10px 22px;border-radius:10px;background:var(--inv);color:var(--inv-t);border:none;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer">Wochenplan erstellen →</button>';
     out+='</div>';
   }
 
-  // ── P1-KPIs direkt unter Ergebnisvorhaben ("⚡ Heute zählt") ──
+  // ── P1-KPIs direkt unter Wochenziele ("⚡ Heute zählt") ──
   out+=rKpiBlock(aP,'p1');
 
-  // ── Deadline-Alarm: Commitments mit dl<=TODAY, die NICHT Ergebnisvorhaben sind ──
+  // ── Deadline-Alarm: Commitments mit dl<=TODAY, die NICHT Wochenziele sind ──
   out+=rDeadlineAlarm(aP);
 
   // Team-kritische Sachen direkt sichtbar (kein Accordion mehr — Sam-Move)
@@ -4937,7 +4937,7 @@ function rTag(){
     out+='<div onclick="openWochenreset()" style="background:var(--green);color:#fff;border-radius:12px;padding:13px 15px;margin-bottom:14px;cursor:pointer;display:flex;align-items:center;gap:11px">'
       +'<span style="font-size:20px">📋</span>'
       +'<div style="flex:1"><div style="font-weight:700;font-size:13px">Wochenrückblick KW '+kwAkt+'</div>'
-      +'<div style="font-size:11px;opacity:.6;margin-top:1px">Ergebnisvorhaben auswerten · KW '+(kwAkt+1)+' planen</div></div>'
+      +'<div style="font-size:11px;opacity:.6;margin-top:1px">Wochenziele auswerten · KW '+(kwAkt+1)+' planen</div></div>'
       +'<span style="opacity:.4;font-size:16px">›</span></div>';
   }
 
@@ -4955,7 +4955,7 @@ function rTag(){
     if(zugewiesenA.length){
     out+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--blue);margin-bottom:6px">📋 Von dir erwartet</div>';
     const inboxMsOpts=meilensteinOptgroups(aP,'');
-    const zielOptsI=inboxMsOpts?'<select id="inbox-ziel-PLACEHOLDER" style="font-size:11px;padding:3px 8px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);font-family:inherit;max-width:220px">'+inboxMsOpts.replace('— kein Meilenstein —','— Meilenstein zuordnen —')+'</select>':'';
+    const zielOptsI=inboxMsOpts?'<select id="inbox-ziel-PLACEHOLDER" style="font-size:11px;padding:3px 8px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);font-family:inherit;max-width:220px">'+inboxMsOpts.replace('— kein Monatsziel —','— Monatsziel zuordnen —')+'</select>':'';
     zugewiesenA.forEach(a=>{
       const from=person(a.erstelltVon);
       out+='<div style="background:var(--gray-bg);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;margin-bottom:8px">';
@@ -5000,7 +5000,7 @@ function rTag(){
     if(zugewiesenA.length)out+='<div style="border-top:1px solid var(--bd);margin:10px 0"></div>';
     out+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--red);margin-bottom:6px">⚡ Priorität wählen</div>';
     const inboxMsOptsN=meilensteinOptgroups(aP,'');
-    const zielOptsN=inboxMsOptsN?'<select id="inbox-ziel-PLACEHOLDER" style="font-size:11px;padding:3px 8px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);font-family:inherit;max-width:220px">'+inboxMsOptsN.replace('— kein Meilenstein —','— Meilenstein —')+'</select>':'';
+    const zielOptsN=inboxMsOptsN?'<select id="inbox-ziel-PLACEHOLDER" style="font-size:11px;padding:3px 8px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);font-family:inherit;max-width:220px">'+inboxMsOptsN.replace('— kein Monatsziel —','— Monatsziel —')+'</select>':'';
     neu.forEach(a=>{
       const from=a.erstelltVon&&a.erstelltVon!==aP?person(a.erstelltVon):null;
       out+='<div style="background:var(--gray-bg);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;margin-bottom:8px">';
@@ -5061,7 +5061,7 @@ function rTag(){
   }
   }
 
-  // "Weitere ohne Ziel" + "Geplante Zukunfts-Aufgaben" — entfernt (Sam-Move: nur 3 Ergebnisvorhaben zählen heute)
+  // "Weitere ohne Ziel" + "Geplante Zukunfts-Aufgaben" — entfernt (Sam-Move: nur 3 Wochenziele zählen heute)
 
   if(erl.length){
     out+='<details style="margin-bottom:12px"><summary style="list-style:none;cursor:pointer;padding:12px 16px;background:var(--green-bg);border:1px solid var(--green-bd);border-radius:12px;display:flex;align-items:center;justify-content:space-between">';
@@ -5101,7 +5101,7 @@ async function setPrio(id,pr){
     const zSel=document.getElementById('inbox-ziel-'+id);
     const tzid=zSel?zSel.value:'';
     if(!tzid){
-      if(!confirm('P1 ohne Meilenstein – sicher? Ohne Meilenstein-Zuordnung gibt es keinen Paddel-Punkt.')){
+      if(!confirm('P1 ohne Monatsziel – sicher? Ohne Monatsziel-Zuordnung gibt es keinen Paddel-Punkt.')){
         if(zSel){zSel.style.outline='2px solid var(--red)';zSel.focus();}
         return;
       }
@@ -5211,7 +5211,7 @@ async function fertig(id){
       celebrateErl(a);
     }else{
       // Ovens-Prinzip: keine Feier für Busywork. Nur nüchterne Bestätigung.
-      toast('✓ Erledigt · ohne Meilenstein-Zuordnung kein Paddel-Punkt');
+      toast('✓ Erledigt · ohne Monatsziel-Zuordnung kein Paddel-Punkt');
     }
     checkP1Done(pid);
     const restOffen=S.aufgaben.filter(x=>String(x.pid)===String(aP)&&x.status!=='erledigt');
@@ -5362,7 +5362,7 @@ function openDetail(id){
     +[['neu','Neu','var(--red-bg)','var(--red)'],['backlog','Backlog','var(--gray-bg)','var(--t2)'],['aktiv','Aktiv','var(--blue-bg)','var(--blue)'],['erledigt','Erledigt','var(--green-bg)','var(--green)']].map(x=>
       '<button onclick="setStatusModal(\''+id+'\',\''+x[0]+'\')" style="font-size:11px;padding:4px 10px;border-radius:8px;border:'+(a.status===x[0]?'2px':'1px')+' solid '+(a.status===x[0]?'var(--text)':'var(--bd)')+';background:'+(a.status===x[0]?x[2]:'var(--sf)')+';color:'+(a.status===x[0]?x[3]:'var(--t2)')+';cursor:pointer;font-family:inherit;font-weight:'+(a.status===x[0]?600:400)+'">'+x[1]+'</button>'
     ).join('')+'</div></div>';
-  const _detTzLbl=a.zielId&&istBereich(a.zielId)?'Thema':'Meilenstein';
+  const _detTzLbl=a.zielId&&istBereich(a.zielId)?'Thema':'Monatsziel';
   h+='<div class="fl"><label>'+_detTzLbl+'</label>';
   if(a.zielId){
     h+=msPickerWithAdd('det-tz',a.pid,a.teilzielId||'','setTeilziel(\''+id+'\',this.value)',a.zielId);
@@ -5417,9 +5417,9 @@ async function setStatusModal(id,st){
     else{
       const _teamSlack=S.personen.filter(p=>p.id!==aP&&p.slack_id).map(p=>p.slack_id);
       if(st==='erledigt'){
-        // #4: Paddel-Gate — nur Feier wenn Meilenstein zugeordnet (Ovens: no fake rewards)
+        // #4: Paddel-Gate — nur Feier wenn Monatsziel zugeordnet (Ovens: no fake rewards)
         if(a.teilzielId){celebrateErl(a);}
-        else{toast('✓ Erledigt · ohne Meilenstein-Zuordnung kein Paddel-Punkt');}
+        else{toast('✓ Erledigt · ohne Monatsziel-Zuordnung kein Paddel-Punkt');}
         checkP1Done(a.pid);
         const restOffen=S.aufgaben.filter(x=>String(x.pid)===String(aP)&&x.status!=='erledigt');
         if(!restOffen.length)setTimeout(()=>celebrate('🏆','Alle Aufgaben erledigt! 🎉'),1500);
@@ -5481,14 +5481,14 @@ function rMonat(){
   const monatName=['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'][jetzt.getMonth()];
   const wr=dieseWocheReset(aP);
   const monate=['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
-  // ── Alle eigenen Meilensteine (aus allen Zielen) ──
+  // ── Alle eigenen Monatsziele (aus allen Zielen) ──
   const alleTZ=S.ziele.flatMap(z=>{
     const f=FARBEN[z.farbe||0];
     return(z.teilziele||[])
       .filter(t=>String(t.verantwortlichId)===String(aP)&&(!t.vertraulich||isGF()))
       .map(t=>({...t,ziel:z,f}));
   });
-  // Aktueller Meilenstein: WR → erster aktiver → erster mit Datum
+  // Aktueller Monatsziel: WR → erster aktiver → erster mit Datum
   const wrTzIds=wr?[wr.big3_1_tz_id,wr.big3_2_tz_id,wr.big3_3_tz_id].filter(Boolean):[];
   const aktiverTZ=alleTZ.find(t=>wrTzIds.includes(t.id)&&!t.erledigt)
     ||alleTZ.filter(t=>!t.erledigt&&!t.review_done&&t.datum).sort((a,b)=>a.datum.localeCompare(b.datum))[0]
@@ -5499,7 +5499,7 @@ function rMonat(){
   const aktive=alleTZ.filter(t=>!t.erledigt).sort((a,b)=>(a.datum||'9999').localeCompare(b.datum||'9999'));
   // Abgeschlossen + reviewed
   const reviewed=alleTZ.filter(t=>t.review_done).sort((a,b)=>(b.review_at||'').localeCompare(a.review_at||''));
-  // Helper: Progress für Meilenstein
+  // Helper: Progress für Monatsziel
   const tzProg=tz=>{
     const ges=S.aufgaben.filter(a=>a.teilzielId===tz.id).length;
     const erl=S.aufgaben.filter(a=>a.teilzielId===tz.id&&a.status==='erledigt').length;
@@ -5510,9 +5510,9 @@ function rMonat(){
   let out='';
   // ── Header ──
   out+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:22px">'
-    +'<div><div style="font-size:16px;font-weight:700">Meilensteine</div>'
+    +'<div><div style="font-size:16px;font-weight:700">Monatsziele</div>'
     +'<div style="font-size:11px;color:var(--t3)">'+monatName+' '+jetzt.getFullYear()+'</div></div>'
-    +'<button onclick="openAddMeilensteinFromMonat()" class="btn btn-dk" style="font-size:12px">+ Meilenstein</button>'
+    +'<button onclick="openAddMonatszielFromMonat()" class="btn btn-dk" style="font-size:12px">+ Monatsziel</button>'
     +'</div>';
   // ── Fällige Reviews — Alert ──
   if(fällig.length){
@@ -5521,18 +5521,18 @@ function rMonat(){
     fällig.forEach(tz=>{
       out+='<div style="display:flex;align-items:center;gap:10px;padding:4px 0">'
         +'<div style="flex:1;font-size:13px;font-weight:500">'+esc(tz.name)+'</div>'
-        +'<button onclick="openMeilensteinReview(\''+tz.id+'\')" style="font-size:11px;padding:5px 12px;border-radius:8px;background:var(--amber);color:#fff;border:none;font-family:inherit;font-weight:600;cursor:pointer">Review →</button>'
+        +'<button onclick="openMonatszielReview(\''+tz.id+'\')" style="font-size:11px;padding:5px 12px;border-radius:8px;background:var(--amber);color:#fff;border:none;font-family:inherit;font-weight:600;cursor:pointer">Review →</button>'
         +'</div>';
     });
     out+='</div>';
   }
-  // ── Aktueller Meilenstein — Hero ──
+  // ── Aktueller Monatsziel — Hero ──
   if(aktiverTZ){
     const{ges,erl,pct}=tzProg(aktiverTZ);
     const f=aktiverTZ.f;
     const isFällig=tzFällig(aktiverTZ);
     out+='<div style="background:var(--hero);color:var(--hero-t);border-radius:14px;padding:20px;margin-bottom:20px">'
-      +'<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;opacity:.6;margin-bottom:8px">Aktueller Meilenstein</div>'
+      +'<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;opacity:.6;margin-bottom:8px">Aktueller Monatsziel</div>'
       +'<div style="font-size:17px;font-weight:800;line-height:1.3;margin-bottom:6px">'+esc(aktiverTZ.name)+'</div>'
       +'<div style="font-size:11px;opacity:.7;margin-bottom:14px">↳ '+esc(aktiverTZ.ziel.name)
       +(aktiverTZ.datum?' · bis '+tzDatum(aktiverTZ):'')
@@ -5550,20 +5550,20 @@ function rMonat(){
     }
     out+='<div style="display:flex;gap:8px">'
       +'<button onclick="nav(\'tag\')" style="flex:1;padding:10px;border-radius:10px;background:rgba(255,255,255,.15);color:var(--hero-t);border:1px solid rgba(255,255,255,.2);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer">▶ Mein Tag</button>'
-      +(isFällig&&!aktiverTZ.review_done?'<button onclick="openMeilensteinReview(\''+aktiverTZ.id+'\')" style="padding:10px 14px;border-radius:10px;background:var(--gold);color:#fff;border:none;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;flex-shrink:0">Review</button>':'')
+      +(isFällig&&!aktiverTZ.review_done?'<button onclick="openMonatszielReview(\''+aktiverTZ.id+'\')" style="padding:10px 14px;border-radius:10px;background:var(--gold);color:#fff;border:none;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;flex-shrink:0">Review</button>':'')
       +'</div>'
       +'</div>';
   } else {
     out+='<div style="background:var(--gray-bg);border:1.5px dashed var(--bd);border-radius:12px;padding:24px;text-align:center;margin-bottom:20px">'
       +'<div style="font-size:24px;margin-bottom:8px">🎯</div>'
-      +'<div style="font-size:14px;font-weight:600;margin-bottom:6px">Kein aktiver Meilenstein</div>'
-      +'<div style="font-size:12px;color:var(--t2);margin-bottom:14px">Meilensteine verbinden deine wöchentliche Arbeit mit deinen Quartalszielen.</div>'
-      +'<button onclick="openAddMeilensteinFromMonat()" class="btn btn-dk">+ Ersten Meilenstein anlegen</button>'
+      +'<div style="font-size:14px;font-weight:600;margin-bottom:6px">Kein aktiver Monatsziel</div>'
+      +'<div style="font-size:12px;color:var(--t2);margin-bottom:14px">Monatsziele verbinden deine wöchentliche Arbeit mit deinen Quartalszielen.</div>'
+      +'<button onclick="openAddMonatszielFromMonat()" class="btn btn-dk">+ Ersten Monatsziel anlegen</button>'
       +'</div>';
   }
-  // ── Alle aktiven Meilensteine ──
+  // ── Alle aktiven Monatsziele ──
   if(aktive.length>0){
-    out+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);margin-bottom:10px">Meine Meilensteine</div>';
+    out+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);margin-bottom:10px">Meine Monatsziele</div>';
     aktive.forEach(tz=>{
       const{ges,erl,pct}=tzProg(tz);
       const f=tz.f;
@@ -5588,7 +5588,7 @@ function rMonat(){
           +'</div>';
       }
       if(isFäll){
-        out+='<button onclick="openMeilensteinReview(\''+tz.id+'\')" style="margin-top:10px;width:100%;padding:8px;border-radius:8px;background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-bd);font-family:inherit;font-size:12px;font-weight:600;cursor:pointer">⏰ Review abschließen →</button>';
+        out+='<button onclick="openMonatszielReview(\''+tz.id+'\')" style="margin-top:10px;width:100%;padding:8px;border-radius:8px;background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-bd);font-family:inherit;font-size:12px;font-weight:600;cursor:pointer">⏰ Review abschließen →</button>';
       }
       out+='</div>';
     });
@@ -5619,14 +5619,14 @@ function rMonat(){
   if(!alleTZ.length){
     out='<div style="text-align:center;padding:40px 20px">'
       +'<div style="font-size:32px;margin-bottom:12px">🗓</div>'
-      +'<div style="font-size:15px;font-weight:700;margin-bottom:8px">Noch keine Meilensteine</div>'
-      +'<div style="font-size:13px;color:var(--t2);margin-bottom:20px;line-height:1.5">Meilensteine sind ~4-Wochen-Ziele, die deine wöchentlichen Aufgaben mit deinen Quartalszielen verbinden.</div>'
+      +'<div style="font-size:15px;font-weight:700;margin-bottom:8px">Noch keine Monatsziele</div>'
+      +'<div style="font-size:13px;color:var(--t2);margin-bottom:20px;line-height:1.5">Monatsziele sind ~4-Wochen-Ziele, die deine wöchentlichen Aufgaben mit deinen Quartalszielen verbinden.</div>'
       +'<button onclick="nav(\'ziele\')" class="btn btn-dk">→ Ziel anlegen</button>'
       +'</div>';
   }
   document.getElementById('main').innerHTML=out;
 }
-function openAddMeilensteinFromMonat(){
+function openAddMonatszielFromMonat(){
   const meineZ=S.ziele.filter(z=>z.status!=='vorschlag'&&z.status!=='bereich'&&(isGF()||z.verantwortlichId===aP||(z.teilziele||[]).some(t=>String(t.verantwortlichId)===String(aP))));
   if(!meineZ.length){toast('Erst ein Ziel im Ziele-Tab anlegen →');nav('ziele');return;}
   if(meineZ.length===1){openAddTZ(meineZ[0].id);return;}
@@ -5753,7 +5753,7 @@ function rZiele(){
       out+='</div>';
     }
 
-    // Meilensteine — inline, ausklappbar bei >5
+    // Monatsziele — inline, ausklappbar bei >5
     const myTZ=(z.teilziele||[]).filter(tz=>(!tz.vertraulich||isGF()||tz.verantwortlichId===aP)&&(tz.status||'aktiv')==='aktiv');
     const tzErledigtAll=(z.teilziele||[]).filter(tz=>tz.erledigt).length;
     if(myTZ.length||isGF()){
@@ -5762,7 +5762,7 @@ function rZiele(){
       const showTZ=collapsed?myTZ.slice(0,5):myTZ;
       out+='<div style="border-top:1px solid '+f.bd+';padding-top:10px;margin-bottom:8px">';
       out+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">';
-      out+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3)">🗓 Meilensteine'+(myTZ.length?' · '+myTZ.length:'')+(tzErledigtAll?' · '+tzErledigtAll+' erledigt':'')+'</div>';
+      out+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3)">🗓 Monatsziele'+(myTZ.length?' · '+myTZ.length:'')+(tzErledigtAll?' · '+tzErledigtAll+' erledigt':'')+'</div>';
       out+='<button onclick="nav(\'monat\')" style="font-size:10px;padding:3px 9px;border-radius:7px;border:1px solid '+f.bd+';background:transparent;color:'+f.tc+';cursor:pointer;font-family:inherit;font-weight:500">Timeline →</button>';
       out+='</div>';
       if(myTZ.length){
@@ -5810,7 +5810,7 @@ function rZiele(){
 
     // Footer buttons
     out+='<div style="display:flex;align-items:center;gap:8px;margin-top:12px">';
-    if(canManageTZ(z.id))out+='<button onclick="openAddTZ(\''+z.id+'\')" style="font-size:13px;font-weight:600;padding:8px 18px;border-radius:8px;border:none;background:'+f.tc+';color:#fff;cursor:pointer;font-family:inherit">+ Meilenstein</button>';
+    if(canManageTZ(z.id))out+='<button onclick="openAddTZ(\''+z.id+'\')" style="font-size:13px;font-weight:600;padding:8px 18px;border-radius:8px;border:none;background:'+f.tc+';color:#fff;cursor:pointer;font-family:inherit">+ Monatsziel</button>';
     out+='<button onclick="openNeu({zielId:\''+z.id+'\'})" style="font-size:11px;padding:8px 14px;border-radius:8px;border:1px solid '+f.bd+';background:transparent;color:'+f.tc+';cursor:pointer;font-family:inherit">+ Aufgabe</button>';
     out+='</div>';
 
@@ -5995,11 +5995,11 @@ async function toggleTZ(zid,tzid){
   const tz=(z.teilziele||[]).find(t=>t.id===tzid);if(!tz)return;
   tz.erledigt=!tz.erledigt;
   await dbPatch('teilziele',tzid,{erledigt:tz.erledigt});
-  if(tz.erledigt){celebrate('🎯',istBereich(zid)?'Thema abgeschlossen!':'Meilenstein erreicht!');notify('meilenstein_erledigt',{meilenstein:tz.name,ziel:z.name});}
+  if(tz.erledigt){celebrate('🎯',istBereich(zid)?'Thema abgeschlossen!':'Monatsziel erreicht!');notify('meilenstein_erledigt',{meilenstein:tz.name,ziel:z.name});}
   rZiele();
 }
 function openAddTZ(zid){
-  const _isB=istBereich(zid),_lbl=_isB?'Thema':'Meilenstein',_ph=_isB?'z.B. Wartung & TÜV, IT-Sicherheit…':'z.B. Messe München vorbereitet';
+  const _isB=istBereich(zid),_lbl=_isB?'Thema':'Monatsziel',_ph=_isB?'z.B. Wartung & TÜV, IT-Sicherheit…':'z.B. Messe München vorbereitet';
   const _diagnoseHint=_isB?'':getDiagnoseHint();
   document.getElementById('mb').innerHTML='<div class="mt">'+_lbl+' hinzufügen</div>'
     +_diagnoseHint
@@ -6012,7 +6012,7 @@ function openAddTZ(zid){
 function editTZ(zid,tzid){
   const z=zielObj(zid);if(!z)return;
   const tz=(z.teilziele||[]).find(t=>t.id===tzid);if(!tz)return;
-  const _isB=istBereich(zid),_lbl=_isB?'Thema':'Meilenstein';
+  const _isB=istBereich(zid),_lbl=_isB?'Thema':'Monatsziel';
   const zielOpts=S.ziele.filter(zl=>zl.status!=='vorschlag').map(zl=>'<option value="'+zl.id+'"'+(zl.id===zid?' selected':'')+'>'+(zl.status==='bereich'?'📁 ':'')+esc(zl.name)+'</option>').join('');
   document.getElementById('mb').innerHTML='<div class="mt">'+_lbl+' bearbeiten</div>'
     +'<div class="fl"><label>Name</label><input id="tzn" value="'+esc(tz.name)+'" autofocus></div>'
@@ -6046,7 +6046,7 @@ async function saveTZ(zid,tzid){
   cm();rZiele();
 }
 async function delTZ(zid,tzid){
-  if(!confirm(istBereich(zid)?'Thema löschen?':'Meilenstein löschen?'))return;
+  if(!confirm(istBereich(zid)?'Thema löschen?':'Monatsziel löschen?'))return;
   const z=zielObj(zid);if(!z)return;
   z.teilziele=(z.teilziele||[]).filter(t=>t.id!==tzid);
   S.aufgaben.forEach(a=>{if(a.teilzielId===tzid)a.teilzielId=null;});
@@ -6224,7 +6224,7 @@ function editKpiDef(zid,kid){
     +'<div class="f2"><div class="fl"><label>Ist-Wert</label><input id="ki" type="number" value="'+k.ist+'"></div><div class="fl"><label>Ziel-Wert</label><input id="kz" type="number" value="'+k.ziel+'"></div></div>'
     +'<div class="f2"><div class="fl"><label>Einheit</label><input id="ku" value="'+(k.unit||'')+'" placeholder="%, Stk…"></div><div class="fl"><label>Rhythmus</label><select id="kf">'+FREQ.map(f=>'<option'+(k.freq===f?' selected':'')+'>'+f+'</option>').join('')+'</select></div></div>'
     +'<div class="fl"><label>Verantwortlich</label><select id="kp">'+S.personen.map(p=>'<option value="'+p.id+'"'+(String(k.pid)===String(p.id)?' selected':'')+'>'+esc(p.name)+'</option>').join('')+'</select></div>'
-    +'<div class="f2"><div class="fl"><label>Priorität</label><select id="kprio" onchange="updateKpiPaddelHint()"><option value=""'+(!k.prio?' selected':'')+'>— keine —</option><option value="P1"'+(k.prio==='P1'?' selected':'')+'>P1 (Top-Fokus)</option><option value="P2"'+(k.prio==='P2'?' selected':'')+'>P2</option><option value="P3"'+(k.prio==='P3'?' selected':'')+'>P3</option></select></div><div class="fl"><label>Meilenstein <span style="font-weight:400;color:var(--t2)">(für Paddel)</span></label><select id="kteilziel" onchange="updateKpiPaddelHint()"><option value="">— keiner —</option>'+((z.teilziele||[]).filter(t=>!t.erledigt&&(t.status||'aktiv')==='aktiv').map(t=>'<option value="'+t.id+'"'+(String(k.teilzielId||'')===String(t.id)?' selected':'')+'>'+esc(t.name)+'</option>').join(''))+'</select></div></div>'
+    +'<div class="f2"><div class="fl"><label>Priorität</label><select id="kprio" onchange="updateKpiPaddelHint()"><option value=""'+(!k.prio?' selected':'')+'>— keine —</option><option value="P1"'+(k.prio==='P1'?' selected':'')+'>P1 (Top-Fokus)</option><option value="P2"'+(k.prio==='P2'?' selected':'')+'>P2</option><option value="P3"'+(k.prio==='P3'?' selected':'')+'>P3</option></select></div><div class="fl"><label>Monatsziel <span style="font-weight:400;color:var(--t2)">(für Paddel)</span></label><select id="kteilziel" onchange="updateKpiPaddelHint()"><option value="">— keiner —</option>'+((z.teilziele||[]).filter(t=>!t.erledigt&&(t.status||'aktiv')==='aktiv').map(t=>'<option value="'+t.id+'"'+(String(k.teilzielId||'')===String(t.id)?' selected':'')+'>'+esc(t.name)+'</option>').join(''))+'</select></div></div>'
     +'<div id="kpi-paddel-hint" style="font-size:11px;background:var(--gray-bg);border:1px dashed var(--bd);border-radius:8px;padding:8px 10px;margin-bottom:10px;line-height:1.4"></div>'
     +'<div class="fl"><label style="text-transform:none;font-size:13px;font-weight:400;display:flex;align-items:center;gap:8px"><input type="checkbox" id="kinv"'+(k.inv?' checked':'')+' style="width:auto"> Niedriger ist besser</label></div>'
     +'<div class="fl"><label>Zählweise</label><div style="display:flex;gap:8px">'
@@ -6248,10 +6248,10 @@ function updateKpiPaddelHint(){
     hint.innerHTML='ℹ️ Keine Priorität → KPI bleibt operativ sichtbar, aber gibt keine Paddel-Punkte.';
   }else if(prio!=='P1'){
     hint.style.borderColor='var(--bd)';hint.style.background='var(--gray-bg)';hint.style.color='var(--t2)';
-    hint.innerHTML='ℹ️ Nur <b>P1</b>-KPIs mit Meilenstein zählen fürs Paddel. P2/P3 bleiben operativ sichtbar ohne Paddel-Punkte.';
+    hint.innerHTML='ℹ️ Nur <b>P1</b>-KPIs mit Monatsziel zählen fürs Paddel. P2/P3 bleiben operativ sichtbar ohne Paddel-Punkte.';
   }else{
     hint.style.borderColor='var(--amber-bd)';hint.style.background='var(--amber-bg)';hint.style.color='var(--amber)';
-    hint.innerHTML='⚠️ <b>P1 ohne Meilenstein</b> → kein Paddel-Punkt. Weise einen Meilenstein zu, damit die Ausführung auf ein Ziel einzahlt.';
+    hint.innerHTML='⚠️ <b>P1 ohne Monatsziel</b> → kein Paddel-Punkt. Weise ein Monatsziel zu, damit die Ausführung auf ein Ziel einzahlt.';
   }
 }
 async function saveKpi(zid,kid){
@@ -6327,7 +6327,7 @@ function onDlUhrChange(){
   const badge=document.getElementById('ndl-event-badge');
   const hint=document.getElementById('ndl-uhr-hint');
   if(badge)badge.style.display=val?'inline-flex':'none';
-  // liebevolle Reibung: kein Meilenstein → zeige Hint
+  // liebevolle Reibung: kein Monatsziel → zeige Hint
   if(hint){
     const tz=document.getElementById('ntz')?.value||'';
     hint.style.display=(val&&!tz)?'block':'none';
@@ -6354,8 +6354,8 @@ function openNeu(pf={}){
     +'<div class="fl"><label>Priorität</label><div style="display:flex;gap:6px;margin-top:2px">'
     +['P1','P2','P3'].map(pr=>{const bg=pr==='P1'?'var(--red-bg)':pr==='P2'?'var(--blue-bg)':'var(--gray-bg)';const tc=pr==='P1'?'var(--red)':pr==='P2'?'var(--blue)':'var(--t2)';return'<button id="pbp-'+pr+'" onclick="selPrioBtn(this,\''+pr+'\')" style="font-size:12px;padding:4px 11px;border-radius:8px;border:1px solid '+tc+';background:'+bg+';color:'+tc+';cursor:pointer;font-family:inherit">'+pr+'</button>';}).join('')
     +'</div></div>'
-    +'<div class="fl"><label>Meilenstein <span style="font-weight:400;color:var(--t2)">(für Paddel-Punkt)</span></label>'+msPickerWithAdd('ntz',defaultPid,pf.teilzielId||'','updateNeuPaddelHint();const o=this.options[this.selectedIndex];const d=o?.dataset?.datum;const dl=document.getElementById(\'ndl\');if(d&&dl)dl.value=d;',pf.zielId||null)+'</div>'
-    +'<div id="neu-paddel-hint" style="font-size:11px;color:var(--t2);background:var(--gray-bg);border:1px dashed var(--bd);border-radius:8px;padding:8px 10px;margin-bottom:10px;line-height:1.4">⚠️ <b>Kein Meilenstein gewählt</b> → kein Paddel-Punkt beim Erledigen. Wähle oben einen Meilenstein, damit diese Aufgabe auf ein Ziel einzahlt.</div>'
+    +'<div class="fl"><label>Monatsziel <span style="font-weight:400;color:var(--t2)">(für Paddel-Punkt)</span></label>'+msPickerWithAdd('ntz',defaultPid,pf.teilzielId||'','updateNeuPaddelHint();const o=this.options[this.selectedIndex];const d=o?.dataset?.datum;const dl=document.getElementById(\'ndl\');if(d&&dl)dl.value=d;',pf.zielId||null)+'</div>'
+    +'<div id="neu-paddel-hint" style="font-size:11px;color:var(--t2);background:var(--gray-bg);border:1px dashed var(--bd);border-radius:8px;padding:8px 10px;margin-bottom:10px;line-height:1.4">⚠️ <b>Kein Monatsziel gewählt</b> → kein Paddel-Punkt beim Erledigen. Wähle oben ein Monatsziel, damit diese Aufgabe auf ein Ziel einzahlt.</div>'
     +'<div class="mf" style="margin-bottom:8px"><button class="btn btn-gr" onclick="cm()">Abbrechen</button><button class="btn btn-dk" onclick="saveNeu()">Speichern</button></div>'
     +'<div style="text-align:center;margin-bottom:4px"><button onclick="const m=document.getElementById(\'neu-mehr\');const open=m.style.display!==\'none\';m.style.display=open?\'none\':\'block\';this.textContent=open?\'Mehr ↓\':\'Weniger ↑\'" style="font-size:11px;color:var(--t3);background:none;border:none;cursor:pointer;font-family:inherit;padding:2px 8px">Mehr ↓</button></div>'
     +'<div id="neu-mehr" style="display:none">'
@@ -6389,18 +6389,18 @@ function openNeu(pf={}){
   }
   if(pf.teilzielId)setTimeout(()=>{const s=document.getElementById('ntz');if(s){s.value=pf.teilzielId;updateNeuPaddelHint();}},100);
 }
-// updateNeuTZ() entfernt — Ziel-Select wurde durch Meilenstein-Select (ntz) ersetzt
+// updateNeuTZ() entfernt — Ziel-Select wurde durch Monatsziel-Select (ntz) ersetzt
 function updateNeuPaddelHint(){
   const hint=document.getElementById('neu-paddel-hint');if(!hint)return;
   const tzSel=document.getElementById('ntz');
   const tzVal=tzSel?tzSel.value:'';
   if(tzVal){
-    hint.innerHTML='✅ <b>Meilenstein zugeordnet</b> → Paddel-Punkt beim Erledigen (P1 = 3🏅, P2 = 1🏅).';
+    hint.innerHTML='✅ <b>Monatsziel zugeordnet</b> → Paddel-Punkt beim Erledigen (P1 = 3🏅, P2 = 1🏅).';
     hint.style.background='var(--green-bg)';
     hint.style.borderColor='var(--green-bd)';
     hint.style.color='var(--green)';
   }else{
-    hint.innerHTML='⚠️ <b>Kein Meilenstein gewählt</b> → kein Paddel-Punkt beim Erledigen. Unter <i>Mehr ↓</i> → Ziel + Meilenstein zuordnen für Paddel.';
+    hint.innerHTML='⚠️ <b>Kein Monatsziel gewählt</b> → kein Paddel-Punkt beim Erledigen. Unter <i>Mehr ↓</i> → Ziel + Monatsziel zuordnen für Paddel.';
     hint.style.background='var(--gray-bg)';
     hint.style.borderColor='var(--bd)';
     hint.style.color='var(--t2)';
@@ -6434,7 +6434,7 @@ async function aiAnalyze(){
   const zieleDetail=S.ziele.map(z=>{
     const kpis=(z.kpis||[]).map(k=>k.label+': '+k.ist+'/'+k.ziel+(k.unit?' '+k.unit:'')).join(', ');
     const tzs=(z.teilziele||[]).filter(t=>!t.erledigt).map(t=>t.name).join(', ');
-    return'- '+z.name+(z.focus?' [FIRMEN-FOKUS]':'')+(kpis?' | KPIs: '+kpis:'')+(tzs?' | Meilensteine: '+tzs:'');
+    return'- '+z.name+(z.focus?' [FIRMEN-FOKUS]':'')+(kpis?' | KPIs: '+kpis:'')+(tzs?' | Monatsziele: '+tzs:'');
   }).join('\n');
   const teamInfo=S.personen.map(pe=>pe.name+' ('+pe.rolle+')').join(', ');
   const wr=S.wochenresets.find(r=>String(r.pid)===String(aP)&&r.kw===getKW().kw&&r.jahr===getKW().jahr);
@@ -6452,7 +6452,7 @@ Team: ${teamInfo}
 ${big3?'Big 3 diese Woche: '+big3:''}
 ${erledigteHeute?'Heute erledigt: '+erledigteHeute:''}
 
-Firmenziele (mit KPIs und Meilensteinen):
+Firmenziele (mit KPIs und Monatszielen):
 ${zieleDetail||'keine definiert'}
 ${fokusZ?'🔥 FIRMEN-FOKUS: '+fokusZ.name:''}
 
@@ -6608,7 +6608,7 @@ async function aiDailyBriefing(){
   const zieleDetail=S.ziele.map(z=>{
     const kpis=(z.kpis||[]).map(k=>k.label+': '+k.ist+'/'+k.ziel+(k.unit?' '+k.unit:'')).join(', ');
     const tzs=(z.teilziele||[]).filter(t=>!t.erledigt).map(t=>t.name).join(', ');
-    return'- '+z.name+(z.focus?' [FIRMEN-FOKUS]':'')+(kpis?' | KPIs: '+kpis:'')+(tzs?' | Offene Meilensteine: '+tzs:'');
+    return'- '+z.name+(z.focus?' [FIRMEN-FOKUS]':'')+(kpis?' | KPIs: '+kpis:'')+(tzs?' | Offene Monatsziele: '+tzs:'');
   }).join('\n');
   const wr=dieseWocheReset(aP);
   const big3=wr?[wr.big3_1,wr.big3_2,wr.big3_3].filter(Boolean).map((t,i)=>t+(wr['big3_'+(i+1)+'_done']?' ✓':' ○')).join(', '):'';
@@ -6733,7 +6733,7 @@ function aiApplyAll(){
   if(window._aiPrio)aiApplyPrio(window._aiPrio);
   if(window._aiDauer){const sel=document.getElementById('nh');if(sel)sel.value=String(window._aiDauer);}
   if(window._aiSteps&&window._aiSteps.length)aiApplySteps();
-  // Meilenstein auto-matchen: wenn AI ein Ziel erkannt hat, passenden Meilenstein vorauswählen
+  // Monatsziel auto-matchen: wenn AI ein Ziel erkannt hat, passenden Monatsziel vorauswählen
   if(window._aiZielMatch){
     const tzSel=document.getElementById('ntz');
     if(tzSel){
@@ -6799,7 +6799,7 @@ function selPrioBtn(btn,pr){
   _selPrio=(!pr||pr==='null')?null:pr;
   document.querySelectorAll('[id^="pbp-"]').forEach(b=>b.style.outline='none');
   btn.style.outline='2px solid var(--text)';
-  // P1 → Meilenstein nudgen (Leading Indicator: P1 ohne Meilenstein = Busywork)
+  // P1 → Monatsziel nudgen (Leading Indicator: P1 ohne Monatsziel = Busywork)
   if(pr==='P1'){
     const z=document.getElementById('ntz');
     if(z&&!z.value){z.style.outline='2px solid var(--red)';z.focus();setTimeout(()=>{z.style.outline='';},2000);}
@@ -6846,11 +6846,11 @@ async function saveNeu(){
   // P1 immer in Kalender, P2/P3 nur mit Deadline
   if(rec.prio==='P1'||rec.dl)gcalCreateEvent(rec);
   if(pid!==aP){const tp=person(pid);notify('aufgabe_zugewiesen',{aufgabe:t,fuer:{id:pid,name:tp?tp.name:'?',slack_id:tp?.slack_id||''},prio:rec.prio,dl:rec.dl});}
-  // Paddel-Hint: beim Anlegen ohne Meilenstein-Zuordnung warnen (auch für delegierte Tasks)
+  // Paddel-Hint: beim Anlegen ohne Monatsziel-Zuordnung warnen (auch für delegierte Tasks)
   if(!teilzielId){
     const msg = pid===aP
-      ? '💡 Ohne Meilenstein zählt diese Aufgabe nicht für deinen Paddel-Score'
-      : '💡 Ohne Meilenstein zählt diese Aufgabe nicht für '+((person(pid)?.name||'').split(' ')[0]||'den Zugewiesenen')+'s Paddel-Score';
+      ? '💡 Ohne Monatsziel zählt diese Aufgabe nicht für deinen Paddel-Score'
+      : '💡 Ohne Monatsziel zählt diese Aufgabe nicht für '+((person(pid)?.name||'').split(' ')[0]||'den Zugewiesenen')+'s Paddel-Score';
     setTimeout(()=>toast(msg),200);
   }
   cm();render();
@@ -6872,7 +6872,7 @@ function quickAssignZiel(id){
     '<div class="mt">Ziel verknüpfen</div>'
     +'<div style="font-size:13px;font-weight:500;color:var(--t2);margin-bottom:14px;line-height:1.4">'+esc(a.titel)+'</div>'
     +'<div class="f2"><div class="fl"><label>Ziel <span style="font-weight:400;color:var(--t2)">(optional)</span></label><select id="qz-sel" onchange="updateQZTZ(\''+id+'\')">'+opts+'</select></div></div>'
-    +'<div id="qz-tz-wrap" class="fl" style="display:none"><label>Meilenstein <span style="font-weight:400;color:var(--t2)">(optional)</span></label><select id="qz-ntz"><option value="">— kein Meilenstein —</option></select></div>'
+    +'<div id="qz-tz-wrap" class="fl" style="display:none"><label>Monatsziel <span style="font-weight:400;color:var(--t2)">(optional)</span></label><select id="qz-ntz"><option value="">— kein Monatsziel —</option></select></div>'
     +'<div class="mf"><button onclick="cm()">Abbrechen</button><button onclick="saveQuickZiel(\''+id+'\')" style="background:var(--inv);color:var(--inv-t);border:none;font-family:inherit;font-weight:600;padding:10px 18px;border-radius:8px;cursor:pointer">Speichern</button></div>';
   document.getElementById('ovl').classList.add('open');
   updateQZTZ(id);
@@ -6883,7 +6883,7 @@ function updateQZTZ(aid){
   const sel=document.getElementById('qz-ntz');
   if(!wrap||!sel)return;
   const z=zielId?S.ziele.find(x=>x.id===zielId):null;
-  const _isB=z&&istBereich(z.id),_lbl=_isB?'Thema':'Meilenstein';
+  const _isB=z&&istBereich(z.id),_lbl=_isB?'Thema':'Monatsziel';
   const wrapLabel=wrap.querySelector('label');
   if(wrapLabel)wrapLabel.innerHTML=_lbl+' <span style="font-weight:400;color:var(--t2)">(optional)</span>';
   const tza=z?(z.teilziele||[]).filter(t=>!t.erledigt&&(t.status||'aktiv')==='aktiv'):[];
@@ -7040,7 +7040,7 @@ function rTeam(){
     outPR+='<div style="background:var(--amber-bg);border:1px solid var(--amber-bd);border-radius:14px;padding:14px 16px;margin-bottom:16px">';
     outPR+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">';
     outPR+='<div style="font-size:11px;font-weight:700;color:var(--amber)">🏆 Paddel-Rangliste · KW '+prKw+'</div>';
-    outPR+='<span title="Gezählt werden nur Aufgaben mit Meilenstein-Zuordnung. Ausführung von Taktik, die zum Ziel führt — nicht Busywork." style="font-size:11px;color:var(--amber);cursor:help;opacity:.7">ℹ️</span>';
+    outPR+='<span title="Gezählt werden nur Aufgaben mit Monatsziel-Zuordnung. Ausführung von Taktik, die zum Ziel führt — nicht Busywork." style="font-size:11px;color:var(--amber);cursor:help;opacity:.7">ℹ️</span>';
     outPR+='<div style="margin-left:auto;display:flex;gap:5px;align-items:center">';
     outPR+='<span style="font-size:9px;padding:1px 6px;border-radius:99px;background:var(--red-bg);color:var(--red);font-weight:700">P1 = 3🏅</span>';
     outPR+='<span style="font-size:9px;padding:1px 6px;border-radius:99px;background:var(--blue-bg);color:var(--blue);font-weight:700">P2 = 1🏅</span>';
@@ -7127,7 +7127,7 @@ function rTeam(){
           if(!isOwn&&verantw)outOV+='<span style="font-size:10px;color:var(--t3)">'+esc(verantw.name)+'</span>';
           outOV+='<span style="font-size:10px;padding:1px 6px;border-radius:99px;background:'+(isOwn?'var(--green-bg)':'var(--blue-bg)')+';color:'+(isOwn?'var(--green)':'var(--blue)')+'">'+(isOwn?'Verantwortlich':'Mitwirkend')+'</span>';
           if(meineTasks)outOV+='<span style="font-size:10px;color:var(--t3)">'+meineTasks+' offene Aufgabe'+(meineTasks>1?'n':'')+'</span>';
-          if(tzOffen)outOV+='<span style="font-size:10px;color:var(--t3)">'+tzOffen+' '+(z.status==='bereich'?'Themen':(tzOffen>1?'Meilensteine':'Meilenstein'))+' offen</span>';
+          if(tzOffen)outOV+='<span style="font-size:10px;color:var(--t3)">'+tzOffen+' '+(z.status==='bereich'?'Themen':(tzOffen>1?'Monatsziele':'Monatsziel'))+' offen</span>';
           outOV+='</div></div>';
           // Progress bar
           outOV+='<div style="width:40px;text-align:right"><div style="font-size:11px;font-weight:700;color:'+f.tc+'">'+pct+'%</div>';
@@ -7204,7 +7204,7 @@ function rTeam(){
     const sichtbarePers=isGF()?S.personen.filter(p=>p.stufe!=='gf'):S.personen.filter(p=>teamMids.has(p.id)&&p.id!==aP);
     if(sichtbarePers.length){
     outTC+='<div style="margin-top:28px">';
-    outTC+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t2);margin-bottom:12px">Ergebnisvorhaben im Team · KW '+kw+'</div>';
+    outTC+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t2);margin-bottom:12px">Wochenziele im Team · KW '+kw+'</div>';
     sichtbarePers.forEach(p=>{
       const r=dieseWoche.find(x=>String(x.pid)===String(p.id));
       const f=FARBEN[p.ci||0];
@@ -7536,7 +7536,7 @@ function openSettings(){
   h+='<div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin:20px 0 10px">Slack-Benachrichtigungen</div>';
   h+='<div class="fl"><label>n8n Webhook URL <span style="font-weight:400;color:var(--t2)">(für Slack-Notifications)</span></label><input type="url" id="set-webhook" value="'+(localStorage.getItem('n8n_webhook')||'')+'" placeholder="https://dein-n8n.app/webhook/halleluja-notify" style="font-family:monospace;font-size:11px"></div>';
   h+='<button onclick="localStorage.setItem(\'n8n_webhook\',document.getElementById(\'set-webhook\').value.trim());this.textContent=\'✓ Gespeichert\';this.style.color=\'var(--green)\'" class="btn btn-gr" style="margin-bottom:4px">Webhook speichern</button>';
-  h+='<div style="font-size:10px;color:var(--t3);margin-bottom:8px">Events: Aufgabe zugewiesen, Meilenstein erledigt, Big 3 erledigt, Blocker gemeldet</div>';
+  h+='<div style="font-size:10px;color:var(--t3);margin-bottom:8px">Events: Aufgabe zugewiesen, Monatsziel erledigt, Big 3 erledigt, Blocker gemeldet</div>';
   h+='<div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin:20px 0 10px">Meeting Dump (Whisper)</div>';
   h+='<div class="fl"><label>n8n Whisper URL <span style="font-weight:400;color:var(--t2)">(Audio → Transkription)</span></label><input type="url" id="set-whisper" value="'+(localStorage.getItem('n8n_whisper')||'')+'" placeholder="https://dein-n8n.app/webhook/halleluja-whisper" style="font-family:monospace;font-size:11px" onblur="localStorage.setItem(\'n8n_whisper\',this.value.trim())"></div>';
   h+='<div style="font-size:10px;color:var(--t3);margin-bottom:8px">Optional: Für Audio-Upload im Meeting Dump. Braucht den Whisper-Workflow in n8n + OpenAI API Key.</div>';
@@ -8662,7 +8662,7 @@ function gcalOpenVorbereitung(evId,prepDate){
   setTimeout(()=>{
     const hint=document.getElementById('neu-paddel-hint');
     if(hint&&!document.getElementById('ntz')?.value){
-      hint.innerHTML='🤔 <b>Kein Meilenstein?</b> Wenn kein Ziel zu diesem Termin passt — <i>braucht es diesen Termin?</i>';
+      hint.innerHTML='🤔 <b>Kein Monatsziel?</b> Wenn kein Ziel zu diesem Termin passt — <i>braucht es diesen Termin?</i>';
       hint.style.background='var(--amber-bg)';
       hint.style.borderColor='var(--amber-bd)';
       hint.style.color='var(--amber)';
@@ -8812,7 +8812,7 @@ window.addEventListener('keydown',e=>{
         const ls=document.getElementById('login-screen'),ap=document.getElementById('app');
         if(ls)ls.style.display='none';
         if(ap)ap.style.display='flex';
-        updateBadge();render();checkOnboarding();checkMeilensteinReviews();setTimeout(()=>checkMissedDeadlines(),800);startSonderPoller();startDataPoller();handleDeepLink();checkDeepLink();
+        updateBadge();render();checkOnboarding();checkMonatszielReviews();setTimeout(()=>checkMissedDeadlines(),800);startSonderPoller();startDataPoller();handleDeepLink();checkDeepLink();
         gcalFetchToday();
       } else localStorage.removeItem('h_session');
     }
