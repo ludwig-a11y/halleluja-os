@@ -6063,12 +6063,11 @@ async function fkParseReturn(){
   const raw=(document.getElementById('fkReturn').value||'').trim();
   if(!raw){toast('Nichts zum Einfügen');return;}
   const lines=raw.split(/\r?\n/).map(l=>l.trim()).filter(l=>l&&!l.startsWith('```'));
-  let zCount=0,tzCount=0,wzCount=0,aCount=0,skip=0;
-  // State: letztes angelegtes Quartalsziel (damit MONATSZIEL darauf referenzieren kann),
-  // letztes angelegtes / aktives Monatsziel (damit WOCHENZIEL+AUFGABE darauf gehängt werden).
-  let lastZielId=null,lastTzId=null;
-  // Sammel WOCHENZIEL-Zeilen in einen Puffer (max 3) und pflege am Ende in einen WR ein.
-  const wochenziele=[];
+  let zCount=0,tzCount=0,wzCount=0,aCount=0,skip=0,orphanTasks=0;
+  // 2-Pass-Parser: erst alles klassifizieren, dann in Kaskaden-Reihenfolge anlegen
+  // (Quartal → Monat → Woche → Aufgabe). So finden Aufgaben den neu angelegten
+  // Monatsziel auch dann, wenn er erst NACH ihnen in Claudes Output steht.
+  const items={ziele:[],monatsziele:[],wochenziele:[],aufgaben:[]};
   for(const line of lines){
     const m=line.match(/^(QUARTALSZIEL|ZIEL|MONATSZIEL|MEILENSTEIN|WOCHENZIEL|BIG3|AUFGABE|TASK|TODO)\s*:\s*(.+)$/i);
     if(!m){skip++;continue;}
@@ -6077,104 +6076,110 @@ async function fkParseReturn(){
     if(typ==='QUARTALSZIEL'||typ==='ZIEL'){
       const name=parts[0]; if(!name||name.length<5){skip++;continue;}
       const dl=parts[1]&&/^\d{4}-\d{2}-\d{2}$/.test(parts[1])?parts[1]:null;
-      const id=nid('z');
-      const rec={id,name,farbe:0,pct:0,verantwortlich_id:String(aP),vertraulich:false,status:'vorschlag',vorgeschlagen_von:String(aP)};
-      if(dl)rec.monat_ende=dl.slice(0,7);
-      try{await dbInsert('ziele',rec);S.ziele.push({...rec,verantwortlichId:aP,kpis:[],teilziele:[]});zCount++;lastZielId=id;}catch(e){skip++;}
+      items.ziele.push({name,dl});
     } else if(typ==='MONATSZIEL'||typ==='MEILENSTEIN'){
       const name=parts[0]; if(!name||name.length<5){skip++;continue;}
       const dl=parts[1]&&/^\d{4}-\d{2}-\d{2}$/.test(parts[1])?parts[1]:null;
-      const parentKeyword=parts[2]||'';
-      // Parent-Ziel bestimmen: zuletzt angelegtes Ziel → Keyword-Match → aktives eigenes Ziel
-      let zielId=lastZielId;
-      if(!zielId&&parentKeyword){
-        const kw=parentKeyword.toLowerCase();
-        const match=S.ziele.find(z=>z.name&&z.name.toLowerCase().includes(kw)&&(String(z.verantwortlichId)===String(aP)||isGF()));
-        if(match)zielId=match.id;
-      }
-      if(!zielId){
-        const eig=S.ziele.find(z=>z.status==='aktiv'&&String(z.verantwortlichId)===String(aP));
-        if(eig)zielId=eig.id;
-      }
-      if(!zielId){skip++;continue;}
-      const id=nid('tz');
-      const rec={id,ziel_id:zielId,name,verantwortlich_id:String(aP),datum:dl,erledigt:false,vertraulich:false,status:'aktiv'};
-      try{
-        await dbInsert('teilziele',rec);
-        const z=S.ziele.find(x=>x.id===zielId);
-        if(z){z.teilziele=z.teilziele||[];z.teilziele.push({...rec,zielId,verantwortlichId:aP,datum:dl||''});}
-        tzCount++;lastTzId=id;
-      }catch(e){skip++;}
+      items.monatsziele.push({name,dl,parentKeyword:parts[2]||''});
     } else if(typ==='WOCHENZIEL'||typ==='BIG3'){
       const titel=parts[0]; if(!titel||titel.length<3){skip++;continue;}
-      wochenziele.push(titel);
+      items.wochenziele.push(titel);
     } else if(typ==='AUFGABE'||typ==='TASK'||typ==='TODO'){
       const titel=parts[0]; if(!titel||titel.length<3){skip++;continue;}
       let prio='P2';
       for(const pp of parts.slice(1)){if(/^P1$/i.test(pp))prio='P1';else if(/^P2$/i.test(pp))prio='P2';else if(/^P3$/i.test(pp))prio='P3';}
       let dl=null;
       for(const pp of parts.slice(1)){if(/^\d{4}-\d{2}-\d{2}$/.test(pp))dl=pp;}
-      const id=nid('a');
-      const rec={id,titel,pid:String(aP),prio,status:'offen',erstellt_von:String(aP)};
-      if(dl)rec.dl=dl;
-      // Task an Monatsziel hängen, falls vorhanden (letztes MS dieser Session, sonst aktives eigenes MS)
-      let tzIdForTask=lastTzId;
-      if(!tzIdForTask){
-        const alleTZ=S.ziele.flatMap(z=>(z.teilziele||[]).filter(t=>String(t.verantwortlichId)===String(aP)&&!t.erledigt&&!t.review_done));
-        const aktiv=alleTZ.sort((a,b)=>(a.datum||'9999').localeCompare(b.datum||'9999'))[0];
-        if(aktiv)tzIdForTask=aktiv.id;
-      }
-      if(tzIdForTask)rec.teilziel_id=tzIdForTask;
-      try{await dbInsert('aufgaben',rec);S.aufgaben.push(normalizeAufgabe(rec));aCount++;}catch(e){skip++;}
+      items.aufgaben.push({titel,prio,dl});
     } else skip++;
   }
-  // Wochenziele ins aktuelle Wochenreset einspielen (oder neuen anlegen)
-  if(wochenziele.length){
+  // Pass 2a: Quartalsziele
+  let lastZielId=null;
+  for(const it of items.ziele){
+    const id=nid('z');
+    const rec={id,name:it.name,farbe:0,pct:0,verantwortlich_id:String(aP),vertraulich:false,status:'vorschlag',vorgeschlagen_von:String(aP)};
+    if(it.dl)rec.monat_ende=it.dl.slice(0,7);
+    try{await dbInsert('ziele',rec);S.ziele.push({...rec,verantwortlichId:aP,kpis:[],teilziele:[]});zCount++;lastZielId=id;}catch(e){skip++;}
+  }
+  // Pass 2b: Monatsziele
+  let lastTzId=null;
+  for(const it of items.monatsziele){
+    let zielId=lastZielId;
+    if(!zielId&&it.parentKeyword){
+      const kwLc=it.parentKeyword.toLowerCase();
+      const match=S.ziele.find(z=>z.name&&z.name.toLowerCase().includes(kwLc)&&(String(z.verantwortlichId)===String(aP)||isGF()));
+      if(match)zielId=match.id;
+    }
+    if(!zielId){
+      const eig=S.ziele.find(z=>z.status==='aktiv'&&String(z.verantwortlichId)===String(aP));
+      if(eig)zielId=eig.id;
+    }
+    if(!zielId){skip++;continue;}
+    const id=nid('tz');
+    const rec={id,ziel_id:zielId,name:it.name,verantwortlich_id:String(aP),datum:it.dl,erledigt:false,vertraulich:false,status:'aktiv'};
+    try{
+      await dbInsert('teilziele',rec);
+      const z=S.ziele.find(x=>x.id===zielId);
+      if(z){z.teilziele=z.teilziele||[];z.teilziele.push({...rec,zielId,verantwortlichId:aP,datum:it.dl||''});}
+      tzCount++;lastTzId=id;
+    }catch(e){skip++;}
+  }
+  // sessionParentTz: bester verfügbarer MS für Aufgaben UND Wochenziele.
+  // Reihenfolge: frisch angelegter MS dieser Session → existierender aktiver MS des Users.
+  let sessionParentTz=lastTzId;
+  if(!sessionParentTz){
+    const alleTZ=S.ziele.flatMap(z=>(z.teilziele||[]).filter(t=>String(t.verantwortlichId)===String(aP)&&!t.erledigt&&!t.review_done));
+    const aktiv=alleTZ.sort((a,b)=>(a.datum||'9999').localeCompare(b.datum||'9999'))[0];
+    if(aktiv)sessionParentTz=aktiv.id;
+  }
+  // Parent-Ziel ermitteln (für focus_ziel_id im Wochenreset)
+  let sessionFocusZielId=null;
+  if(sessionParentTz){
+    for(const z of S.ziele){if((z.teilziele||[]).some(t=>t.id===sessionParentTz)){sessionFocusZielId=z.id;break;}}
+  }
+  // Pass 2c: Wochenziele ins aktuelle Wochenreset
+  if(items.wochenziele.length){
     const {kw,jahr}=getKW();
     let wr=dieseWocheReset(aP);
-    // Parent-MS für big3_N_tz_id bestimmen
-    let parentTz=lastTzId;
-    if(!parentTz){
-      const alleTZ=S.ziele.flatMap(z=>(z.teilziele||[]).filter(t=>String(t.verantwortlichId)===String(aP)&&!t.erledigt&&!t.review_done));
-      const aktiv=alleTZ.sort((a,b)=>(a.datum||'9999').localeCompare(b.datum||'9999'))[0];
-      if(aktiv)parentTz=aktiv.id;
-    }
-    // Parent-Ziel (focus_ziel_id)
-    let focusZielId=null;
-    if(parentTz){
-      for(const z of S.ziele){if((z.teilziele||[]).some(t=>t.id===parentTz)){focusZielId=z.id;break;}}
-    }
     if(!wr){
-      // Neuen Reset anlegen
       const wrId=nid('wr');
-      wr={id:wrId,pid:String(aP),kw,jahr,focus_ziel_id:focusZielId,
+      wr={id:wrId,pid:String(aP),kw,jahr,focus_ziel_id:sessionFocusZielId,
         big3_1_tz_id:null,big3_1:null,big3_1_done:false,
         big3_2_tz_id:null,big3_2:null,big3_2_done:false,
         big3_3_tz_id:null,big3_3:null,big3_3_done:false};
       S.wochenresets.unshift(wr);
       try{await dbInsert('wochenresets',wr);}catch(e){}
     }
-    // Leere Slots zuerst befüllen
     const patch={};
-    for(const txt of wochenziele.slice(0,3)){
+    for(const txt of items.wochenziele.slice(0,3)){
       for(const n of [1,2,3]){
         if(!wr['big3_'+n]){
-          wr['big3_'+n]=txt;wr['big3_'+n+'_tz_id']=parentTz||null;wr['big3_'+n+'_done']=false;
-          patch['big3_'+n]=txt;patch['big3_'+n+'_tz_id']=parentTz||null;patch['big3_'+n+'_done']=false;
+          wr['big3_'+n]=txt;wr['big3_'+n+'_tz_id']=sessionParentTz||null;wr['big3_'+n+'_done']=false;
+          patch['big3_'+n]=txt;patch['big3_'+n+'_tz_id']=sessionParentTz||null;patch['big3_'+n+'_done']=false;
           wzCount++;
           break;
         }
       }
     }
-    if(focusZielId&&!wr.focus_ziel_id){wr.focus_ziel_id=focusZielId;patch.focus_ziel_id=focusZielId;}
+    if(sessionFocusZielId&&!wr.focus_ziel_id){wr.focus_ziel_id=sessionFocusZielId;patch.focus_ziel_id=sessionFocusZielId;}
     if(Object.keys(patch).length){try{await dbPatch('wochenresets',wr.id,patch);}catch(e){}}
+  }
+  // Pass 2d: Aufgaben — hängen an sessionParentTz (garantiert Kaskaden-Zuordnung)
+  for(const it of items.aufgaben){
+    const id=nid('a');
+    const rec={id,titel:it.titel,pid:String(aP),prio:it.prio,status:'offen',erstellt_von:String(aP)};
+    if(it.dl)rec.dl=it.dl;
+    if(sessionParentTz)rec.teilziel_id=sessionParentTz;
+    else orphanTasks++;
+    try{await dbInsert('aufgaben',rec);S.aufgaben.push(normalizeAufgabe(rec));aCount++;}catch(e){skip++;}
   }
   const pieces=[];
   if(zCount)pieces.push(zCount+' Quartalsziel-Vorschlag'+(zCount!==1?'e':''));
   if(tzCount)pieces.push(tzCount+' Monatsziel'+(tzCount!==1?'e':''));
   if(wzCount)pieces.push(wzCount+' Wochenziel'+(wzCount!==1?'e':''));
   if(aCount)pieces.push(aCount+' Aufgabe'+(aCount!==1?'n':''));
-  const summary='✓ '+(pieces.length?pieces.join(' · '):'nichts angelegt')+(skip?' · '+skip+' Zeile'+(skip!==1?'n':'')+' ignoriert':'');
+  let summary='✓ '+(pieces.length?pieces.join(' · '):'nichts angelegt')+(skip?' · '+skip+' Zeile'+(skip!==1?'n':'')+' ignoriert':'');
+  if(orphanTasks)summary+=' · ⚠️ '+orphanTasks+' Aufgabe'+(orphanTasks!==1?'n':'')+' ohne Monatsziel-Anbindung (bitte manuell zuordnen)';
   toast(summary);
   cm();
   if(typeof rZiele==='function')rZiele();
