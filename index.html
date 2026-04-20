@@ -4756,13 +4756,10 @@ function rTag(){
         const tLow=(a.titel||'').toLowerCase().trim();
         return tLow===big3Txt||tLow.includes(big3Txt.slice(0,Math.min(20,big3Txt.length)))||big3Txt.includes(tLow.slice(0,Math.min(20,tLow.length)));
       }):null;
-      // Card-Click: wenn linkedTask existiert → starten; sonst Detail öffnen (falls tzId) oder Neu-Dialog
+      // Card-Click: öffnet Detail-Modal (NICHT auto-starten). Start/Weiter bleibt explizit im Button.
       let cardAction='';
-      if(!done){
-        if(linkedTask){
-          const isAktiv=linkedTask.status==='aktiv';
-          cardAction=isAktiv?'focusModus(\''+linkedTask.id+'\')':'startenA(\''+linkedTask.id+'\')';
-        }
+      if(!done&&linkedTask){
+        cardAction='openDetail(\''+linkedTask.id+'\')';
       }
       const cardCursor=cardAction?'cursor:pointer':'';
       const cardClick=cardAction?' onclick="'+cardAction+'"':'';
