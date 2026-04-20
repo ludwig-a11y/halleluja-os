@@ -2285,7 +2285,10 @@ async function saveWrPhaseA(wrId){
   window._wrPhaseA=null;
   // DB — silent fail wenn Spalten noch nicht existieren (Migration nötig)
   await dbPatch('wochenresets',wrId,{learning,geliefert_count:st.geliefert,haupt_thema:st.hauptthema||null});
-  openWochenreset();
+  // Phase B = Fokus-Coach (scope=woche). Ersetzt den alten manuellen Kandidaten-Picker.
+  // Rückblick-Daten sind in wrNow gespeichert und landen automatisch im Report-Kontext.
+  window._fkFromWochenreset=true;
+  openFokusCoach('woche');
 }
 // ─────────────────────────────────────────────────────────────────
 function openWochenreset(){
@@ -5961,6 +5964,17 @@ function generateFokusReport(pid,scope){
       [['big3_1','big3_1_done'],['big3_2','big3_2_done'],['big3_3','big3_3_done']].forEach(([tf,df],i)=>{
         r+=(i+1)+'. '+(wrNow[tf]||'_leer_')+(wrNow[tf]?(wrNow[df]?' ✓':' ○'):'')+'\n';
       });
+      // Just-completed Retro (aus Phase A) — falls vorhanden, prominent zeigen
+      if(wrNow.learning||wrNow.geliefert_count!=null||wrNow.haupt_thema){
+        r+='\n### 🔴 Rückblick dieser Woche (gerade beantwortet)\n';
+        if(wrNow.geliefert_count!=null){
+          const big3Total=[wrNow.big3_1,wrNow.big3_2,wrNow.big3_3].filter(Boolean).length;
+          r+='- Geliefert: **'+wrNow.geliefert_count+'/'+big3Total+'** Wochenziele\n';
+        }
+        if(wrNow.haupt_thema)r+='- Hauptthema: **'+wrNow.haupt_thema+'** '+(wrNow.haupt_thema==='ausfuehrung'?'(nicht gemacht / abgelenkt / zu spät)':'(zu viel gewollt / falsch eingeschätzt)')+'\n';
+        if(wrNow.learning)r+='- Learning: "'+String(wrNow.learning).slice(0,200)+'"\n';
+        r+='\n**→ Nutze diesen Rückblick für die Planung. Bei "Scoping" als Hauptthema: weniger, schärfer. Bei "Ausführung": was hat konkret geblockt?**\n';
+      }
     } else r+='_Noch kein Wochenreset — wird bei Output automatisch erstellt._\n';
     r+='\n## Letzte 4 Wochen — was lief, was nicht\n';
     if(!wrs.length)r+='_Keine Historie._\n';
@@ -5991,7 +6005,14 @@ function openFokusCoach(scope){
   window._fkRole=defRole;
   const sc=FOKUS_SCOPES[scope];
   const rolePd=FOKUS_PROMPTS[defRole];
+  const fromWR=!!window._fkFromWochenreset;
   let h='<div class="mt">🎯 Fokus-Session</div>';
+  // Wochenreset-Fusion: Banner wenn wir direkt aus Phase A kommen
+  if(fromWR&&scope==='woche'){
+    h+='<div style="background:var(--green-bg);border:1px solid var(--green-bd);border-left:3px solid var(--green);border-radius:0 8px 8px 0;padding:10px 14px;margin-bottom:12px">'
+      +'<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--green);margin-bottom:3px">✓ Rückblick gespeichert</div>'
+      +'<div style="font-size:12px;color:var(--t2);line-height:1.5">Deine Retro-Antworten sind im Report unten eingebaut. Jetzt: Claude denkt mit und schlägt Wochenziele vor — du editierst vor dem Commit.</div></div>';
+  }
   // Scope-Pillen
   h+='<div style="display:flex;gap:6px;margin-bottom:14px">';
   Object.entries(FOKUS_SCOPES).forEach(([k,v])=>{
@@ -8925,6 +8946,7 @@ async function mdConfirm(){
 function cm(){
   if(_resetZwang)return; // Wochenrückblick muss abgeschlossen werden
   window._noOverlayClose=false;
+  window._fkFromWochenreset=false;
   const ovl=document.getElementById('ovl');
   if(ovl)ovl.classList.remove('open');
   if(_dataPending){_dataPending=false;_dataHash=_aufgabenHash(S.aufgaben);render();}
