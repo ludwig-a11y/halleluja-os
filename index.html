@@ -3018,6 +3018,70 @@ async function saveBlocker(wrId){
   if(text){const gfs=S.personen.filter(p=>p.stufe==='gf'&&p.slack_id).map(p=>p.slack_id);notify('blocker',{blocker:text,gf_slack_ids:gfs});}
   cm();render();
 }
+function openBig3Detail(wrId,slot){
+  const wr=S.wochenresets.find(r=>r.id===wrId);if(!wr)return;
+  const txt=wrItemName(wr,slot);if(!txt)return;
+  const doneF='big3_'+slot+'_done';
+  const done=!!wr[doneF];
+  const tzId=wr['big3_'+slot+'_tz_id'];
+  // Monatsziel + Farbe ermitteln
+  let msName=null,msCol='var(--t3)',zielName=null,zielId=wr.focus_ziel_id||null;
+  if(tzId){
+    for(const z of S.ziele){
+      const _tz=(z.teilziele||[]).find(t=>t.id===tzId);
+      if(_tz){msName=_tz.name;msCol=FARBEN[z.farbe||0].tc;zielName=z.name;zielId=z.id;break;}
+    }
+  }
+  // Aufgaben diesem Slot zugeordnet
+  const offen=S.aufgaben.filter(a=>a.wochenresetId===wrId&&a.big3Slot===slot&&a.status!=='erledigt'&&a.status!=='archiviert');
+  const erledigt=S.aufgaben.filter(a=>a.wochenresetId===wrId&&a.big3Slot===slot&&a.status==='erledigt');
+  let h='';
+  // Header
+  h+='<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:4px">';
+  h+='<div onclick="toggleBig3FromModal(\''+wrId+'\',\''+doneF+'\','+slot+')" style="width:22px;height:22px;border-radius:6px;flex-shrink:0;margin-top:2px;cursor:pointer;'+(done?'background:'+msCol+';border:1.5px solid '+msCol+';display:flex;align-items:center;justify-content:center':'border:1.5px solid var(--bd)')+'">'+(done?'<span style="color:#fff;font-size:12px;font-weight:800">✓</span>':'')+'</div>';
+  h+='<div style="flex:1;min-width:0">';
+  h+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);margin-bottom:3px">Wochenziel '+slot+' · KW '+wr.kw+'</div>';
+  h+='<div style="font-size:17px;font-weight:700;line-height:1.3;'+(done?'color:var(--t2);text-decoration:line-through':'color:var(--text)')+'">'+esc(txt)+'</div>';
+  h+='</div></div>';
+  // Monatsziel-Kontext
+  if(msName){
+    h+='<div style="margin:10px 0 14px;padding:9px 12px;background:var(--sf);border-left:3px solid '+msCol+';border-radius:0 8px 8px 0">';
+    h+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);margin-bottom:2px">zahlt ein auf</div>';
+    h+='<div style="font-size:12px;color:var(--text)"><span style="color:'+msCol+';font-weight:600">→ '+esc(msName)+'</span>'+(zielName?'<span style="color:var(--t3)"> · '+esc(zielName)+'</span>':'')+'</div>';
+    h+='</div>';
+  }
+  // Aufgaben-Liste
+  h+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t2);margin:14px 0 8px">Zugeordnete Aufgaben'+(offen.length?' ('+offen.length+')':'')+'</div>';
+  if(!offen.length&&!erledigt.length){
+    h+='<div style="padding:16px;background:var(--gray-bg);border:1px dashed var(--bd);border-radius:10px;text-align:center;font-size:12px;color:var(--t3);margin-bottom:12px">Noch keine Aufgaben zugeordnet.<br><span style="font-size:11px">Füge unten die erste hinzu.</span></div>';
+  }else{
+    offen.forEach(a=>{
+      const prio=a.prio||'';
+      const prioCol=prio==='P1'?'var(--red)':prio==='P2'?'var(--amber,#d97706)':'var(--t3)';
+      const isAktiv=a.status==='aktiv';
+      h+='<div onclick="cm();setTimeout(()=>openDetail(\''+a.id+'\'),50)" style="display:flex;align-items:center;gap:9px;padding:9px 11px;margin-bottom:5px;background:var(--gray-bg);border:1px solid var(--bd);border-radius:9px;cursor:pointer">';
+      h+='<div style="width:14px;height:14px;border-radius:4px;flex-shrink:0;border:1.5px solid '+(isAktiv?'var(--blue)':'var(--bd)')+';'+(isAktiv?'background:var(--blue-bg)':'')+'"></div>';
+      if(prio)h+='<span style="font-size:10px;font-weight:700;color:'+prioCol+';min-width:18px">'+prio+'</span>';
+      h+='<span style="flex:1;font-size:13px;color:'+(isAktiv?'var(--blue)':'var(--text)')+';overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(a.titel)+'</span>';
+      if(a.dl)h+='<span style="font-size:10px;color:var(--t3);flex-shrink:0">'+a.dl.slice(5)+'</span>';
+      h+='</div>';
+    });
+    if(erledigt.length){
+      h+='<div style="font-size:11px;color:var(--t3);padding:6px 0">✓ '+erledigt.length+' erledigt</div>';
+    }
+  }
+  // Primär-Action: + Aufgabe
+  const _pfArgs=(zielId?'zielId:\''+zielId+'\',':'')+(tzId?'teilzielId:\''+tzId+'\',':'')+'wochenresetId:\''+wrId+'\',big3Slot:'+slot+',dl:\''+TODAY+'\'';
+  h+='<button onclick="cm();setTimeout(()=>openNeu({'+_pfArgs+'}),60)" style="width:100%;margin-top:10px;font-size:13px;font-weight:700;padding:11px;border-radius:10px;border:none;background:var(--inv);color:var(--inv-t);cursor:pointer;font-family:inherit">+ Aufgabe hinzufügen</button>';
+  // Sekundär: zum Wochenreset
+  h+='<div class="mf"><button onclick="cm();openWochenreset()">✎ Wochenreset</button><button onclick="cm()">Schließen</button></div>';
+  document.getElementById('mb').innerHTML=h;
+  document.getElementById('ovl').classList.add('open');
+}
+async function toggleBig3FromModal(wrId,field,slot){
+  await toggleBig3(wrId,field);
+  setTimeout(()=>openBig3Detail(wrId,slot),60);
+}
 function blockerZuAufgabe(wrId,pid){
   const wr=S.wochenresets.find(r=>r.id===wrId);if(!wr)return;
   const p=person(wr.pid);
@@ -4216,12 +4280,11 @@ function rWoche(){
       if(tzId){
         for(const z of S.ziele){const _tz=(z.teilziele||[]).find(t=>t.id===tzId);if(_tz){_msName=_tz.name;_msColor=FARBEN[z.farbe||0].tc;break;}}
       }
-      const _neuCall="openNeu({"+(wr.focus_ziel_id?"zielId:'"+wr.focus_ziel_id+"',":"")+(tzId?"teilzielId:'"+tzId+"',":"")+"wochenresetId:'"+wr.id+"',big3Slot:"+n+",dl:'"+TODAY+"'})";
       out+='<div style="display:flex;align-items:flex-start;gap:10px;padding:9px 0">';
       // Checkbox: toggle done
       out+='<div onclick="toggleBig3(\''+wr.id+'\',\''+doneF+'\')" style="width:18px;height:18px;border-radius:5px;flex-shrink:0;margin-top:1px;cursor:pointer;'+(done?'background:'+f.tc+';border:1.5px solid '+f.tc+';display:flex;align-items:center;justify-content:center':'border:1.5px solid '+f.bd)+'">'+(done?'<span style="color:#fff;font-size:10px;font-weight:800">✓</span>':'')+'</div>';
-      // Text: click = add task
-      out+='<div onclick="'+_neuCall+'" style="flex:1;min-width:0;cursor:pointer" title="Aufgabe zu diesem Wochenziel anlegen">';
+      // Text: click = Übersichts-Modal öffnen
+      out+='<div onclick="openBig3Detail(\''+wr.id+'\','+n+')" style="flex:1;min-width:0;cursor:pointer" title="Übersicht öffnen">';
       out+='<span style="font-size:13px;font-weight:600;'+(done?'color:var(--t2);text-decoration:line-through':'color:var(--text)')+'">'+txt+'</span>';
       if(_msName)out+='<div style="font-size:10px;color:var(--t3);margin-top:2px"><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:'+_msColor+';margin-right:5px;vertical-align:middle"></span>→ Monatsziel: '+esc(_msName)+'</div>';
       out+='</div>';
