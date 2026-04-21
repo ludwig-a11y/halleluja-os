@@ -4875,9 +4875,10 @@ function rTag(){
     let _stk=0,_sd=new Date(TODAY+'T12:00:00');
     if(!_dbd[TODAY])_sd.setDate(_sd.getDate()-1);
     while(_dbd[localDate(_sd)]){_stk++;_sd.setDate(_sd.getDate()-1);}
-    out+='<div style="margin-bottom:16px">';
-    out+='<div style="font-size:15px;font-weight:700;color:var(--text)">'+wt+'</div>';
-    out+='<div style="font-size:12px;color:var(--t2)">'+tag+'. '+mon+(_stk>=2?' · <span style="color:var(--orange)">🔥 '+_stk+' Tage Streak</span>':'')+'</div>';
+    out+='<div style="display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:16px">';
+    out+='<div style="min-width:0"><div style="font-size:15px;font-weight:700;color:var(--text)">'+wt+'</div>';
+    out+='<div style="font-size:12px;color:var(--t2)">'+tag+'. '+mon+(_stk>=2?' · <span style="color:var(--orange)">🔥 '+_stk+' Tage Streak</span>':'')+'</div></div>';
+    out+='<div style="flex-shrink:0">'+momentumRingHtml(aP)+'</div>';
     out+='</div>';
   }
 
