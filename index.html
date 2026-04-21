@@ -385,6 +385,46 @@ function tzLive(tzId){
   for(const z of S.ziele){for(const t of (z.teilziele||[])){if(String(t.id)===String(tzId))return !t.erledigt&&(t.status||'aktiv')==='aktiv';}}
   return false;
 }
+// Existiert-Check (auch wenn erledigt/archiviert) — für Orphan-Erkennung
+function tzExists(tzId){
+  if(!tzId)return false;
+  for(const z of S.ziele){for(const t of (z.teilziele||[])){if(String(t.id)===String(tzId))return true;}}
+  return false;
+}
+// Einheitliche Slot-Membership: eine Aufgabe gehört zu einem Wochenziel-Slot, wenn sie
+// explizit zugeordnet ist (wrId+slot) ODER ihr Parent explizit zugeordnet ist.
+// Wird in rTag UND rWoche verwendet — damit beide Ansichten garantiert konsistent rendern.
+function slotMembership(wr,slotN){
+  const direct=a=>a.wochenresetId===wr.id&&a.big3Slot===slotN;
+  const parentIds=new Set(S.aufgaben.filter(direct).map(a=>a.id));
+  const belongs=a=>direct(a)||(a.parentId&&parentIds.has(a.parentId));
+  return {direct,belongs,parentIds};
+}
+// Orphan-Scrubber: räumt Daten-Leichen auf (nach loadData). Nur in-memory + Supabase-Patch
+// für hartes Dangling, das FK-Errors oder falsche UI verursacht.
+async function scrubOrphans(){
+  const wrIds=new Set(S.wochenresets.map(w=>w.id));
+  const aufgabenIds=new Set(S.aufgaben.map(a=>a.id));
+  let patched=0;
+  // 1) wochenresets.big3_N_tz_id → null, wenn teilziel nicht mehr existiert
+  for(const w of S.wochenresets){
+    const patch={};
+    for(const n of [1,2,3]){
+      const tzId=w['big3_'+n+'_tz_id'];
+      if(tzId&&!tzExists(tzId)){patch['big3_'+n+'_tz_id']=null;w['big3_'+n+'_tz_id']=null;}
+    }
+    if(Object.keys(patch).length){try{await dbPatch('wochenresets',w.id,patch);patched++;}catch(e){}}
+  }
+  // 2) aufgaben: dangling teilziel_id / wochenreset_id / parent_id → null setzen (in-memory + DB)
+  for(const a of S.aufgaben){
+    const patch={};
+    if(a.teilzielId&&!tzExists(a.teilzielId)){patch.teilziel_id=null;a.teilzielId=null;}
+    if(a.wochenresetId&&!wrIds.has(a.wochenresetId)){patch.wochenreset_id=null;patch.big3_slot=null;a.wochenresetId=null;a.big3Slot=null;}
+    if(a.parentId&&!aufgabenIds.has(a.parentId)){patch.parent_id=null;a.parentId=null;}
+    if(Object.keys(patch).length){try{await dbPatch('aufgaben',a.id,patch);patched++;}catch(e){}}
+  }
+  if(patched)console.log('[scrubOrphans] '+patched+' Datensätze bereinigt');
+}
 function meilensteinOptgroups(pid,selTzId='',ownOnly=false){
   const sichtbar=S.ziele.filter(z=>(!z.vertraulich||isGF())&&z.status!=='vorschlag');
   const withTz=sichtbar.map(z=>({z,tz:(z.teilziele||[]).filter(t=>!t.erledigt&&(t.status||'aktiv')==='aktiv')})).filter(x=>x.tz.length);
@@ -4538,11 +4578,9 @@ function rWoche(){
       out+='</div>';
       // Aufgaben die zu diesem Big-3 gehören — explizite Zuordnung via wochenresetId + big3Slot
       if(true){
-        // Slot-Membership: nur explizit (wrId+slot) + Parent-Inheritance für Unteraufgaben.
-        // Kein teilziel-Fallback: mehrere Wochenziele teilen oft dasselbe Monatsziel → Kollision.
-        const directInSlot=a=>a.wochenresetId===wr.id&&a.big3Slot===n;
-        const parentIdsInSlot=new Set(S.aufgaben.filter(directInSlot).map(a=>a.id));
-        const belongsToSlot=a=>directInSlot(a)||(a.parentId&&parentIdsInSlot.has(a.parentId));
+        // Slot-Membership via zentralem Helper (identisch in rTag + rWoche)
+        const _sm=slotMembership(wr,n);
+        const belongsToSlot=_sm.belongs;
         const tzAufgaben=myA.filter(a=>belongsToSlot(a)&&a.status!=='erledigt');
         const tzErledigt=myA.filter(a=>belongsToSlot(a)&&a.status==='erledigt');
         // Delegationen: ich habe rausgegeben (erstelltVon=me), jemand anderes ist pid (inkl. Unteraufgaben)
@@ -5198,12 +5236,10 @@ function rTag(){
       const txt=wrItemName(wrAktuell,n);if(!txt)return;
       const done=wrAktuell[doneF];
       const tzId=wrAktuell['big3_'+n+'_tz_id']||null;
-      // Slot-Membership: nur explizit (wrId+slot) + Parent-Inheritance für Unteraufgaben.
-      // Kein teilziel-Fallback: mehrere Wochenziele teilen oft dasselbe Monatsziel.
+      // Slot-Membership via zentralem Helper (identisch in rTag + rWoche)
       const big3Txt=(wrAktuell['big3_'+n]||'').toLowerCase().trim();
-      const _direct=a=>a.wochenresetId===wrAktuell.id&&a.big3Slot===n;
-      const _parentIds=new Set(S.aufgaben.filter(_direct).map(a=>a.id));
-      const _belongs=a=>_direct(a)||(a.parentId&&_parentIds.has(a.parentId));
+      const _sm=slotMembership(wrAktuell,n);
+      const _belongs=_sm.belongs;
       // Eigene offene Aufgaben im Slot (für "Los"-Button + Liste)
       const slotTasks=S.aufgaben.filter(a=>a.pid===aP&&_belongs(a)&&a.status!=='erledigt'&&a.status!=='archiviert');
       // Delegationen: von mir rausgegeben, andere pid, noch offen
@@ -8185,9 +8221,13 @@ function selPrioBtn(btn,pr){
   }
 }
 async function saveNeu(){
+  // Dedup-Guard: Doppel-Klicks / Doppel-Enter auf Speichern verhindern Duplikate
+  if(window._savingNeu)return;
   const t=document.getElementById('nt').value.trim();if(!t)return;
   // Priorität ist Pflicht — keine „kein Prio"-Option mehr
   if(!_selPrio){toast('⚠️ Bitte Priorität wählen (P1/P2/P3)');return;}
+  window._savingNeu=true;
+  try{
   // Ersteller darf immer anlegen — Kapazität managed der Empfänger in seiner Inbox
   const tzSel=document.getElementById('ntz');
   const teilzielId=tzSel?tzSel.value||null:null;
@@ -8246,6 +8286,7 @@ async function saveNeu(){
     const wem=rec.pid!==aP?(person(rec.pid)?.name.split(' ')[0]||''):'dir';
     toast('✓ Aufgabe aus '+typ+' erstellt'+(rec.pid!==aP?' → Inbox von '+wem:''));
   }
+  }finally{window._savingNeu=false;}
 }
 
 function quickAssignZiel(id){
@@ -10259,6 +10300,8 @@ window.addEventListener('keydown',e=>{
       loadData(),
       new Promise(r=>setTimeout(r,6000))
     ]);
+    // Orphan-Scrubber im Hintergrund — nie das UI blockieren
+    scrubOrphans().catch(e=>console.warn('scrubOrphans:',e));
   }catch(e){console.warn('loadData:',e);}
   if(!S.personen.length){
     document.getElementById('login-screen').innerHTML='<div style="text-align:center;padding:40px"><div style="font-size:13px;color:var(--orange);margin-bottom:12px">Keine Verbindung zu Supabase.</div><button onclick="location.reload()" style="font-size:13px;padding:8px 18px;border-radius:8px;border:1px solid var(--bd);background:var(--inv);color:var(--inv-t);cursor:pointer;font-family:inherit">Neu laden</button></div>';
@@ -10319,7 +10362,22 @@ window.addEventListener('keydown',e=>{
 <script>
 if('serviceWorker' in navigator){
   window.addEventListener('load',()=>{
-    navigator.serviceWorker.register('./sw.js').catch(()=>{});
+    // updateViaCache:'none' → SW-Datei nie aus HTTP-Cache, immer frisch prüfen
+    navigator.serviceWorker.register('./sw.js',{updateViaCache:'none'}).then(reg=>{
+      // alle 60s prüfen ob neue Version deployed wurde
+      setInterval(()=>reg.update().catch(()=>{}),60000);
+      // Neue Version wird installiert → warten bis aktiv, dann Reload-Toast
+      reg.addEventListener('updatefound',()=>{
+        const nw=reg.installing;if(!nw)return;
+        nw.addEventListener('statechange',()=>{
+          if(nw.state==='installed'&&navigator.serviceWorker.controller){
+            // Non-blocking banner: sanft drauf hinweisen, Reload automatisch
+            try{if(typeof toast==='function')toast('🔄 Neue Version verfügbar — Seite wird neu geladen …');}catch(e){}
+            setTimeout(()=>location.reload(),1500);
+          }
+        });
+      });
+    }).catch(()=>{});
   });
 }
 </script>
