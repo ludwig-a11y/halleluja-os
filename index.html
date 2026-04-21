@@ -7443,6 +7443,20 @@ function openNeu(pf={}){
     +'<div class="fl"><label>Priorität</label><div style="display:flex;gap:6px;margin-top:2px">'
     +['P1','P2','P3'].map(pr=>{const bg=pr==='P1'?'var(--red-bg)':pr==='P2'?'var(--blue-bg)':'var(--gray-bg)';const tc=pr==='P1'?'var(--red)':pr==='P2'?'var(--blue)':'var(--t2)';return'<button id="pbp-'+pr+'" onclick="selPrioBtn(this,\''+pr+'\')" style="font-size:12px;padding:4px 11px;border-radius:8px;border:1px solid '+tc+';background:'+bg+';color:'+tc+';cursor:pointer;font-family:inherit">'+pr+'</button>';}).join('')
     +'</div></div>'
+    +((function(){
+      // Wochenziel-Binding-Banner: wenn Aufgabe aus Wochenziel-Card angelegt wird
+      if(!pf.wochenresetId||!pf.big3Slot)return'';
+      const _wrP=S.wochenresets.find(r=>r.id===pf.wochenresetId);if(!_wrP)return'';
+      const _wzTxt=_wrP['big3_'+pf.big3Slot]||'';if(!_wzTxt)return'';
+      const _wzTzP=_wrP['big3_'+pf.big3Slot+'_tz_id'];
+      let _wzCol='var(--blue)';
+      if(_wzTzP)for(const z of S.ziele){const _t=(z.teilziele||[]).find(t=>t.id===_wzTzP);if(_t){_wzCol=FARBEN[z.farbe||0].tc;break;}}
+      return '<div style="background:var(--blue-bg);border:1px solid var(--blue-bd);border-left:4px solid '+_wzCol+';border-radius:0 10px 10px 0;padding:10px 12px;margin-bottom:12px">'
+        +'<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--blue);margin-bottom:3px">→ Wochenziel '+pf.big3Slot+' · KW '+_wrP.kw+'</div>'
+        +'<div style="font-size:13px;font-weight:600;color:var(--text)">'+esc(_wzTxt)+'</div>'
+        +'<div style="font-size:10px;color:var(--t3);margin-top:3px">Diese Aufgabe zahlt direkt auf dieses Wochenziel ein.</div>'
+        +'</div>';
+    })())
     +'<div class="fl"><label>Monatsziel <span style="font-weight:400;color:var(--t2)">(für Paddel-Punkt)</span></label>'+msPickerWithAdd('ntz',defaultPid,autoTzId,'updateNeuPaddelHint();const o=this.options[this.selectedIndex];const d=o?.dataset?.datum;const dl=document.getElementById(\'ndl\');if(d&&dl)dl.value=d;',pf.zielId||null)+'</div>'
     +'<div id="neu-paddel-hint" style="font-size:11px;color:var(--t2);background:var(--gray-bg);border:1px dashed var(--bd);border-radius:8px;padding:8px 10px;margin-bottom:10px;line-height:1.4">⚠️ <b>Kein Monatsziel gewählt</b> → kein Paddel-Punkt beim Erledigen. Wähle oben ein Monatsziel, damit diese Aufgabe auf ein Ziel einzahlt.</div>'
     +'<div class="mf" style="margin-bottom:8px"><button class="btn btn-gr" onclick="cm()">Abbrechen</button><button class="btn btn-dk" onclick="saveNeu()">Speichern</button></div>'
