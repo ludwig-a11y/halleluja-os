@@ -3020,7 +3020,8 @@ async function saveBlocker(wrId){
 }
 function openBig3Detail(wrId,slot){
   const wr=S.wochenresets.find(r=>r.id===wrId);if(!wr)return;
-  const txt=wrItemName(wr,slot);if(!txt)return;
+  const txt=wrItemName(wr,slot)||'';
+  const isEmpty=!txt;
   const doneF='big3_'+slot+'_done';
   const done=!!wr[doneF];
   const tzId=wr['big3_'+slot+'_tz_id'];
@@ -3035,21 +3036,45 @@ function openBig3Detail(wrId,slot){
   // Aufgaben diesem Slot zugeordnet
   const offen=S.aufgaben.filter(a=>a.wochenresetId===wrId&&a.big3Slot===slot&&a.status!=='erledigt'&&a.status!=='archiviert');
   const erledigt=S.aufgaben.filter(a=>a.wochenresetId===wrId&&a.big3Slot===slot&&a.status==='erledigt');
+  // Leere Slots dieser Woche (für Quick-Add)
+  const emptySlots=[1,2,3].filter(n=>n!==slot&&!wrItemName(wr,n));
   let h='';
   // Header
   h+='<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:4px">';
-  h+='<div onclick="toggleBig3FromModal(\''+wrId+'\',\''+doneF+'\','+slot+')" style="width:22px;height:22px;border-radius:6px;flex-shrink:0;margin-top:2px;cursor:pointer;'+(done?'background:'+msCol+';border:1.5px solid '+msCol+';display:flex;align-items:center;justify-content:center':'border:1.5px solid var(--bd)')+'">'+(done?'<span style="color:#fff;font-size:12px;font-weight:800">✓</span>':'')+'</div>';
+  if(!isEmpty)h+='<div onclick="toggleBig3FromModal(\''+wrId+'\',\''+doneF+'\','+slot+')" style="width:22px;height:22px;border-radius:6px;flex-shrink:0;margin-top:2px;cursor:pointer;'+(done?'background:'+msCol+';border:1.5px solid '+msCol+';display:flex;align-items:center;justify-content:center':'border:1.5px solid var(--bd)')+'">'+(done?'<span style="color:#fff;font-size:12px;font-weight:800">✓</span>':'')+'</div>';
   h+='<div style="flex:1;min-width:0">';
-  h+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);margin-bottom:3px">Wochenziel '+slot+' · KW '+wr.kw+'</div>';
-  h+='<div style="font-size:17px;font-weight:700;line-height:1.3;'+(done?'color:var(--t2);text-decoration:line-through':'color:var(--text)')+'">'+esc(txt)+'</div>';
+  h+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);margin-bottom:3px">Wochenziel '+slot+' · KW '+wr.kw+(isEmpty?' · <span style="color:var(--blue)">NEU</span>':'')+'</div>';
+  // Titel — Anzeige + Edit-Mode inline
+  h+='<div id="b3-title-view" style="display:'+(isEmpty?'none':'flex')+';align-items:center;gap:8px">';
+  h+='<div style="font-size:17px;font-weight:700;line-height:1.3;flex:1;'+(done?'color:var(--t2);text-decoration:line-through':'color:var(--text)')+'">'+esc(txt)+'</div>';
+  h+='<button onclick="b3EditTitle(\''+wrId+'\','+slot+')" style="font-size:11px;padding:4px 8px;border-radius:6px;border:1px solid var(--bd);background:transparent;color:var(--t3);cursor:pointer;font-family:inherit" title="Titel bearbeiten">✎</button>';
+  h+='</div>';
+  h+='<div id="b3-title-edit" style="display:'+(isEmpty?'flex':'none')+';gap:6px;align-items:center">';
+  h+='<input id="b3-title-input" value="'+esc(txt)+'" placeholder="Wochenziel-Titel…" style="flex:1;font-size:15px;font-weight:600;padding:7px 10px;border:1.5px solid var(--inv);border-radius:8px;background:var(--sf);color:var(--text);font-family:inherit;outline:none" onkeydown="if(event.key===\'Enter\'){event.preventDefault();b3SaveTitle(\''+wrId+'\','+slot+')}else if(event.key===\'Escape\'){b3CancelTitle()}">';
+  h+='<button onclick="b3SaveTitle(\''+wrId+'\','+slot+')" style="font-size:12px;padding:7px 12px;border-radius:7px;border:none;background:var(--inv);color:var(--inv-t);cursor:pointer;font-family:inherit;font-weight:700">✓</button>';
+  if(!isEmpty)h+='<button onclick="b3CancelTitle()" style="font-size:12px;padding:7px 10px;border-radius:7px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);cursor:pointer;font-family:inherit">×</button>';
+  h+='</div>';
   h+='</div></div>';
-  // Monatsziel-Kontext
+  // Monatsziel-Kontext (View + Edit)
+  h+='<div id="b3-ms-wrap" style="margin:10px 0 14px">';
+  h+='<div id="b3-ms-view" style="padding:9px 12px;background:var(--sf);border-left:3px solid '+msCol+';border-radius:0 8px 8px 0;display:flex;align-items:flex-start;gap:8px">';
+  h+='<div style="flex:1">';
+  h+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);margin-bottom:2px">zahlt ein auf</div>';
   if(msName){
-    h+='<div style="margin:10px 0 14px;padding:9px 12px;background:var(--sf);border-left:3px solid '+msCol+';border-radius:0 8px 8px 0">';
-    h+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);margin-bottom:2px">zahlt ein auf</div>';
     h+='<div style="font-size:12px;color:var(--text)"><span style="color:'+msCol+';font-weight:600">→ '+esc(msName)+'</span>'+(zielName?'<span style="color:var(--t3)"> · '+esc(zielName)+'</span>':'')+'</div>';
-    h+='</div>';
+  }else{
+    h+='<div style="font-size:12px;color:var(--t3);font-style:italic">Noch kein Monatsziel verknüpft</div>';
   }
+  h+='</div>';
+  h+='<button onclick="b3EditMs()" style="font-size:11px;padding:4px 8px;border-radius:6px;border:1px solid var(--bd);background:transparent;color:var(--t3);cursor:pointer;font-family:inherit;flex-shrink:0" title="Monatsziel ändern">✎</button>';
+  h+='</div>';
+  h+='<div id="b3-ms-edit" style="display:none;gap:6px;align-items:center;padding:9px 12px;background:var(--sf);border-left:3px solid var(--inv);border-radius:0 8px 8px 0">';
+  h+='<span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);flex-shrink:0">Monatsziel</span>';
+  h+='<select id="b3-ms-select" style="flex:1;font-size:12px;padding:6px 9px;border-radius:7px;border:1px solid var(--bd);background:var(--sf);color:var(--text);font-family:inherit;cursor:pointer">'+meilensteinOptgroups(wr.pid||aP,tzId||'',true)+'</select>';
+  h+='<button onclick="b3SaveMs(\''+wrId+'\','+slot+')" style="font-size:11px;padding:6px 10px;border-radius:7px;border:none;background:var(--inv);color:var(--inv-t);cursor:pointer;font-family:inherit;font-weight:700">✓</button>';
+  h+='<button onclick="b3CancelMs()" style="font-size:11px;padding:6px 9px;border-radius:7px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);cursor:pointer;font-family:inherit">×</button>';
+  h+='</div>';
+  h+='</div>';
   // Aufgaben-Liste
   h+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t2);margin:14px 0 8px">Zugeordnete Aufgaben'+(offen.length?' ('+offen.length+')':'')+'</div>';
   if(!offen.length&&!erledigt.length){
@@ -3070,9 +3095,22 @@ function openBig3Detail(wrId,slot){
       h+='<div style="font-size:11px;color:var(--t3);padding:6px 0">✓ '+erledigt.length+' erledigt</div>';
     }
   }
-  // Primär-Action: + Aufgabe
+  // Primär-Action: + Aufgabe (nur wenn Slot schon befüllt)
   const _pfArgs=(zielId?'zielId:\''+zielId+'\',':'')+(tzId?'teilzielId:\''+tzId+'\',':'')+'wochenresetId:\''+wrId+'\',big3Slot:'+slot+',dl:\''+TODAY+'\'';
-  h+='<button onclick="cm();setTimeout(()=>openNeu({'+_pfArgs+'}),60)" style="width:100%;margin-top:10px;font-size:13px;font-weight:700;padding:11px;border-radius:10px;border:none;background:var(--inv);color:var(--inv-t);cursor:pointer;font-family:inherit">+ Aufgabe hinzufügen</button>';
+  if(!isEmpty){
+    h+='<button onclick="cm();setTimeout(()=>openNeu({'+_pfArgs+'}),60)" style="width:100%;margin-top:10px;font-size:13px;font-weight:700;padding:11px;border-radius:10px;border:none;background:var(--inv);color:var(--inv-t);cursor:pointer;font-family:inherit">+ Aufgabe hinzufügen</button>';
+  }else{
+    h+='<div style="margin-top:10px;padding:10px 12px;background:var(--blue-bg);border:1px dashed var(--blue-bd);border-radius:10px;font-size:12px;color:var(--blue);text-align:center">Gib oben einen Titel ein und speichere, um Aufgaben hinzuzufügen.</div>';
+  }
+  // Leere Slots: "+ Weiteres Wochenziel anlegen"
+  if(emptySlots.length&&!isEmpty){
+    h+='<div style="margin-top:12px;padding-top:10px;border-top:1px dashed var(--bd)">';
+    h+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);margin-bottom:6px">Weiteres Wochenziel (KW '+wr.kw+')</div>';
+    emptySlots.forEach(n=>{
+      h+='<button onclick="openBig3Detail(\''+wrId+'\','+n+')" style="display:block;width:100%;margin-bottom:5px;font-size:12px;padding:9px 11px;border-radius:8px;border:1px dashed var(--bd);background:var(--sf);color:var(--t2);cursor:pointer;font-family:inherit;text-align:left">+ Wochenziel '+n+' anlegen</button>';
+    });
+    h+='</div>';
+  }
   // Sekundär: zum Wochenreset + Schließen (kompakt, rechtsbündig)
   h+='<div style="display:flex;gap:6px;margin-top:10px;justify-content:flex-end">';
   h+='<button onclick="cm();openWochenreset()" style="font-size:11px;padding:6px 11px;border-radius:7px;border:1px solid var(--bd);background:transparent;color:var(--t2);cursor:pointer;font-family:inherit">✎ Wochenreset</button>';
@@ -3080,6 +3118,61 @@ function openBig3Detail(wrId,slot){
   h+='</div>';
   document.getElementById('mb').innerHTML=h;
   document.getElementById('ovl').classList.add('open');
+  // Autofocus bei leerem Slot
+  if(isEmpty)setTimeout(()=>document.getElementById('b3-title-input')?.focus(),80);
+}
+// Inline-Edit Helpers für openBig3Detail
+function b3EditTitle(wrId,slot){
+  document.getElementById('b3-title-view').style.display='none';
+  const e=document.getElementById('b3-title-edit');e.style.display='flex';
+  const i=document.getElementById('b3-title-input');if(i){i.focus();i.select();}
+}
+function b3CancelTitle(){
+  document.getElementById('b3-title-view').style.display='flex';
+  document.getElementById('b3-title-edit').style.display='none';
+}
+async function b3SaveTitle(wrId,slot){
+  const input=document.getElementById('b3-title-input');if(!input)return;
+  const v=input.value.trim();
+  if(!v){toast('Titel darf nicht leer sein','var(--red)');return;}
+  const wr=S.wochenresets.find(r=>r.id===wrId);if(!wr)return;
+  const field='big3_'+slot;
+  wr[field]=v;
+  const patch={};patch[field]=v;
+  const ok=await dbPatch('wochenresets',wrId,patch);
+  if(!ok){toast('⚠️ Speichern fehlgeschlagen','var(--red)');return;}
+  toast('✓ Gespeichert');
+  openBig3Detail(wrId,slot);render();
+}
+function b3EditMs(){
+  document.getElementById('b3-ms-view').style.display='none';
+  document.getElementById('b3-ms-edit').style.display='flex';
+}
+function b3CancelMs(){
+  document.getElementById('b3-ms-view').style.display='flex';
+  document.getElementById('b3-ms-edit').style.display='none';
+}
+async function b3SaveMs(wrId,slot){
+  const sel=document.getElementById('b3-ms-select');if(!sel)return;
+  const newTzId=sel.value||null;
+  const wr=S.wochenresets.find(r=>r.id===wrId);if(!wr)return;
+  const tzField='big3_'+slot+'_tz_id';
+  // Fokus-Ziel: aus neuem Monatsziel ableiten
+  let newZielId=wr.focus_ziel_id||null;
+  if(newTzId){for(const z of S.ziele){if((z.teilziele||[]).some(t=>t.id===newTzId)){newZielId=z.id;break;}}}
+  wr[tzField]=newTzId;
+  if(newZielId)wr.focus_ziel_id=newZielId;
+  const patch={};patch[tzField]=newTzId;if(newZielId)patch.focus_ziel_id=newZielId;
+  const ok=await dbPatch('wochenresets',wrId,patch);
+  if(!ok){toast('⚠️ Speichern fehlgeschlagen','var(--red)');return;}
+  // Kaskade: alle Tasks dieses Slots bekommen neue teilziel_id + ziel_id
+  const slotTasks=S.aufgaben.filter(a=>a.wochenresetId===wrId&&a.big3Slot===slot);
+  for(const a of slotTasks){
+    a.teilzielId=newTzId;if(newZielId)a.zielId=newZielId;
+    await dbPatch('aufgaben',a.id,{teilziel_id:newTzId,ziel_id:newZielId});
+  }
+  toast('✓ Monatsziel aktualisiert');
+  openBig3Detail(wrId,slot);render();
 }
 async function toggleBig3FromModal(wrId,field,slot){
   await toggleBig3(wrId,field);
