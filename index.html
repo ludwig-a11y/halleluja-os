@@ -3317,7 +3317,9 @@ function openMonatszielDetail(tzId){
   h+='<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:4px">';
   h+='<div style="width:4px;align-self:stretch;background:'+msCol+';border-radius:2px;flex-shrink:0"></div>';
   h+='<div style="flex:1;min-width:0">';
-  h+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);margin-bottom:3px">Monatsziel'+(tz.datum?' · bis '+tzDatum(tz):'')+(isFäll?' · <span style="color:var(--orange)">überfällig</span>':'')+'</div>';
+  const _monate=['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
+  const _tzDatumStr=tz.datum?(_monate[parseInt(tz.datum.slice(5,7),10)-1]+' '+tz.datum.slice(2,4)):'';
+  h+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);margin-bottom:3px">Monatsziel'+(tz.datum?' · bis '+_tzDatumStr:'')+(isFäll?' · <span style="color:var(--orange)">überfällig</span>':'')+'</div>';
   h+='<div style="font-size:17px;font-weight:700;line-height:1.3;'+(tz.erledigt?'color:var(--t2);text-decoration:line-through':'color:var(--text)')+'">'+esc(tz.name)+'</div>';
   h+='</div></div>';
   // Ziel-Kontext
