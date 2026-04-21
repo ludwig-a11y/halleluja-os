@@ -4216,9 +4216,12 @@ function rWoche(){
       if(tzId){
         for(const z of S.ziele){const _tz=(z.teilziele||[]).find(t=>t.id===tzId);if(_tz){_msName=_tz.name;_msColor=FARBEN[z.farbe||0].tc;break;}}
       }
-      out+='<div onclick="toggleBig3(\''+wr.id+'\',\''+doneF+'\')" style="display:flex;align-items:flex-start;gap:10px;padding:9px 0;cursor:pointer">';
-      out+='<div style="width:18px;height:18px;border-radius:5px;flex-shrink:0;margin-top:1px;'+(done?'background:'+f.tc+';border:1.5px solid '+f.tc+';display:flex;align-items:center;justify-content:center':'border:1.5px solid '+f.bd)+'">'+(done?'<span style="color:#fff;font-size:10px;font-weight:800">✓</span>':'')+'</div>';
-      out+='<div style="flex:1;min-width:0">';
+      const _neuCall="openNeu({"+(wr.focus_ziel_id?"zielId:'"+wr.focus_ziel_id+"',":"")+(tzId?"teilzielId:'"+tzId+"',":"")+"wochenresetId:'"+wr.id+"',big3Slot:"+n+",dl:'"+TODAY+"'})";
+      out+='<div style="display:flex;align-items:flex-start;gap:10px;padding:9px 0">';
+      // Checkbox: toggle done
+      out+='<div onclick="toggleBig3(\''+wr.id+'\',\''+doneF+'\')" style="width:18px;height:18px;border-radius:5px;flex-shrink:0;margin-top:1px;cursor:pointer;'+(done?'background:'+f.tc+';border:1.5px solid '+f.tc+';display:flex;align-items:center;justify-content:center':'border:1.5px solid '+f.bd)+'">'+(done?'<span style="color:#fff;font-size:10px;font-weight:800">✓</span>':'')+'</div>';
+      // Text: click = add task
+      out+='<div onclick="'+_neuCall+'" style="flex:1;min-width:0;cursor:pointer" title="Aufgabe zu diesem Wochenziel anlegen">';
       out+='<span style="font-size:13px;font-weight:600;'+(done?'color:var(--t2);text-decoration:line-through':'color:var(--text)')+'">'+txt+'</span>';
       if(_msName)out+='<div style="font-size:10px;color:var(--t3);margin-top:2px"><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:'+_msColor+';margin-right:5px;vertical-align:middle"></span>→ Monatsziel: '+esc(_msName)+'</div>';
       out+='</div>';
