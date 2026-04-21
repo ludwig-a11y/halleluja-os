@@ -6157,158 +6157,179 @@ async function delAufgabe(id){
 }
 
 // ─── MONAT-TAB ───────────────────────────────────────────────────
+// ─── Monat-Tab: Ovens-Mittelweg — ein Monatsziel im Fokus, Liegst du richtig? ───
+function setMonatFokus(tzId){window._monatFokusTzId=tzId||null;rMonat();}
 function rMonat(){
   const jetzt=new Date();
   const monatName=['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'][jetzt.getMonth()];
-  const wr=dieseWocheReset(aP);
   const monate=['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
-  // ── Alle eigenen Monatsziele (aus allen Zielen) ──
+  const wr=dieseWocheReset(aP);
+  const currKW=getKW();
+
+  // Alle eigenen Monatsziele
   const alleTZ=S.ziele.flatMap(z=>{
     const f=FARBEN[z.farbe||0];
     return(z.teilziele||[])
       .filter(t=>String(t.verantwortlichId)===String(aP)&&(!t.vertraulich||isGF()))
       .map(t=>({...t,ziel:z,f}));
   });
-  // Aktueller Monatsziel: WR → erster aktiver → erster mit Datum
+
+  // Fokus-Monatsziel wählen: User-Override → WR-big3 → überfällig → nächste Deadline → erstes aktives
   const wrTzIds=wr?[wr.big3_1_tz_id,wr.big3_2_tz_id,wr.big3_3_tz_id].filter(Boolean):[];
-  const aktiverTZ=alleTZ.find(t=>wrTzIds.includes(t.id)&&!t.erledigt)
+  const overrideId=window._monatFokusTzId;
+  const fokusTZ=
+    (overrideId&&alleTZ.find(t=>t.id===overrideId))
+    ||alleTZ.find(t=>wrTzIds.includes(t.id)&&!t.erledigt&&!t.review_done)
+    ||alleTZ.filter(t=>!t.erledigt&&!t.review_done&&t.datum&&t.datum<=TODAY).sort((a,b)=>a.datum.localeCompare(b.datum))[0]
     ||alleTZ.filter(t=>!t.erledigt&&!t.review_done&&t.datum).sort((a,b)=>a.datum.localeCompare(b.datum))[0]
     ||alleTZ.filter(t=>!t.erledigt).sort((a,b)=>(a.datum||'9').localeCompare(b.datum||'9'))[0];
-  // Fällige Reviews
-  const fällig=alleTZ.filter(t=>!t.review_done&&t.datum&&t.datum<=TODAY);
-  // Aktive (nicht erledigt, nach Datum sortiert)
-  const aktive=alleTZ.filter(t=>!t.erledigt).sort((a,b)=>(a.datum||'9999').localeCompare(b.datum||'9999'));
-  // Abgeschlossen + reviewed
-  const reviewed=alleTZ.filter(t=>t.review_done).sort((a,b)=>(b.review_at||'').localeCompare(a.review_at||''));
-  // Helper: Progress für Monatsziel
-  const tzProg=tz=>{
-    const ges=S.aufgaben.filter(a=>a.teilzielId===tz.id).length;
-    const erl=S.aufgaben.filter(a=>a.teilzielId===tz.id&&a.status==='erledigt').length;
-    return{ges,erl,pct:ges>0?Math.round(erl/ges*100):0};
-  };
+
   const tzDatum=tz=>tz.datum?(monate[parseInt(tz.datum.slice(5,7),10)-1]+' '+tz.datum.slice(2,4)):'';
-  const tzFällig=tz=>tz.datum&&tz.datum<TODAY;
+  const daysUntil=(d)=>{if(!d)return null;const diff=Math.ceil((new Date(d+'T00:00:00').getTime()-new Date(TODAY+'T00:00:00').getTime())/86400000);return diff;};
+  const fellig=tz=>tz.datum&&tz.datum<=TODAY&&!tz.review_done;
+
+  // Wochenresets dieses Users, die min. einen Slot an das Fokus-MS gebunden haben
+  const wrsForTZ=(tzId)=>S.wochenresets
+    .filter(r=>String(r.pid)===String(aP))
+    .filter(r=>[r.big3_1_tz_id,r.big3_2_tz_id,r.big3_3_tz_id].some(id=>id===tzId))
+    .sort((a,b)=>(b.jahr*100+b.kw)-(a.jahr*100+a.kw));
+
   let out='';
-  // ── Header ──
-  out+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:22px">'
-    +'<div><div style="font-size:16px;font-weight:700">Monatsziele</div>'
+
+  // ── Header (minimal) ──
+  out+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">'
+    +'<div><div style="font-size:16px;font-weight:700">Monats-Check-in</div>'
     +'<div style="font-size:11px;color:var(--t3)">'+monatName+' '+jetzt.getFullYear()+'</div></div>'
-    +'<div style="display:flex;gap:8px">'
-    +'<button onclick="openFokusCoach(\'monat\')" class="btn" style="font-size:12px;border:1px solid var(--bd);background:var(--sf);color:var(--t2)">🎯 Fokus</button>'
-    +'<button onclick="openFokusCoach(\'monat_pivot\')" class="btn" style="font-size:12px;border:1px solid var(--amber-bd);background:var(--amber-bg);color:var(--amber)" title="Taktischer Pivot — aktiven MS hinterfragen">🔄 Pivot</button>'
     +'<button onclick="openAddMonatszielFromMonat()" class="btn btn-dk" style="font-size:12px">+ Monatsziel</button>'
-    +'</div>'
     +'</div>';
-  // ── Fällige Reviews — Alert ──
-  if(fällig.length){
-    out+='<div style="background:var(--amber-bg);border:1.5px solid var(--amber-bd);border-radius:12px;padding:12px 16px;margin-bottom:20px">';
-    out+='<div style="font-size:11px;font-weight:700;color:var(--amber);margin-bottom:8px">⏰ '+fällig.length+' Review'+(fällig.length>1?'s':'')+' ausstehend</div>';
-    fällig.forEach(tz=>{
-      out+='<div style="display:flex;align-items:center;gap:10px;padding:4px 0">'
-        +'<div style="flex:1;font-size:13px;font-weight:500">'+esc(tz.name)+'</div>'
-        +'<button onclick="openMonatszielReview(\''+tz.id+'\')" style="font-size:11px;padding:5px 12px;border-radius:8px;background:var(--amber);color:#fff;border:none;font-family:inherit;font-weight:600;cursor:pointer">Review →</button>'
-        +'</div>';
-    });
+
+  if(!alleTZ.length){
+    out+='<div style="text-align:center;padding:40px 20px">'
+      +'<div style="font-size:32px;margin-bottom:12px">🗓</div>'
+      +'<div style="font-size:15px;font-weight:700;margin-bottom:8px">Noch keine Monatsziele</div>'
+      +'<div style="font-size:13px;color:var(--t2);margin-bottom:20px;line-height:1.5">Monatsziele verbinden deine wöchentliche Arbeit mit einem Quartalsziel.</div>'
+      +'<button onclick="nav(\'ziele\')" class="btn btn-dk">→ Ziel anlegen</button>'
+      +'</div>';
+    document.getElementById('main').innerHTML=out;return;
+  }
+
+  if(!fokusTZ){
+    out+='<div style="background:var(--gray-bg);border:1.5px dashed var(--bd);border-radius:12px;padding:24px;text-align:center">'
+      +'<div style="font-size:14px;font-weight:600;margin-bottom:6px">Alle Monatsziele reviewed 🎉</div>'
+      +'<div style="font-size:12px;color:var(--t2)">Leg ein neues an oder fokussiere auf ein Quartal.</div></div>';
+    document.getElementById('main').innerHTML=out;return;
+  }
+
+  // ── Fokus-Card ──
+  const tz=fokusTZ;
+  const isFellig=fellig(tz);
+  const d2d=daysUntil(tz.datum);
+  const deadLbl=tz.datum?(d2d<0?'überfällig · '+Math.abs(d2d)+'d':d2d===0?'heute fällig':d2d===1?'morgen':'in '+d2d+' Tagen'):'kein Datum';
+  const deadCol=d2d==null?'var(--t3)':(d2d<0?'var(--red)':d2d<=3?'var(--amber)':'var(--t3)');
+
+  out+='<div style="background:var(--sf);border:1.5px solid '+(isFellig?'var(--amber-bd)':tz.f.bd)+';border-left:4px solid '+(isFellig?'var(--amber)':tz.f.tc)+';border-radius:0 14px 14px 0;padding:18px 20px;margin-bottom:16px">';
+  out+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--t3);margin-bottom:4px">↳ '+esc(tz.ziel.name.length>60?tz.ziel.name.slice(0,60)+'…':tz.ziel.name)+'</div>';
+  out+='<div style="font-size:18px;font-weight:800;line-height:1.3;color:var(--text);margin-bottom:4px">'+esc(tz.name)+'</div>';
+  out+='<div style="font-size:12px;color:'+deadCol+';margin-bottom:16px">'+(tz.datum?(tzDatum(tz)+' · '):'')+deadLbl+'</div>';
+
+  if(isFellig){
+    // Review-Zustand: direkt zum Review
+    out+='<div style="background:var(--amber-bg);border:1px solid var(--amber-bd);border-radius:10px;padding:14px 16px;margin-bottom:14px">';
+    out+='<div style="font-size:13px;font-weight:700;color:var(--amber);margin-bottom:6px">⏰ Review fällig</div>';
+    out+='<div style="font-size:12px;color:var(--t2);line-height:1.5;margin-bottom:10px">Deadline erreicht. War der Monatsziel erreicht? War der Plan zu steil, oder hat die Ausführung gefehlt?</div>';
+    out+='<button onclick="openMonatszielReview(\''+tz.id+'\')" style="padding:9px 18px;border-radius:9px;background:var(--amber);color:#fff;border:none;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer">Review abschließen →</button>';
+    out+='</div>';
+  } else {
+    // Aktiv-Zustand: Frage + Wochenziel-Status
+    out+='<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:10px">Liegst du richtig?</div>';
+
+    // Diese Woche
+    const thisWeekWr=wrsForTZ(tz.id).find(r=>r.kw===currKW.kw&&r.jahr===currKW.jahr);
+    out+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);margin-bottom:6px">Diese Woche · KW '+currKW.kw+'</div>';
+    if(thisWeekWr){
+      [1,2,3].forEach(n=>{
+        if(thisWeekWr['big3_'+n+'_tz_id']!==tz.id)return;
+        const title=thisWeekWr['big3_'+n]||'—';
+        const done=!!thisWeekWr['big3_'+n+'_done'];
+        // Task-Zählung im Slot (für Kontext)
+        const slotTasks=S.aufgaben.filter(a=>String(a.pid)===String(aP)&&a.wochenresetId===thisWeekWr.id&&a.big3Slot===n);
+        const slotDone=slotTasks.filter(a=>a.status==='erledigt').length;
+        out+='<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-top:1px dashed var(--bd)">';
+        out+='<div style="width:14px;height:14px;border-radius:4px;flex-shrink:0;'+(done?'background:var(--green);border:1.5px solid var(--green);display:flex;align-items:center;justify-content:center':'border:1.5px solid var(--bd)')+'">'+(done?'<span style="color:#fff;font-size:9px;font-weight:800">✓</span>':'')+'</div>';
+        out+='<div style="flex:1;min-width:0;font-size:13px;'+(done?'color:var(--t3);text-decoration:line-through':'color:var(--text)')+'">'+esc(title)+'</div>';
+        if(slotTasks.length)out+='<span style="font-size:10px;color:var(--t3);flex-shrink:0">'+slotDone+'/'+slotTasks.length+'</span>';
+        out+='</div>';
+      });
+    } else {
+      out+='<div style="font-size:12px;color:var(--t3);padding:10px 0;font-style:italic">Diese Woche kein Wochenziel gesetzt, das auf dieses Monatsziel einzahlt. <span onclick="nav(\'woche\')" style="color:var(--blue);cursor:pointer;text-decoration:underline">Wochenplan →</span></div>';
+    }
+
+    // Vergangene Wochen (4)
+    const past=wrsForTZ(tz.id).filter(r=>r.jahr*100+r.kw<currKW.jahr*100+currKW.kw).slice(0,4);
+    if(past.length){
+      out+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);margin:14px 0 4px">Vergangene Wochen</div>';
+      past.forEach(r=>{
+        const slots=[1,2,3].filter(n=>r['big3_'+n+'_tz_id']===tz.id);
+        const delivered=slots.filter(n=>r['big3_'+n+'_done']).length;
+        const total=slots.length;
+        const col=total===0?'var(--t3)':delivered===total?'var(--green)':delivered>0?'var(--amber)':'var(--red)';
+        const icon=total===0?'○':delivered===total?'✓':delivered>0?'〜':'✗';
+        out+='<div style="display:flex;align-items:center;gap:10px;padding:5px 0;font-size:12px">';
+        out+='<span style="font-family:monospace;color:var(--t3);width:52px;flex-shrink:0">KW '+r.kw+'</span>';
+        out+='<span style="color:'+col+';font-weight:700;flex-shrink:0">'+icon+'</span>';
+        out+='<span style="flex:1;color:var(--t2)">'+delivered+'/'+total+' geliefert</span>';
+        out+='</div>';
+      });
+    }
+
+    // Actions
+    out+='<div style="display:flex;gap:8px;margin-top:18px">';
+    out+='<button onclick="openMonatszielDetail(\''+tz.id+'\')" style="flex:1;padding:10px;border-radius:10px;background:var(--inv);color:var(--inv-t);border:none;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer">Monatsziel bearbeiten</button>';
+    out+='<button onclick="nav(\'woche\')" style="padding:10px 16px;border-radius:10px;background:var(--gray-bg);color:var(--t2);border:1px solid var(--bd);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer">→ Woche</button>';
     out+='</div>';
   }
-  // ── Aktueller Monatsziel — Hero ──
-  if(aktiverTZ){
-    const{ges,erl,pct}=tzProg(aktiverTZ);
-    const f=aktiverTZ.f;
-    const isFällig=tzFällig(aktiverTZ);
-    out+='<div onclick="openMonatszielDetail(\''+aktiverTZ.id+'\')" style="background:var(--hero);color:var(--hero-t);border-radius:14px;padding:20px;margin-bottom:20px;cursor:pointer" title="Übersicht öffnen">'
-      +'<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;opacity:.6;margin-bottom:8px">Aktueller Monatsziel</div>'
-      +'<div style="font-size:17px;font-weight:800;line-height:1.3;margin-bottom:6px">'+esc(aktiverTZ.name)+'</div>'
-      +'<div style="font-size:11px;opacity:.7;margin-bottom:14px">↳ '+esc(aktiverTZ.ziel.name)
-      +(aktiverTZ.datum?' · bis '+tzDatum(aktiverTZ):'')
-      +(isFällig?' · <span style="color:var(--gold);font-weight:700">überfällig</span>':'')
-      +'</div>';
-    if(ges>0){
-      out+='<div style="margin-bottom:14px">'
-        +'<div style="display:flex;justify-content:space-between;font-size:10px;opacity:.7;margin-bottom:5px">'
-        +'<span>Aufgaben</span><span>'+erl+'/'+ges+'</span></div>'
-        +'<div style="height:5px;background:rgba(255,255,255,.2);border-radius:3px">'
-        +'<div style="height:100%;background:#fff;border-radius:3px;width:'+pct+'%;transition:width .3s"></div>'
-        +'</div></div>';
-    } else {
-      out+='<div style="font-size:11px;opacity:.5;margin-bottom:14px">Noch keine Aufgaben zugeordnet</div>';
-    }
-    out+='<div style="display:flex;gap:8px">'
-      +'<button onclick="event.stopPropagation();nav(\'tag\')" style="flex:1;padding:10px;border-radius:10px;background:rgba(255,255,255,.15);color:var(--hero-t);border:1px solid rgba(255,255,255,.2);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer">▶ Mein Tag</button>'
-      +(isFällig&&!aktiverTZ.review_done?'<button onclick="event.stopPropagation();openMonatszielReview(\''+aktiverTZ.id+'\')" style="padding:10px 14px;border-radius:10px;background:var(--gold);color:#fff;border:none;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;flex-shrink:0">Review</button>':'')
-      +'</div>'
-      +'</div>';
-  } else {
-    out+='<div style="background:var(--gray-bg);border:1.5px dashed var(--bd);border-radius:12px;padding:24px;text-align:center;margin-bottom:20px">'
-      +'<div style="font-size:24px;margin-bottom:8px">🎯</div>'
-      +'<div style="font-size:14px;font-weight:600;margin-bottom:6px">Kein aktiver Monatsziel</div>'
-      +'<div style="font-size:12px;color:var(--t2);margin-bottom:14px">Monatsziele verbinden deine wöchentliche Arbeit mit deinen Quartalszielen.</div>'
-      +'<button onclick="openAddMonatszielFromMonat()" class="btn btn-dk">+ Ersten Monatsziel anlegen</button>'
-      +'</div>';
-  }
-  // ── Alle aktiven Monatsziele ──
-  if(aktive.length>0){
-    out+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);margin-bottom:10px">Meine Monatsziele</div>';
-    aktive.forEach(tz=>{
-      const{ges,erl,pct}=tzProg(tz);
-      const f=tz.f;
-      const isAktiv=aktiverTZ&&tz.id===aktiverTZ.id;
-      const isFäll=tzFällig(tz)&&!tz.review_done;
-      const inBig3=wrTzIds.includes(tz.id);
-      out+='<div onclick="openMonatszielDetail(\''+tz.id+'\')" style="background:var(--sf);border:1.5px solid '+(isAktiv?'var(--inv)':f.bd)+';border-radius:12px;padding:14px 16px;margin-bottom:8px;cursor:pointer" title="Übersicht öffnen">'
-        +'<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:'+(ges>0?'10':'4')+'px">'
-        +'<div style="flex:1;min-width:0">'
-        +'<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:2px">'+esc(tz.name)+'</div>'
-        +'<div style="font-size:11px;color:var(--t2)">↳ '+esc(tz.ziel.name.length>40?tz.ziel.name.slice(0,40)+'…':tz.ziel.name)+'</div>'
-        +'</div>'
-        +'<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0">'
-        +(tz.datum?'<span style="font-size:10px;color:'+(isFäll?'var(--orange)':'var(--t3)')+'font-weight:'+(isFäll?'700':'400')+'">'+tzDatum(tz)+(isFäll?' · überfällig':'')+'</span>':'')
-        +(inBig3?'<span style="font-size:9px;font-weight:700;background:var(--inv);color:var(--inv-t);padding:1px 7px;border-radius:99px">Woche</span>':'')
-        +'</div>'
-        +'</div>';
-      if(ges>0){
-        out+='<div style="display:flex;align-items:center;gap:8px">'
-          +'<div style="flex:1;height:4px;background:var(--bd);border-radius:2px"><div style="height:100%;background:'+f.tc+';border-radius:2px;width:'+pct+'%"></div></div>'
-          +'<span style="font-size:10px;color:var(--t3);flex-shrink:0">'+erl+'/'+ges+'</span>'
-          +'</div>';
-      }
-      if(isFäll){
-        out+='<button onclick="event.stopPropagation();openMonatszielReview(\''+tz.id+'\')" style="margin-top:10px;width:100%;padding:8px;border-radius:8px;background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-bd);font-family:inherit;font-size:12px;font-weight:600;cursor:pointer">⏰ Review abschließen →</button>';
-      }
+
+  out+='</div>'; // fokus-card close
+
+  // ── Andere Monatsziele (Switcher, kollabiert) ──
+  const andere=alleTZ.filter(t=>t.id!==tz.id&&!t.erledigt);
+  if(andere.length){
+    out+='<details style="margin-top:8px"><summary style="list-style:none;cursor:pointer;padding:8px 0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3)">▸ Andere Monatsziele ('+andere.length+')</summary>';
+    out+='<div style="margin-top:4px;display:flex;flex-direction:column;gap:4px">';
+    andere.sort((a,b)=>(a.datum||'9999').localeCompare(b.datum||'9999')).forEach(t=>{
+      const inBig3=wrTzIds.includes(t.id);
+      const faell=fellig(t);
+      out+='<div onclick="setMonatFokus(\''+t.id+'\')" style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:var(--sf);border:1px solid var(--bd);cursor:pointer" onmouseenter="this.style.background=\'var(--gray-bg)\'" onmouseleave="this.style.background=\'var(--sf)\'">';
+      out+='<span style="width:6px;height:6px;border-radius:50%;background:'+t.f.tc+';flex-shrink:0"></span>';
+      out+='<div style="flex:1;min-width:0;font-size:12px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(t.name)+'</div>';
+      if(faell)out+='<span style="font-size:9px;font-weight:700;color:var(--amber);background:var(--amber-bg);padding:1px 7px;border-radius:99px;flex-shrink:0">Review</span>';
+      else if(inBig3)out+='<span style="font-size:9px;font-weight:700;background:var(--inv);color:var(--inv-t);padding:1px 7px;border-radius:99px;flex-shrink:0">Woche</span>';
+      if(t.datum)out+='<span style="font-size:10px;color:var(--t3);flex-shrink:0">'+tzDatum(t)+'</span>';
       out+='</div>';
     });
+    out+='</div></details>';
   }
-  // ── Review-Historie ──
+
+  // ── Review-Historie (kollabiert) ──
+  const reviewed=alleTZ.filter(t=>t.review_done).sort((a,b)=>(b.review_at||'').localeCompare(a.review_at||''));
   if(reviewed.length){
-    const isOpen=(window._monatHistOpen||false);
-    out+='<details style="margin-top:20px" '+(isOpen?'open':'')+' ontoggle="window._monatHistOpen=this.open">'
-      +'<summary style="list-style:none;cursor:pointer;display:flex;align-items:center;gap:8px;padding:10px 0">'
-      +'<span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3)">📚 Review-Chronik ('+reviewed.length+')</span>'
-      +'</summary>'
-      +'<div style="margin-top:6px;display:flex;flex-direction:column;gap:8px">';
-    reviewed.forEach(tz=>{
-      const f=tz.f;
-      const erIcons={ja:'✅',teilweise:'〜',nein:'❌'};
-      const grundText={plan:'📐 Plan',ausfuehrung:'⚙️ Ausführung'};
-      out+='<div style="background:var(--gray-bg);border-radius:10px;padding:12px 14px">'
-        +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'
-        +'<span style="font-size:12px">'+(erIcons[tz.review_erreicht]||'○')+'</span>'
-        +'<div style="flex:1;font-size:12px;font-weight:600">'+esc(tz.name)+'</div>'
-        +(tz.review_grund?'<span style="font-size:10px;color:var(--t3)">'+grundText[tz.review_grund]+'</span>':'')
+    out+='<details style="margin-top:10px"><summary style="list-style:none;cursor:pointer;padding:8px 0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3)">📚 Review-Chronik ('+reviewed.length+')</summary>';
+    out+='<div style="margin-top:4px;display:flex;flex-direction:column;gap:6px">';
+    const erIcons={ja:'✅',teilweise:'〜',nein:'❌'};
+    const grundText={plan:'📐 Plan',ausfuehrung:'⚙️ Ausführung'};
+    reviewed.forEach(t=>{
+      out+='<div style="background:var(--gray-bg);border-radius:8px;padding:10px 12px">'
+        +'<div style="display:flex;align-items:center;gap:8px">'
+        +'<span>'+(erIcons[t.review_erreicht]||'○')+'</span>'
+        +'<div style="flex:1;font-size:12px;font-weight:600">'+esc(t.name)+'</div>'
+        +(t.review_grund?'<span style="font-size:10px;color:var(--t3)">'+grundText[t.review_grund]+'</span>':'')
         +'</div>'
-        +(tz.review_learning?'<div style="font-size:11px;color:var(--t2);line-height:1.5;padding-left:20px;border-left:2px solid '+f.tc+';margin-left:5px">'+esc(tz.review_learning)+'</div>':'')
+        +(t.review_learning?'<div style="font-size:11px;color:var(--t2);line-height:1.5;padding-left:24px;border-left:2px solid '+t.f.tc+';margin:6px 0 0 6px">'+esc(t.review_learning)+'</div>':'')
         +'</div>';
     });
     out+='</div></details>';
   }
-  if(!alleTZ.length){
-    out='<div style="text-align:center;padding:40px 20px">'
-      +'<div style="font-size:32px;margin-bottom:12px">🗓</div>'
-      +'<div style="font-size:15px;font-weight:700;margin-bottom:8px">Noch keine Monatsziele</div>'
-      +'<div style="font-size:13px;color:var(--t2);margin-bottom:20px;line-height:1.5">Monatsziele sind ~4-Wochen-Ziele, die deine wöchentlichen Aufgaben mit deinen Quartalszielen verbinden.</div>'
-      +'<button onclick="nav(\'ziele\')" class="btn btn-dk">→ Ziel anlegen</button>'
-      +'</div>';
-  }
+
   document.getElementById('main').innerHTML=out;
 }
 function openAddMonatszielFromMonat(){
