@@ -4324,20 +4324,20 @@ function rWoche(){
         out+='</div>';
         // Wochenziel-Dropdown (wenn verfügbar) — setzt Monatsziel kaskadierend mit
         if(_wzOptsCL.length){
-          out+='<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">';
-          out+='<span style="font-size:10px;font-weight:700;color:var(--blue);min-width:78px">→ Diese Woche</span>';
-          out+='<select onchange="if(this.value)cleanupToWochenziel(\''+a.id+'\',\''+_wrNowCL.id+'\',this.value)" style="flex:1;font-size:11px;padding:6px 8px;border-radius:8px;border:1.5px solid var(--blue-bd);background:var(--blue-bg);color:var(--blue);font-family:inherit;cursor:pointer;font-weight:600">';
-          out+='<option value="">— Wochenziel wählen (Monatsziel wird mitgesetzt) —</option>';
+          out+='<div style="display:flex;gap:6px;align-items:center;margin-bottom:4px">';
+          out+='<span style="font-size:10px;font-weight:700;color:var(--blue);min-width:72px;flex-shrink:0">→ Diese Woche</span>';
+          out+='<select onchange="if(this.value)cleanupToWochenziel(\''+a.id+'\',\''+_wrNowCL.id+'\',this.value)" style="flex:1;min-width:0;max-width:340px;font-size:11px;padding:5px 7px;border-radius:7px;border:1px solid var(--blue-bd);background:var(--blue-bg);color:var(--blue);font-family:inherit;cursor:pointer;font-weight:600">';
+          out+='<option value="">— Wochenziel wählen —</option>';
           _wzOptsCL.forEach(o=>{
-            const label=o.txt.length>40?o.txt.slice(0,40)+'…':o.txt;
+            const label=o.txt.length>36?o.txt.slice(0,36)+'…':o.txt;
             out+='<option value="'+o.n+'|'+o.tzId+'">'+o.n+': '+esc(label)+'</option>';
           });
           out+='</select></div>';
         }
         // Monatsziel-Picker (fallback, wenn kein Wochenziel passt)
         out+='<div style="display:flex;gap:6px;align-items:center">';
-        out+='<span style="font-size:10px;font-weight:700;color:var(--t3);min-width:78px">Monatsziel</span>';
-        out+='<div style="flex:1">'+msPickerWithAdd('cleanup-tz-'+a.id,aP,'','setTeilziel(\''+a.id+'\',this.value)',null)+'</div>';
+        out+='<span style="font-size:10px;font-weight:700;color:var(--t3);min-width:72px;flex-shrink:0">Monatsziel</span>';
+        out+='<div style="flex:1;min-width:0;max-width:340px">'+msPickerWithAdd('cleanup-tz-'+a.id,aP,'','setTeilziel(\''+a.id+'\',this.value)',null)+'</div>';
         out+='</div>';
         out+='</div>';
       });
