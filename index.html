@@ -3085,6 +3085,87 @@ async function toggleBig3FromModal(wrId,field,slot){
   await toggleBig3(wrId,field);
   setTimeout(()=>openBig3Detail(wrId,slot),60);
 }
+function openMonatszielDetail(tzId){
+  // Monatsziel + übergeordnetes Ziel finden
+  let tz=null,ziel=null;
+  for(const z of S.ziele){const _t=(z.teilziele||[]).find(t=>t.id===tzId);if(_t){tz=_t;ziel=z;break;}}
+  if(!tz||!ziel)return;
+  const msCol=FARBEN[ziel.farbe||0].tc;
+  const msBd=FARBEN[ziel.farbe||0].bd;
+  // Verknüpfte Wochenziele finden (aus wochenresets wo big3_N_tz_id === tzId)
+  const wzLinks=[]; // {wrId, slot, txt, done, kw}
+  S.wochenresets.forEach(wr=>{
+    if(String(wr.pid)!==String(aP))return;
+    [1,2,3].forEach(n=>{
+      if(wr['big3_'+n+'_tz_id']===tzId){
+        const txt=wr['big3_'+n];if(!txt)return;
+        wzLinks.push({wrId:wr.id,slot:n,txt,done:!!wr['big3_'+n+'_done'],kw:wr.kw,jahr:wr.jahr});
+      }
+    });
+  });
+  // Sortieren: aktuelle Woche zuerst, dann absteigend
+  wzLinks.sort((a,b)=>(b.jahr*100+b.kw)-(a.jahr*100+a.kw));
+  // Aufgaben diesem Monatsziel zugeordnet
+  const offen=S.aufgaben.filter(a=>String(a.pid)===String(aP)&&a.teilzielId===tzId&&a.status!=='erledigt'&&a.status!=='archiviert');
+  const erledigt=S.aufgaben.filter(a=>String(a.pid)===String(aP)&&a.teilzielId===tzId&&a.status==='erledigt');
+  const isFäll=tz.datum&&tz.datum<=TODAY&&!tz.erledigt&&!tz.review_done;
+  let h='';
+  // Header
+  h+='<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:4px">';
+  h+='<div style="width:4px;align-self:stretch;background:'+msCol+';border-radius:2px;flex-shrink:0"></div>';
+  h+='<div style="flex:1;min-width:0">';
+  h+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);margin-bottom:3px">Monatsziel'+(tz.datum?' · bis '+tzDatum(tz):'')+(isFäll?' · <span style="color:var(--orange)">überfällig</span>':'')+'</div>';
+  h+='<div style="font-size:17px;font-weight:700;line-height:1.3;'+(tz.erledigt?'color:var(--t2);text-decoration:line-through':'color:var(--text)')+'">'+esc(tz.name)+'</div>';
+  h+='</div></div>';
+  // Ziel-Kontext
+  h+='<div style="margin:10px 0 14px;padding:9px 12px;background:var(--sf);border-left:3px solid '+msCol+';border-radius:0 8px 8px 0">';
+  h+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);margin-bottom:2px">zahlt ein auf</div>';
+  h+='<div style="font-size:12px;color:'+msCol+';font-weight:600">→ '+esc(ziel.name)+'</div>';
+  h+='</div>';
+  // Verknüpfte Wochenziele
+  h+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t2);margin:14px 0 8px">Wochenziele'+(wzLinks.length?' ('+wzLinks.length+')':'')+'</div>';
+  if(!wzLinks.length){
+    h+='<div style="padding:12px;background:var(--gray-bg);border:1px dashed var(--bd);border-radius:10px;text-align:center;font-size:11px;color:var(--t3);margin-bottom:12px">Noch kein Wochenziel zahlt darauf ein.<br><span style="font-size:10px">Im Wochenreset planen →</span></div>';
+  }else{
+    wzLinks.forEach(wz=>{
+      h+='<div onclick="cm();setTimeout(()=>openBig3Detail(\''+wz.wrId+'\','+wz.slot+'),60)" style="display:flex;align-items:center;gap:9px;padding:9px 11px;margin-bottom:5px;background:var(--gray-bg);border:1px solid '+msBd+';border-left:3px solid '+msCol+';border-radius:0 9px 9px 0;cursor:pointer">';
+      h+='<div style="width:14px;height:14px;border-radius:4px;flex-shrink:0;border:1.5px solid '+(wz.done?msCol:'var(--bd)')+';'+(wz.done?'background:'+msCol:'')+';display:flex;align-items:center;justify-content:center">'+(wz.done?'<span style="color:#fff;font-size:9px;font-weight:800">✓</span>':'')+'</div>';
+      h+='<span style="font-size:10px;font-weight:700;color:var(--t3);min-width:32px">KW '+wz.kw+'</span>';
+      h+='<span style="flex:1;font-size:13px;color:'+(wz.done?'var(--t2)':'var(--text)')+';'+(wz.done?'text-decoration:line-through':'')+';overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(wz.txt)+'</span>';
+      h+='</div>';
+    });
+  }
+  // Aufgaben
+  h+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t2);margin:14px 0 8px">Zugeordnete Aufgaben'+(offen.length?' ('+offen.length+')':'')+'</div>';
+  if(!offen.length&&!erledigt.length){
+    h+='<div style="padding:14px;background:var(--gray-bg);border:1px dashed var(--bd);border-radius:10px;text-align:center;font-size:12px;color:var(--t3);margin-bottom:12px">Noch keine Aufgaben zugeordnet.<br><span style="font-size:11px">Füge unten die erste hinzu.</span></div>';
+  }else{
+    offen.forEach(a=>{
+      const prio=a.prio||'';
+      const prioCol=prio==='P1'?'var(--red)':prio==='P2'?'var(--amber,#d97706)':'var(--t3)';
+      const isAktiv=a.status==='aktiv';
+      h+='<div onclick="cm();setTimeout(()=>openDetail(\''+a.id+'\'),50)" style="display:flex;align-items:center;gap:9px;padding:9px 11px;margin-bottom:5px;background:var(--gray-bg);border:1px solid var(--bd);border-radius:9px;cursor:pointer">';
+      h+='<div style="width:14px;height:14px;border-radius:4px;flex-shrink:0;border:1.5px solid '+(isAktiv?'var(--blue)':'var(--bd)')+';'+(isAktiv?'background:var(--blue-bg)':'')+'"></div>';
+      if(prio)h+='<span style="font-size:10px;font-weight:700;color:'+prioCol+';min-width:18px">'+prio+'</span>';
+      h+='<span style="flex:1;font-size:13px;color:'+(isAktiv?'var(--blue)':'var(--text)')+';overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(a.titel)+'</span>';
+      if(a.dl)h+='<span style="font-size:10px;color:var(--t3);flex-shrink:0">'+a.dl.slice(5)+'</span>';
+      h+='</div>';
+    });
+    if(erledigt.length){
+      h+='<div style="font-size:11px;color:var(--t3);padding:6px 0">✓ '+erledigt.length+' erledigt</div>';
+    }
+  }
+  // Primär-Action: + Aufgabe
+  h+='<button onclick="cm();setTimeout(()=>openNeu({zielId:\''+ziel.id+'\',teilzielId:\''+tzId+'\'}),60)" style="width:100%;margin-top:10px;font-size:13px;font-weight:700;padding:11px;border-radius:10px;border:none;background:var(--inv);color:var(--inv-t);cursor:pointer;font-family:inherit">+ Aufgabe hinzufügen</button>';
+  // Sekundär
+  h+='<div style="display:flex;gap:6px;margin-top:10px;justify-content:flex-end">';
+  if(isFäll)h+='<button onclick="cm();openMonatszielReview(\''+tzId+'\')" style="font-size:11px;padding:6px 11px;border-radius:7px;border:1px solid var(--amber-bd);background:var(--amber-bg);color:var(--amber,#d97706);cursor:pointer;font-family:inherit;font-weight:600">⏰ Review</button>';
+  h+='<button onclick="cm();editZiel(\''+ziel.id+'\')" style="font-size:11px;padding:6px 11px;border-radius:7px;border:1px solid var(--bd);background:transparent;color:var(--t2);cursor:pointer;font-family:inherit">✎ Bearbeiten</button>';
+  h+='<button onclick="cm()" style="font-size:11px;padding:6px 11px;border-radius:7px;border:1px solid var(--bd);background:transparent;color:var(--t2);cursor:pointer;font-family:inherit">Schließen</button>';
+  h+='</div>';
+  document.getElementById('mb').innerHTML=h;
+  document.getElementById('ovl').classList.add('open');
+}
 function blockerZuAufgabe(wrId,pid){
   const wr=S.wochenresets.find(r=>r.id===wrId);if(!wr)return;
   const p=person(wr.pid);
@@ -5767,7 +5848,7 @@ function rMonat(){
     const{ges,erl,pct}=tzProg(aktiverTZ);
     const f=aktiverTZ.f;
     const isFällig=tzFällig(aktiverTZ);
-    out+='<div style="background:var(--hero);color:var(--hero-t);border-radius:14px;padding:20px;margin-bottom:20px">'
+    out+='<div onclick="openMonatszielDetail(\''+aktiverTZ.id+'\')" style="background:var(--hero);color:var(--hero-t);border-radius:14px;padding:20px;margin-bottom:20px;cursor:pointer" title="Übersicht öffnen">'
       +'<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;opacity:.6;margin-bottom:8px">Aktueller Monatsziel</div>'
       +'<div style="font-size:17px;font-weight:800;line-height:1.3;margin-bottom:6px">'+esc(aktiverTZ.name)+'</div>'
       +'<div style="font-size:11px;opacity:.7;margin-bottom:14px">↳ '+esc(aktiverTZ.ziel.name)
@@ -5785,8 +5866,8 @@ function rMonat(){
       out+='<div style="font-size:11px;opacity:.5;margin-bottom:14px">Noch keine Aufgaben zugeordnet</div>';
     }
     out+='<div style="display:flex;gap:8px">'
-      +'<button onclick="nav(\'tag\')" style="flex:1;padding:10px;border-radius:10px;background:rgba(255,255,255,.15);color:var(--hero-t);border:1px solid rgba(255,255,255,.2);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer">▶ Mein Tag</button>'
-      +(isFällig&&!aktiverTZ.review_done?'<button onclick="openMonatszielReview(\''+aktiverTZ.id+'\')" style="padding:10px 14px;border-radius:10px;background:var(--gold);color:#fff;border:none;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;flex-shrink:0">Review</button>':'')
+      +'<button onclick="event.stopPropagation();nav(\'tag\')" style="flex:1;padding:10px;border-radius:10px;background:rgba(255,255,255,.15);color:var(--hero-t);border:1px solid rgba(255,255,255,.2);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer">▶ Mein Tag</button>'
+      +(isFällig&&!aktiverTZ.review_done?'<button onclick="event.stopPropagation();openMonatszielReview(\''+aktiverTZ.id+'\')" style="padding:10px 14px;border-radius:10px;background:var(--gold);color:#fff;border:none;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;flex-shrink:0">Review</button>':'')
       +'</div>'
       +'</div>';
   } else {
@@ -5806,7 +5887,7 @@ function rMonat(){
       const isAktiv=aktiverTZ&&tz.id===aktiverTZ.id;
       const isFäll=tzFällig(tz)&&!tz.review_done;
       const inBig3=wrTzIds.includes(tz.id);
-      out+='<div style="background:var(--sf);border:1.5px solid '+(isAktiv?'var(--inv)':f.bd)+';border-radius:12px;padding:14px 16px;margin-bottom:8px;">'
+      out+='<div onclick="openMonatszielDetail(\''+tz.id+'\')" style="background:var(--sf);border:1.5px solid '+(isAktiv?'var(--inv)':f.bd)+';border-radius:12px;padding:14px 16px;margin-bottom:8px;cursor:pointer" title="Übersicht öffnen">'
         +'<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:'+(ges>0?'10':'4')+'px">'
         +'<div style="flex:1;min-width:0">'
         +'<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:2px">'+esc(tz.name)+'</div>'
@@ -5824,7 +5905,7 @@ function rMonat(){
           +'</div>';
       }
       if(isFäll){
-        out+='<button onclick="openMonatszielReview(\''+tz.id+'\')" style="margin-top:10px;width:100%;padding:8px;border-radius:8px;background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-bd);font-family:inherit;font-size:12px;font-weight:600;cursor:pointer">⏰ Review abschließen →</button>';
+        out+='<button onclick="event.stopPropagation();openMonatszielReview(\''+tz.id+'\')" style="margin-top:10px;width:100%;padding:8px;border-radius:8px;background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-bd);font-family:inherit;font-size:12px;font-weight:600;cursor:pointer">⏰ Review abschließen →</button>';
       }
       out+='</div>';
     });
