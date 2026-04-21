@@ -4909,13 +4909,10 @@ function rTag(){
       const big3Txt=(wrAktuell['big3_'+n]||'').toLowerCase().trim();
       const slotTasks=S.aufgaben.filter(a=>a.pid===aP&&a.wochenresetId===wrAktuell.id&&a.big3Slot===n&&a.status!=='erledigt');
       const linkedTask=slotTasks.find(a=>a.prio==='P1')||slotTasks[0]||null;
-      // Card-Click: öffnet Detail-Modal (NICHT auto-starten). Start/Weiter bleibt explizit im Button.
-      let cardAction='';
-      if(!done&&linkedTask){
-        cardAction='openDetail(\''+linkedTask.id+'\')';
-      }
-      const cardCursor=cardAction?'cursor:pointer':'';
-      const cardClick=cardAction?' onclick="'+cardAction+'"':'';
+      // Card-Click: öffnet Wochenziel-Übersichts-Modal (immer, auch ohne linkedTask).
+      const cardAction='openBig3Detail(\''+wrAktuell.id+'\','+n+')';
+      const cardCursor='cursor:pointer';
+      const cardClick=' onclick="'+cardAction+'"';
       // Monatsziel-Kontext (Farb-Dot + Name) für visuelle Hierarchie
       let _msNameW=null,_msColorW='var(--t3)';
       if(tzId){
