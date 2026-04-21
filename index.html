@@ -4476,7 +4476,9 @@ function rWoche(){
       if(true){
         const tzAufgaben=myA.filter(a=>a.wochenresetId===wr.id&&a.big3Slot===n&&a.status!=='erledigt');
         const tzErledigt=myA.filter(a=>a.wochenresetId===wr.id&&a.big3Slot===n&&a.status==='erledigt');
-        if(tzAufgaben.length||tzErledigt.length){
+        // Delegationen: ich habe rausgegeben (erstelltVon=me), jemand anderes ist pid
+        const tzDelegiert=S.aufgaben.filter(a=>a.wochenresetId===wr.id&&a.big3Slot===n&&String(a.erstelltVon)===String(aP)&&String(a.pid)!==String(aP)&&a.status!=='erledigt'&&a.status!=='archiviert');
+        if(tzAufgaben.length||tzErledigt.length||tzDelegiert.length){
           out+='<div style="padding-left:28px;padding-bottom:4px">';
           tzAufgaben.forEach(a=>{
             const isAktiv=a.status==='aktiv';
@@ -4486,6 +4488,30 @@ function rWoche(){
             if(a.prio)out+='<span style="font-size:9px;font-weight:700;color:'+(a.prio==='P1'?'var(--red)':'var(--t3)')+'">'+a.prio+'</span>';
             out+='</div>';
           });
+          // Delegationen: was ich rausgegeben habe (Sam-Prinzip: Outputs enden bei dir, nicht beim Empfänger)
+          if(tzDelegiert.length){
+            out+='<div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--purple);margin:6px 0 3px">→ Delegiert ('+tzDelegiert.length+')</div>';
+            tzDelegiert.forEach(a=>{
+              const owner=person(a.pid);
+              const ownerName=owner?owner.name.split(' ')[0]:'?';
+              // Status-Farbe + Label
+              let stStr='',stCol='var(--t3)';
+              if(a.status==='zugewiesen'){
+                // Age seit Zuweisung (updated_at als Proxy)
+                const ageDays=a.updated_at?Math.floor((Date.now()-new Date(a.updated_at).getTime())/86400000):0;
+                if(ageDays>=2){stStr='⚠ wartet '+ageDays+'d';stCol='var(--red)';}
+                else{stStr='wartet auf Annahme';stCol='var(--amber,#d97706)';}
+              } else if(a.status==='zurueckgegeben'){stStr='↩ zurückgegeben';stCol='var(--red)';}
+              else if(a.status==='aktiv'){stStr='in Arbeit';stCol='var(--blue)';}
+              else{stStr='offen';stCol='var(--t3)';}
+              out+='<div onclick="openDetail(\''+a.id+'\')" style="display:flex;align-items:center;gap:7px;padding:3px 0;cursor:pointer">';
+              out+='<div style="width:12px;height:12px;border-radius:3px;flex-shrink:0;border:1.5px dashed var(--purple);background:var(--purple-bg)"></div>';
+              out+='<span style="font-size:11px;color:var(--text);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(a.titel)+'</span>';
+              out+='<span style="font-size:9px;font-weight:700;color:var(--purple);background:var(--purple-bg);padding:1px 6px;border-radius:99px;flex-shrink:0">@'+esc(ownerName)+'</span>';
+              out+='<span style="font-size:9px;font-weight:600;color:'+stCol+';flex-shrink:0">'+stStr+'</span>';
+              out+='</div>';
+            });
+          }
           if(tzErledigt.length){
             out+='<div style="font-size:10px;color:var(--t3);padding:2px 0">✓ '+tzErledigt.length+' erledigt</div>';
           }
