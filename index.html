@@ -380,7 +380,7 @@ function zieleOptgroups(pid,selId=''){
 }
 // Monatsziel-zentrische Auswahl: Monatsziele (aktiv) gruppiert nach Ziel/Bereich.
 // Liefert <option>s mit data-ziel-id, data-datum. Aufrufer deriviert ziel_id aus Auswahl.
-function meilensteinOptgroups(pid,selTzId=''){
+function meilensteinOptgroups(pid,selTzId='',ownOnly=false){
   const sichtbar=S.ziele.filter(z=>(!z.vertraulich||isGF())&&z.status!=='vorschlag');
   const withTz=sichtbar.map(z=>({z,tz:(z.teilziele||[]).filter(t=>!t.erledigt&&(t.status||'aktiv')==='aktiv')})).filter(x=>x.tz.length);
   const meine=withTz.filter(x=>String(x.z.verantwortlichId)===String(pid)||x.tz.some(t=>String(t.verantwortlichId)===String(pid)));
@@ -399,7 +399,7 @@ function meilensteinOptgroups(pid,selTzId=''){
   };
   let out='<option value="">— kein Monatsziel —</option>';
   out+=mkGroup('Meine',meine);
-  out+=mkGroup('Andere',andere);
+  if(!ownOnly)out+=mkGroup('Andere',andere);
   out+=mkGroup('Bereiche',bereiche);
   // Fallback: wenn selTzId auf einen erledigten/archivierten TZ zeigt, als disabled-Info anzeigen statt still verschwinden lassen
   if(selTzId){
@@ -4463,7 +4463,7 @@ function rWoche(){
       }
       cleanupItems.forEach(a=>{
         const prioCol=prioColor(a.prio);
-        const _msOpts=meilensteinOptgroups(aP,'');
+        const _msOpts=meilensteinOptgroups(aP,'',true);
         out+='<div style="background:var(--gray-bg);border:1px solid var(--bd);border-radius:10px;padding:7px 10px;margin-bottom:5px">';
         out+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">';
         if(a.prio)out+='<span style="font-size:10px;font-weight:700;color:'+prioCol+';min-width:18px">'+a.prio+'</span>';
@@ -5267,8 +5267,28 @@ function rTag(){
     // ── Zugewiesene Aufgaben — Schritt 1: Annehmen / Ablehnen ──
     if(zugewiesenA.length){
     out+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--blue);margin-bottom:6px">📋 Von dir erwartet</div>';
-    const inboxMsOpts=meilensteinOptgroups(aP,'');
-    const zielOptsI=inboxMsOpts?'<select id="inbox-ziel-PLACEHOLDER" style="font-size:11px;padding:3px 8px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);font-family:inherit;max-width:220px">'+inboxMsOpts.replace('— kein Monatsziel —','— Monatsziel zuordnen —')+'</select>':'';
+    const inboxMsOpts=meilensteinOptgroups(aP,'',true);
+    const zielOptsI=inboxMsOpts?'<select onchange="setTeilziel(\'PLACEHOLDER\',this.value)" style="font-size:11px;padding:5px 9px;border-radius:7px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);font-family:inherit;max-width:220px;cursor:pointer">'+inboxMsOpts.replace('— kein Monatsziel —','— Monatsziel —')+'</select>':'';
+    // Wochenziel-Options für Inbox (selbe Logik wie Cleanup)
+    const _wrNowIbx=dieseWocheReset(aP);
+    const _wzOptsIbx=[];
+    if(_wrNowIbx){
+      [1,2,3].forEach(n=>{
+        const txt=_wrNowIbx['big3_'+n];const tzW=_wrNowIbx['big3_'+n+'_tz_id'];
+        if(txt&&tzW)_wzOptsIbx.push({n,txt,tzId:tzW});
+      });
+    }
+    const wzSelectIbx=taskId=>{
+      if(!_wzOptsIbx.length)return'';
+      let s='<select onchange="if(this.value)cleanupToWochenziel(\''+taskId+'\',\''+_wrNowIbx.id+'\',this.value)" style="font-size:11px;padding:5px 9px;border-radius:7px;border:1px solid var(--blue-bd);background:var(--blue-bg);color:var(--blue);font-family:inherit;max-width:220px;cursor:pointer;font-weight:600">';
+      s+='<option value="">→ Wochenziel…</option>';
+      _wzOptsIbx.forEach(o=>{
+        const label=o.txt.length>28?o.txt.slice(0,28)+'…':o.txt;
+        s+='<option value="'+o.n+'|'+o.tzId+'">'+o.n+': '+esc(label)+'</option>';
+      });
+      s+='</select>';
+      return s;
+    };
     zugewiesenA.forEach(a=>{
       const from=person(a.erstelltVon);
       out+='<div style="background:var(--gray-bg);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;margin-bottom:8px">';
@@ -5293,6 +5313,7 @@ function rTag(){
       out+='<div id="ibx-s2-'+a.id+'" style="display:none">';
       out+='<div style="font-size:10px;color:var(--t3);margin-bottom:6px;margin-top:2px">Welche Priorität hat das für dich?</div>';
       out+='<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px">';
+      out+=wzSelectIbx(a.id);
       out+=zielOptsI.replace('PLACEHOLDER',a.id);
       out+=['P1','P2','P3'].map(p=>{
         const bg=p==='P1'?'var(--red-bg)':p==='P2'?'var(--blue-bg)':'var(--gray-bg)';
@@ -5312,8 +5333,8 @@ function rTag(){
     if(neu.length){
     if(zugewiesenA.length)out+='<div style="border-top:1px solid var(--bd);margin:10px 0"></div>';
     out+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--red);margin-bottom:6px">⚡ Priorität wählen</div>';
-    const inboxMsOptsN=meilensteinOptgroups(aP,'');
-    const zielOptsN=inboxMsOptsN?'<select id="inbox-ziel-PLACEHOLDER" style="font-size:11px;padding:3px 8px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);font-family:inherit;max-width:220px">'+inboxMsOptsN.replace('— kein Monatsziel —','— Monatsziel —')+'</select>':'';
+    const inboxMsOptsN=meilensteinOptgroups(aP,'',true);
+    const zielOptsN=inboxMsOptsN?'<select onchange="setTeilziel(\'PLACEHOLDER\',this.value)" style="font-size:11px;padding:5px 9px;border-radius:7px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);font-family:inherit;max-width:220px;cursor:pointer">'+inboxMsOptsN.replace('— kein Monatsziel —','— Monatsziel —')+'</select>':'';
     neu.forEach(a=>{
       const from=a.erstelltVon&&a.erstelltVon!==aP?person(a.erstelltVon):null;
       out+='<div style="background:var(--gray-bg);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;margin-bottom:8px">';
@@ -5321,6 +5342,7 @@ function rTag(){
       if(from)out+='<div style="font-size:11px;color:var(--t2);margin-bottom:4px">von '+esc(from.name)+'</div>';
       if(a.notiz)out+='<div style="font-size:11px;color:var(--t2);margin-bottom:8px;font-style:italic;line-height:1.4">💬 '+esc(a.notiz).slice(0,150)+(a.notiz.length>150?'…':'')+'</div>';
       out+='<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px">';
+      out+=wzSelectIbx(a.id);
       out+=zielOptsN.replace('PLACEHOLDER',a.id);
       out+=(['P1','P2','P3'].map(pr=>{
         const bg=pr==='P1'?'var(--red-bg)':pr==='P2'?'var(--blue-bg)':'var(--gray-bg)';
