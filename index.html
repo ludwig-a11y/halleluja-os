@@ -3073,10 +3073,10 @@ function openBig3Detail(wrId,slot){
   // Primär-Action: + Aufgabe
   const _pfArgs=(zielId?'zielId:\''+zielId+'\',':'')+(tzId?'teilzielId:\''+tzId+'\',':'')+'wochenresetId:\''+wrId+'\',big3Slot:'+slot+',dl:\''+TODAY+'\'';
   h+='<button onclick="cm();setTimeout(()=>openNeu({'+_pfArgs+'}),60)" style="width:100%;margin-top:10px;font-size:13px;font-weight:700;padding:11px;border-radius:10px;border:none;background:var(--inv);color:var(--inv-t);cursor:pointer;font-family:inherit">+ Aufgabe hinzufügen</button>';
-  // Sekundär: zum Wochenreset + Schließen
-  h+='<div style="display:flex;gap:8px;margin-top:8px">';
-  h+='<button onclick="cm();openWochenreset()" style="flex:1;font-size:12px;padding:9px 14px;border-radius:9px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);cursor:pointer;font-family:inherit;font-weight:600">✎ Wochenreset</button>';
-  h+='<button onclick="cm()" style="flex:1;font-size:12px;padding:9px 14px;border-radius:9px;border:1px solid var(--bd);background:var(--gray-bg);color:var(--t2);cursor:pointer;font-family:inherit;font-weight:600">Schließen</button>';
+  // Sekundär: zum Wochenreset + Schließen (kompakt, rechtsbündig)
+  h+='<div style="display:flex;gap:6px;margin-top:10px;justify-content:flex-end">';
+  h+='<button onclick="cm();openWochenreset()" style="font-size:11px;padding:6px 11px;border-radius:7px;border:1px solid var(--bd);background:transparent;color:var(--t2);cursor:pointer;font-family:inherit">✎ Wochenreset</button>';
+  h+='<button onclick="cm()" style="font-size:11px;padding:6px 11px;border-radius:7px;border:1px solid var(--bd);background:transparent;color:var(--t2);cursor:pointer;font-family:inherit">Schließen</button>';
   h+='</div>';
   document.getElementById('mb').innerHTML=h;
   document.getElementById('ovl').classList.add('open');
