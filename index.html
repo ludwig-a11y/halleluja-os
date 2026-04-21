@@ -705,6 +705,70 @@ function toast(msg,color){
 }
 // #15: Prio-Color-Helper — P1=rot, P2=orange, sonst grau
 function prioColor(p){return p==='P1'?'var(--red)':p==='P2'?'var(--gold-t)':'var(--t3)';}
+// pickDate: schönes Overlay mit nativem Date-Picker (DE-freundlich)
+// opts: {title, hint, minDate:'today'|'tomorrow'|'YYYY-MM-DD', defaultVal:'YYYY-MM-DD'}
+// Resolve: ISO-String 'YYYY-MM-DD' oder null (Abbruch)
+function pickDate(opts){
+  opts=opts||{};
+  const today=new Date();today.setHours(0,0,0,0);
+  const toIso=d=>d.toISOString().slice(0,10);
+  const addDays=(base,n)=>{const d=new Date(base);d.setDate(d.getDate()+n);return d;};
+  const fmtDe=iso=>{if(!iso)return'';const[y,m,d]=iso.split('-');return d+'.'+m+'.'+y;};
+  let min=toIso(today);
+  if(opts.minDate==='tomorrow')min=toIso(addDays(today,1));
+  else if(opts.minDate&&/^\d{4}-\d{2}-\d{2}$/.test(opts.minDate))min=opts.minDate;
+  const def=opts.defaultVal&&opts.defaultVal>=min?opts.defaultVal:toIso(addDays(today,1));
+  return new Promise(resolve=>{
+    const ov=document.createElement('div');
+    ov.id='pd-ovl';
+    ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px';
+    const quick1=toIso(addDays(today,1)); // morgen
+    const quick3=toIso(addDays(today,3));
+    const quick7=toIso(addDays(today,7));
+    ov.innerHTML=
+      '<div style="background:var(--bg);border:1px solid var(--bd);border-radius:14px;max-width:380px;width:100%;padding:20px;box-shadow:0 20px 60px rgba(0,0,0,.4)">'
+      +'<div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:4px">'+(opts.title||'Datum wählen')+'</div>'
+      +(opts.hint?'<div style="font-size:12px;color:var(--t2);margin-bottom:14px">'+opts.hint+'</div>':'<div style="margin-bottom:14px"></div>')
+      +'<input id="pd-date" type="date" value="'+def+'" min="'+min+'" style="width:100%;padding:12px 14px;font-size:15px;border:1.5px solid var(--bd);border-radius:9px;background:var(--sf);color:var(--text);font-family:inherit;margin-bottom:10px">'
+      +'<div id="pd-preview" style="font-size:12px;color:var(--t2);margin-bottom:12px;min-height:16px"></div>'
+      +'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">'
+        +'<button data-d="'+quick1+'" class="pd-q" style="font-size:11px;padding:6px 12px;border-radius:7px;border:1px solid var(--bd);background:var(--gray-bg);color:var(--t2);cursor:pointer;font-family:inherit">Morgen</button>'
+        +'<button data-d="'+quick3+'" class="pd-q" style="font-size:11px;padding:6px 12px;border-radius:7px;border:1px solid var(--bd);background:var(--gray-bg);color:var(--t2);cursor:pointer;font-family:inherit">+3 Tage</button>'
+        +'<button data-d="'+quick7+'" class="pd-q" style="font-size:11px;padding:6px 12px;border-radius:7px;border:1px solid var(--bd);background:var(--gray-bg);color:var(--t2);cursor:pointer;font-family:inherit">Nächste Woche</button>'
+      +'</div>'
+      +'<div style="display:flex;gap:8px;justify-content:flex-end">'
+        +'<button id="pd-cancel" style="font-size:13px;padding:9px 16px;border-radius:8px;border:1px solid var(--bd);background:transparent;color:var(--t2);cursor:pointer;font-family:inherit">Abbrechen</button>'
+        +'<button id="pd-ok" style="font-size:13px;font-weight:600;padding:9px 18px;border-radius:8px;border:none;background:var(--inv);color:var(--inv-t);cursor:pointer;font-family:inherit">Übernehmen</button>'
+      +'</div>'
+      +'</div>';
+    document.body.appendChild(ov);
+    const input=ov.querySelector('#pd-date');
+    const preview=ov.querySelector('#pd-preview');
+    const updatePreview=()=>{
+      const v=input.value;
+      if(!v){preview.textContent='';return;}
+      const d=new Date(v+'T00:00:00');
+      const wochentage=['So','Mo','Di','Mi','Do','Fr','Sa'];
+      const days=Math.round((d-today)/86400000);
+      const rel=days===0?'heute':days===1?'morgen':days>0?'in '+days+' Tagen':'vor '+(-days)+' Tagen';
+      preview.textContent='📅 '+wochentage[d.getDay()]+', '+fmtDe(v)+' · '+rel;
+    };
+    updatePreview();
+    input.addEventListener('input',updatePreview);
+    input.addEventListener('change',updatePreview);
+    ov.querySelectorAll('.pd-q').forEach(b=>b.addEventListener('click',()=>{input.value=b.dataset.d;updatePreview();}));
+    const close=val=>{ov.remove();resolve(val);};
+    ov.querySelector('#pd-cancel').addEventListener('click',()=>close(null));
+    ov.addEventListener('click',e=>{if(e.target===ov)close(null);});
+    ov.querySelector('#pd-ok').addEventListener('click',()=>{
+      const v=input.value;
+      if(!v||!/^\d{4}-\d{2}-\d{2}$/.test(v)){toast('⚠ Kein gültiges Datum');return;}
+      if(v<min){toast('⚠ Datum muss ab '+fmtDe(min)+' liegen','var(--red)');return;}
+      close(v);
+    });
+    setTimeout(()=>{try{input.focus();}catch(e){}},50);
+  });
+}
 function focusTakeover(){
   let ft=document.getElementById('focus-takeover');
   if(ft)ft.remove();
@@ -3704,6 +3768,8 @@ function getMissedTasks(){
   return S.aufgaben.filter(a=>{
     if(String(a.pid)!==String(aP))return false;
     if(a.status==='erledigt'||a.status==='archiviert'||a.status==='zurueckgegeben'||a.status==='backlog')return false;
+    // Delegation noch nicht angenommen → gehört in Inbox, nicht in Missed-Stack
+    if(a.status==='zugewiesen')return false;
     if(a.parentId)return false; // Unteraufgaben überspringen, Parent trägt Deadline
     if(!a.dl)return false;
     if(a.prio!=='P1'&&a.prio!=='P2')return false;
@@ -3791,11 +3857,9 @@ async function missAction(action){
   const missPatch={miss_count:(a.missCount||0)+1,last_miss_action:action,last_miss_at:nowIso,last_miss_note:note};
   a.missCount=missPatch.miss_count;a.lastMissAction=action;a.lastMissAt=nowIso;a.lastMissNote=note;
   if(action==='neu_schaetzen'){
-    // Inline Date-Prompt
-    const newDl=prompt('Neue Deadline (YYYY-MM-DD)? Leer = morgen.',TODAY);
-    let dl=newDl&&/^\d{4}-\d{2}-\d{2}$/.test(newDl)?newDl:null;
-    if(!dl){const d=new Date();d.setDate(d.getDate()+1);dl=d.toISOString().slice(0,10);}
-    if(dl<=TODAY){toast('⚠ Neue Deadline muss in der Zukunft liegen');return;}
+    // Schöner Date-Picker statt prompt()
+    const dl=await pickDate({title:'Neue Deadline setzen',hint:'Wann ist sie realistisch erledigt?',minDate:'tomorrow'});
+    if(!dl){return;} // Abbruch
     a.dl=dl;a.shiftCount=(a.shiftCount||0)+1;
     await dbPatch('aufgaben',a.id,{...missPatch,dl,shift_count:a.shiftCount});
     toast('📅 Neue Deadline: '+dl.slice(8)+'.'+dl.slice(5,7)+'.');
