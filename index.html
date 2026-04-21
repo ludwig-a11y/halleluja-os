@@ -3077,8 +3077,8 @@ function openBig3Detail(wrId,slot){
   h+='</div>';
   h+='<div id="b3-ms-edit" style="display:none;gap:6px;align-items:center;padding:9px 12px;background:var(--sf);border-left:3px solid var(--inv);border-radius:0 8px 8px 0">';
   h+='<span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);flex-shrink:0">Monatsziel</span>';
-  h+='<select id="b3-ms-select" style="flex:1;font-size:12px;padding:6px 9px;border-radius:7px;border:1px solid var(--bd);background:var(--sf);color:var(--text);font-family:inherit;cursor:pointer">'+meilensteinOptgroups(wr.pid||aP,tzId||'',true)+'</select>';
-  h+='<button onclick="b3SaveMs(\''+wrId+'\','+slot+')" style="font-size:11px;padding:6px 10px;border-radius:7px;border:none;background:var(--inv);color:var(--inv-t);cursor:pointer;font-family:inherit;font-weight:700">✓</button>';
+  h+='<select id="b3-ms-select" onchange="b3SaveMs(\''+wrId+'\','+slot+')" style="flex:1;font-size:12px;padding:6px 9px;border-radius:7px;border:1px solid var(--bd);background:var(--sf);color:var(--text);font-family:inherit;cursor:pointer">'+meilensteinOptgroups(wr.pid||aP,tzId||'',true)+'</select>';
+  h+='<button onclick="b3SaveMs(\''+wrId+'\','+slot+')" style="font-size:11px;padding:6px 10px;border-radius:7px;border:none;background:var(--inv);color:var(--inv-t);cursor:pointer;font-family:inherit;font-weight:700" title="Speichern">✓</button>';
   h+='<button onclick="b3CancelMs()" style="font-size:11px;padding:6px 9px;border-radius:7px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);cursor:pointer;font-family:inherit">×</button>';
   h+='</div>';
   h+='</div>';
