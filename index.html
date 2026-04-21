@@ -4304,16 +4304,41 @@ function rWoche(){
       out+='<span id="cleanup-acc-chev" style="color:var(--t3);font-size:12px">'+(accOpen?'▴':'▾')+'</span>';
       out+='</div>';
       out+='<div id="cleanup-acc-body" style="display:'+(accOpen?'block':'none')+';padding:0 14px 12px;border-top:1px solid var(--bd)">';
-      out+='<div style="font-size:11px;color:var(--t3);margin:10px 0">Tasks ohne Monatsziel — Monatsziel zuordnen, um sie in den P1/P2-Flow zu holen.</div>';
+      out+='<div style="font-size:11px;color:var(--t3);margin:10px 0">Ordne die Aufgabe einem <b>Wochenziel</b> zu (→ erscheint sofort heute) oder einem <b>Monatsziel</b> (landet im P1/P2-Flow).</div>';
+      // Wochenziel-Options (aus aktivem Wochenreset)
+      const _wrNowCL=dieseWocheReset(aP);
+      const _wzOptsCL=[];
+      if(_wrNowCL){
+        [1,2,3].forEach(n=>{
+          const txt=_wrNowCL['big3_'+n];const tzIdW=_wrNowCL['big3_'+n+'_tz_id'];
+          if(txt&&tzIdW)_wzOptsCL.push({n,txt,tzId:tzIdW});
+        });
+      }
       cleanupItems.forEach(a=>{
         const prioCol=prioColor(a.prio);
         out+='<div style="background:var(--gray-bg);border:1px solid var(--bd);border-radius:10px;padding:8px 10px;margin-bottom:6px">';
-        out+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">';
+        out+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">';
         if(a.prio)out+='<span style="font-size:10px;font-weight:700;color:'+prioCol+';min-width:18px">'+a.prio+'</span>';
         out+='<span style="flex:1;font-size:12px;cursor:pointer;overflow:hidden;text-overflow:ellipsis" onclick="openDetail(\''+a.id+'\')">'+esc(a.titel)+'</span>';
         out+='<button onclick="fertig(\''+a.id+'\')" style="flex-shrink:0;font-size:10px;padding:4px 8px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);cursor:pointer;font-family:inherit" title="Erledigen">✓</button>';
         out+='</div>';
-        out+=msPickerWithAdd('cleanup-tz-'+a.id,aP,'','setTeilziel(\''+a.id+'\',this.value)',null);
+        // Wochenziel-Dropdown (wenn verfügbar) — setzt Monatsziel kaskadierend mit
+        if(_wzOptsCL.length){
+          out+='<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">';
+          out+='<span style="font-size:10px;font-weight:700;color:var(--blue);min-width:78px">→ Diese Woche</span>';
+          out+='<select onchange="if(this.value)cleanupToWochenziel(\''+a.id+'\',\''+_wrNowCL.id+'\',this.value)" style="flex:1;font-size:11px;padding:6px 8px;border-radius:8px;border:1.5px solid var(--blue-bd);background:var(--blue-bg);color:var(--blue);font-family:inherit;cursor:pointer;font-weight:600">';
+          out+='<option value="">— Wochenziel wählen (Monatsziel wird mitgesetzt) —</option>';
+          _wzOptsCL.forEach(o=>{
+            const label=o.txt.length>40?o.txt.slice(0,40)+'…':o.txt;
+            out+='<option value="'+o.n+'|'+o.tzId+'">'+o.n+': '+esc(label)+'</option>';
+          });
+          out+='</select></div>';
+        }
+        // Monatsziel-Picker (fallback, wenn kein Wochenziel passt)
+        out+='<div style="display:flex;gap:6px;align-items:center">';
+        out+='<span style="font-size:10px;font-weight:700;color:var(--t3);min-width:78px">Monatsziel</span>';
+        out+='<div style="flex:1">'+msPickerWithAdd('cleanup-tz-'+a.id,aP,'','setTeilziel(\''+a.id+'\',this.value)',null)+'</div>';
+        out+='</div>';
         out+='</div>';
       });
       out+='</div></div>';
