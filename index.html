@@ -4444,9 +4444,7 @@ function stepsHtml(a,ed){
         +'<div class="sc'+(u.d?' dn':'')+'" onclick="toggleStep(\''+a.id+'\','+i+')" style="cursor:pointer">'+( u.d?'<span style="color:var(--inv-t);font-size:8px">✓</span>':'')+'</div>'
         +'<span class="sl'+(u.d?' dn':'')+'">'+u.t+'</span>';
       if(ed){
-        out+='<select onclick="event.stopPropagation()" onchange="assignStepPid(\''+a.id+'\','+i+',this.value)" style="margin-left:auto;font-size:10px;padding:2px 6px;border-radius:6px;border:1px solid '+(isOwner?'var(--bd)':'var(--blue-bd)')+';background:'+(isOwner?'var(--gray-bg)':'var(--blue-bg)')+';color:'+(isOwner?'var(--t3)':'var(--blue)')+';cursor:pointer;font-family:inherit;flex-shrink:0;max-width:90px;font-weight:600">';
-        S.personen.forEach(p=>{out+='<option value="'+p.id+'"'+(p.id===sPid?' selected':'')+'>'+esc(p.name.split(' ')[0])+'</option>';});
-        out+='</select>';
+        out+='<button onclick="event.stopPropagation();delegateStep(\''+a.id+'\','+i+')" title="Diesen Schritt an jemanden delegieren (wird zu Unteraufgabe)" style="margin-left:auto;font-size:10px;padding:3px 8px;border-radius:6px;border:1px dashed var(--bd);background:transparent;color:var(--t3);cursor:pointer;font-family:inherit;flex-shrink:0">→ Delegieren</button>';
         out+='<button onclick="event.stopPropagation();delStep(\''+a.id+'\','+i+')" style="font-size:10px;background:none;border:none;color:var(--t3);cursor:pointer;flex-shrink:0">✕</button>';
       } else if(!isOwner&&sp){
         out+='<span style="margin-left:auto;font-size:9px;color:var(--blue);font-weight:600;flex-shrink:0">'+esc((safeName(sp)).split(' ')[0])+'</span>';
@@ -4473,6 +4471,48 @@ async function assignStepPid(id,i,newPid){
   a.ua[i].pid=newPid===a.pid?null:newPid;
   await dbPatch('aufgaben',id,{ua:a.ua});
   if(document.getElementById('ovl')?.classList.contains('open')){openDetail(id);}else{render();}
+}
+
+// Delegate a checklist step: convert inline step → real Unteraufgabe with parent_id
+function delegateStep(id,i){
+  const a=S.aufgaben.find(x=>x.id===id);if(!a||!a.ua||!a.ua[i])return;
+  const step=a.ua[i];
+  const others=S.personen.filter(p=>String(p.id)!==String(a.pid));
+  const prev=document.getElementById('mb')?.innerHTML||'';
+  const wasOpen=document.getElementById('ovl')?.classList.contains('open');
+  document.getElementById('mb').innerHTML=
+    '<div class="mt">Schritt delegieren</div>'
+    +'<div style="font-size:12px;color:var(--t2);margin-bottom:4px;line-height:1.4">Dieser Schritt wird in eine eigenständige <b>Unteraufgabe</b> umgewandelt und dieser Person zugewiesen:</div>'
+    +'<div style="font-size:13px;font-weight:600;color:var(--text);padding:8px 12px;background:var(--gray-bg);border:1px solid var(--bd);border-radius:8px;margin-bottom:14px">'+esc(step.t)+'</div>'
+    +'<div class="fl"><label>An wen?</label><select id="delstep-pid">'
+    +others.map(p=>'<option value="'+p.id+'">'+esc(p.name)+'</option>').join('')
+    +'</select></div>'
+    +'<div class="mf"><button class="btn btn-gr" onclick="cm()">Abbrechen</button>'
+    +'<button class="btn btn-dk" onclick="confirmDelegateStep(\''+id+'\','+i+')">Delegieren</button></div>';
+  document.getElementById('ovl').classList.add('open');
+  // Falls wir aus einem offenen Detail kamen: Zurück-Pfad merken
+  window._delStepReturn=wasOpen?{id,prev}:null;
+}
+async function confirmDelegateStep(id,i){
+  const a=S.aufgaben.find(x=>x.id===id);if(!a||!a.ua||!a.ua[i])return;
+  const pid=document.getElementById('delstep-pid')?.value;
+  if(!pid){toast('⚠ Person wählen');return;}
+  const step=a.ua[i];
+  const newId=nid('a');
+  const rec={id:newId,pid,titel:step.t,typ:a.typ||'operativ',status:'zugewiesen',prio:a.prio||null,
+    ziel_id:a.zielId||null,teilziel_id:a.teilzielId||null,parent_id:a.id,
+    geplant:0.5,gebucht:0,dl:a.dl||null,ua:[],notiz:null,akt_seit:null,
+    vertraulich:!!a.vertraulich,erstellt_von:aP};
+  S.aufgaben.push(normalizeAufgabe(rec));
+  await dbInsert('aufgaben',rec);
+  // Schritt aus Parent entfernen
+  a.ua.splice(i,1);
+  await dbPatch('aufgaben',a.id,{ua:a.ua});
+  const tp=person(pid);
+  if(tp)notify('aufgabe_zugewiesen',{aufgabe:step.t,fuer:{id:pid,name:tp.name,slack_id:tp.slack_id||''},prio:rec.prio,dl:rec.dl});
+  cm();
+  if(window._delStepReturn){window._delStepReturn=null;openDetail(id);}else{render();}
+  toast('✓ Schritt delegiert an '+(tp?tp.name.split(' ')[0]:'?'));
 }
 
 async function toggleBig3(wrId,field){
@@ -5085,7 +5125,7 @@ function rTag(){
         }
         const linkPartsA=[];
         if(!hasUaA)linkPartsA.push('<button onclick="openDetail(\''+a.id+'\')" style="font-size:11px;padding:5px 10px;border-radius:6px;background:transparent;color:rgba(255,255,255,.55);border:1px dashed rgba(255,255,255,.2);cursor:pointer;font-family:inherit">+ Checkliste</button>');
-        if(!hasSubsA)linkPartsA.push('<button onclick="openNeu({parent_id:\''+a.id+'\',pid:\''+aP+'\',zielId:\''+(a.zielId||'')+'\',teilzielId:\''+(a.teilzielId||'')+'\'})" style="font-size:11px;padding:5px 10px;border-radius:6px;background:transparent;color:rgba(255,255,255,.55);border:1px dashed rgba(255,255,255,.2);cursor:pointer;font-family:inherit">+ Unteraufgabe</button>');
+        // + Unteraufgabe entfernt — Default: Schritte (Checkliste). Delegieren via Checkliste → "→ Delegieren"
         if(linkPartsA.length)hero+='<div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">'+linkPartsA.join('')+'</div>';
       }
       hero+='</div>';
@@ -5179,7 +5219,7 @@ function rTag(){
           // Kompakte Link-Row wenn beide leer ODER als Ergänzung wenn nur eines gefüllt
           const linkParts=[];
           if(!hasUa)linkParts.push('<button onclick="document.getElementById(\'si-inline-'+naechste.id+'\')?.focus()||openDetail(\''+naechste.id+'\')" style="font-size:11px;padding:5px 10px;border-radius:6px;background:transparent;color:rgba(255,255,255,.55);border:1px dashed rgba(255,255,255,.2);cursor:pointer;font-family:inherit">+ Checkliste</button>');
-          if(!hasSubs)linkParts.push('<button onclick="openNeu({parent_id:\''+naechste.id+'\',pid:\''+aP+'\',zielId:\''+(naechste.zielId||'')+'\',teilzielId:\''+(naechste.teilzielId||'')+'\'})" style="font-size:11px;padding:5px 10px;border-radius:6px;background:transparent;color:rgba(255,255,255,.55);border:1px dashed rgba(255,255,255,.2);cursor:pointer;font-family:inherit">+ Unteraufgabe</button>');
+          // + Unteraufgabe entfernt — Default: Schritte (Checkliste). Delegieren via Checkliste → "→ Delegieren"
           if(linkParts.length)hero+='<div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">'+linkParts.join('')+'</div>';
           // Inline-Input für Schnell-Checkliste wenn komplett leer
           if(!hasUa){
@@ -5913,7 +5953,7 @@ function openDetail(id){
   const kinder=S.aufgaben.filter(x=>String(x.parentId||'')===String(id));
   h+='<div style="margin-bottom:12px">';
   h+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px"><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3)">Unteraufgaben'+(kinder.length?' · '+kinder.filter(k=>k.status==='erledigt').length+'/'+kinder.length:'')+'</div>';
-  if(!a.parentId)h+='<button onclick="cm();openNeu({parent_id:\''+id+'\',pid:\''+a.pid+'\',zielId:\''+(a.zielId||'')+'\',teilzielId:\''+(a.teilzielId||'')+'\'})" style="font-size:11px;padding:4px 9px;border-radius:7px;border:1px dashed var(--bd);background:transparent;color:var(--t2);cursor:pointer;font-family:inherit">+ Unteraufgabe</button>';
+  // + Unteraufgabe-Button entfernt — delegieren erfolgt jetzt per Checkliste-Eintrag: Schritt → "→ Delegieren" (wandelt in Unteraufgabe um).
   h+='</div>';
   if(kinder.length){
     h+='<div style="display:flex;flex-direction:column;gap:5px;border-left:2px solid var(--bd);padding-left:10px">';
@@ -5979,7 +6019,11 @@ function openDetail(id){
     });
     h+='</select></div>';
   }
-  h+='<div class="fl"><label style="display:flex;align-items:center;gap:8px;text-transform:none;font-size:13px;font-weight:400;cursor:pointer"><input type="checkbox" id="det-vert"'+(a.vertraulich?' checked':'')+' style="width:auto" onchange="saveDetailField(\''+id+'\',\'vertraulich\',this.checked)"> 🔒 Vertraulich</label>'+(a.vertraulich?'<div style="font-size:11px;color:var(--t3);margin-top:2px">Sichtbar für: Geschäftsführung, Zuständiger &amp; Ersteller</div>':'')+'</div>';
+  if(isGF()){
+    h+='<div class="fl"><label style="display:flex;align-items:center;gap:8px;text-transform:none;font-size:13px;font-weight:400;cursor:pointer"><input type="checkbox" id="det-vert"'+(a.vertraulich?' checked':'')+' style="width:auto" onchange="saveDetailField(\''+id+'\',\'vertraulich\',this.checked)"> 🔒 Vertraulich</label>'+(a.vertraulich?'<div style="font-size:11px;color:var(--t3);margin-top:2px">Sichtbar für: Geschäftsführung, Zuständiger &amp; Ersteller</div>':'')+'</div>';
+  } else if(a.vertraulich){
+    h+='<div class="fl" style="font-size:12px;color:var(--t3)">🔒 Vertraulich <span style="color:var(--t3);margin-left:4px">(vom Ziel geerbt)</span></div>';
+  }
   h+='<div class="fl"><label>Checkliste</label>'+stepsHtml(a,true)+'</div>';
   h+='</div></details>';
   // ── Footer ──
@@ -7738,7 +7782,7 @@ function openNeu(pf={}){
     +'</div>'
     +'<div class="fl" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">'
     +'<label style="display:flex;align-items:center;gap:6px;text-transform:none;font-size:12px;font-weight:400;color:var(--t3);cursor:pointer;margin:0"><select id="nrec" style="width:auto;padding:4px 8px;font-size:11px;border:1px solid var(--bd);border-radius:6px;color:var(--t2);background:var(--sf)"><option value="">Einmalig</option><option value="daily">🔄 Täglich</option><option value="weekly">🔄 Wöchentlich</option><option value="monthly">🔄 Monatlich</option></select></label>'
-    +'<label style="display:flex;align-items:center;gap:6px;text-transform:none;font-size:12px;font-weight:400;color:var(--t3);cursor:pointer;margin:0"><input type="checkbox" id="nvert" style="width:auto" onchange="document.getElementById(\'nvert-hint\').style.display=this.checked?\'block\':\'none\'"> 🔒 Vertraulich</label><div id="nvert-hint" style="display:none;font-size:10px;color:var(--t3);margin-top:2px">Sichtbar für: Geschäftsführung, Zuständiger &amp; Ersteller</div>'
+    +(isGF()?'<label style="display:flex;align-items:center;gap:6px;text-transform:none;font-size:12px;font-weight:400;color:var(--t3);cursor:pointer;margin:0"><input type="checkbox" id="nvert" style="width:auto" onchange="document.getElementById(\'nvert-hint\').style.display=this.checked?\'block\':\'none\'"> 🔒 Vertraulich</label><div id="nvert-hint" style="display:none;font-size:10px;color:var(--t3);margin-top:2px">Sichtbar für: Geschäftsführung, Zuständiger &amp; Ersteller</div>':'')'
     +'</div>'
     +'<div class="fl"><label>Checkliste</label><div id="neu-steps"></div>'
     +'<div style="display:flex;gap:6px"><input class="asi" id="neu-step-input" placeholder="+ Eintrag…" onkeydown="if(event.key===\'Enter\'){event.preventDefault();addNeuStep()}" style="font-size:12px;padding:6px 10px"><button onclick="addNeuStep()" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);cursor:pointer">+</button></div></div>'
@@ -8237,7 +8281,13 @@ async function saveNeu(){
     zielId=opt?.dataset?.zielId||null;
   }
   const typ=(zielId&&!istBereich(zielId))?'strategisch':'operativ';
-  const vert=document.getElementById('nvert')?document.getElementById('nvert').checked:false;
+  // Vertraulich: GF-Checkbox oder Vererbung von Ziel/Teilziel
+  let vert=document.getElementById('nvert')?document.getElementById('nvert').checked:false;
+  if(!vert){
+    const _tzInh=tzSel&&tzSel.value?S.ziele.flatMap(z=>z.teilziele||[]).find(t=>t.id===tzSel.value):null;
+    const _zInh=zielId?S.ziele.find(z=>z.id===zielId):null;
+    if(_tzInh?.vertraulich||_zInh?.vertraulich)vert=true;
+  }
   let pid=document.getElementById('np').value;
   // @mention Erkennung: @vorname → Person zuweisen
   const mentionMatch=t.match(/@(\w+)/i);
