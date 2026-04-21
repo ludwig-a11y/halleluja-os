@@ -380,6 +380,11 @@ function zieleOptgroups(pid,selId=''){
 }
 // Monatsziel-zentrische Auswahl: Monatsziele (aktiv) gruppiert nach Ziel/Bereich.
 // Liefert <option>s mit data-ziel-id, data-datum. Aufrufer deriviert ziel_id aus Auswahl.
+function tzLive(tzId){
+  if(!tzId)return false;
+  for(const z of S.ziele){for(const t of (z.teilziele||[])){if(String(t.id)===String(tzId))return !t.erledigt&&(t.status||'aktiv')==='aktiv';}}
+  return false;
+}
 function meilensteinOptgroups(pid,selTzId='',ownOnly=false){
   const sichtbar=S.ziele.filter(z=>(!z.vertraulich||isGF())&&z.status!=='vorschlag');
   const withTz=sichtbar.map(z=>({z,tz:(z.teilziele||[]).filter(t=>!t.erledigt&&(t.status||'aktiv')==='aktiv')})).filter(x=>x.tz.length);
@@ -1538,6 +1543,7 @@ async function setWochenziel(taskId,wrId,combined){
   const [slotStr,tzId]=combined.split('|');const slot=parseInt(slotStr,10);
   if(!slot||!tzId)return;
   let zielId=null;S.ziele.forEach(z=>{(z.teilziele||[]).forEach(t=>{if(String(t.id)===String(tzId))zielId=z.id;});});
+  if(!zielId){toast('⚠️ Monatsziel dieses Wochenziels existiert nicht mehr','var(--red)');return;}
   const prev={teilzielId:a.teilzielId,zielId:a.zielId,wochenresetId:a.wochenresetId,big3Slot:a.big3Slot};
   a._busy=true;a.teilzielId=tzId;a.zielId=zielId;a.wochenresetId=wrId;a.big3Slot=slot;render();
   const ok=await dbPatch('aufgaben',taskId,{teilziel_id:tzId,ziel_id:zielId,wochenreset_id:wrId,big3_slot:slot});
@@ -1552,6 +1558,7 @@ async function cleanupToWochenziel(taskId,wrId,combined){
   const a=S.aufgaben.find(x=>x.id===taskId);if(!a||a._busy)return;
   let zielId=null;
   S.ziele.forEach(z=>{(z.teilziele||[]).forEach(t=>{if(String(t.id)===String(tzId))zielId=z.id;});});
+  if(!zielId){toast('⚠️ Monatsziel dieses Wochenziels existiert nicht mehr','var(--red)');return;}
   const prev={teilzielId:a.teilzielId,zielId:a.zielId,wochenresetId:a.wochenresetId,big3Slot:a.big3Slot};
   a._busy=true;a.teilzielId=tzId;a.zielId=zielId;a.wochenresetId=wrId;a.big3Slot=slot;
   render();
@@ -4551,7 +4558,7 @@ function rWoche(){
       if(_wrNowCL){
         [1,2,3].forEach(n=>{
           const txt=_wrNowCL['big3_'+n];const tzIdW=_wrNowCL['big3_'+n+'_tz_id'];
-          if(txt&&tzIdW)_wzOptsCL.push({n,txt,tzId:tzIdW});
+          if(txt&&tzIdW&&tzLive(tzIdW))_wzOptsCL.push({n,txt,tzId:tzIdW});
         });
       }
       cleanupItems.forEach(a=>{
@@ -5368,7 +5375,7 @@ function rTag(){
     if(_wrNowIbx){
       [1,2,3].forEach(n=>{
         const txt=_wrNowIbx['big3_'+n];const tzW=_wrNowIbx['big3_'+n+'_tz_id'];
-        if(txt&&tzW)_wzOptsIbx.push({n,txt,tzId:tzW});
+        if(txt&&tzW&&tzLive(tzW))_wzOptsIbx.push({n,txt,tzId:tzW});
       });
     }
     const wzSelectIbx=taskId=>{
@@ -5801,7 +5808,7 @@ function openDetail(id){
   // Wochenziel-Zuordnung (nur wenn Wochenreset existiert mit gefüllten Slots)
   const _wrDet=dieseWocheReset(a.pid);
   const _wzOptsDet=[];
-  if(_wrDet){[1,2,3].forEach(n=>{const t=_wrDet['big3_'+n];const tz=_wrDet['big3_'+n+'_tz_id'];if(t&&tz)_wzOptsDet.push({n,t,tz});});}
+  if(_wrDet){[1,2,3].forEach(n=>{const t=_wrDet['big3_'+n];const tz=_wrDet['big3_'+n+'_tz_id'];if(t&&tz&&tzLive(tz))_wzOptsDet.push({n,t,tz});});}
   if(_wzOptsDet.length){
     const curSlot=(a.wochenresetId===_wrDet.id)?a.big3Slot:null;
     h+='<div class="fl"><label>Wochenziel <span style="font-weight:400;color:var(--t2)">(diese Woche)</span></label><select id="det-wz" onchange="setWochenziel(\''+id+'\',\''+_wrDet.id+'\',this.value)" style="width:100%">';
