@@ -5200,9 +5200,16 @@ function rTag(){
       const txt=wrItemName(wrAktuell,n);if(!txt)return;
       const done=wrAktuell[doneF];
       const tzId=wrAktuell['big3_'+n+'_tz_id']||null;
-      // Linked-Tasks: explizite Zuordnung via wochenresetId + big3Slot
+      // Slot-Membership: explizit (wrId+slot), via Monatsziel, oder via Parent-Kette
       const big3Txt=(wrAktuell['big3_'+n]||'').toLowerCase().trim();
-      const slotTasks=S.aufgaben.filter(a=>a.pid===aP&&a.wochenresetId===wrAktuell.id&&a.big3Slot===n&&a.status!=='erledigt');
+      const _direct=a=>a.wochenresetId===wrAktuell.id&&a.big3Slot===n;
+      const _viaTz=a=>tzId&&!a.wochenresetId&&String(a.teilzielId||'')===String(tzId);
+      const _parentIds=new Set(S.aufgaben.filter(a=>_direct(a)||_viaTz(a)).map(a=>a.id));
+      const _belongs=a=>_direct(a)||_viaTz(a)||(a.parentId&&_parentIds.has(a.parentId));
+      // Eigene offene Aufgaben im Slot (für "Los"-Button + Liste)
+      const slotTasks=S.aufgaben.filter(a=>a.pid===aP&&_belongs(a)&&a.status!=='erledigt'&&a.status!=='archiviert');
+      // Delegationen: von mir rausgegeben, andere pid, noch offen
+      const slotDelegiert=S.aufgaben.filter(a=>_belongs(a)&&String(a.erstelltVon)===String(aP)&&String(a.pid)!==String(aP)&&a.status!=='erledigt'&&a.status!=='archiviert');
       const linkedTask=slotTasks.find(a=>a.prio==='P1')||slotTasks[0]||null;
       // Card-Click: öffnet Wochenziel-Übersichts-Modal (immer, auch ohne linkedTask).
       const cardAction='openBig3Detail(\''+wrAktuell.id+'\','+n+')';
@@ -5246,8 +5253,8 @@ function rTag(){
         out+='</div>';
       }
       out+='</div>'; // flex-row close
-      // Alle Slot-Tasks sichtbar (damit User sieht was er zugeordnet hat)
-      if(!done&&slotTasks.length){
+      // Alle Slot-Tasks sichtbar (damit User sieht was er zugeordnet hat) + Delegationen
+      if(!done&&(slotTasks.length||slotDelegiert.length)){
         out+='<div style="padding-left:30px;padding-top:6px;border-top:1px dashed var(--bd);margin-top:8px">';
         slotTasks.forEach(a=>{
           const isAk=a.status==='aktiv';
@@ -5257,6 +5264,28 @@ function rTag(){
           if(a.prio)out+='<span style="font-size:9px;font-weight:700;color:'+(a.prio==='P1'?'var(--red)':'var(--t3)')+'">'+a.prio+'</span>';
           out+='</div>';
         });
+        // Delegationen (Sam-Prinzip: Outputs enden bei dir, nicht beim Empfänger)
+        if(slotDelegiert.length){
+          out+='<div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--purple);margin:8px 0 3px">→ Delegiert ('+slotDelegiert.length+')</div>';
+          slotDelegiert.forEach(a=>{
+            const owner=person(a.pid);
+            const ownerName=owner?owner.name.split(' ')[0]:'?';
+            let stStr='',stCol='var(--t3)';
+            if(a.status==='zugewiesen'){
+              const ageDays=a.updated_at?Math.floor((Date.now()-new Date(a.updated_at).getTime())/86400000):0;
+              if(ageDays>=2){stStr='⚠ wartet '+ageDays+'d';stCol='var(--red)';}
+              else{stStr='wartet auf Annahme';stCol='var(--amber,#d97706)';}
+            } else if(a.status==='zurueckgegeben'){stStr='↩ zurückgegeben';stCol='var(--red)';}
+            else if(a.status==='aktiv'){stStr='in Arbeit';stCol='var(--blue)';}
+            else{stStr='offen';stCol='var(--t3)';}
+            out+='<div onclick="event.stopPropagation();openDetail(\''+a.id+'\')" style="display:flex;align-items:center;gap:7px;padding:4px 0;cursor:pointer">';
+            out+='<div style="width:11px;height:11px;border-radius:3px;flex-shrink:0;border:1.5px dashed var(--purple);background:var(--purple-bg)"></div>';
+            out+='<span style="font-size:12px;color:var(--text);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(a.titel)+'</span>';
+            out+='<span style="font-size:9px;font-weight:700;color:var(--purple);background:var(--purple-bg);padding:1px 7px;border-radius:99px;flex-shrink:0">@'+esc(ownerName)+'</span>';
+            out+='<span style="font-size:9px;font-weight:600;color:'+stCol+';flex-shrink:0">'+stStr+'</span>';
+            out+='</div>';
+          });
+        }
         out+='</div>';
       }
       out+='</div>'; // card close
