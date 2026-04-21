@@ -4474,10 +4474,13 @@ function rWoche(){
       out+='</div>';
       // Aufgaben die zu diesem Big-3 gehören — explizite Zuordnung via wochenresetId + big3Slot
       if(true){
-        const tzAufgaben=myA.filter(a=>a.wochenresetId===wr.id&&a.big3Slot===n&&a.status!=='erledigt');
-        const tzErledigt=myA.filter(a=>a.wochenresetId===wr.id&&a.big3Slot===n&&a.status==='erledigt');
-        // Delegationen: ich habe rausgegeben (erstelltVon=me), jemand anderes ist pid
-        const tzDelegiert=S.aufgaben.filter(a=>a.wochenresetId===wr.id&&a.big3Slot===n&&String(a.erstelltVon)===String(aP)&&String(a.pid)!==String(aP)&&a.status!=='erledigt'&&a.status!=='archiviert');
+        // Parent-Tasks direkt in diesem Slot → Unteraufgaben erben die Zugehörigkeit
+        const parentIdsInSlot=new Set(S.aufgaben.filter(a=>a.wochenresetId===wr.id&&a.big3Slot===n).map(a=>a.id));
+        const belongsToSlot=a=>(a.wochenresetId===wr.id&&a.big3Slot===n)||(a.parentId&&parentIdsInSlot.has(a.parentId));
+        const tzAufgaben=myA.filter(a=>belongsToSlot(a)&&a.status!=='erledigt');
+        const tzErledigt=myA.filter(a=>belongsToSlot(a)&&a.status==='erledigt');
+        // Delegationen: ich habe rausgegeben (erstelltVon=me), jemand anderes ist pid (inkl. Unteraufgaben)
+        const tzDelegiert=S.aufgaben.filter(a=>belongsToSlot(a)&&String(a.erstelltVon)===String(aP)&&String(a.pid)!==String(aP)&&a.status!=='erledigt'&&a.status!=='archiviert');
         if(tzAufgaben.length||tzErledigt.length||tzDelegiert.length){
           out+='<div style="padding-left:28px;padding-bottom:4px">';
           tzAufgaben.forEach(a=>{
