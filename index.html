@@ -4474,9 +4474,13 @@ function rWoche(){
       out+='</div>';
       // Aufgaben die zu diesem Big-3 gehören — explizite Zuordnung via wochenresetId + big3Slot
       if(true){
-        // Parent-Tasks direkt in diesem Slot → Unteraufgaben erben die Zugehörigkeit
-        const parentIdsInSlot=new Set(S.aufgaben.filter(a=>a.wochenresetId===wr.id&&a.big3Slot===n).map(a=>a.id));
-        const belongsToSlot=a=>(a.wochenresetId===wr.id&&a.big3Slot===n)||(a.parentId&&parentIdsInSlot.has(a.parentId));
+        // Parent-Tasks direkt in diesem Slot → Unteraufgaben erben die Zugehörigkeit.
+        // Fallback: Aufgaben ohne explizite Slot-Zuordnung, die via teilziel_id am Monatsziel
+        // dieses Slots hängen, werden auch als slot-zugehörig erkannt (inkl. ihrer Unteraufgaben).
+        const directInSlot=a=>a.wochenresetId===wr.id&&a.big3Slot===n;
+        const viaTeilziel=a=>tzId&&!a.wochenresetId&&String(a.teilzielId||'')===String(tzId);
+        const parentIdsInSlot=new Set(S.aufgaben.filter(a=>directInSlot(a)||viaTeilziel(a)).map(a=>a.id));
+        const belongsToSlot=a=>directInSlot(a)||viaTeilziel(a)||(a.parentId&&parentIdsInSlot.has(a.parentId));
         const tzAufgaben=myA.filter(a=>belongsToSlot(a)&&a.status!=='erledigt');
         const tzErledigt=myA.filter(a=>belongsToSlot(a)&&a.status==='erledigt');
         // Delegationen: ich habe rausgegeben (erstelltVon=me), jemand anderes ist pid (inkl. Unteraufgaben)
