@@ -4463,29 +4463,43 @@ function rWoche(){
       }
       cleanupItems.forEach(a=>{
         const prioCol=prioColor(a.prio);
-        out+='<div style="background:var(--gray-bg);border:1px solid var(--bd);border-radius:10px;padding:8px 10px;margin-bottom:6px">';
-        out+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">';
+        const _msOpts=meilensteinOptgroups(aP,'');
+        out+='<div style="background:var(--gray-bg);border:1px solid var(--bd);border-radius:10px;padding:7px 10px;margin-bottom:5px">';
+        out+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">';
         if(a.prio)out+='<span style="font-size:10px;font-weight:700;color:'+prioCol+';min-width:18px">'+a.prio+'</span>';
-        out+='<span style="flex:1;font-size:12px;cursor:pointer;overflow:hidden;text-overflow:ellipsis" onclick="openDetail(\''+a.id+'\')">'+esc(a.titel)+'</span>';
-        out+='<button onclick="fertig(\''+a.id+'\')" style="flex-shrink:0;font-size:10px;padding:4px 8px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);cursor:pointer;font-family:inherit" title="Erledigen">✓</button>';
+        out+='<span style="flex:1;font-size:12px;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" onclick="openDetail(\''+a.id+'\')">'+esc(a.titel)+'</span>';
+        out+='<button onclick="fertig(\''+a.id+'\')" style="flex-shrink:0;font-size:10px;padding:4px 9px;border-radius:7px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);cursor:pointer;font-family:inherit" title="Erledigen">✓</button>';
         out+='</div>';
-        // Wochenziel-Dropdown (wenn verfügbar) — setzt Monatsziel kaskadierend mit
+        // Wochenziel-Dropdown (wenn verfügbar)
         if(_wzOptsCL.length){
           out+='<div style="display:flex;gap:6px;align-items:center;margin-bottom:4px">';
-          out+='<span style="font-size:10px;font-weight:700;color:var(--blue);min-width:72px;flex-shrink:0">→ Diese Woche</span>';
-          out+='<select onchange="if(this.value)cleanupToWochenziel(\''+a.id+'\',\''+_wrNowCL.id+'\',this.value)" style="flex:1;min-width:0;max-width:340px;font-size:11px;padding:5px 7px;border-radius:7px;border:1px solid var(--blue-bd);background:var(--blue-bg);color:var(--blue);font-family:inherit;cursor:pointer;font-weight:600">';
-          out+='<option value="">— Wochenziel wählen —</option>';
+          out+='<span style="font-size:10px;font-weight:700;color:var(--blue);width:68px;flex-shrink:0">→ Woche</span>';
+          out+='<select onchange="if(this.value)cleanupToWochenziel(\''+a.id+'\',\''+_wrNowCL.id+'\',this.value)" style="flex:1;min-width:0;max-width:320px;font-size:11px;padding:5px 9px;border-radius:7px;border:1px solid var(--blue-bd);background:var(--blue-bg);color:var(--blue);font-family:inherit;cursor:pointer;font-weight:600">';
+          out+='<option value="">Wochenziel wählen…</option>';
           _wzOptsCL.forEach(o=>{
-            const label=o.txt.length>36?o.txt.slice(0,36)+'…':o.txt;
+            const label=o.txt.length>32?o.txt.slice(0,32)+'…':o.txt;
             out+='<option value="'+o.n+'|'+o.tzId+'">'+o.n+': '+esc(label)+'</option>';
           });
           out+='</select></div>';
         }
-        // Monatsziel-Picker (fallback, wenn kein Wochenziel passt)
+        // Monatsziel-Dropdown (visuell konsistent mit Wochenziel)
         out+='<div style="display:flex;gap:6px;align-items:center">';
-        out+='<span style="font-size:10px;font-weight:700;color:var(--t3);min-width:72px;flex-shrink:0">Monatsziel</span>';
-        out+='<div style="flex:1;min-width:0;max-width:340px">'+msPickerWithAdd('cleanup-tz-'+a.id,aP,'','setTeilziel(\''+a.id+'\',this.value)',null)+'</div>';
+        out+='<span style="font-size:10px;font-weight:700;color:var(--t3);width:68px;flex-shrink:0">Monat</span>';
+        out+='<select id="cleanup-tz-'+a.id+'" onchange="setTeilziel(\''+a.id+'\',this.value)" style="flex:1;min-width:0;max-width:275px;font-size:11px;padding:5px 9px;border-radius:7px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);font-family:inherit;cursor:pointer">'+_msOpts+'</select>';
+        out+='<button onclick="toggleQuickMsForm(\'cleanup-tz-'+a.id+'\')" style="flex-shrink:0;font-size:10px;padding:5px 9px;border-radius:7px;border:1px solid var(--bd);background:var(--sf);color:var(--t3);cursor:pointer;font-family:inherit" title="Neues Monatsziel">+</button>';
         out+='</div>';
+        // Hidden add-form für msPickerWithAdd-Kompatibilität
+        const _zOpts=S.ziele.filter(z=>z.status!=='vorschlag'&&z.status!=='archiviert'&&(!z.vertraulich||isGF()||String(z.verantwortlichId)===String(aP))&&canManageTZ(z.id)).map(z=>'<option value="'+z.id+'">'+(z.status==='bereich'?'📁 ':'')+esc(z.name)+'</option>').join('');
+        out+='<div id="cleanup-tz-'+a.id+'-addform" style="display:none;margin-top:6px;padding:8px;border:1px dashed var(--bd);border-radius:7px;background:var(--sf)">';
+        out+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t2);margin-bottom:6px">+ Neues Monatsziel</div>';
+        out+='<div style="display:flex;flex-direction:column;gap:5px">';
+        out+='<select id="cleanup-tz-'+a.id+'-zid" style="font-size:11px;padding:5px 8px;border:1px solid var(--bd);border-radius:6px;background:var(--sf);color:var(--text);font-family:inherit"><option value="">Ziel wählen…</option>'+_zOpts+'</select>';
+        out+='<input id="cleanup-tz-'+a.id+'-name" placeholder="Titel (messbar)" style="font-size:11px;padding:5px 8px;border:1px solid var(--bd);border-radius:6px;background:var(--sf);color:var(--text);font-family:inherit" onkeydown="if(event.key===\'Enter\'){event.preventDefault();saveQuickMs(\'cleanup-tz-'+a.id+'\',\''+aP+'\')}">';
+        out+='<input id="cleanup-tz-'+a.id+'-datum" type="date" style="font-size:11px;padding:5px 8px;border:1px solid var(--bd);border-radius:6px;background:var(--sf);color:var(--text);font-family:inherit">';
+        out+='<div style="display:flex;gap:5px;margin-top:2px">';
+        out+='<button type="button" onclick="saveQuickMs(\'cleanup-tz-'+a.id+'\',\''+aP+'\')" style="flex:1;font-size:11px;padding:6px;border-radius:6px;border:none;background:var(--blue);color:#fff;cursor:pointer;font-family:inherit;font-weight:700">Anlegen</button>';
+        out+='<button type="button" onclick="toggleQuickMsForm(\'cleanup-tz-'+a.id+'\')" style="font-size:11px;padding:6px 9px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);cursor:pointer;font-family:inherit">×</button>';
+        out+='</div></div></div>';
         out+='</div>';
       });
       out+='</div></div>';
