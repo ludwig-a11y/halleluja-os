@@ -607,7 +607,8 @@ function normalizeAufgabe(a){
     erstelltVon:a.erstellt_von||null,
     missCount:a.miss_count||0,lastMissAction:a.last_miss_action||null,
     lastMissAt:a.last_miss_at||null,lastMissNote:a.last_miss_note||null,
-    shiftCount:a.shift_count||0,inboxStatus:a.inbox_status||null};
+    shiftCount:a.shift_count||0,inboxStatus:a.inbox_status||null,
+    wochenresetId:a.wochenreset_id||null,big3Slot:a.big3_slot||null};
 }
 async function loadData(){
   const [personen,teams,ziele,kpis,teilziele,aufgaben,kpiVals,checkins,signale,wochenresets,beobachtungen,kontextFeed,decisionRequests,meetings,paddelGewinner]=await Promise.all([
@@ -1477,11 +1478,29 @@ function rCleanup(pid){
   });
   h+='</div></div>';
   h+='<div style="font-size:11px;color:var(--t3);margin:8px 0 10px">Aufgaben ohne Monatsziel — zählt nicht fürs Paddel.</div>';
+  // Wochenziel-Options für Dropdown
+  const wrNow=dieseWocheReset(pid);
+  const wzOpts=[];
+  if(wrNow){
+    [1,2,3].forEach(n=>{
+      const txt=wrNow['big3_'+n];const tzId=wrNow['big3_'+n+'_tz_id'];
+      if(txt&&tzId)wzOpts.push({n,txt,tzId});
+    });
+  }
   items.forEach(a=>{
     const prioCol=prioColor(a.prio);
-    h+='<div style="background:var(--gray-bg);border:1px solid var(--bd);border-radius:10px;padding:9px 12px;margin-bottom:6px;display:flex;align-items:center;gap:10px">';
+    h+='<div style="background:var(--gray-bg);border:1px solid var(--bd);border-radius:10px;padding:9px 12px;margin-bottom:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">';
     if(a.prio)h+='<span style="font-size:10px;font-weight:700;color:'+prioCol+';white-space:nowrap;min-width:18px">'+a.prio+'</span>';
-    h+='<span style="flex:1;font-size:13px;cursor:pointer;overflow:hidden;text-overflow:ellipsis" onclick="openDetail(\''+a.id+'\')">'+esc(a.titel)+'</span>';
+    h+='<span style="flex:1;min-width:140px;font-size:13px;cursor:pointer;overflow:hidden;text-overflow:ellipsis" onclick="openDetail(\''+a.id+'\')">'+esc(a.titel)+'</span>';
+    if(wzOpts.length){
+      h+='<select onchange="if(this.value)cleanupToWochenziel(\''+a.id+'\',\''+wrNow.id+'\',this.value)" style="font-size:11px;padding:5px 8px;border-radius:8px;border:1px solid var(--blue-bd);background:var(--blue-bg);color:var(--blue);font-family:inherit;cursor:pointer;font-weight:600;max-width:180px">';
+      h+='<option value="">→ Wochenziel…</option>';
+      wzOpts.forEach(o=>{
+        const label=o.txt.length>28?o.txt.slice(0,28)+'…':o.txt;
+        h+='<option value="'+o.n+'|'+o.tzId+'">'+o.n+': '+esc(label)+'</option>';
+      });
+      h+='</select>';
+    }
     h+='<button onclick="fertig(\''+a.id+'\')" style="flex-shrink:0;font-size:11px;padding:6px 10px;border-radius:8px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);cursor:pointer;font-family:inherit" title="Erledigen">✓</button>';
     h+='</div>';
   });
@@ -1504,6 +1523,42 @@ function toggleCleanupAcc(){
 function setCleanupStart(pid,hour){
   localStorage.setItem('cleanup_start_'+pid,String(hour));
   render();
+}
+async function setWochenziel(taskId,wrId,combined){
+  const a=S.aufgaben.find(x=>x.id===taskId);if(!a||a._busy)return;
+  if(!combined){
+    // entfernen
+    const prev={wochenresetId:a.wochenresetId,big3Slot:a.big3Slot};
+    a._busy=true;a.wochenresetId=null;a.big3Slot=null;render();
+    const ok=await dbPatch('aufgaben',taskId,{wochenreset_id:null,big3_slot:null});
+    a._busy=false;
+    if(!ok){a.wochenresetId=prev.wochenresetId;a.big3Slot=prev.big3Slot;toast('⚠️ Speichern fehlgeschlagen','var(--red)');render();return;}
+    toast('Wochenziel-Zuordnung entfernt');return;
+  }
+  const [slotStr,tzId]=combined.split('|');const slot=parseInt(slotStr,10);
+  if(!slot||!tzId)return;
+  let zielId=null;S.ziele.forEach(z=>{(z.teilziele||[]).forEach(t=>{if(String(t.id)===String(tzId))zielId=z.id;});});
+  const prev={teilzielId:a.teilzielId,zielId:a.zielId,wochenresetId:a.wochenresetId,big3Slot:a.big3Slot};
+  a._busy=true;a.teilzielId=tzId;a.zielId=zielId;a.wochenresetId=wrId;a.big3Slot=slot;render();
+  const ok=await dbPatch('aufgaben',taskId,{teilziel_id:tzId,ziel_id:zielId,wochenreset_id:wrId,big3_slot:slot});
+  a._busy=false;
+  if(!ok){a.teilzielId=prev.teilzielId;a.zielId=prev.zielId;a.wochenresetId=prev.wochenresetId;a.big3Slot=prev.big3Slot;toast('⚠️ Speichern fehlgeschlagen','var(--red)');render();return;}
+  toast('✓ Wochenziel-Zuordnung gespeichert');
+}
+async function cleanupToWochenziel(taskId,wrId,combined){
+  const [slotStr,tzId]=(combined||'').split('|');
+  const slot=parseInt(slotStr,10);
+  if(!slot||!tzId)return;
+  const a=S.aufgaben.find(x=>x.id===taskId);if(!a||a._busy)return;
+  let zielId=null;
+  S.ziele.forEach(z=>{(z.teilziele||[]).forEach(t=>{if(String(t.id)===String(tzId))zielId=z.id;});});
+  const prev={teilzielId:a.teilzielId,zielId:a.zielId,wochenresetId:a.wochenresetId,big3Slot:a.big3Slot};
+  a._busy=true;a.teilzielId=tzId;a.zielId=zielId;a.wochenresetId=wrId;a.big3Slot=slot;
+  render();
+  const ok=await dbPatch('aufgaben',taskId,{teilziel_id:tzId,ziel_id:zielId,wochenreset_id:wrId,big3_slot:slot});
+  a._busy=false;
+  if(!ok){a.teilzielId=prev.teilzielId;a.zielId=prev.zielId;a.wochenresetId=prev.wochenresetId;a.big3Slot=prev.big3Slot;toast('⚠️ Speichern fehlgeschlagen','var(--red)');render();return;}
+  toast('✓ Zu Wochenziel zugeordnet');
 }
 
 // ─── INBOX (End-of-Day Ritual) ──────────────────────────────────
@@ -4156,16 +4211,22 @@ function rWoche(){
       const done=wr[doneF];
       const tzId=wr['big3_'+n+'_tz_id'];
       out+='<div style="'+(i>0?'border-top:1px solid '+f.bd+';':'')+'">';
-      out+='<div onclick="toggleBig3(\''+wr.id+'\',\''+doneF+'\')" style="display:flex;align-items:center;gap:10px;padding:9px 0;cursor:pointer">';
-      out+='<div style="width:18px;height:18px;border-radius:5px;flex-shrink:0;'+(done?'background:'+f.tc+';border:1.5px solid '+f.tc+';display:flex;align-items:center;justify-content:center':'border:1.5px solid '+f.bd)+'">'+(done?'<span style="color:#fff;font-size:10px;font-weight:800">✓</span>':'')+'</div>';
-      out+='<span style="font-size:13px;font-weight:500;flex:1;'+(done?'color:var(--t2);text-decoration:line-through':'color:var(--text)')+'">'+txt+'</span>';
-      out+='</div>';
-      // Aufgaben die zu diesem Big-3 gehören — Fuzzy-Match (inkl. exakter Titel-Match als Ausführungs-Vehikel)
+      // Monatsziel-Kontext-Tag (macht Hierarchie sichtbar)
+      let _msName=null,_msColor=f.tc;
       if(tzId){
-        const bTxt=(wr['big3_'+n]||'').toLowerCase().trim();
-        const matchTitle=a=>{if(!bTxt)return true;const t=(a.titel||'').toLowerCase().trim();return t===bTxt||t.includes(bTxt.slice(0,Math.min(20,bTxt.length)))||bTxt.includes(t.slice(0,Math.min(20,t.length)));};
-        const tzAufgaben=myA.filter(a=>a.teilzielId===tzId&&a.status!=='erledigt'&&matchTitle(a));
-        const tzErledigt=myA.filter(a=>a.teilzielId===tzId&&a.status==='erledigt'&&matchTitle(a));
+        for(const z of S.ziele){const _tz=(z.teilziele||[]).find(t=>t.id===tzId);if(_tz){_msName=_tz.name;_msColor=FARBEN[z.farbe||0].tc;break;}}
+      }
+      out+='<div onclick="toggleBig3(\''+wr.id+'\',\''+doneF+'\')" style="display:flex;align-items:flex-start;gap:10px;padding:9px 0;cursor:pointer">';
+      out+='<div style="width:18px;height:18px;border-radius:5px;flex-shrink:0;margin-top:1px;'+(done?'background:'+f.tc+';border:1.5px solid '+f.tc+';display:flex;align-items:center;justify-content:center':'border:1.5px solid '+f.bd)+'">'+(done?'<span style="color:#fff;font-size:10px;font-weight:800">✓</span>':'')+'</div>';
+      out+='<div style="flex:1;min-width:0">';
+      out+='<span style="font-size:13px;font-weight:600;'+(done?'color:var(--t2);text-decoration:line-through':'color:var(--text)')+'">'+txt+'</span>';
+      if(_msName)out+='<div style="font-size:10px;color:var(--t3);margin-top:2px"><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:'+_msColor+';margin-right:5px;vertical-align:middle"></span>→ Monatsziel: '+esc(_msName)+'</div>';
+      out+='</div>';
+      out+='</div>';
+      // Aufgaben die zu diesem Big-3 gehören — explizite Zuordnung via wochenresetId + big3Slot
+      if(true){
+        const tzAufgaben=myA.filter(a=>a.wochenresetId===wr.id&&a.big3Slot===n&&a.status!=='erledigt');
+        const tzErledigt=myA.filter(a=>a.wochenresetId===wr.id&&a.big3Slot===n&&a.status==='erledigt');
         if(tzAufgaben.length||tzErledigt.length){
           out+='<div style="padding-left:28px;padding-bottom:4px">';
           tzAufgaben.forEach(a=>{
@@ -4182,7 +4243,7 @@ function rWoche(){
           out+='</div>';
         }
       }
-      out+='<div style="padding-left:28px;padding-bottom:7px"><button onclick="openNeu({'+(wr.focus_ziel_id?'zielId:\''+wr.focus_ziel_id+'\',':('' ))+(tzId?'teilzielId:\''+tzId+'\',':'')+'dl:\''+TODAY+'\'})" style="font-size:11px;padding:3px 10px;border-radius:6px;border:1px dashed var(--bd);background:transparent;color:'+f.tc+';cursor:pointer;font-family:inherit">+ Aufgabe</button></div>';
+      out+='<div style="padding-left:28px;padding-bottom:7px"><button onclick="openNeu({'+(wr.focus_ziel_id?'zielId:\''+wr.focus_ziel_id+'\',':('' ))+(tzId?'teilzielId:\''+tzId+'\',':'')+'wochenresetId:\''+wr.id+'\',big3Slot:'+n+',dl:\''+TODAY+'\'})" style="font-size:11px;padding:3px 10px;border-radius:6px;border:1px dashed var(--bd);background:transparent;color:'+f.tc+';cursor:pointer;font-family:inherit">+ Aufgabe</button></div>';
       out+='</div>';
     });
     out+='<div style="display:flex;gap:6px;margin-top:10px">';
@@ -4753,15 +4814,10 @@ function rTag(){
       const txt=wrItemName(wrAktuell,n);if(!txt)return;
       const done=wrAktuell[doneF];
       const tzId=wrAktuell['big3_'+n+'_tz_id']||null;
-      // Linked-Task: Fuzzy-Match ODER exakter Titel-Match. Exakt-Match = das Ausführungs-Vehikel
-      // für den Wochenziel-Outcome (NICHT ausschließen, sonst verschwindet der Los-Button).
+      // Linked-Tasks: explizite Zuordnung via wochenresetId + big3Slot
       const big3Txt=(wrAktuell['big3_'+n]||'').toLowerCase().trim();
-      const linkedTask=tzId?S.aufgaben.find(a=>{
-        if(a.pid!==aP||String(a.teilzielId)!==String(tzId)||a.status==='erledigt'||a.prio!=='P1')return false;
-        if(!big3Txt)return true;
-        const tLow=(a.titel||'').toLowerCase().trim();
-        return tLow===big3Txt||tLow.includes(big3Txt.slice(0,Math.min(20,big3Txt.length)))||big3Txt.includes(tLow.slice(0,Math.min(20,tLow.length)));
-      }):null;
+      const slotTasks=S.aufgaben.filter(a=>a.pid===aP&&a.wochenresetId===wrAktuell.id&&a.big3Slot===n&&a.status!=='erledigt');
+      const linkedTask=slotTasks.find(a=>a.prio==='P1')||slotTasks[0]||null;
       // Card-Click: öffnet Detail-Modal (NICHT auto-starten). Start/Weiter bleibt explizit im Button.
       let cardAction='';
       if(!done&&linkedTask){
@@ -4769,13 +4825,20 @@ function rTag(){
       }
       const cardCursor=cardAction?'cursor:pointer':'';
       const cardClick=cardAction?' onclick="'+cardAction+'"':'';
-      out+='<div'+cardClick+' style="background:var(--sf);border:1.5px solid '+(done?'var(--green-bd)':'var(--bd)')+';border-radius:12px;padding:12px 14px;margin-bottom:7px;display:flex;align-items:center;gap:10px;transition:border-color .2s;'+cardCursor+'">';
+      // Monatsziel-Kontext (Farb-Dot + Name) für visuelle Hierarchie
+      let _msNameW=null,_msColorW='var(--t3)';
+      if(tzId){
+        for(const z of S.ziele){const _tz=(z.teilziele||[]).find(t=>t.id===tzId);if(_tz){_msNameW=_tz.name;_msColorW=FARBEN[z.farbe||0].tc;break;}}
+      }
+      const _wzAccent=_msNameW?_msColorW:'var(--bd)';
+      out+='<div'+cardClick+' style="background:var(--sf);border:1.5px solid '+(done?'var(--green-bd)':'var(--bd)')+';border-left:4px solid '+(done?'var(--green)':_wzAccent)+';border-radius:0 12px 12px 0;padding:12px 14px;margin-bottom:7px;'+cardCursor+'">';
+      out+='<div style="display:flex;align-items:center;gap:10px">';
       // Checkbox — eigener Click-Handler, stoppt Bubble
       out+='<div onclick="event.stopPropagation();toggleBig3(\''+wrAktuell.id+'\',\''+doneF+'\')" style="width:20px;height:20px;border-radius:5px;flex-shrink:0;cursor:pointer;'+(done?'background:var(--green);border:1.5px solid var(--green);display:flex;align-items:center;justify-content:center':'border:1.5px solid var(--bd)')+'">'+(done?'<span style="color:#fff;font-size:11px;font-weight:800">✓</span>':'')+'</div>';
       // Text
       out+='<div style="flex:1;min-width:0">';
       out+='<div style="font-size:13px;font-weight:600;'+(done?'color:var(--t3);text-decoration:line-through':'color:var(--text)')+';line-height:1.35">'+esc(txt)+'</div>';
-      if(linkedTask&&(linkedTask.titel||'').toLowerCase().trim()!==big3Txt)out+='<div style="font-size:10px;color:var(--t3);margin-top:2px">↳ '+esc(linkedTask.titel.length>40?linkedTask.titel.slice(0,40)+'…':linkedTask.titel)+'</div>';
+      if(_msNameW)out+='<div style="font-size:10px;color:var(--t3);margin-top:2px">→ Monatsziel: '+esc(_msNameW)+'</div>';
       out+='</div>';
       // Aktions-Buttons: "+ Aufgabe" ist IMMER sichtbar (auch wenn linkedTask existiert),
       // damit man Wochenziele jederzeit in mehrere Aufgaben aufbrechen kann.
@@ -4788,7 +4851,7 @@ function rTag(){
             if(activeMS)prefillTzId=activeMS.id;
           }
         }
-        const _nA=prefillTzId?'{prio:\'P1\',teilzielId:\''+prefillTzId+'\'}':'{prio:\'P1\'}';
+        const _nA=prefillTzId?'{prio:\'P1\',teilzielId:\''+prefillTzId+'\',wochenresetId:\''+wrAktuell.id+'\',big3Slot:'+n+'}':'{prio:\'P1\',wochenresetId:\''+wrAktuell.id+'\',big3Slot:'+n+'}';
         out+='<div style="display:flex;gap:6px;flex-shrink:0">';
         // Sekundär: + Aufgabe (immer sichtbar)
         out+='<button onclick="event.stopPropagation();openNeu('+_nA+')" style="padding:8px 12px;border-radius:9px;background:var(--gray-bg);color:var(--t2);border:1.5px dashed var(--bd);font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap" title="Aufgabe unter diesem Wochenziel anlegen">+ Aufgabe</button>';
@@ -4799,7 +4862,21 @@ function rTag(){
         }
         out+='</div>';
       }
-      out+='</div>';
+      out+='</div>'; // flex-row close
+      // Alle Slot-Tasks sichtbar (damit User sieht was er zugeordnet hat)
+      if(!done&&slotTasks.length){
+        out+='<div style="padding-left:30px;padding-top:6px;border-top:1px dashed var(--bd);margin-top:8px">';
+        slotTasks.forEach(a=>{
+          const isAk=a.status==='aktiv';
+          out+='<div onclick="event.stopPropagation();openDetail(\''+a.id+'\')" style="display:flex;align-items:center;gap:7px;padding:4px 0;cursor:pointer">';
+          out+='<div style="width:11px;height:11px;border-radius:3px;flex-shrink:0;border:1.5px solid '+(isAk?'var(--blue)':'var(--bd)')+'"></div>';
+          out+='<span style="font-size:12px;color:'+(isAk?'var(--blue)':'var(--text)')+';flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(a.titel)+'</span>';
+          if(a.prio)out+='<span style="font-size:9px;font-weight:700;color:'+(a.prio==='P1'?'var(--red)':'var(--t3)')+'">'+a.prio+'</span>';
+          out+='</div>';
+        });
+        out+='</div>';
+      }
+      out+='</div>'; // card close
     });
     // Blocker & Aktionen
     if(wrAktuell.blockiert){
@@ -5420,6 +5497,20 @@ function openDetail(id){
     h+='<select id="det-tz" onchange="setTeilziel(\''+id+'\',this.value)" disabled style="opacity:.5"><option>— erst Ziel wählen —</option></select>';
   }
   h+='</div>';
+  // Wochenziel-Zuordnung (nur wenn Wochenreset existiert mit gefüllten Slots)
+  const _wrDet=dieseWocheReset(a.pid);
+  const _wzOptsDet=[];
+  if(_wrDet){[1,2,3].forEach(n=>{const t=_wrDet['big3_'+n];const tz=_wrDet['big3_'+n+'_tz_id'];if(t&&tz)_wzOptsDet.push({n,t,tz});});}
+  if(_wzOptsDet.length){
+    const curSlot=(a.wochenresetId===_wrDet.id)?a.big3Slot:null;
+    h+='<div class="fl"><label>Wochenziel <span style="font-weight:400;color:var(--t2)">(diese Woche)</span></label><select id="det-wz" onchange="setWochenziel(\''+id+'\',\''+_wrDet.id+'\',this.value)" style="width:100%">';
+    h+='<option value="">— keines —</option>';
+    _wzOptsDet.forEach(o=>{
+      const lbl=o.t.length>40?o.t.slice(0,40)+'…':o.t;
+      h+='<option value="'+o.n+'|'+o.tz+'"'+(curSlot===o.n?' selected':'')+'>'+o.n+': '+esc(lbl)+'</option>';
+    });
+    h+='</select></div>';
+  }
   h+='<div class="fl"><label style="display:flex;align-items:center;gap:8px;text-transform:none;font-size:13px;font-weight:400;cursor:pointer"><input type="checkbox" id="det-vert"'+(a.vertraulich?' checked':'')+' style="width:auto" onchange="saveDetailField(\''+id+'\',\'vertraulich\',this.checked)"> 🔒 Vertraulich</label>'+(a.vertraulich?'<div style="font-size:11px;color:var(--t3);margin-top:2px">Sichtbar für: Geschäftsführung, Zuständiger &amp; Ersteller</div>':'')+'</div>';
   h+='<div class="fl"><label>Checkliste</label>'+stepsHtml(a,true)+'</div>';
   h+='</div></details>';
@@ -7114,6 +7205,8 @@ function openNeu(pf={}){
   _selPrio=pf.prio||null;
   window._aiDebounce=null;
   window._neuParentId=pf.parent_id||null;
+  window._neuWochenresetId=pf.wochenresetId||null;
+  window._neuBig3Slot=(typeof pf.big3Slot==='number')?pf.big3Slot:null;
   const defaultPid=pf.pid||aP;
   // Auto-Preselect: nächstes eigenes aktives Monatsziel als Fallback (verhindert Cleanup-Orphans)
   let autoTzId=pf.teilzielId||'';
@@ -7678,8 +7771,12 @@ async function saveNeu(){
     event_id:window._pendingEventId||null,
     ua:window._neuSteps||[],notiz:document.getElementById('nno').value.trim(),akt_seit:null,vertraulich:vert,
     recurring:document.getElementById('nrec')?.value||null,
-    erstellt_von:aP};
+    erstellt_von:aP,
+    wochenreset_id:window._neuWochenresetId||null,
+    big3_slot:window._neuBig3Slot||null};
   window._neuParentId=null;
+  window._neuWochenresetId=null;
+  window._neuBig3Slot=null;
   window._pendingEventId=null;
   S.aufgaben.push(normalizeAufgabe(rec));
   await dbInsert('aufgaben',rec);
