@@ -4538,13 +4538,11 @@ function rWoche(){
       out+='</div>';
       // Aufgaben die zu diesem Big-3 gehören — explizite Zuordnung via wochenresetId + big3Slot
       if(true){
-        // Parent-Tasks direkt in diesem Slot → Unteraufgaben erben die Zugehörigkeit.
-        // Fallback: Aufgaben ohne explizite Slot-Zuordnung, die via teilziel_id am Monatsziel
-        // dieses Slots hängen, werden auch als slot-zugehörig erkannt (inkl. ihrer Unteraufgaben).
+        // Slot-Membership: nur explizit (wrId+slot) + Parent-Inheritance für Unteraufgaben.
+        // Kein teilziel-Fallback: mehrere Wochenziele teilen oft dasselbe Monatsziel → Kollision.
         const directInSlot=a=>a.wochenresetId===wr.id&&a.big3Slot===n;
-        const viaTeilziel=a=>tzId&&!a.wochenresetId&&String(a.teilzielId||'')===String(tzId);
-        const parentIdsInSlot=new Set(S.aufgaben.filter(a=>directInSlot(a)||viaTeilziel(a)).map(a=>a.id));
-        const belongsToSlot=a=>directInSlot(a)||viaTeilziel(a)||(a.parentId&&parentIdsInSlot.has(a.parentId));
+        const parentIdsInSlot=new Set(S.aufgaben.filter(directInSlot).map(a=>a.id));
+        const belongsToSlot=a=>directInSlot(a)||(a.parentId&&parentIdsInSlot.has(a.parentId));
         const tzAufgaben=myA.filter(a=>belongsToSlot(a)&&a.status!=='erledigt');
         const tzErledigt=myA.filter(a=>belongsToSlot(a)&&a.status==='erledigt');
         // Delegationen: ich habe rausgegeben (erstelltVon=me), jemand anderes ist pid (inkl. Unteraufgaben)
@@ -5200,12 +5198,12 @@ function rTag(){
       const txt=wrItemName(wrAktuell,n);if(!txt)return;
       const done=wrAktuell[doneF];
       const tzId=wrAktuell['big3_'+n+'_tz_id']||null;
-      // Slot-Membership: explizit (wrId+slot), via Monatsziel, oder via Parent-Kette
+      // Slot-Membership: nur explizit (wrId+slot) + Parent-Inheritance für Unteraufgaben.
+      // Kein teilziel-Fallback: mehrere Wochenziele teilen oft dasselbe Monatsziel.
       const big3Txt=(wrAktuell['big3_'+n]||'').toLowerCase().trim();
       const _direct=a=>a.wochenresetId===wrAktuell.id&&a.big3Slot===n;
-      const _viaTz=a=>tzId&&!a.wochenresetId&&String(a.teilzielId||'')===String(tzId);
-      const _parentIds=new Set(S.aufgaben.filter(a=>_direct(a)||_viaTz(a)).map(a=>a.id));
-      const _belongs=a=>_direct(a)||_viaTz(a)||(a.parentId&&_parentIds.has(a.parentId));
+      const _parentIds=new Set(S.aufgaben.filter(_direct).map(a=>a.id));
+      const _belongs=a=>_direct(a)||(a.parentId&&_parentIds.has(a.parentId));
       // Eigene offene Aufgaben im Slot (für "Los"-Button + Liste)
       const slotTasks=S.aufgaben.filter(a=>a.pid===aP&&_belongs(a)&&a.status!=='erledigt'&&a.status!=='archiviert');
       // Delegationen: von mir rausgegeben, andere pid, noch offen
