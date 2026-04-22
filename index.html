@@ -7931,8 +7931,12 @@ async function saveKpi(zid,kid){
 }
 async function delKpi(zid,kid){
   const z=zielObj(zid);if(!z)return;
-  z.kpis=z.kpis.filter(x=>x.id!==kid);
-  await dbDelete('kpis',kid);cm();rZiele();
+  z.kpis=(z.kpis||[]).filter(x=>x.id!==kid);
+  // Auch kpi_vals aus lokalem State räumen, damit "Mein Tag" die KPI nicht mehr findet
+  Object.keys(S.kpiVals||{}).forEach(key=>{if(key.endsWith('-'+kid))delete S.kpiVals[key];});
+  Object.keys(S.kpiValsWeek||{}).forEach(key=>{if(key.endsWith('-'+kid))delete S.kpiValsWeek[key];});
+  Object.keys(S.kpiValsMonth||{}).forEach(key=>{if(key.endsWith('-'+kid))delete S.kpiValsMonth[key];});
+  await dbDelete('kpis',kid);cm();render();
 }
 
 function getFriday(){
