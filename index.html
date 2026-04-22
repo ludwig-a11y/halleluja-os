@@ -881,7 +881,7 @@ const canChangePrio=a=>{
   return false;
 };
 const canManageTZ=zid=>{const z=zielObj(zid);return z&&(isGF()||z.verantwortlichId===aP);};
-function tzLabel(zid,plural){return istBereich(zid)?(plural?'Themen':'Thema'):(plural?'Monatsziele':'Monatsziel');}
+function tzLabel(zid,plural){return istBereich(zid)?(plural?'Themengebiete':'Themengebiet'):(plural?'Monatsziele':'Monatsziel');}
 function toggleBereich(zid){if(!window._bereichOpen)window._bereichOpen={};window._bereichOpen[zid]=!window._bereichOpen[zid];const _y=window.scrollY;rZiele();requestAnimationFrame(()=>window.scrollTo(0,_y));}
 
 function myTeamIds(){
@@ -2797,7 +2797,7 @@ function updateWRTZSection(){
   const z=zielId?S.ziele.find(x=>x.id===zielId):null;
   const isBereich=z&&z.status==='bereich';
   const tzArr=z?(z.teilziele||[]).filter(t=>!t.erledigt&&(t.status||'aktiv')==='aktiv'):[];
-  const _lbl=isBereich?'Thema':'Monatsziel',_lblPl=isBereich?'Themen':'Monatsziele';
+  const _lbl=isBereich?'Themengebiet':'Monatsziel',_lblPl=isBereich?'Themengebiete':'Monatsziele';
   const step2Label=document.getElementById('wr-step2-label');
   if(step2Label)step2Label.textContent='Wochenziele';
   const step2Sub=document.getElementById('wr-step2-sub');
@@ -2861,7 +2861,7 @@ function updateWRTZSection(){
         +'</label>';
     };
     if(faellig.length){
-      html+='<div style="font-size:11px;font-weight:700;color:var(--text);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">📅 '+(isBereich?'Aktive Themen':'Fällig im '+curMonName)+'</div>';
+      html+='<div style="font-size:11px;font-weight:700;color:var(--text);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">📅 '+(isBereich?'Aktive Themengebiete':'Fällig im '+curMonName)+'</div>';
       html+='<div style="font-size:10px;color:var(--t3);margin-bottom:7px">'+_lblPl+' direkt verknüpfen (empfohlen)</div>';
       html+='<div style="display:flex;flex-direction:column;gap:5px;margin-bottom:12px">';
       faellig.forEach(tz=>{html+=tzRow(tz);});
@@ -6067,7 +6067,7 @@ function openDetail(id){
     +[['neu','Neu','var(--red-bg)','var(--red)'],['backlog','Backlog','var(--gray-bg)','var(--t2)'],['aktiv','Aktiv','var(--blue-bg)','var(--blue)'],['erledigt','Erledigt','var(--green-bg)','var(--green)']].map(x=>
       '<button onclick="setStatusModal(\''+id+'\',\''+x[0]+'\')" style="font-size:11px;padding:4px 10px;border-radius:8px;border:'+(a.status===x[0]?'2px':'1px')+' solid '+(a.status===x[0]?'var(--text)':'var(--bd)')+';background:'+(a.status===x[0]?x[2]:'var(--sf)')+';color:'+(a.status===x[0]?x[3]:'var(--t2)')+';cursor:pointer;font-family:inherit;font-weight:'+(a.status===x[0]?600:400)+'">'+x[1]+'</button>'
     ).join('')+'</div></div>';
-  const _detTzLbl=a.zielId&&istBereich(a.zielId)?'Thema':'Monatsziel';
+  const _detTzLbl=a.zielId&&istBereich(a.zielId)?'Themengebiet':'Monatsziel';
   h+='<div class="fl"><label>'+_detTzLbl+'</label>';
   if(a.zielId){
     h+=msPickerWithAdd('det-tz',a.pid,a.teilzielId||'','setTeilziel(\''+id+'\',this.value)',a.zielId);
@@ -7328,7 +7328,7 @@ function rZiele(){
           const _rowBorder=_overdue?'1.5px solid var(--red)':'1px solid '+f.bd;
           const _expanded=localStorage.getItem('ms_exp_'+tz.id)==='1';
           const _rowRadius=_expanded?'8px 8px 0 0':'8px';
-          out+='<div style="display:flex;align-items:center;gap:10px;padding:8px 11px;border:'+_rowBorder+';border-radius:'+_rowRadius+';background:var(--sf)'+(_expanded?';border-bottom:none':'')+'">';
+          out+='<div style="display:flex;align-items:center;gap:10px;padding:8px 11px;border:'+_rowBorder+';border-radius:'+_rowRadius+';background:var(--sf);transition:background .12s'+(_expanded?';border-bottom:none':'')+'" onmouseenter="if(!this.dataset.exp)this.style.background=\''+f.bg+'\'" onmouseleave="if(!this.dataset.exp)this.style.background=\'var(--sf)\'"'+(_expanded?' data-exp="1"':'')+'>';
           if(canManageTZ(z.id))out+='<input type="checkbox" '+(tz.erledigt?'checked':'')+' onclick="event.stopPropagation();toggleTZ(\''+z.id+'\',\''+tz.id+'\')" style="flex-shrink:0;margin:0;width:14px;height:14px;accent-color:'+f.tc+';cursor:pointer">';
           // Verantwortlicher — eigene gedimmt, fremde hervorgehoben
           const _tzVer=person(tz.verantwortlichId);
@@ -7385,9 +7385,9 @@ function rZiele(){
               const pa=person(a),pb=person(b);
               return (pa?pa.name:'zz').localeCompare(pb?pb.name:'zz');
             });
-            out+='<div style="border:'+_rowBorder+';border-top:none;border-radius:0 0 8px 8px;background:var(--bg);padding:10px 12px 12px">';
+            out+='<div style="border:'+_rowBorder+';border-top:none;border-radius:0 0 8px 8px;background:'+f.bg+';padding:10px 12px 12px">';
             if(!_offen.length&&!_erledigt.length){
-              out+='<div style="font-size:11px;color:var(--t3);padding:6px 2px">Noch keine Aufgaben. Leg eine an:</div>';
+              out+='<div style="font-size:11px;color:var(--t3);padding:4px 2px 2px">Noch keine Aufgaben — unten anlegen ↓</div>';
             } else {
               _pids.forEach(pid=>{
                 const pers=person(pid);
@@ -7505,13 +7505,13 @@ function rZiele(){
       out+='<div style="font-size:14px;font-weight:700;color:var(--text)">📁 '+esc(z.name)+'</div>';
       const meta=[];
       if(verantw)meta.push(esc(verantw.name));
-      if(myTZB.length)meta.push(myTZB.length+' Themen');
+      if(myTZB.length)meta.push(myTZB.length+' Themengebiete');
       if(bAufg.length)meta.push(bAufg.length+' offen');
       if(meta.length)out+='<div style="font-size:11px;color:var(--t3);margin-top:2px">'+meta.join(' · ')+'</div>';
       out+='</div>';
       out+='<div style="display:flex;gap:6px;flex-shrink:0;align-items:center" onclick="event.stopPropagation()">';
       if(isGF()&&paVorschlaege.length)out+='<span style="font-size:10px;font-weight:700;background:var(--amber);color:#fff;padding:1px 7px;border-radius:99px">⚡ '+paVorschlaege.length+'</span>';
-      if(canManageTZ(z.id))out+='<button onclick="openAddTZ(\''+z.id+'\')" style="font-size:11px;padding:5px 12px;border-radius:7px;border:1px solid '+f.bd+';background:var(--sf);color:'+f.tc+';cursor:pointer;font-family:inherit;font-weight:500">+ Thema</button>';
+      if(canManageTZ(z.id))out+='<button onclick="openAddTZ(\''+z.id+'\')" style="font-size:11px;padding:5px 12px;border-radius:7px;border:1px solid '+f.bd+';background:var(--sf);color:'+f.tc+';cursor:pointer;font-family:inherit;font-weight:500">+ Themengebiet</button>';
       out+='<button onclick="openNeu({zielId:\''+z.id+'\'})" style="font-size:11px;padding:5px 12px;border-radius:7px;border:1px solid '+f.bd+';background:var(--sf);color:'+f.tc+';cursor:pointer;font-family:inherit;font-weight:500">+ Aufgabe</button>';
       if(isGF())out+='<button onclick="editZiel(\''+z.id+'\')" style="font-size:11px;padding:5px 10px;border-radius:7px;border:1px solid var(--bd);background:var(--gray-bg);color:var(--t2);cursor:pointer;font-family:inherit">···</button>';
       out+='</div></div>';
@@ -7622,7 +7622,7 @@ function rZiele(){
           });
           out+='</div>';
         }
-        if(!myTZB.length&&!aOhneTZB.length&&!paVorschlaege.length)out+='<div style="font-size:12px;color:var(--t3);padding:4px 0">Noch keine Themen oder Aufgaben.</div>';
+        if(!myTZB.length&&!aOhneTZB.length&&!paVorschlaege.length)out+='<div style="font-size:12px;color:var(--t3);padding:4px 0">Noch keine Themengebiete oder Aufgaben.</div>';
         // + Power-Aktivität Button (für Bereichsleiter und GF)
         if(canManageTZ(z.id))out+='<div style="margin-top:10px;padding-top:10px;border-top:1px solid '+f.bd+'">'
           +'<button onclick="openAddPowerAktivitaet(\''+z.id+'\')" style="font-size:11px;padding:5px 14px;border-radius:7px;border:1px solid var(--amber-bd);background:var(--amber-bg);color:var(--orange);cursor:pointer;font-family:inherit;font-weight:600">⚡ + Power-Aktivität vorschlagen</button>'
@@ -7644,11 +7644,11 @@ async function toggleTZ(zid,tzid){
   const tz=(z.teilziele||[]).find(t=>t.id===tzid);if(!tz)return;
   tz.erledigt=!tz.erledigt;
   await dbPatch('teilziele',tzid,{erledigt:tz.erledigt});
-  if(tz.erledigt){celebrate('🎯',istBereich(zid)?'Thema abgeschlossen!':'Monatsziel erreicht!');notify('meilenstein_erledigt',{meilenstein:tz.name,ziel:z.name});}
+  if(tz.erledigt){celebrate('🎯',istBereich(zid)?'Themengebiet abgeschlossen!':'Monatsziel erreicht!');notify('meilenstein_erledigt',{meilenstein:tz.name,ziel:z.name});}
   rZiele();
 }
 function openAddTZ(zid){
-  const _isB=istBereich(zid),_lbl=_isB?'Thema':'Monatsziel',_ph=_isB?'z.B. Wartung & TÜV, IT-Sicherheit…':'z.B. Messe München vorbereitet';
+  const _isB=istBereich(zid),_lbl=_isB?'Themengebiet':'Monatsziel',_ph=_isB?'z.B. Wartung & TÜV, IT-Sicherheit…':'z.B. Messe München vorbereitet';
   const _diagnoseHint=_isB?'':getDiagnoseHint();
   document.getElementById('mb').innerHTML='<div class="mt">'+_lbl+' hinzufügen</div>'
     +_diagnoseHint
@@ -7661,7 +7661,7 @@ function openAddTZ(zid){
 function editTZ(zid,tzid){
   const z=zielObj(zid);if(!z)return;
   const tz=(z.teilziele||[]).find(t=>t.id===tzid);if(!tz)return;
-  const _isB=istBereich(zid),_lbl=_isB?'Thema':'Monatsziel';
+  const _isB=istBereich(zid),_lbl=_isB?'Themengebiet':'Monatsziel';
   const zielOpts=S.ziele.filter(zl=>zl.status!=='vorschlag').map(zl=>'<option value="'+zl.id+'"'+(zl.id===zid?' selected':'')+'>'+(zl.status==='bereich'?'📁 ':'')+esc(zl.name)+'</option>').join('');
   document.getElementById('mb').innerHTML='<div class="mt">'+_lbl+' bearbeiten</div>'
     +'<div class="fl"><label>Name</label><input id="tzn" value="'+esc(tz.name)+'" autofocus></div>'
@@ -7695,7 +7695,7 @@ async function saveTZ(zid,tzid){
   cm();rZiele();
 }
 async function delTZ(zid,tzid){
-  if(!confirm(istBereich(zid)?'Thema löschen?':'Monatsziel löschen?'))return;
+  if(!confirm(istBereich(zid)?'Themengebiet löschen?':'Monatsziel löschen?'))return;
   const z=zielObj(zid);if(!z)return;
   z.teilziele=(z.teilziele||[]).filter(t=>t.id!==tzid);
   S.aufgaben.forEach(a=>{if(a.teilzielId===tzid)a.teilzielId=null;});
@@ -8626,7 +8626,7 @@ function updateQZTZ(aid){
   const sel=document.getElementById('qz-ntz');
   if(!wrap||!sel)return;
   const z=zielId?S.ziele.find(x=>x.id===zielId):null;
-  const _isB=z&&istBereich(z.id),_lbl=_isB?'Thema':'Monatsziel';
+  const _isB=z&&istBereich(z.id),_lbl=_isB?'Themengebiet':'Monatsziel';
   const wrapLabel=wrap.querySelector('label');
   if(wrapLabel)wrapLabel.innerHTML=_lbl+' <span style="font-weight:400;color:var(--t2)">(optional)</span>';
   const tza=z?(z.teilziele||[]).filter(t=>!t.erledigt&&(t.status||'aktiv')==='aktiv'):[];
@@ -8870,7 +8870,7 @@ function rTeam(){
           if(!isOwn&&verantw)outOV+='<span style="font-size:10px;color:var(--t3)">'+esc(verantw.name)+'</span>';
           outOV+='<span style="font-size:10px;padding:1px 6px;border-radius:99px;background:'+(isOwn?'var(--green-bg)':'var(--blue-bg)')+';color:'+(isOwn?'var(--green)':'var(--blue)')+'">'+(isOwn?'Verantwortlich':'Mitwirkend')+'</span>';
           if(meineTasks)outOV+='<span style="font-size:10px;color:var(--t3)">'+meineTasks+' offene Aufgabe'+(meineTasks>1?'n':'')+'</span>';
-          if(tzOffen)outOV+='<span style="font-size:10px;color:var(--t3)">'+tzOffen+' '+(z.status==='bereich'?'Themen':(tzOffen>1?'Monatsziele':'Monatsziel'))+' offen</span>';
+          if(tzOffen)outOV+='<span style="font-size:10px;color:var(--t3)">'+tzOffen+' '+(z.status==='bereich'?'Themengebiete':(tzOffen>1?'Monatsziele':'Monatsziel'))+' offen</span>';
           outOV+='</div></div>';
           // Progress bar
           outOV+='<div style="width:40px;text-align:right"><div style="font-size:11px;font-weight:700;color:'+f.tc+'">'+pct+'%</div>';
