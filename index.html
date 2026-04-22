@@ -7939,12 +7939,22 @@ async function saveKpi(zid,kid){
 }
 async function delKpi(zid,kid){
   const z=zielObj(zid);if(!z)return;
+  const orig=(z.kpis||[]).find(x=>x.id===kid);
+  if(!orig)return;
+  if(!confirm('KPI "'+orig.label+'" wirklich löschen?'))return;
+  // 1. FK-Blocker räumen: kpi_vals zu dieser KPI weg (sonst schlägt DELETE kpis in Supabase fehl)
+  const valsDel=await supa('kpi_vals?kpi_id=eq.'+kid,{method:'DELETE',prefer:'return=minimal'});
+  // 2. KPI selbst löschen, Ergebnis prüfen (sonst kommt sie beim nächsten Poll wieder zurück)
+  const ok=await dbDelete('kpis',kid);
+  if(ok===null||valsDel===null){toast('⚠ KPI konnte nicht gelöscht werden (Server-Fehler). Bitte erneut versuchen.');return;}
   z.kpis=(z.kpis||[]).filter(x=>x.id!==kid);
-  // Auch kpi_vals aus lokalem State räumen, damit "Mein Tag" die KPI nicht mehr findet
   Object.keys(S.kpiVals||{}).forEach(key=>{if(key.endsWith('-'+kid))delete S.kpiVals[key];});
   Object.keys(S.kpiValsWeek||{}).forEach(key=>{if(key.endsWith('-'+kid))delete S.kpiValsWeek[key];});
   Object.keys(S.kpiValsMonth||{}).forEach(key=>{if(key.endsWith('-'+kid))delete S.kpiValsMonth[key];});
-  await dbDelete('kpis',kid);cm();render();
+  // _kpiHash auf aktuellen lokalen State setzen, sonst holt der 60s-Data-Poller die grade gelöschte
+  // KPI aus der (ggf. noch nicht frisch gezogenen) DB-Antwort zurück.
+  try{if(typeof _kpiHashFn==='function')_kpiHash=_kpiHashFn(S.ziele.flatMap(zz=>zz.kpis||[]));}catch(e){}
+  cm();render();
 }
 
 function getFriday(){
