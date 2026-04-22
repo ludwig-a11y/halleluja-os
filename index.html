@@ -2098,8 +2098,14 @@ async function saveBeobachtung(){
 
 function wrItemName(wr,n){
   // Wochenziel-Text (big3_N) ist primär. Nur wenn leer: Fallback auf Monatsziel-Name.
-  const txt=wr['big3_'+n];
-  if(txt&&String(txt).trim())return txt;
+  let txt=wr['big3_'+n];
+  // Defensiv: alte Bug-Daten wo Objekt statt String gespeichert wurde → Titel extrahieren
+  if(typeof txt==='string'&&txt.trim().startsWith('{')){
+    try{const p=JSON.parse(txt);if(p&&typeof p.titel==='string')txt=p.titel;}catch(_){}
+  } else if(txt&&typeof txt==='object'&&typeof txt.titel==='string'){
+    txt=txt.titel;
+  }
+  if(txt&&String(txt).trim())return String(txt);
   const tzId=wr['big3_'+n+'_tz_id'];
   if(tzId){const tz=S.ziele.flatMap(z=>z.teilziele||[]).find(t=>t.id===tzId);if(tz)return tz.name;}
   return null;
@@ -5101,7 +5107,7 @@ function rTag(){
       hero+='<div class="tn" style="font-size:36px;color:var(--hero-t)">'+fmt(s)+'</div>';
       hero+='<div style="font-size:13px;opacity:.5">/ '+fmtH(a.geplant)+'</div></div>';
       hero+='<div style="height:4px;background:rgba(255,255,255,.15);border-radius:99px;overflow:hidden"><div class="tf" style="height:100%;background:var(--hero-t);width:'+pct+'%"></div></div></div>';
-      if(a.ua&&a.ua.length){const uD=a.ua.filter(u=>u.d).length;hero+='<div style="margin-bottom:16px;font-size:12px;opacity:.7">'+uD+'/'+a.ua.length+' Checkliste erledigt</div>';}
+      if(a.ua&&a.ua.length){const uD=a.ua.filter(u=>u.d).length;hero+='<div style="margin-bottom:16px;font-size:12px;opacity:.7">'+uD+'/'+a.ua.length+' Unteraufgaben erledigt</div>';}
       hero+='<div style="display:flex;gap:10px">';
       hero+='<button onclick="fertig(\''+a.id+'\')" style="flex:1;padding:13px;border-radius:12px;background:var(--hero-t);color:var(--hero);border:none;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;transition:opacity .15s,transform .1s" onmousedown="this.style.transform=\'scale(.97)\'" onmouseup="this.style.transform=\'scale(1)\'">✓ Erledigt</button>';
       hero+='<button onclick="focusModus(\''+a.id+'\')" title="Fokus-Modus" style="padding:13px 16px;border-radius:12px;background:rgba(255,255,255,.15);color:#fff;border:none;font-family:inherit;font-size:14px;cursor:pointer;transition:background .15s" onmouseenter="this.style.background=\'rgba(255,255,255,.25)\'" onmouseleave="this.style.background=\'rgba(255,255,255,.15)\'">⊙</button>';
@@ -5114,7 +5120,7 @@ function rTag(){
         const subsA=S.aufgaben.filter(x=>x.parentId===a.id&&x.status!=='archiviert');
         const hasSubsA=subsA.length>0;
         if(hasUaA){
-          hero+='<div style="margin-top:12px;border-top:1px solid rgba(255,255,255,.15);padding-top:12px"><div style="font-size:9px;font-weight:700;opacity:.5;letter-spacing:.6px;text-transform:uppercase;margin-bottom:6px">Checkliste · '+a.ua.filter(u=>u.d).length+'/'+a.ua.length+'</div>'+stepsHtml(a,true)+'</div>';
+          hero+='<div style="margin-top:12px;border-top:1px solid rgba(255,255,255,.15);padding-top:12px"><div style="font-size:9px;font-weight:700;opacity:.5;letter-spacing:.6px;text-transform:uppercase;margin-bottom:6px">Unteraufgaben · '+a.ua.filter(u=>u.d).length+'/'+a.ua.length+'</div>'+stepsHtml(a,true)+'</div>';
         }
         if(hasSubsA){
           hero+='<div style="margin-top:10px;padding:10px 12px;background:rgba(255,255,255,.06);border-radius:10px;border:1px dashed rgba(255,255,255,.15)">';
@@ -5126,7 +5132,7 @@ function rTag(){
           hero+='</div>';
         }
         const linkPartsA=[];
-        if(!hasUaA)linkPartsA.push('<button onclick="openDetail(\''+a.id+'\')" style="font-size:11px;padding:5px 10px;border-radius:6px;background:transparent;color:rgba(255,255,255,.55);border:1px dashed rgba(255,255,255,.2);cursor:pointer;font-family:inherit">+ Checkliste</button>');
+        if(!hasUaA)linkPartsA.push('<button onclick="openDetail(\''+a.id+'\')" style="font-size:11px;padding:5px 10px;border-radius:6px;background:transparent;color:rgba(255,255,255,.55);border:1px dashed rgba(255,255,255,.2);cursor:pointer;font-family:inherit">+ Unteraufgabe</button>');
         // + Unteraufgabe entfernt — Default: Schritte (Checkliste). Delegieren via Checkliste → "→ Delegieren"
         if(linkPartsA.length)hero+='<div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">'+linkPartsA.join('')+'</div>';
       }
@@ -5203,7 +5209,7 @@ function rTag(){
           // Checkliste: volle Box nur wenn Einträge da, sonst nur Input
           if(hasUa){
             hero+='<div style="margin-bottom:10px;padding:10px 12px;background:rgba(255,255,255,.06);border-radius:10px">';
-            hero+='<div style="font-size:9px;font-weight:700;opacity:.5;letter-spacing:.6px;text-transform:uppercase;margin-bottom:8px">Checkliste · '+naechste.ua.filter(u=>u.d).length+'/'+naechste.ua.length+'</div>';
+            hero+='<div style="font-size:9px;font-weight:700;opacity:.5;letter-spacing:.6px;text-transform:uppercase;margin-bottom:8px">Unteraufgaben · '+naechste.ua.filter(u=>u.d).length+'/'+naechste.ua.length+'</div>';
             naechste.ua.forEach((u,i)=>{hero+='<div class="sr" style="padding:4px 0"><div onclick="toggleStep(\''+naechste.id+'\','+i+')" style="width:14px;height:14px;border-radius:3px;flex-shrink:0;cursor:pointer;display:flex;align-items:center;justify-content:center;'+(u.d?'background:var(--hero-t);border:1.5px solid var(--hero-t)':'border:1.5px solid rgba(255,255,255,.25)')+'">'+(u.d?'<span style="color:var(--hero);font-size:8px;font-weight:800">✓</span>':'')+'</div><span style="font-size:12px;'+(u.d?'opacity:.35;text-decoration:line-through':'opacity:.8')+'">'+u.t+'</span></div>';});
             hero+='<div style="display:flex;gap:6px;margin-top:8px"><input class="asi" id="si-'+naechste.id+'" placeholder="+ Eintrag…" onkeydown="if(event.key===\'Enter\')addStep(\''+naechste.id+'\')" style="font-size:12px;padding:6px 10px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);color:#fff;border-radius:8px"><button onclick="addStep(\''+naechste.id+'\')" style="font-size:11px;padding:5px 10px;border-radius:6px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.08);color:rgba(255,255,255,.5);cursor:pointer">+</button></div>';
             hero+='</div>';
@@ -5220,7 +5226,7 @@ function rTag(){
           }
           // Kompakte Link-Row wenn beide leer ODER als Ergänzung wenn nur eines gefüllt
           const linkParts=[];
-          if(!hasUa)linkParts.push('<button onclick="document.getElementById(\'si-inline-'+naechste.id+'\')?.focus()||openDetail(\''+naechste.id+'\')" style="font-size:11px;padding:5px 10px;border-radius:6px;background:transparent;color:rgba(255,255,255,.55);border:1px dashed rgba(255,255,255,.2);cursor:pointer;font-family:inherit">+ Checkliste</button>');
+          if(!hasUa)linkParts.push('<button onclick="document.getElementById(\'si-inline-'+naechste.id+'\')?.focus()||openDetail(\''+naechste.id+'\')" style="font-size:11px;padding:5px 10px;border-radius:6px;background:transparent;color:rgba(255,255,255,.55);border:1px dashed rgba(255,255,255,.2);cursor:pointer;font-family:inherit">+ Unteraufgabe</button>');
           // + Unteraufgabe entfernt — Default: Schritte (Checkliste). Delegieren via Checkliste → "→ Delegieren"
           if(linkParts.length)hero+='<div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">'+linkParts.join('')+'</div>';
           // Inline-Input für Schnell-Checkliste wenn komplett leer
@@ -5259,6 +5265,9 @@ function rTag(){
 
   // ── "Fixes heute" — ganz oben, damit keine Termine übersehen werden ──
   out+=rFixesHeute(aP);
+
+  // ── P1-KPIs ganz oben ("⚡ Heute zählt") — tägliche Pflicht-Felder sichtbar vor Wochenzielen ──
+  out+=rKpiBlock(aP,'p1');
 
   // ── §2 Fokus: 3 Wochenziele (HART) ──
   const{kw:kwAkt}=getKW();
@@ -5419,8 +5428,7 @@ function rTag(){
     out+='</div>';
   }
 
-  // ── P1-KPIs direkt unter Wochenziele ("⚡ Heute zählt") ──
-  out+=rKpiBlock(aP,'p1');
+  // KPIs wurden nach oben (vor Wochenziele) verschoben — hier nichts mehr.
 
   // ── Deadline-Alarm: Commitments mit dl<=TODAY, die NICHT Wochenziele sind ──
   out+=rDeadlineAlarm(aP);
@@ -5978,7 +5986,7 @@ function openDetail(id){
   h+='<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px">'+typTag(a)+prioTag(a.prio,a.id,canChangePrio(a))+(zN?'<span class="tag" style="background:var(--gray-bg);color:var(--t2)">'+esc(zN)+'</span>':'')+(tzN?'<span class="tag" style="background:var(--purple-bg);color:var(--purple)">'+esc(tzN)+'</span>':'')+(d?'<span class="tag" style="background:'+d.bg+';color:'+d.c+'">'+d.l+'</span>':'')+(a.vertraulich?'<span class="lock">vertraulich</span>':'')+(from?'<span class="tag" style="background:var(--gray-bg);color:var(--t2)">von '+esc(from.name)+'</span>':'')+'</div>';
   if(zust)h+='<div style="font-size:12px;color:var(--t2);margin-bottom:10px">'+esc(zust.name)+'</div>';
   if(a.notiz)h+='<div style="font-size:13px;color:var(--text);margin-bottom:12px;padding:10px 12px;background:var(--gray-bg);border-radius:8px;white-space:pre-wrap;line-height:1.5">'+esc(a.notiz)+'</div>';
-  if(a.ua&&a.ua.length)h+='<div style="margin-bottom:12px"><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);margin-bottom:6px">Checkliste</div>'+stepsHtml(a,false)+'</div>';
+  if(a.ua&&a.ua.length)h+='<div style="margin-bottom:12px"><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);margin-bottom:6px">Unteraufgaben</div>'+stepsHtml(a,false)+'</div>';
   // ── Unteraufgaben ──
   const kinder=S.aufgaben.filter(x=>String(x.parentId||'')===String(id));
   h+='<div style="margin-bottom:12px">';
@@ -6054,7 +6062,7 @@ function openDetail(id){
   } else if(a.vertraulich){
     h+='<div class="fl" style="font-size:12px;color:var(--t3)">🔒 Vertraulich <span style="color:var(--t3);margin-left:4px">(vom Ziel geerbt)</span></div>';
   }
-  h+='<div class="fl"><label>Checkliste</label>'+stepsHtml(a,true)+'</div>';
+  h+='<div class="fl"><label>Unteraufgaben</label>'+stepsHtml(a,true)+'</div>';
   h+='</div></details>';
   // ── Footer ──
   h+='<div class="mf"><button class="btn btn-red" onclick="delAufgabe(\''+id+'\')">Löschen</button><button class="btn btn-gr" onclick="cm()">Schließen</button></div>';
@@ -6999,7 +7007,9 @@ async function fkCommitReturn(itemsArg){
       try{await dbInsert('wochenresets',wr);}catch(e){}
     }
     const patch={};
-    for(const txt of items.wochenziele.slice(0,3)){
+    for(const wzIt of items.wochenziele.slice(0,3)){
+      const txt=(typeof wzIt==='string')?wzIt:(wzIt&&wzIt.titel?String(wzIt.titel):'');
+      if(!txt)continue;
       for(const n of [1,2,3]){
         if(!wr['big3_'+n]){
           wr['big3_'+n]=txt;wr['big3_'+n+'_tz_id']=sessionParentTz||null;wr['big3_'+n+'_done']=false;
@@ -7835,7 +7845,7 @@ function openNeu(pf={}){
     +'<label style="display:flex;align-items:center;gap:6px;text-transform:none;font-size:12px;font-weight:400;color:var(--t3);cursor:pointer;margin:0"><select id="nrec" style="width:auto;padding:4px 8px;font-size:11px;border:1px solid var(--bd);border-radius:6px;color:var(--t2);background:var(--sf)"><option value="">Einmalig</option><option value="daily">🔄 Täglich</option><option value="weekly">🔄 Wöchentlich</option><option value="monthly">🔄 Monatlich</option></select></label>'
     +(isGF()?'<label style="display:flex;align-items:center;gap:6px;text-transform:none;font-size:12px;font-weight:400;color:var(--t3);cursor:pointer;margin:0"><input type="checkbox" id="nvert" style="width:auto" onchange="document.getElementById(\'nvert-hint\').style.display=this.checked?\'block\':\'none\'"> 🔒 Vertraulich</label><div id="nvert-hint" style="display:none;font-size:10px;color:var(--t3);margin-top:2px">Sichtbar für: Geschäftsführung, Zuständiger &amp; Ersteller</div>':'')
     +'</div>'
-    +'<div class="fl"><label>Checkliste</label><div id="neu-steps"></div>'
+    +'<div class="fl"><label>Unteraufgaben</label><div id="neu-steps"></div>'
     +'<div style="display:flex;gap:6px"><input class="asi" id="neu-step-input" placeholder="+ Eintrag…" onkeydown="if(event.key===\'Enter\'){event.preventDefault();addNeuStep()}" style="font-size:12px;padding:6px 10px"><button onclick="addNeuStep()" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);cursor:pointer">+</button></div></div>'
     +'<div class="fl"><label>Notiz</label><input id="nno" value="'+(pf.notiz||'')+'" placeholder="Optional…"></div>'
     +'</div>';
