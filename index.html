@@ -9794,7 +9794,7 @@ async function mdConfirm(){
         geplant:1,gebucht:0,dl:t.dl,dl_type:t.dl?'bis':null,
         ua:[],notiz:t.kontext?'Meeting: '+t.kontext:null,
         akt_seit:null,vertraulich:false,erstellt_von:aP,
-        inbox_status:isOther?'neu':(!t.prio?'neu':null)};
+        inbox_status:isOther?'neu':null};
       S.aufgaben.push(normalizeAufgabe(rec));
       await dbInsert('aufgaben',rec);
       if(isOther){const tp=person(pid);if(tp?.slack_id)notify('aufgabe_zugewiesen',{aufgabe:t.titel,fuer:{id:pid,name:tp.name,slack_id:tp.slack_id},prio:t.prio,dl:t.dl});}
