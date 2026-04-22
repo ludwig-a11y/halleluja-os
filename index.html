@@ -1565,8 +1565,7 @@ function rCleanup(pid){
     String(a.pid)===String(pid)&&
     !a.teilzielId&&
     !(a.dl&&a.dl<=TODAY)&&  // #2: Tasks mit Deadline im Alarm, nicht im Cleanup
-    !['erledigt','zurueckgegeben','archiviert'].includes(a.status)&&
-    a.inboxStatus!=='neu'
+    !['erledigt','zurueckgegeben','archiviert'].includes(a.status)
   ).sort((a,b)=>{
     const po={'P1':0,'P2':1,'P3':2};
     return (po[a.prio]??3)-(po[b.prio]??3);
@@ -9794,7 +9793,7 @@ async function mdConfirm(){
         geplant:1,gebucht:0,dl:t.dl,dl_type:t.dl?'bis':null,
         ua:[],notiz:t.kontext?'Meeting: '+t.kontext:null,
         akt_seit:null,vertraulich:false,erstellt_von:aP,
-        inbox_status:isOther?'neu':null};
+        inbox_status:(isOther||(!t.ziel_id&&!t.prio))?'neu':null};
       S.aufgaben.push(normalizeAufgabe(rec));
       await dbInsert('aufgaben',rec);
       if(isOther){const tp=person(pid);if(tp?.slack_id)notify('aufgabe_zugewiesen',{aufgabe:t.titel,fuer:{id:pid,name:tp.name,slack_id:tp.slack_id},prio:t.prio,dl:t.dl});}
