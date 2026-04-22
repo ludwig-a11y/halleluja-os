@@ -4587,7 +4587,8 @@ function rWoche(){
     // Team-aggregierte KPIs (dieselbe Logik wie Hero in Ziele-Tab)
     let _fokusAggKpis=[];
     if(_fokusZust||isGF()){
-      const _fk=(fokusZ.kpis||[]).filter(k=>!k.vertraulich||isGF());
+      // Nur kumulative Ziel-KPIs, keine Tages-KPIs
+      const _fk=(fokusZ.kpis||[]).filter(k=>k.typ!=='täglich'&&(!k.vertraulich||isGF()));
       const _fagg={};
       _fk.forEach(k=>{
         const key=(k.label||'')+'|'+(k.unit||'');
