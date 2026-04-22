@@ -333,6 +333,20 @@ function toggleDark(){
 const SUPA_URL='https://zkxeuphsbufdvskkuahk.supabase.co';
 const SUPA_KEY='sb_publishable_41EMxtYZYsYL5KR1KS_RrA_1mV1SRAL';
 
+// Globales Crash-Netz: unhandled Exceptions/Promise-Rejects werden geloggt und ein kleiner
+// Hinweis erscheint — App weiter lebendig statt weißer Seite.
+window.addEventListener('error',e=>{try{console.error('window.error',e.error||e.message);}catch(_){}});
+window.addEventListener('unhandledrejection',e=>{
+  try{console.error('unhandledrejection',e.reason);
+    // Supabase-typische stille Schreib-Fehler nur einmal pro 10s toasten.
+    const now=Date.now();
+    if(!window._lastGlobalErrToast||now-window._lastGlobalErrToast>10000){
+      window._lastGlobalErrToast=now;
+      if(typeof toast==='function')toast('⚠ Ein Hintergrund-Vorgang ist fehlgeschlagen. Details in der Konsole.');
+    }
+  }catch(_){}
+});
+
 async function supa(path,opts={}){
   const ctrl=new AbortController();
   const tid=setTimeout(()=>ctrl.abort(),5000);
@@ -1058,45 +1072,50 @@ function startDataPoller(){
   _dataHash=_aufgabenHash(S.aufgaben);
   _kpiHash=_kpiHashFn(S.ziele.flatMap(z=>z.kpis||[]));
   _dataPoll=setInterval(async()=>{
-    const [aufgaben,signale,kpis,wochenresets,beobachtungen,kontextFeed,decisionRequests,meetings,paddelGewinner]=await Promise.all([
-      dbGet('aufgaben','select=*&order=created_at'),
-      dbGet('signale','select=*&order=created_at.desc'),
-      dbGet('kpis','select=*'),
-      dbGet('wochenresets','select=*&order=created_at.desc'),
-      dbGet('beobachtungen','select=*&order=created_at.desc'),
-      dbGet('kontext_feed','select=*&order=created_at.desc&limit=50'),
-      dbGet('decision_requests','select=*&order=erstellt_am.desc'),
-      dbGet('meetings','select=*&order=erstellt_am.desc'),
-      dbGet('paddel_gewinner','select=*&order=erstellt_am.desc'),
-    ]);
-    if(decisionRequests)S.decisionRequests=decisionRequests;
-    if(meetings)S.meetings=meetings.map(m=>({...m,teilnehmer_ids:m.teilnehmer_ids||[]}));
-    if(paddelGewinner)S.paddelGewinner=paddelGewinner;
-    if(kontextFeed)S.kontext=kontextFeed;
-    let changed=false;
-    if(aufgaben){
-      const newHash=_aufgabenHash(aufgaben);
-      if(newHash!==_dataHash){
-        S.aufgaben=aufgaben.map(normalizeAufgabe);
-        if(signale)S.signale=signale;
-        _dataHash=newHash;
-        changed=true;
+    // Jede einzelne Zeile hier ist ein potentieller App-Killer: Netzwerkfehler, kaputte DB-Row,
+    // render()-Exception. Ohne try/catch wird die Uncaught-Promise-Rejection teilweise als Tab-
+    // Crash sichtbar. Wir loggen und machen im nächsten 60s-Tick weiter.
+    try{
+      const [aufgaben,signale,kpis,wochenresets,beobachtungen,kontextFeed,decisionRequests,meetings,paddelGewinner]=await Promise.all([
+        dbGet('aufgaben','select=*&order=created_at'),
+        dbGet('signale','select=*&order=created_at.desc'),
+        dbGet('kpis','select=*'),
+        dbGet('wochenresets','select=*&order=created_at.desc'),
+        dbGet('beobachtungen','select=*&order=created_at.desc'),
+        dbGet('kontext_feed','select=*&order=created_at.desc&limit=50'),
+        dbGet('decision_requests','select=*&order=erstellt_am.desc'),
+        dbGet('meetings','select=*&order=erstellt_am.desc'),
+        dbGet('paddel_gewinner','select=*&order=erstellt_am.desc'),
+      ]);
+      if(decisionRequests)S.decisionRequests=decisionRequests;
+      if(meetings)S.meetings=meetings.map(m=>({...m,teilnehmer_ids:m.teilnehmer_ids||[]}));
+      if(paddelGewinner)S.paddelGewinner=paddelGewinner;
+      if(kontextFeed)S.kontext=kontextFeed;
+      let changed=false;
+      if(aufgaben){
+        const newHash=_aufgabenHash(aufgaben);
+        if(newHash!==_dataHash){
+          S.aufgaben=aufgaben.map(normalizeAufgabe);
+          if(signale)S.signale=signale;
+          _dataHash=newHash;
+          changed=true;
+        }
       }
-    }
-    if(kpis){
-      const newKpiHash=_kpiHashFn(kpis);
-      if(newKpiHash!==_kpiHash){
-        S.ziele.forEach(z=>{z.kpis=kpis.filter(k=>k.ziel_id===z.id).map(k=>({...k,zielId:k.ziel_id,teilzielId:k.teilziel_id||null,prio:k.prio||null}));});
-        _kpiHash=newKpiHash;
-        changed=true;
+      if(kpis){
+        const newKpiHash=_kpiHashFn(kpis);
+        if(newKpiHash!==_kpiHash){
+          S.ziele.forEach(z=>{z.kpis=kpis.filter(k=>k.ziel_id===z.id).map(k=>({...k,zielId:k.ziel_id,teilzielId:k.teilziel_id||null,prio:k.prio||null}));});
+          _kpiHash=newKpiHash;
+          changed=true;
+        }
       }
-    }
-    if(wochenresets)S.wochenresets=wochenresets;
-    if(beobachtungen)S.beobachtungen=beobachtungen;
-    if(!changed)return;
-    const modalOpen=document.getElementById('ovl')?.classList.contains('open');
-    if(modalOpen){_dataPending=true;}
-    else{render();}
+      if(wochenresets)S.wochenresets=wochenresets;
+      if(beobachtungen)S.beobachtungen=beobachtungen;
+      if(!changed)return;
+      const modalOpen=document.getElementById('ovl')?.classList.contains('open');
+      if(modalOpen){_dataPending=true;}
+      else{try{render();}catch(e){console.error('dataPoll render',e);}}
+    }catch(e){console.error('dataPoll',e);}
   },60000);
 }
 
@@ -1111,22 +1130,25 @@ function startSonderPoller(){
     _sonderSeen[k.id]=maxVal;
   });
   _sonderPoll=setInterval(async()=>{
-    if(!isGF())return;
-    const sk=S.ziele.flatMap(z=>z.kpis||[]).filter(k=>k.sonder);
-    if(!sk.length)return;
-    const ids='('+sk.map(k=>'\''+k.id+'\'').join(',')+')';
-    const rows=await dbGet('kpi_vals','kpi_id=in.'+ids+'&datum=eq.'+TODAY);
-    if(!rows)return;
-    rows.forEach(row=>{
-      const prev=_sonderSeen[row.kpi_id]??0;
-      if(row.val>prev&&row.pid!==aP){
-        _sonderSeen[row.kpi_id]=row.val;
-        const k=sk.find(x=>x.id===row.kpi_id);
-        showSonderCelebration(row.pid,k?.label||'Verkauf',row.val,k?.ziel||'?');
-      } else if(row.val>prev){
-        _sonderSeen[row.kpi_id]=row.val;
-      }
-    });
+    // Alle 5s aktiv → jede Exception multipliziert sich. Hart einpacken.
+    try{
+      if(!isGF())return;
+      const sk=S.ziele.flatMap(z=>z.kpis||[]).filter(k=>k.sonder);
+      if(!sk.length)return;
+      const ids='('+sk.map(k=>'\''+k.id+'\'').join(',')+')';
+      const rows=await dbGet('kpi_vals','kpi_id=in.'+ids+'&datum=eq.'+TODAY);
+      if(!rows)return;
+      rows.forEach(row=>{
+        const prev=_sonderSeen[row.kpi_id]??0;
+        if(row.val>prev&&row.pid!==aP){
+          _sonderSeen[row.kpi_id]=row.val;
+          const k=sk.find(x=>x.id===row.kpi_id);
+          try{showSonderCelebration(row.pid,k?.label||'Verkauf',row.val,k?.ziel||'?');}catch(e){console.error('sonderCelebration',e);}
+        } else if(row.val>prev){
+          _sonderSeen[row.kpi_id]=row.val;
+        }
+      });
+    }catch(e){console.error('sonderPoll',e);}
   },5000);
 }
 function isFällig(freq){
@@ -4258,19 +4280,30 @@ function nav(v,btn){
   updMobTabs(v);render();
 }
 function render(){
-  const navTeam=document.getElementById('nav-team');
-  if(navTeam)navTeam.style.display=canSeeTeam()?'':'none';
-  updateKapPill();
-  rSB();
-  if(aV==='tag')rTag();
-  else if(aV==='woche')rWoche();
-  else if(aV==='monat')rMonat();
-  else if(aV==='ziele')rZiele();
-  else if(aV==='team')rTeam();
+  // Jede rView ist ein eigener Sandbox-Block: eine einzelne kaputte Aufgabe/KPI darf nicht die
+  // komplette App weiß-screenen. Bei Fehler: Konsole + Fallback-Hinweis im Haupt-Container.
+  const _safe=(label,fn)=>{try{fn();}catch(e){
+    console.error('render:'+label,e);
+    const m=document.getElementById('main');
+    if(m&&(aV===label))m.innerHTML='<div style="padding:40px 20px;text-align:center;color:var(--t2)"><div style="font-size:28px;margin-bottom:8px">⚠️</div><div style="font-size:14px;font-weight:600;margin-bottom:6px">Anzeige-Fehler im Tab "'+label+'"</div><div style="font-size:11px;color:var(--t3);margin-bottom:14px">Details in der Browser-Konsole. Die App läuft weiter.</div><button onclick="render()" style="font-size:12px;padding:7px 14px;border-radius:8px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);cursor:pointer;font-family:inherit">Erneut versuchen</button></div>';
+  }};
+  try{
+    const navTeam=document.getElementById('nav-team');
+    if(navTeam)navTeam.style.display=canSeeTeam()?'':'none';
+  }catch(e){console.error('render:navTeam',e);}
+  try{updateKapPill();}catch(e){console.error('render:kapPill',e);}
+  try{rSB();}catch(e){console.error('render:rSB',e);}
+  if(aV==='tag')_safe('tag',rTag);
+  else if(aV==='woche')_safe('woche',rWoche);
+  else if(aV==='monat')_safe('monat',rMonat);
+  else if(aV==='ziele')_safe('ziele',rZiele);
+  else if(aV==='team')_safe('team',rTeam);
   // Freitags-Pflicht: modal erst nach render() prüfen (DOM ready)
-  if(!document.getElementById('ovl')?.classList.contains('open')){
-    checkResetZwang();
-  }
+  try{
+    if(!document.getElementById('ovl')?.classList.contains('open')){
+      checkResetZwang();
+    }
+  }catch(e){console.error('render:resetZwang',e);}
 }
 function checkResetZwang(){
   if(!aP||_resetZwang)return;
@@ -5881,9 +5914,9 @@ async function startenA(id){
     focusTakeover();
     notify('aufgabe_gestartet',{prio:a.prio||null,team_slack_ids:S.personen.filter(p=>p.id!==aP&&p.slack_id).map(p=>p.slack_id),actor_slack_id:me()?.slack_id||''});
     const ok=await dbPatch('aufgaben',id,{status:'aktiv',akt_seit:new Date().toISOString()});
-    if(!ok){a.status=prev.status;a.aktSeit=prev.aktSeit;}
+    if(!ok){a.status=prev.status;a.aktSeit=prev.aktSeit;try{toast('⚠ Konnte "Starten" nicht speichern. Nochmal probieren.');}catch(_){}}
     else{gcalUpdateEventStart(a);}
-  }catch(e){console.error('startenA',e);a.status=prev.status;a.aktSeit=prev.aktSeit;}
+  }catch(e){console.error('startenA',e);a.status=prev.status;a.aktSeit=prev.aktSeit;try{toast('⚠ Fehler beim Starten.');}catch(_){}}
   finally{a._busy=false;try{render();}catch(e){console.error('render@startenA2',e);}}
 }
 async function pauseA(id){
@@ -5893,8 +5926,8 @@ async function pauseA(id){
     const gebucht=Math.round(((a.gebucht||0)+(Date.now()-(a.aktSeit||Date.now()))/3600000)*100)/100;
     a.gebucht=gebucht;a.aktSeit=null;a.status='backlog';try{render();}catch(e){console.error('render@pauseA',e);}
     const ok=await dbPatch('aufgaben',id,{gebucht,akt_seit:null,status:'backlog'});
-    if(!ok){a.gebucht=prev.gebucht;a.aktSeit=prev.aktSeit;a.status=prev.status;}
-  }catch(e){console.error('pauseA',e);a.gebucht=prev.gebucht;a.aktSeit=prev.aktSeit;a.status=prev.status;}
+    if(!ok){a.gebucht=prev.gebucht;a.aktSeit=prev.aktSeit;a.status=prev.status;try{toast('⚠ Pause konnte nicht gespeichert werden.');}catch(_){}}
+  }catch(e){console.error('pauseA',e);a.gebucht=prev.gebucht;a.aktSeit=prev.aktSeit;a.status=prev.status;try{toast('⚠ Fehler beim Pausieren.');}catch(_){}}
   finally{a._busy=false;try{render();}catch(e){console.error('render@pauseA2',e);}}
 }
 async function fertig(id){
@@ -5905,7 +5938,7 @@ async function fertig(id){
     const pid=a.pid;
     a.gebucht=gebucht;a.aktSeit=null;a.status='erledigt';a.updated_at=new Date().toISOString();try{render();}catch(e){console.error('render@fertig',e);}
     const ok=await dbPatch('aufgaben',id,{gebucht,akt_seit:null,status:'erledigt',updated_at:new Date().toISOString()});
-    if(!ok){a.gebucht=prev.gebucht;a.aktSeit=prev.aktSeit;a.status=prev.status;a.updated_at=prev.updated_at;return;}
+    if(!ok){a.gebucht=prev.gebucht;a.aktSeit=prev.aktSeit;a.status=prev.status;a.updated_at=prev.updated_at;try{toast('⚠ "Erledigt" konnte nicht gespeichert werden. Nochmal probieren.');}catch(_){}return;}
     gcalUpdateEventEnd(a);
     // recurring: create next instance
     if(a.recurring){
@@ -5929,7 +5962,7 @@ async function fertig(id){
     checkP1Done(pid);
     const restOffen=S.aufgaben.filter(x=>String(x.pid)===String(aP)&&x.status!=='erledigt');
     if(!restOffen.length)setTimeout(()=>celebrate('🏆','Alle Aufgaben erledigt! 🎉'),1500);
-  }catch(e){console.error('fertig',e);a.gebucht=prev.gebucht;a.aktSeit=prev.aktSeit;a.status=prev.status;a.updated_at=prev.updated_at;}
+  }catch(e){console.error('fertig',e);a.gebucht=prev.gebucht;a.aktSeit=prev.aktSeit;a.status=prev.status;a.updated_at=prev.updated_at;try{toast('⚠ Fehler beim Abschließen.');}catch(_){}}
   finally{a._busy=false;try{render();}catch(e){console.error('render@fertig2',e);}}
 }
 function nextRecurringDate(fromDate,freq){
@@ -10456,14 +10489,16 @@ async function gcalFetchToday(){
 function gcalStartNotifications(){
   if(window._gcalNotifIv)clearInterval(window._gcalNotifIv);
   window._gcalNotifIv=setInterval(()=>{
-    if(!aP)return;
-    const now=Date.now();
-    (S.kalender||[]).forEach(ev=>{
-      if(!ev.start)return;
-      const diff=(ev.start.getTime()-now)/60000;
-      if(diff>0&&diff<=10&&!ev._notif10){ev._notif10=true;toast('📅 '+esc(ev.titel)+' in '+Math.round(diff)+' Min');}
-      else if(diff>-1&&diff<=0&&!ev._notifFired){ev._notifFired=true;toast('📅 '+esc(ev.titel)+' startet jetzt!');}
-    });
+    try{
+      if(!aP)return;
+      const now=Date.now();
+      (S.kalender||[]).forEach(ev=>{
+        if(!ev.start)return;
+        const diff=(ev.start.getTime()-now)/60000;
+        if(diff>0&&diff<=10&&!ev._notif10){ev._notif10=true;toast('📅 '+esc(ev.titel)+' in '+Math.round(diff)+' Min');}
+        else if(diff>-1&&diff<=0&&!ev._notifFired){ev._notifFired=true;toast('📅 '+esc(ev.titel)+' startet jetzt!');}
+      });
+    }catch(e){console.error('gcalNotif',e);}
   },30000);
 }
 function _gcalVorlaufOpts(evDate){
@@ -10693,12 +10728,14 @@ window.addEventListener('keydown',e=>{
   let _gcalLastInteraction=Date.now();
   document.addEventListener('click',()=>_gcalLastInteraction=Date.now(),{passive:true});
   setInterval(()=>{
-    if(!aP||!localStorage.getItem('gcal_ever_connected'))return;
-    const expiry=parseInt(localStorage.getItem('gcal_token_expiry')||'0');
-    // Nur refreshen wenn Token abläuft UND User war in letzten 10 Min aktiv
-    if(Date.now()>expiry-15*60*1000&&Date.now()-_gcalLastInteraction<10*60*1000){
-      gcalSilentRefresh();
-    }
+    try{
+      if(!aP||!localStorage.getItem('gcal_ever_connected'))return;
+      const expiry=parseInt(localStorage.getItem('gcal_token_expiry')||'0');
+      // Nur refreshen wenn Token abläuft UND User war in letzten 10 Min aktiv
+      if(Date.now()>expiry-15*60*1000&&Date.now()-_gcalLastInteraction<10*60*1000){
+        gcalSilentRefresh();
+      }
+    }catch(e){console.error('gcalRefresh',e);}
   },5*60*1000);
 })();
 </script>
@@ -10709,14 +10746,24 @@ if('serviceWorker' in navigator){
     navigator.serviceWorker.register('./sw.js',{updateViaCache:'none'}).then(reg=>{
       // alle 60s prüfen ob neue Version deployed wurde
       setInterval(()=>reg.update().catch(()=>{}),60000);
-      // Neue Version wird installiert → warten bis aktiv, dann Reload-Toast
+      // Neue Version wird installiert → Banner mit "Jetzt neu laden"-Button (kein Auto-Reload,
+      // das würde Tippen/Modals unterbrechen und als "App crasht" wahrgenommen).
       reg.addEventListener('updatefound',()=>{
         const nw=reg.installing;if(!nw)return;
         nw.addEventListener('statechange',()=>{
           if(nw.state==='installed'&&navigator.serviceWorker.controller){
-            // Non-blocking banner: sanft drauf hinweisen, Reload automatisch
-            try{if(typeof toast==='function')toast('🔄 Neue Version verfügbar — Seite wird neu geladen …');}catch(e){}
-            setTimeout(()=>location.reload(),1500);
+            try{
+              if(document.getElementById('sw-update-bar'))return;
+              const bar=document.createElement('div');
+              bar.id='sw-update-bar';
+              bar.style.cssText='position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:99999;background:var(--text,#111);color:var(--bg,#fff);padding:10px 14px 10px 18px;border-radius:999px;box-shadow:0 8px 24px rgba(0,0,0,.18);display:flex;align-items:center;gap:12px;font-family:inherit;font-size:13px;font-weight:600';
+              bar.innerHTML='<span>🔄 Neue Version verfügbar</span>'
+                +'<button id="sw-update-reload" style="font-size:12px;padding:6px 14px;border-radius:999px;border:none;background:#fff;color:#111;font-weight:700;cursor:pointer;font-family:inherit">Jetzt laden</button>'
+                +'<button id="sw-update-dismiss" title="Später" style="font-size:14px;padding:2px 8px;border:none;background:transparent;color:inherit;opacity:.5;cursor:pointer;font-family:inherit">✕</button>';
+              document.body.appendChild(bar);
+              document.getElementById('sw-update-reload').onclick=()=>location.reload();
+              document.getElementById('sw-update-dismiss').onclick=()=>bar.remove();
+            }catch(e){console.error('sw-update-bar',e);}
           }
         });
       });
