@@ -4582,10 +4582,41 @@ function rWoche(){
   const fokusZ=S.ziele.find(z=>z.focus);
   if(fokusZ){
     const f=FARBEN[fokusZ.farbe||0];
-    out+='<div style="background:'+f.tc+';color:#fff;border-radius:10px;padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;gap:10px">';
+    // Zuständigkeit: verantwortlich für Quartalsziel ODER für ein Monatsziel darunter
+    const _fokusZust=String(fokusZ.verantwortlichId)===String(aP)||(fokusZ.teilziele||[]).some(t=>String(t.verantwortlichId)===String(aP));
+    // Team-aggregierte KPIs (dieselbe Logik wie Hero in Ziele-Tab)
+    let _fokusAggKpis=[];
+    if(_fokusZust||isGF()){
+      const _fk=(fokusZ.kpis||[]).filter(k=>!k.vertraulich||isGF());
+      const _fagg={};
+      _fk.forEach(k=>{
+        const key=(k.label||'')+'|'+(k.unit||'');
+        if(!_fagg[key])_fagg[key]={label:k.label||'KPI',unit:k.unit||'',ziel:0,ist:0,inv:!!k.inv};
+        _fagg[key].ziel+=Number(k.ziel)||0;
+        _fagg[key].ist+=Number(kpiVal(k))||0;
+      });
+      _fokusAggKpis=Object.values(_fagg).filter(k=>k.ziel>0||k.ist>0);
+    }
+    out+='<div style="background:'+f.tc+';color:#fff;border-radius:10px;padding:10px 14px;margin-bottom:12px">';
+    out+='<div style="display:flex;align-items:center;gap:10px">';
     out+='<span style="font-size:18px">🔥</span>';
-    out+='<div><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;opacity:.7">Firmen-Fokus</div>';
-    out+='<div style="font-size:13px;font-weight:700">'+fokusZ.name+'</div></div>';
+    out+='<div style="flex:1;min-width:0"><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;opacity:.7">Firmen-Fokus</div>';
+    out+='<div style="font-size:13px;font-weight:700">'+esc(fokusZ.name)+'</div></div>';
+    out+='</div>';
+    // KPI-Echo — nur für Zuständige (oder GF)
+    if(_fokusAggKpis.length){
+      out+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:6px;margin-top:10px">';
+      _fokusAggKpis.forEach(k=>{
+        const ok=k.inv?k.ist<=k.ziel:(k.ziel>0?k.ist>=k.ziel*0.85:true);
+        out+='<div style="background:rgba(255,255,255,.14);border-radius:8px;padding:7px 10px">';
+        out+='<div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;opacity:.75;margin-bottom:2px">'+esc(k.label)+'</div>';
+        out+='<div style="display:flex;align-items:baseline;gap:3px">';
+        out+='<span style="font-size:17px;font-weight:800;line-height:1;'+(ok?'':'color:#ffdada')+'">'+k.ist+'</span>';
+        out+='<span style="font-size:11px;font-weight:600;opacity:.8">/ '+k.ziel+(k.unit||'')+'</span>';
+        out+='</div></div>';
+      });
+      out+='</div>';
+    }
     out+='</div>';
   }
 
