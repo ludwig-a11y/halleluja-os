@@ -3036,6 +3036,7 @@ async function saveWochenreset(){
 }
 
 function openWochenresetZwang(){
+  if(realMe&&aP!==realMe)return; // Fremd-Ansicht: kein Zwang auslösen
   _resetZwang=true;
   window._noOverlayClose=true;
   const{kw}=getKW();
@@ -4273,6 +4274,7 @@ function render(){
 }
 function checkResetZwang(){
   if(!aP||_resetZwang)return;
+  if(realMe&&aP!==realMe)return; // Fremd-Ansicht (z.B. GF schaut bei Dominik rein) → nie Zwang
   if(!isResetZeit()||dieseWocheReset(aP))return;
   if(Date.now()<_resetSnoozeUntil)return;
   openWochenresetZwang();
@@ -4425,7 +4427,12 @@ function rSB(){
   if(sb)sb.innerHTML=h;
 }
 function switchPerson(id){
-  if(isGF()||visiblePersonIds(aP).includes(id)||id===aP){
+  // Permissions immer vom echt-eingeloggten User ableiten, nicht vom aktuell angeschauten (aP).
+  // Sonst bleibt GF in Fremd-Ansicht stecken, weil me()=aP=Dominik und isGF() dann false.
+  const _real=realMe?person(realMe):null;
+  const _realIsGF=!!(_real&&_real.stufe==='gf');
+  const _visible=visiblePersonIds(realMe||aP);
+  if(_realIsGF||_visible.includes(id)||id===aP||id===realMe){
     // Snooze-State pro Person: Timer clearen + für neue Person laden
     if(_resetSnoozeTimer){clearTimeout(_resetSnoozeTimer);_resetSnoozeTimer=null;}
     _resetSnoozeUntil=0;_resetSnoozeCount=0;
@@ -4746,12 +4753,13 @@ function rWoche(){
   out+=missPatternCardHtml(aP);
 
   // ── Cleanup-Einsicht (Accordion) ──
+  // Inbox-Items (inboxStatus==='neu') bewusst NICHT ausschließen — sonst "verschwinden" Meeting-Dump-
+  // Tasks ohne Ziel/Prio aus dem Tag (Dominik-Bug, v161).
   {
     const cleanupItems=myA.filter(a=>
       !a.teilzielId&&
       !(a.dl&&a.dl<=TODAY)&&
-      !['erledigt','zurueckgegeben','archiviert'].includes(a.status)&&
-      a.inboxStatus!=='neu'
+      !['erledigt','zurueckgegeben','archiviert'].includes(a.status)
     ).sort((a,b)=>{const po={'P1':0,'P2':1,'P3':2};return(po[a.prio]??3)-(po[b.prio]??3);});
     if(cleanupItems.length){
       const accOpen=localStorage.getItem('cleanup_acc_'+aP)==='1';
