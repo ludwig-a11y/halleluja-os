@@ -7170,15 +7170,46 @@ function rZiele(){
     const visKpis=(z.kpis||[]).filter(k=>isGF()||String(k.pid)===String(aP));
     const zA=S.aufgaben.filter(a=>a.zielId===z.id&&a.status!=='erledigt'&&canSee(a)&&(isGF()||a.pid===aP));
 
-    // Sektion: farbiger Hintergrund-Tint + linker Akzent
-    out+='<div style="background:'+f.bg+';border:1px solid '+f.bd+';border-left:3px solid '+f.tc+';border-radius:0 8px 8px 0;padding:16px 20px;margin-bottom:12px">';
+    // Team-aggregierte KPIs nach Label (Summe über alle Personen, nur nicht-leere)
+    const _allK=(z.kpis||[]).filter(k=>!k.vertraulich||isGF());
+    const _agg={};
+    _allK.forEach(k=>{
+      const key=(k.label||'')+'|'+(k.unit||'');
+      if(!_agg[key])_agg[key]={label:k.label||'KPI',unit:k.unit||'',ziel:0,ist:0,inv:!!k.inv,first:k};
+      _agg[key].ziel+=Number(k.ziel)||0;
+      _agg[key].ist+=Number(kpiVal(k))||0;
+    });
+    const aggKpis=Object.values(_agg).filter(k=>k.ziel>0||k.ist>0);
 
-    // Header
-    out+='<div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:'+(visKpis.length?'14':'10')+'px">';
-    out+='<div style="flex:1">';
-    out+='<div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:3px">'+esc(z.name)+'</div>';
-    out+='<div style="font-size:11px;color:var(--t3);display:flex;align-items:center;gap:6px">';
+    // Deadline des Quartalsziels (monat_ende → letzter Tag dieses Monats)
+    let _zDeadline=null,_zDaysLeft=null;
+    if(z.monat_ende){
+      const _parts=z.monat_ende.split('-');
+      const _y=parseInt(_parts[0],10),_m=parseInt(_parts[1],10);
+      const _last=new Date(_y,_m,0); // letzter Tag des Monats
+      _zDeadline=_last.toISOString().slice(0,10);
+      _zDaysLeft=Math.ceil((_last.getTime()-new Date(TODAY+'T00:00:00').getTime())/86400000);
+    }
+    const _zOverdue=_zDaysLeft!==null&&_zDaysLeft<0;
+    const _zUrgent=_zDaysLeft!==null&&_zDaysLeft<=14&&_zDaysLeft>=0;
+
+    // Sektion: farbiger Hintergrund-Tint + linker Akzent (dicker bei urgent/overdue)
+    const _heroBorder=_zOverdue?'6px solid var(--red)':(_zUrgent?'6px solid '+f.tc:'4px solid '+f.tc);
+    out+='<div style="background:'+f.bg+';border:1px solid '+f.bd+';border-left:'+_heroBorder+';border-radius:0 12px 12px 0;padding:18px 22px;margin-bottom:14px">';
+
+    // ── Header: Hero-Title (groß) + Deadline/Tage ──
+    out+='<div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:'+(aggKpis.length?'14':'10')+'px">';
+    out+='<div style="flex:1;min-width:0">';
+    out+='<div style="font-size:22px;font-weight:800;color:var(--text);line-height:1.2;margin-bottom:6px">'+esc(z.name)+'</div>';
+    out+='<div style="font-size:12px;color:var(--t3);display:flex;align-items:center;gap:8px;flex-wrap:wrap">';
     if(verantw)out+='<span>'+esc(verantw.name)+'</span>';
+    if(_zDeadline){
+      const _ddPart=_zDeadline.slice(8)+'.'+_zDeadline.slice(5,7)+'.';
+      if(_zOverdue)out+='<span style="color:var(--red);font-weight:700">⚠ überfällig '+Math.abs(_zDaysLeft)+'d</span><span>· bis '+_ddPart+'</span>';
+      else if(_zDaysLeft===0)out+='<span style="color:var(--red);font-weight:700">heute fällig</span>';
+      else if(_zUrgent)out+='<span style="color:var(--red);font-weight:700">⚠ noch '+_zDaysLeft+' Tage</span><span>· bis '+_ddPart+'</span>';
+      else out+='<span style="font-weight:600;color:var(--t2)">noch '+_zDaysLeft+' Tage</span><span>· bis '+_ddPart+'</span>';
+    }
     if(z.vertraulich)out+='<span class="lock">vertraulich</span>';
     out+='</div></div>';
     if(isGF()){
@@ -7189,19 +7220,21 @@ function rZiele(){
     }
     out+='</div>';
 
-    // KPI grid (compact, always visible)
-    if(visKpis.length||isGF()){
-      out+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:6px;margin-bottom:16px">';
-      visKpis.forEach(k=>{
-        const val=kpiVal(k),ok=kpiOk(k),p2=person(k.pid),isMe=String(k.pid)===String(aP);
-        out+='<div '+(isGF()?'onclick="editKpiDef(\''+z.id+'\',\''+k.id+'\')" style="cursor:pointer"':'')+' style="background:var(--sf);border:'+(isMe?'1.5px solid '+f.tc:'1px solid '+f.bd)+';border-radius:9px;padding:9px 11px">';
-        out+='<div style="font-size:9px;color:var(--t3);margin-bottom:3px">'+(p2?p2.name:'–')+'</div>';
-        out+='<div style="font-size:19px;font-weight:800;color:'+(ok?f.tc:'var(--red)')+';line-height:1;margin-bottom:1px">'+val+(k.unit||'')+'</div>';
-        out+='<div style="font-size:11px;font-weight:600;color:var(--t2)">'+k.label+'</div>';
-        out+='<div style="font-size:10px;color:var(--t3)">Ziel: '+k.ziel+(k.unit||'')+'</div>';
+    // KPI grid — aggregierte Team-Summen, leere gefiltert
+    if(aggKpis.length||isGF()){
+      out+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:6px;margin-bottom:16px">';
+      aggKpis.forEach(k=>{
+        const ok=k.inv?k.ist<=k.ziel:(k.ziel>0?k.ist>=k.ziel*0.85:true);
+        const _editK=isGF()&&k.first?k.first:null;
+        out+='<div '+(_editK?'onclick="editKpiDef(\''+z.id+'\',\''+_editK.id+'\')" style="cursor:pointer"':'')+' style="background:var(--sf);border:1px solid '+f.bd+';border-radius:9px;padding:10px 12px">';
+        out+='<div style="font-size:10px;font-weight:600;color:var(--t3);margin-bottom:4px;text-transform:uppercase;letter-spacing:.3px">'+esc(k.label)+'</div>';
+        out+='<div style="display:flex;align-items:baseline;gap:4px">';
+        out+='<span style="font-size:22px;font-weight:800;color:'+(ok?f.tc:'var(--red)')+';line-height:1">'+k.ist+'</span>';
+        out+='<span style="font-size:13px;font-weight:600;color:var(--t3)">/ '+k.ziel+(k.unit||'')+'</span>';
+        out+='</div>';
         out+='</div>';
       });
-      if(isGF())out+='<div onclick="addKpi(\''+z.id+'\')" style="border:1.5px dashed var(--bd);border-radius:9px;padding:9px 11px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--t3);font-size:22px" onmouseenter="this.style.color=\''+f.tc+'\'" onmouseleave="this.style.color=\'var(--t3)\'">+</div>';
+      if(isGF())out+='<div onclick="addKpi(\''+z.id+'\')" style="border:1.5px dashed var(--bd);border-radius:9px;padding:10px 12px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--t3);font-size:22px" onmouseenter="this.style.color=\''+f.tc+'\'" onmouseleave="this.style.color=\'var(--t3)\'">+</div>';
       out+='</div>';
     }
 
@@ -7215,23 +7248,53 @@ function rZiele(){
       out+='<div style="border-top:1px solid '+f.bd+';padding-top:10px;margin-bottom:8px">';
       out+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">';
       out+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3)">🗓 Monatsziele'+(myTZ.length?' · '+myTZ.length:'')+(tzErledigtAll?' · '+tzErledigtAll+' erledigt':'')+'</div>';
-      out+='<button onclick="nav(\'monat\')" style="font-size:10px;padding:3px 9px;border-radius:7px;border:1px solid '+f.bd+';background:transparent;color:'+f.tc+';cursor:pointer;font-family:inherit;font-weight:500">Timeline →</button>';
       out+='</div>';
       if(myTZ.length){
-        out+='<div style="display:flex;flex-direction:column;gap:4px">';
+        out+='<div style="display:flex;flex-direction:column;gap:5px">';
         showTZ.forEach(tz=>{
-          const tzA=S.aufgaben.filter(a=>a.teilzielId===tz.id);
-          const tzErl=tzA.filter(a=>a.status==='erledigt').length;
           const datum=tz.datum?tz.datum.slice(8)+'.'+tz.datum.slice(5,7)+'.':'';
-          const faell=tz.datum&&tz.datum<TODAY&&!tz.erledigt;
-          out+='<div style="display:flex;align-items:center;gap:8px;padding:6px 9px;border:1px solid '+f.bd+';border-radius:8px;background:var(--sf)">';
+          // Days-left Berechnung für laute Deadline
+          let _daysLeft=null,_urgent=false,_overdue=false,_warn=false;
+          if(tz.datum){
+            _daysLeft=Math.ceil((new Date(tz.datum+'T00:00:00').getTime()-new Date(TODAY+'T00:00:00').getTime())/86400000);
+            _overdue=_daysLeft<0&&!tz.erledigt;
+            _urgent=_daysLeft>=0&&_daysLeft<=3;
+            _warn=_daysLeft>3&&_daysLeft<=7;
+          }
+          // Proximity-Balken: Fill-% = wie nah an Deadline (0-60d Skala)
+          let _fill=0,_barCol='var(--t3)';
+          if(_daysLeft!==null){
+            const _scale=60;
+            _fill=Math.min(100,Math.max(0,Math.round((1-Math.max(0,_daysLeft)/_scale)*100)));
+            if(_overdue){_barCol='var(--red)';_fill=100;}
+            else if(_urgent)_barCol='var(--red)';
+            else if(_warn)_barCol='var(--amber,#d97706)';
+            else if(_daysLeft<=14)_barCol='var(--gold,#ca8a04)';
+            else _barCol=f.tc;
+          }
+          const _rowBorder=_overdue?'1.5px solid var(--red)':'1px solid '+f.bd;
+          out+='<div style="display:flex;align-items:center;gap:10px;padding:8px 11px;border:'+_rowBorder+';border-radius:8px;background:var(--sf)">';
           if(canManageTZ(z.id))out+='<input type="checkbox" '+(tz.erledigt?'checked':'')+' onclick="event.stopPropagation();toggleTZ(\''+z.id+'\',\''+tz.id+'\')" style="flex-shrink:0;margin:0;width:14px;height:14px;accent-color:'+f.tc+';cursor:pointer">';
           out+='<div onclick="editTZ(\''+z.id+'\',\''+tz.id+'\')" style="flex:1;cursor:pointer;min-width:0">';
-          out+='<div style="font-size:12px;font-weight:600;color:var(--text)'+(tz.erledigt?';text-decoration:line-through;opacity:.5':'')+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(tz.name)+'</div>';
+          out+='<div style="font-size:13px;font-weight:600;color:var(--text)'+(tz.erledigt?';text-decoration:line-through;opacity:.5':'')+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:4px">'+esc(tz.name)+'</div>';
+          // Deadline-Zeile: Proximity-Balken + Label
+          if(tz.datum&&!tz.erledigt){
+            out+='<div style="display:flex;align-items:center;gap:8px">';
+            out+='<div style="flex:0 0 60px;height:4px;background:var(--bd);border-radius:99px;overflow:hidden"><div style="height:100%;width:'+_fill+'%;background:'+_barCol+';transition:width .2s"></div></div>';
+            let _lbl='';
+            if(_overdue)_lbl='<span style="color:var(--red);font-weight:700">⚠ überfällig '+Math.abs(_daysLeft)+'d</span>';
+            else if(_daysLeft===0)_lbl='<span style="color:var(--red);font-weight:700">heute fällig</span>';
+            else if(_urgent)_lbl='<span style="color:var(--red);font-weight:700">⚠ in '+_daysLeft+' Tagen</span>';
+            else if(_warn)_lbl='<span style="color:var(--amber,#d97706);font-weight:700">in '+_daysLeft+' Tagen</span>';
+            else _lbl='<span style="color:var(--t3);font-weight:500">in '+_daysLeft+' Tagen</span>';
+            out+='<span style="font-size:11px">'+_lbl+'</span>';
+            if(datum)out+='<span style="font-size:11px;color:var(--t3)">· '+datum+'</span>';
+            out+='</div>';
+          } else if(tz.erledigt){
+            out+='<div style="font-size:11px;color:var(--t3)">✓ erledigt</div>';
+          }
           out+='</div>';
-          if(datum)out+='<span style="font-size:10px;color:'+(faell?'var(--red)':'var(--t3)')+';font-weight:'+(faell?'700':'400')+';flex-shrink:0">'+datum+'</span>';
-          if(tzA.length)out+='<span style="font-size:10px;color:var(--t3);flex-shrink:0">'+tzErl+'/'+tzA.length+'</span>';
-          if(!tz.erledigt)out+='<button title="Aufgabe zu diesem Monatsziel hinzufügen" onclick="event.stopPropagation();addAufgabeToMS(\''+z.id+'\',\''+tz.id+'\')" style="flex-shrink:0;width:22px;height:22px;border-radius:6px;border:1px solid '+f.bd+';background:transparent;color:'+f.tc+';cursor:pointer;font-family:inherit;font-size:14px;font-weight:700;line-height:1;padding:0;display:flex;align-items:center;justify-content:center">+</button>';
+          if(!tz.erledigt)out+='<button title="Aufgabe zu diesem Monatsziel hinzufügen" onclick="event.stopPropagation();addAufgabeToMS(\''+z.id+'\',\''+tz.id+'\')" style="flex-shrink:0;width:24px;height:24px;border-radius:6px;border:1px solid '+f.bd+';background:transparent;color:'+f.tc+';cursor:pointer;font-family:inherit;font-size:15px;font-weight:700;line-height:1;padding:0;display:flex;align-items:center;justify-content:center">+</button>';
           out+='</div>';
         });
         out+='</div>';
