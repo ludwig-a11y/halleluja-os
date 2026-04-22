@@ -861,6 +861,7 @@ function celebrate(emoji,text){
 const cl=p=>p?CL[p.ci%CL.length]:CL[0];
 const isGF=()=>{const m=me();return m&&m.stufe==='gf';};
 const isLead=()=>{const m=me();return m&&(m.stufe==='lead'||m.stufe==='gf');};
+const canAddBereich=()=>{const m=me();return m&&(m.stufe==='gf'||m.darf_bereiche===true);};
 const zielObj=id=>S.ziele.find(z=>z.id===id);
 const kpiVal=k=>{const e=S.kpiVals[k.pid+'-'+k.id];return e!==undefined?e.val:k.ist;};
 const kpiOk=k=>{const v=kpiVal(k);return k.inv?v<=k.ziel:v>=k.ziel*0.85;};
@@ -7486,7 +7487,7 @@ function rZiele(){
     out+='<div style="margin-top:24px;border-top:1px solid var(--bd);padding-top:16px">';
     out+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">';
     out+='<div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3)">📁 Bereiche</div>';
-    if(isGF())out+='<button class="btn" style="font-size:11px;padding:4px 12px;border:1px solid var(--bd);background:var(--gray-bg);color:var(--t2);border-radius:8px;cursor:pointer;font-family:inherit" onclick="addBereich()">+ Bereich</button>';
+    if(canAddBereich())out+='<button class="btn" style="font-size:11px;padding:4px 12px;border:1px solid var(--bd);background:var(--gray-bg);color:var(--t2);border-radius:8px;cursor:pointer;font-family:inherit" onclick="addBereich()">+ Bereich</button>';
     out+='</div>';
     alleBereiche.forEach(z=>{
       const f=FARBEN[z.farbe]||FARBEN[0];
@@ -7513,7 +7514,7 @@ function rZiele(){
       if(isGF()&&paVorschlaege.length)out+='<span style="font-size:10px;font-weight:700;background:var(--amber);color:#fff;padding:1px 7px;border-radius:99px">⚡ '+paVorschlaege.length+'</span>';
       if(canManageTZ(z.id))out+='<button onclick="openAddTZ(\''+z.id+'\')" style="font-size:11px;padding:5px 12px;border-radius:7px;border:1px solid '+f.bd+';background:var(--sf);color:'+f.tc+';cursor:pointer;font-family:inherit;font-weight:500">+ Themengebiet</button>';
       out+='<button onclick="openNeu({zielId:\''+z.id+'\'})" style="font-size:11px;padding:5px 12px;border-radius:7px;border:1px solid '+f.bd+';background:var(--sf);color:'+f.tc+';cursor:pointer;font-family:inherit;font-weight:500">+ Aufgabe</button>';
-      if(isGF())out+='<button onclick="editZiel(\''+z.id+'\')" style="font-size:11px;padding:5px 10px;border-radius:7px;border:1px solid var(--bd);background:var(--gray-bg);color:var(--t2);cursor:pointer;font-family:inherit">···</button>';
+      if(canAddBereich())out+='<button onclick="editZiel(\''+z.id+'\')" style="font-size:11px;padding:5px 10px;border-radius:7px;border:1px solid var(--bd);background:var(--gray-bg);color:var(--t2);cursor:pointer;font-family:inherit">···</button>';
       out+='</div></div>';
       // Expanded content
       if(isOpen){
@@ -9411,6 +9412,7 @@ function editPerson(pid){
     +'<div class="f2"><div class="fl"><label>Name</label><input id="en" value="'+esc(p.name)+'" autofocus></div><div class="fl"><label>Kürzel</label><input id="ek" value="'+esc(p.k)+'" maxlength="3"></div></div>'
     +'<div class="fl"><label>Rolle</label><input id="er" value="'+esc(p.rolle)+'"></div>'
     +'<div class="fl"><label>Stufe</label><select id="es">'+[['team','Teammitglied'],['lead','Team-Lead'],['gf','Geschäftsführung']].map(x=>'<option value="'+x[0]+'"'+(p.stufe===x[0]?' selected':'')+'>'+x[1]+'</option>').join('')+'</select></div>'
+    +(isGF()?'<div class="fl"><label style="display:flex;align-items:center;gap:8px;text-transform:none;font-size:13px;font-weight:400"><input type="checkbox" id="ep-darfb" '+(p.darf_bereiche?'checked':'')+' style="width:auto"> 📁 Darf Bereiche anlegen &amp; bearbeiten</label><div style="font-size:10px;color:var(--t3);margin-top:2px">GF kann das immer. Für alle anderen optional freischalten.</div></div>':'')
     +'<div style="border-top:1px solid var(--bd);margin:10px 0"></div>'
     +'<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px">🤖 KI-Profil</div>'
     +'<div style="font-size:11px;color:var(--t2);margin-bottom:10px">Diese Infos nutzt die KI für personalisierte Hebel-Analyse & Coaching</div>'
@@ -9445,9 +9447,10 @@ async function savePerson(pid){
   p._profilStruktur=struktur;
   p.profil=buildProfilText(struktur);
   p.slack_id=document.getElementById('ep-slack')?.value.trim()||'';
+  if(isGF()){const _db=document.getElementById('ep-darfb');if(_db)p.darf_bereiche=_db.checked;}
   const np=document.getElementById('ep').value.trim();
   if(np.length===4&&/^\d{4}$/.test(np))p.pin=np;
-  await dbPatch('personen',pid,{name:p.name,k:p.k,rolle:p.rolle,stufe:p.stufe,pin:p.pin,fokus_start:p.fokus_start,fokus_end:p.fokus_end,profil:p.profil,_profilStruktur:p._profilStruktur,slack_id:p.slack_id});
+  await dbPatch('personen',pid,{name:p.name,k:p.k,rolle:p.rolle,stufe:p.stufe,pin:p.pin,fokus_start:p.fokus_start,fokus_end:p.fokus_end,profil:p.profil,_profilStruktur:p._profilStruktur,slack_id:p.slack_id,darf_bereiche:!!p.darf_bereiche});
   openSettings();render();
 }
 async function deletePerson(pid){
