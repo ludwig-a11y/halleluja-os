@@ -7239,7 +7239,7 @@ function rZiele(){
     }
 
     // Monatsziele — inline, ausklappbar bei >5
-    const myTZ=(z.teilziele||[]).filter(tz=>(!tz.vertraulich||isGF()||tz.verantwortlichId===aP)&&(tz.status||'aktiv')==='aktiv');
+    const myTZ=(z.teilziele||[]).filter(tz=>(!tz.vertraulich||isGF()||tz.verantwortlichId===aP)&&(tz.status||'aktiv')==='aktiv').sort((a,b)=>(a.datum||'9999-12-31').localeCompare(b.datum||'9999-12-31'));
     const tzErledigtAll=(z.teilziele||[]).filter(tz=>tz.erledigt).length;
     if(myTZ.length||isGF()){
       const collapseKey='zcard_ms_'+z.id;
