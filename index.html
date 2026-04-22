@@ -5675,12 +5675,9 @@ function rTag(){
   if(_inboxN){
     out+='<div style="background:var(--sf);border:1.5px solid var(--blue-bd);border-radius:14px;padding:14px 16px;margin-bottom:10px">';
     out+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><span style="font-size:15px">📬</span><span style="font-size:13px;font-weight:700">Inbox</span><span style="background:var(--blue);color:#fff;font-size:10px;font-weight:700;padding:2px 9px;border-radius:99px;margin-left:auto">'+_inboxN+' neu</span></div>';
-    // ── Zugewiesene Aufgaben — Schritt 1: Annehmen / Ablehnen ──
-    if(zugewiesenA.length){
-    out+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--blue);margin-bottom:6px">📋 Von dir erwartet</div>';
-    const inboxMsOpts=meilensteinOptgroups(aP,'',true);
-    const zielOptsI=inboxMsOpts?'<select onchange="setTeilziel(\'PLACEHOLDER\',this.value)" style="font-size:11px;padding:5px 9px;border-radius:7px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);font-family:inherit;max-width:220px;cursor:pointer">'+inboxMsOpts.replace('— kein Monatsziel —','— Monatsziel —')+'</select>':'';
-    // Wochenziel-Options für Inbox (selbe Logik wie Cleanup)
+    // ── Wochenziel-Options für Inbox (gemeinsam für zugewiesen + neu) ──
+    // v170 Fix: Scope-Hebung, damit wzSelectIbx auch im neu.forEach-Block existiert,
+    // wenn zugewiesenA leer ist (Dominic-Crash).
     const _wrNowIbx=dieseWocheReset(aP);
     const _wzOptsIbx=[];
     if(_wrNowIbx){
@@ -5700,6 +5697,11 @@ function rTag(){
       s+='</select>';
       return s;
     };
+    // ── Zugewiesene Aufgaben — Schritt 1: Annehmen / Ablehnen ──
+    if(zugewiesenA.length){
+    out+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--blue);margin-bottom:6px">📋 Von dir erwartet</div>';
+    const inboxMsOpts=meilensteinOptgroups(aP,'',true);
+    const zielOptsI=inboxMsOpts?'<select onchange="setTeilziel(\'PLACEHOLDER\',this.value)" style="font-size:11px;padding:5px 9px;border-radius:7px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);font-family:inherit;max-width:220px;cursor:pointer">'+inboxMsOpts.replace('— kein Monatsziel —','— Monatsziel —')+'</select>':'';
     zugewiesenA.forEach(a=>{
       const from=person(a.erstelltVon);
       out+='<div style="background:var(--gray-bg);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;margin-bottom:8px">';
