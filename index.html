@@ -7081,6 +7081,17 @@ function fkShowOutcome(c,meta){
 }
 // ─── Ende FOKUS-COACH ────────────────────────────────────────────
 
+// Aufgabe zum Monatsziel hinzufügen (aus Ziele-Tab). Auto-Linkage an Big3-Slot
+// dieser Woche, falls ein Slot genau dieses Monatsziel trägt.
+function addAufgabeToMS(zielId, tzId){
+  const wr=dieseWocheReset(aP);
+  let slot=0;
+  if(wr){for(let n=1;n<=3;n++){if(wr['big3_'+n+'_tz_id']===tzId){slot=n;break;}}}
+  const ctx={zielId,teilzielId:tzId};
+  if(slot){ctx.wochenresetId=wr.id;ctx.big3Slot=slot;ctx.prio='P1';}
+  openNeu(ctx);
+}
+
 function rZiele(){
   const vorschlaege=S.ziele.filter(z=>z.status==='vorschlag');
   const meineVorschlaege=vorschlaege.filter(z=>String(z.vorgeschlagen_von)===String(aP));
@@ -7211,17 +7222,16 @@ function rZiele(){
         showTZ.forEach(tz=>{
           const tzA=S.aufgaben.filter(a=>a.teilzielId===tz.id);
           const tzErl=tzA.filter(a=>a.status==='erledigt').length;
-          const pct=tzA.length?Math.round(tzErl/tzA.length*100):0;
           const datum=tz.datum?tz.datum.slice(8)+'.'+tz.datum.slice(5,7)+'.':'';
           const faell=tz.datum&&tz.datum<TODAY&&!tz.erledigt;
           out+='<div style="display:flex;align-items:center;gap:8px;padding:6px 9px;border:1px solid '+f.bd+';border-radius:8px;background:var(--sf)">';
           if(canManageTZ(z.id))out+='<input type="checkbox" '+(tz.erledigt?'checked':'')+' onclick="event.stopPropagation();toggleTZ(\''+z.id+'\',\''+tz.id+'\')" style="flex-shrink:0;margin:0;width:14px;height:14px;accent-color:'+f.tc+';cursor:pointer">';
           out+='<div onclick="editTZ(\''+z.id+'\',\''+tz.id+'\')" style="flex:1;cursor:pointer;min-width:0">';
           out+='<div style="font-size:12px;font-weight:600;color:var(--text)'+(tz.erledigt?';text-decoration:line-through;opacity:.5':'')+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(tz.name)+'</div>';
-          if(tzA.length)out+='<div style="margin-top:3px;height:3px;background:var(--bd);border-radius:99px;overflow:hidden"><div style="height:100%;background:'+f.tc+';width:'+pct+'%"></div></div>';
           out+='</div>';
           if(datum)out+='<span style="font-size:10px;color:'+(faell?'var(--red)':'var(--t3)')+';font-weight:'+(faell?'700':'400')+';flex-shrink:0">'+datum+'</span>';
           if(tzA.length)out+='<span style="font-size:10px;color:var(--t3);flex-shrink:0">'+tzErl+'/'+tzA.length+'</span>';
+          if(!tz.erledigt)out+='<button title="Aufgabe zu diesem Monatsziel hinzufügen" onclick="event.stopPropagation();addAufgabeToMS(\''+z.id+'\',\''+tz.id+'\')" style="flex-shrink:0;width:22px;height:22px;border-radius:6px;border:1px solid '+f.bd+';background:transparent;color:'+f.tc+';cursor:pointer;font-family:inherit;font-size:14px;font-weight:700;line-height:1;padding:0;display:flex;align-items:center;justify-content:center">+</button>';
           out+='</div>';
         });
         out+='</div>';
