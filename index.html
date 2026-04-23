@@ -9720,10 +9720,7 @@ async function mdExtract(){
       document.getElementById('md-status').innerHTML='<div style="padding:12px;color:var(--red);font-size:12px">⚠️ KI-Antwort konnte nicht verarbeitet werden. Bitte nochmal versuchen.</div>';
       btn.disabled=false;btn.textContent='✦ Aufgaben extrahieren';return;
     }
-    if(!Array.isArray(tasks)||!tasks.length){
-      document.getElementById('md-status').innerHTML='<div style="padding:12px;color:var(--amber);font-size:12px">Keine konkreten Aufgaben gefunden. Ist das Transkript lang genug?</div>';
-      btn.disabled=false;btn.textContent='✦ Aufgaben extrahieren';return;
-    }
+    if(!Array.isArray(tasks))tasks=[];
     _mdTasks=tasks;
     mdRenderPreview();
   }catch(e){
@@ -9778,8 +9775,8 @@ function mdRenderPreview(){
     {key:'monatsziel',icon:'🎯',label:'Monatsziele',color:'var(--purple)'},
     {key:'quartalsziel',icon:'🌟',label:'Quartalsziele',color:'var(--amber)'},
   ];
-  let html='<div class="mt">📝 Meeting Dump — '+total+' Items erkannt</div>';
-  html+='<div style="font-size:12px;color:var(--t3);margin-bottom:14px">KI hat klassifiziert. Typ korrigieren wenn nötig, dann alles anlegen.</div>';
+  let html='<div class="mt">📝 Meeting Dump — '+(total===0?'Kontext ohne neue Aufgaben':total+' Items erkannt')+'</div>';
+  html+='<div style="font-size:12px;color:var(--t3);margin-bottom:14px">'+(total===0?'Das Transkript enthält Kontext/Diskussion — keine neuen konkreten Aufgaben. Du kannst trotzdem die Rekalibrierung nutzen, um bestehende Prios auf Basis des Gesagten anzupassen.':'KI hat klassifiziert. Typ korrigieren wenn nötig, dann alles anlegen.')+'</div>';
   groups.forEach(({key,icon,label,color})=>{
     const items=_mdTasks.map((t,i)=>({t,i})).filter(({t})=>(t.typ||'aufgabe')===key);
     if(!items.length)return;
@@ -9796,7 +9793,11 @@ function mdRenderPreview(){
   html+='<button class="btn btn-gr" onclick="openMeeting()">← Zurück</button>';
   html+='<div style="flex:1"></div>';
   html+='<span style="font-size:12px;color:var(--t3)" id="md-count">'+total+' ausgewählt</span>';
-  html+='<button class="btn btn-dk" onclick="mdConfirm()" style="padding:10px 24px;font-size:14px;font-weight:700">✓ Alles anlegen</button>';
+  if(total===0){
+    html+='<button class="btn btn-dk" onclick="cm()" style="padding:10px 24px;font-size:14px;font-weight:700">✓ Fertig</button>';
+  }else{
+    html+='<button class="btn btn-dk" onclick="mdConfirm()" style="padding:10px 24px;font-size:14px;font-weight:700">✓ Alles anlegen</button>';
+  }
   html+='</div>';
   m.innerHTML=html;
   mdRekaliRender();
