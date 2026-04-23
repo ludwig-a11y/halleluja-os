@@ -11124,7 +11124,7 @@ async function gcalFetchToday(){
     S.kalender=(data.items||[])
       .filter(e=>e.start&&e.start.dateTime)
       .map((e,i)=>{
-        const ev={id:'ge_'+i,titel:e.summary||'(Kein Titel)',beschreibung:e.description||'',ort:e.location||'',start:new Date(e.start.dateTime),end:new Date(e.end.dateTime)};
+        const ev={id:'ge_'+i,gId:e.id,titel:e.summary||'(Kein Titel)',beschreibung:e.description||'',ort:e.location||'',start:new Date(e.start.dateTime),end:new Date(e.end.dateTime)};
         window._gcalEvtMap[ev.id]=ev;
         return ev;
       });
@@ -11193,11 +11193,12 @@ function gcalShowEvent(id){
 async function gcalDeleteEvent(id){
   const ev=(window._gcalEvtMap||{})[id];
   if(!ev){toast('Event nicht gefunden');return;}
+  const gId=ev.gId||id; // echte Google-Event-ID
   if(!confirm('Termin "'+ev.titel+'" wirklich aus dem Google Kalender löschen?\n\nDas kann nicht rückgängig gemacht werden.'))return;
   const token=localStorage.getItem('gcal_token');
   if(!token){toast('Nicht mit Google verbunden');return;}
   try{
-    const resp=await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events/'+encodeURIComponent(id),
+    const resp=await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events/'+encodeURIComponent(gId),
       {method:'DELETE',headers:{Authorization:'Bearer '+token}});
     if(resp.ok||resp.status===410||resp.status===404){
       // lokal aufräumen
@@ -11205,7 +11206,7 @@ async function gcalDeleteEvent(id){
       S.kalender=(S.kalender||[]).filter(e=>e.id!==id);
       // Falls ein App-Task dieses Event erzeugt hat → Mapping lösen
       (S.aufgaben||[]).forEach(a=>{
-        if(gcalGetEvtId(a.id)===id)gcalSetEvtId(a.id,null);
+        if(gcalGetEvtId(a.id)===gId)gcalSetEvtId(a.id,null);
       });
       cm();
       toast('🗑 Termin gelöscht');
