@@ -10053,18 +10053,75 @@ function mdRekaliRender(){
 }
 
 async function mdRekaliAccept(vorschlagId){
-  // STUB — implementiert in Chunk 4
-  toast('mdRekaliAccept: noch nicht implementiert');
+  if(!_mdRekali||!_mdRekali.vorschlaege)return;
+  const v=_mdRekali.vorschlaege.find(x=>x.id===vorschlagId);
+  if(!v)return;
+  if(v.userStatus!=='offen'&&v.userStatus!=='bearbeitet')return;
+  const a=(S.aufgaben||[]).find(x=>x.id===v.targetId);
+  if(!a){
+    toast('Aufgabe wurde inzwischen gelöscht');
+    v.userStatus='abgelehnt';
+    mdRekaliRender();
+    return;
+  }
+  const grundKurz=(v.grund||'').slice(0,120);
+  const auditLine='📝 '+formatAuditDate()+' Prio '+(v.altPrio||'—')+'→'+v.neuPrio+' (Meeting: '+grundKurz+')';
+  const neueNotiz=a.notiz?auditLine+'\n---\n'+a.notiz:auditLine;
+  // Optimistisches Update
+  const prev={prio:a.prio,notiz:a.notiz};
+  const prevStatus=v.userStatus;
+  a.prio=v.neuPrio;
+  a.notiz=neueNotiz;
+  v.userStatus=v.userStatus==='bearbeitet'?'bearbeitet':'bestaetigt';
+  mdRekaliRender();
+  const ok=await dbPatch('aufgaben',v.targetId,{prio:v.neuPrio,notiz:neueNotiz});
+  if(!ok){
+    // Rollback
+    a.prio=prev.prio;
+    a.notiz=prev.notiz;
+    v.userStatus=prevStatus;
+    toast('⚠ Speichern fehlgeschlagen — bitte nochmal versuchen');
+    mdRekaliRender();
+  }
 }
 
 function mdRekaliReject(vorschlagId){
-  // STUB — implementiert in Chunk 4
-  toast('mdRekaliReject: noch nicht implementiert');
+  if(!_mdRekali||!_mdRekali.vorschlaege)return;
+  const v=_mdRekali.vorschlaege.find(x=>x.id===vorschlagId);
+  if(!v)return;
+  if(v.userStatus!=='offen')return;
+  v.userStatus='abgelehnt';
+  mdRekaliRender();
 }
 
 function mdRekaliEdit(vorschlagId){
-  // STUB — implementiert in Chunk 4
-  toast('mdRekaliEdit: noch nicht implementiert');
+  if(!_mdRekali||!_mdRekali.vorschlaege)return;
+  const v=_mdRekali.vorschlaege.find(x=>x.id===vorschlagId);
+  if(!v)return;
+  if(v.userStatus!=='offen')return;
+  const actions=document.getElementById('md-rekali-actions-'+vorschlagId);
+  if(!actions)return;
+  const curr=v.neuPrio;
+  actions.innerHTML='<select id="md-rekali-edit-'+vorschlagId+'" style="font-size:11px;padding:4px 8px;border:1px solid var(--bd);border-radius:6px;background:var(--sf);color:var(--text)">'
+    +'<option value="P1"'+(curr==='P1'?' selected':'')+'>🔴 P1</option>'
+    +'<option value="P2"'+(curr==='P2'?' selected':'')+'>🔵 P2</option>'
+    +'<option value="P3"'+(curr==='P3'?' selected':'')+'>🟢 P3</option>'
+    +'</select>'
+    +'<button class="btn" onclick="mdRekaliEditApply(\''+vorschlagId+'\')" style="background:var(--green-bg);border:1px solid var(--green);color:var(--green);font-size:11px;padding:4px 10px;border-radius:6px;font-weight:600">Übernehmen</button>'
+    +'<button class="btn" onclick="mdRekaliRender()" style="background:transparent;border:1px solid var(--bd);color:var(--t2);font-size:11px;padding:4px 10px;border-radius:6px">Abbrechen</button>';
+}
+
+async function mdRekaliEditApply(vorschlagId){
+  if(!_mdRekali||!_mdRekali.vorschlaege)return;
+  const v=_mdRekali.vorschlaege.find(x=>x.id===vorschlagId);
+  if(!v)return;
+  const sel=document.getElementById('md-rekali-edit-'+vorschlagId);
+  if(!sel)return;
+  const neuerWert=sel.value;
+  if(!['P1','P2','P3'].includes(neuerWert))return;
+  v.neuPrio=neuerWert;
+  v.userStatus='bearbeitet';
+  await mdRekaliAccept(vorschlagId);
 }
 
 function mdRekaliGateCheck(){
