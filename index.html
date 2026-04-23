@@ -274,7 +274,7 @@ body.focus-active .fm-hide{display:none !important}
 <div id="app" style="display:none;flex-direction:column;flex:1;overflow:hidden">
   <div class="bar">
     <div class="logo">Halleluja OS</div>
-    <button class="nt on" onclick="nav('tag',this)">Mein Tag</button>
+    <button class="nt on" id="nav-tag" onclick="nav('tag',this)">Mein Tag</button>
     <button class="nt" id="nav-woche" onclick="nav('woche',this)">Woche</button>
     <button class="nt" id="nav-monat" onclick="nav('monat',this)">Monat</button>
     <button class="nt" id="nav-ziele" onclick="nav('ziele',this)">Ziele</button>
@@ -1834,7 +1834,7 @@ function getOverdueDelegationCount(pid){
 }
 function openDelegOverdue(){
   try{
-    if(aV!=='tag')nav('tag',document.querySelector('.nt'));
+    if(aV!=='tag')nav('tag',document.getElementById('nav-tag'));
     // Nach Render: Delegations-Block öffnen + scrollen
     setTimeout(()=>{
       const d=document.querySelector('details[data-deleg="1"]');
@@ -1849,7 +1849,8 @@ function rDelegBlock(pid){
   const statusColor={neu:'var(--red)',backlog:'var(--t3)',aktiv:'var(--blue)',erledigt:'var(--green)',zugewiesen:'var(--amber)',zurueckgegeben:'var(--orange)',idee:'var(--blue)',random:'var(--t3)'};
   // v173.1 Gap B: Überzogene im Summary hervorheben, damit der Klick vom Header-Badge direkt im Kontext landet.
   const overdueCount=delegated.filter(a=>a.dl&&a.dl<TODAY).length;
-  let out='<details data-deleg="1" style="margin-bottom:12px"'+(overdueCount>0?' open':'')+'><summary style="list-style:none;cursor:pointer;padding:12px 16px;background:var(--sf);border:1px solid '+(overdueCount>0?'var(--red-bd)':'var(--bd)')+';border-radius:12px;display:flex;align-items:center;justify-content:space-between">';
+  // Kein auto-open mehr pro Render (würde User-close überschreiben). Öffnen übernimmt Header-Badge-Klick via openDelegOverdue.
+  let out='<details data-deleg="1" style="margin-bottom:12px"><summary style="list-style:none;cursor:pointer;padding:12px 16px;background:var(--sf);border:1px solid '+(overdueCount>0?'var(--red-bd)':'var(--bd)')+';border-radius:12px;display:flex;align-items:center;justify-content:space-between">';
   out+='<span style="font-size:13px;font-weight:600">Meine Delegationen'+(overdueCount>0?' <span style="margin-left:8px;padding:2px 7px;border-radius:99px;background:var(--red-bg);color:var(--red);font-size:10px;font-weight:700">'+overdueCount+' überzogen</span>':'')+'</span>';
   out+='<span style="font-size:12px;color:var(--t3)">'+delegated.length+' · anzeigen</span></summary>';
   out+='<div style="margin-top:8px;background:var(--sf);border:1px solid var(--bd);border-radius:12px;overflow:hidden">';
