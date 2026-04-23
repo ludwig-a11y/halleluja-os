@@ -281,6 +281,7 @@ body.focus-active .fm-hide{display:none !important}
     <button class="nt" id="nav-team" onclick="nav('team',this)">Team</button>
     <div style="flex:1"></div>
     <div id="fokus-banner" style="display:none;align-items:center;gap:6px;padding:4px 12px;background:var(--red-bg);border:1px solid var(--red-bd);border-radius:8px;font-size:11px;font-weight:600;color:var(--red)">🎯 <span id="fokus-label"></span></div>
+    <button id="deleg-overdue-badge" onclick="openDelegOverdue()" title="Von dir delegierte Aufgaben sind überzogen" style="display:none;align-items:center;gap:6px;padding:4px 10px;background:var(--red-bg);border:1px solid var(--red-bd);border-radius:8px;font-size:11px;font-weight:700;color:var(--red);cursor:pointer;font-family:inherit">📨 <span id="deleg-overdue-count">0</span> überzogen</button>
     <div id="live-clock" style="font-size:12px;font-weight:600;color:var(--t2);font-family:monospace;padding:0 8px"></div>
     <button class="nt new-btn" onclick="openNeu(smartNeuContext())">+ Aufgabe</button>
     <div style="margin-left:12px;display:flex;align-items:center;gap:8px">
@@ -1732,7 +1733,18 @@ function rInbox(pid){
     const bereitsTZ=a.teilzielId?meineTZ.find(t=>t.id===a.teilzielId):null;
     expanded+='<div style="padding:10px 14px;border-top:1px solid var(--bd)">';
     expanded+='<div style="font-size:13px;font-weight:600;margin-bottom:3px">'+esc(a.titel)+'</div>';
-    expanded+='<div style="font-size:11px;color:var(--t3);margin-bottom:6px">'+(absName?'von '+esc(absName):'aus Meeting')+(a.prio?' · '+a.prio:' · <span style="color:var(--amber);font-weight:600">ohne Prio</span>')+(a.dl?' · bis '+a.dl:'')+'</div>';
+    expanded+='<div style="font-size:11px;color:var(--t3);margin-bottom:6px">'+(absName?'von '+esc(absName):'aus Meeting')+(a.prio?' · '+a.prio:' · <span style="color:var(--amber);font-weight:600">ohne Prio</span>')+'</div>';
+    // v173.1 Gap A: Deadline als prominenter Badge, nicht als Subline-Text.
+    // Der Empfänger muss die Dringlichkeit vor dem Annehmen erkennen, um Kapazität zu prüfen.
+    {
+      const _di=a.dl?dli(a.dl):null;
+      if(_di){
+        const _wd=['So','Mo','Di','Mi','Do','Fr','Sa'][new Date(a.dl+'T12:00:00').getDay()];
+        expanded+='<div style="display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:99px;background:'+_di.bg+';color:'+_di.c+';font-size:11px;font-weight:600;margin-bottom:8px">📅 bis '+_wd+' '+a.dl.slice(8)+'.'+a.dl.slice(5,7)+'. · '+_di.l+'</div>';
+      } else {
+        expanded+='<div style="display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:99px;background:var(--gray-bg);color:var(--t3);font-size:11px;font-weight:500;margin-bottom:8px;border:1px dashed var(--bd)">📅 ohne Deadline</div>';
+      }
+    }
     if(bereitsTZ)expanded+='<div style="font-size:11px;color:var(--blue);margin-bottom:8px">🎯 bereits: '+esc(bereitsTZ.zielName)+' › '+esc(bereitsTZ.name)+'</div>';
     expanded+='<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">';
     // Prio-Picker falls fehlt
@@ -1808,23 +1820,62 @@ async function inboxArchive(id){
 }
 // ─── /INBOX ─────────────────────────────────────────────────────
 // Ideen-Pool + "→ Monatsziel"-Button aus Inbox entfernt (Iteration 2 §1c).
+// v173.1 Gap B: aktives Receipt-Signal für den Delegierer.
+// Zählt eigene Delegationen (erstelltVon=pid, pid!=pid), die noch nicht erledigt sind
+// und deren Deadline bereits überschritten wurde. Sichtbar im Header-Badge.
+function getOverdueDelegationCount(pid){
+  if(!pid||!S.aufgaben)return 0;
+  return S.aufgaben.filter(a=>
+    String(a.erstelltVon)===String(pid)&&
+    String(a.pid)!==String(pid)&&
+    !['erledigt','archiviert'].includes(a.status)&&
+    a.dl&&a.dl<TODAY
+  ).length;
+}
+function openDelegOverdue(){
+  try{
+    if(aV!=='tag')nav('tag',document.querySelector('.nt'));
+    // Nach Render: Delegations-Block öffnen + scrollen
+    setTimeout(()=>{
+      const d=document.querySelector('details[data-deleg="1"]');
+      if(d){d.open=true;d.scrollIntoView({behavior:'smooth',block:'start'});}
+    },60);
+  }catch(e){console.error('openDelegOverdue',e);}
+}
 function rDelegBlock(pid){
   const delegated=S.aufgaben.filter(a=>a.erstelltVon===pid&&a.pid!==pid&&a.status!=='erledigt');
   if(!delegated.length)return'';
   const statusMap={neu:'Neu',backlog:'In Pipeline',aktiv:'Läuft',erledigt:'Erledigt',zugewiesen:'Ausstehend',zurueckgegeben:'↩ Zurück',idee:'→ Idee Pool',random:'Random'};
   const statusColor={neu:'var(--red)',backlog:'var(--t3)',aktiv:'var(--blue)',erledigt:'var(--green)',zugewiesen:'var(--amber)',zurueckgegeben:'var(--orange)',idee:'var(--blue)',random:'var(--t3)'};
-  let out='<details style="margin-bottom:12px"><summary style="list-style:none;cursor:pointer;padding:12px 16px;background:var(--sf);border:1px solid var(--bd);border-radius:12px;display:flex;align-items:center;justify-content:space-between">';
-  out+='<span style="font-size:13px;font-weight:600">Meine Delegationen</span>';
+  // v173.1 Gap B: Überzogene im Summary hervorheben, damit der Klick vom Header-Badge direkt im Kontext landet.
+  const overdueCount=delegated.filter(a=>a.dl&&a.dl<TODAY).length;
+  let out='<details data-deleg="1" style="margin-bottom:12px"'+(overdueCount>0?' open':'')+'><summary style="list-style:none;cursor:pointer;padding:12px 16px;background:var(--sf);border:1px solid '+(overdueCount>0?'var(--red-bd)':'var(--bd)')+';border-radius:12px;display:flex;align-items:center;justify-content:space-between">';
+  out+='<span style="font-size:13px;font-weight:600">Meine Delegationen'+(overdueCount>0?' <span style="margin-left:8px;padding:2px 7px;border-radius:99px;background:var(--red-bg);color:var(--red);font-size:10px;font-weight:700">'+overdueCount+' überzogen</span>':'')+'</span>';
   out+='<span style="font-size:12px;color:var(--t3)">'+delegated.length+' · anzeigen</span></summary>';
   out+='<div style="margin-top:8px;background:var(--sf);border:1px solid var(--bd);border-radius:12px;overflow:hidden">';
-  delegated.forEach(a=>{
+  // Überzogene zuerst zeigen — sonst versteckt im Pipeline-Rauschen.
+  const sortedDelegated=[...delegated].sort((x,y)=>{
+    const xo=(x.dl&&x.dl<TODAY)?0:1;
+    const yo=(y.dl&&y.dl<TODAY)?0:1;
+    if(xo!==yo)return xo-yo;
+    return (x.dl||'9999').localeCompare(y.dl||'9999');
+  });
+  sortedDelegated.forEach(a=>{
     const assignee=person(a.pid);
     const st=a.status||'neu';
-    out+='<div class="deleg-row hoverable" style="cursor:pointer;border-radius:0" onclick="openDetail(\''+a.id+'\')">';
+    const isOverdue=a.dl&&a.dl<TODAY;
+    out+='<div class="deleg-row hoverable" style="cursor:pointer;border-radius:0'+(isOverdue?';background:var(--red-bg)':'')+'" onclick="openDetail(\''+a.id+'\')">';
     out+='<div style="flex:1;min-width:0">';
     out+='<div style="font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(a.titel)+'</div>';
-    out+='<div style="display:flex;gap:6px;margin-top:2px;align-items:center">';
+    out+='<div style="display:flex;gap:6px;margin-top:2px;align-items:center;flex-wrap:wrap">';
     if(a.prio)out+=prioTag(a.prio,null,false);
+    if(isOverdue){
+      const _di=dli(a.dl);
+      if(_di)out+='<span style="font-size:10px;font-weight:700;padding:1px 7px;border-radius:99px;background:var(--red);color:#fff">⚠ '+_di.l+'</span>';
+    } else if(a.dl){
+      const _di=dli(a.dl);
+      if(_di)out+='<span style="font-size:10px;font-weight:600;padding:1px 7px;border-radius:99px;background:'+_di.bg+';color:'+_di.c+'">'+_di.l+'</span>';
+    }
     out+='<select onchange="event.stopPropagation();reassignAufgabe(\''+a.id+'\',this.value)" onclick="event.stopPropagation()" style="font-size:10px;padding:1px 4px;border-radius:5px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);font-family:inherit;cursor:pointer">'+S.personen.filter(p=>p.id!==pid).map(p=>'<option value="'+p.id+'"'+(p.id===a.pid?' selected':'')+'>→ '+esc(p.name.split(' ')[0])+'</option>').join('')+'</select>';
     out+='</div></div>';
     out+='<div style="text-align:right;flex-shrink:0">';
@@ -4780,6 +4831,16 @@ function render(){
     const inFocus=!!(S.aufgaben||[]).some(a=>String(a.pid)===String(aP)&&a.status==='aktiv');
     document.body.classList.toggle('focus-active',inFocus);
   }catch(e){console.error('render:focusActive',e);}
+  // v173.1 Gap B: Delegierer-Receipt — Header-Badge bei überzogenen eigenen Delegationen.
+  try{
+    const oc=getOverdueDelegationCount(aP);
+    const badge=document.getElementById('deleg-overdue-badge');
+    const cnt=document.getElementById('deleg-overdue-count');
+    if(badge){
+      if(oc>0){badge.style.display='inline-flex';if(cnt)cnt.textContent=oc;}
+      else{badge.style.display='none';}
+    }
+  }catch(e){console.error('render:delegOverdue',e);}
   try{
     const navTeam=document.getElementById('nav-team');
     if(navTeam)navTeam.style.display=canSeeTeam()?'':'none';
