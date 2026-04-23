@@ -1889,15 +1889,16 @@ function spangeTick(){
     if(!pid)return;
     const fenster=spangeHeutFenster(pid);
     if(!fenster||fenster.abwesend||fenster.frei)return;
-    const vonMin=_hhmmToMin(fenster.von),bisMin=_hhmmToMin(fenster.bis);
-    if(vonMin==null||bisMin==null||bisMin<=vonMin)return;
+    const workVon=_hhmmToMin(fenster.von),workBis=_hhmmToMin(fenster.bis);
+    if(workVon==null||workBis==null||workBis<=workVon)return;
+    const vonMin=Math.max(0,workVon-120),bisMin=Math.min(1440,workBis+120);
     const now=new Date();
     if(localDate(now)!==TODAY){el.style.display='none';return;}
     const nowMin=now.getHours()*60+now.getMinutes();
     if(nowMin<vonMin||nowMin>bisMin){el.style.display='none';return;}
     el.style.display='';
     el.style.left=(((nowMin-vonMin)/(bisMin-vonMin))*100).toFixed(2)+'%';
-  }catch(e){/* silent */}
+  }catch(e){console.warn('spangeTick',e);}
 }
 function spangeStartTick(){
   if(_spangeTickIv)clearInterval(_spangeTickIv);
@@ -1918,9 +1919,13 @@ function spangeRender(pid){
     if(fenster.frei){
       return '<div class="tagesspange" style="margin-bottom:14px;padding:8px 14px;border-radius:10px;background:var(--gray-bg);border:1px dashed var(--bd);font-size:11px;color:var(--t3);text-align:center">Kein Arbeitstag</div>';
     }
-    const vonMin=_hhmmToMin(fenster.von);
-    const bisMin=_hhmmToMin(fenster.bis);
-    if(vonMin==null||bisMin==null||bisMin<=vonMin)return'';
+    const workVonMin=_hhmmToMin(fenster.von);
+    const workBisMin=_hhmmToMin(fenster.bis);
+    if(workVonMin==null||workBisMin==null||workBisMin<=workVonMin)return'';
+    // Display-Fenster = Arbeitszeit ±2h (damit Events knapp außerhalb sichtbar bleiben)
+    const BUFFER=120;
+    const vonMin=Math.max(0,workVonMin-BUFFER);
+    const bisMin=Math.min(24*60,workBisMin+BUFFER);
     const span=bisMin-vonMin;
     const collapsed=_spangeCollapsed();
     const height=collapsed?'6px':'36px';
@@ -1998,6 +2003,27 @@ function spangeRender(pid){
     }
     // Track
     h+='<div style="position:relative;height:'+height+';background:var(--gray-bg);border-radius:'+(collapsed?'3px':'6px')+';overflow:hidden">';
+    // Puffer-Zonen (vor Arbeitsbeginn, nach Arbeitsende) — leicht gedimmt
+    if(workVonMin>vonMin){
+      const w=((workVonMin-vonMin)/span)*100;
+      h+='<div title="Vor Arbeitsbeginn ('+esc(fenster.von)+')" style="position:absolute;top:0;bottom:0;left:0;width:'+w.toFixed(2)+'%;background:rgba(0,0,0,0.04);pointer-events:none"></div>';
+    }
+    if(workBisMin<bisMin){
+      const l=((workBisMin-vonMin)/span)*100;
+      const w=((bisMin-workBisMin)/span)*100;
+      h+='<div title="Nach Arbeitsende ('+esc(fenster.bis)+')" style="position:absolute;top:0;bottom:0;left:'+l.toFixed(2)+'%;width:'+w.toFixed(2)+'%;background:rgba(0,0,0,0.04);pointer-events:none"></div>';
+    }
+    // Arbeitszeit-Grenzen als feine Linien
+    if(!collapsed){
+      if(workVonMin>vonMin){
+        const x=((workVonMin-vonMin)/span)*100;
+        h+='<div style="position:absolute;top:0;bottom:0;left:'+x.toFixed(2)+'%;width:1px;background:var(--bd);pointer-events:none"></div>';
+      }
+      if(workBisMin<bisMin){
+        const x=((workBisMin-vonMin)/span)*100;
+        h+='<div style="position:absolute;top:0;bottom:0;left:'+x.toFixed(2)+'%;width:1px;background:var(--bd);pointer-events:none"></div>';
+      }
+    }
     // Mittagspause-Overlay
     if(fenster.mittag&&fenster.mittag.von&&fenster.mittag.bis){
       const mv=_hhmmToMin(fenster.mittag.von),mb=_hhmmToMin(fenster.mittag.bis);
@@ -2035,7 +2061,7 @@ function spangeRender(pid){
       h+='<div onclick="event.stopPropagation();'+onclick+'" title="'+title+'" style="position:absolute;top:0;bottom:0;left:'+l.toFixed(2)+'%;width:'+w.toFixed(2)+'%;min-width:3px;background:'+bg+';opacity:'+op+';border:'+border+';border-radius:'+(collapsed?'2px':'4px')+';cursor:pointer;overflow:hidden;'+(clippedLeft?'border-top-left-radius:0;border-bottom-left-radius:0;':'')+(clippedRight?'border-top-right-radius:0;border-bottom-right-radius:0;':'')+'">';
       if(!collapsed&&w>8){
         const txtCol=ev._ghost?color:'#fff';
-        h+='<div style="font-size:10px;color:'+txtCol+';padding:4px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2;font-weight:600">'+ic+' '+esc(ev.titel)+'</div>';
+        h+='<div style="font-size:10px;color:'+txtCol+';padding:4px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2;font-weight:600">'+(clippedLeft?'… ':'')+ic+' '+esc(ev.titel)+(clippedRight?' …':'')+'</div>';
       }
       h+='</div>';
     });
