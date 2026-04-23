@@ -1856,6 +1856,150 @@ function getKapazitaet(pid){
   });
   return{fh,rh,p1h,p23h,rnd,sw};
 }
+// ─── Arbeitszeiten & Abwesenheiten (per-device, localStorage) ───────
+// Gespeichert analog zu anderen Per-User-Settings (Fokus, Inbox, …)
+const _AZ_DEFAULT={
+  mo:{von:'09:00',bis:'17:00',mittag:{von:'12:30',bis:'13:00'}},
+  di:{von:'09:00',bis:'17:00',mittag:{von:'12:30',bis:'13:00'}},
+  mi:{von:'09:00',bis:'17:00',mittag:{von:'12:30',bis:'13:00'}},
+  do:{von:'09:00',bis:'17:00',mittag:{von:'12:30',bis:'13:00'}},
+  fr:{von:'09:00',bis:'14:00',mittag:null},
+  sa:null,so:null
+};
+function _azGet(pid){
+  try{
+    const raw=localStorage.getItem('arbeitszeiten_'+pid);
+    if(!raw)return JSON.parse(JSON.stringify(_AZ_DEFAULT));
+    const parsed=JSON.parse(raw);
+    // shallow merge mit default, damit fehlende Keys nicht crashen
+    return {..._AZ_DEFAULT,...parsed};
+  }catch(e){console.error('_azGet',e);return JSON.parse(JSON.stringify(_AZ_DEFAULT));}
+}
+function _azSet(pid,obj){
+  try{localStorage.setItem('arbeitszeiten_'+pid,JSON.stringify(obj));}
+  catch(e){console.error('_azSet',e);toast('⚠ Arbeitszeiten speichern fehlgeschlagen');}
+}
+function _abwGet(pid){
+  try{const raw=localStorage.getItem('abwesenheiten_'+pid);return raw?JSON.parse(raw):[];}
+  catch(e){console.error('_abwGet',e);return[];}
+}
+function _abwSet(pid,arr){
+  try{localStorage.setItem('abwesenheiten_'+pid,JSON.stringify(arr));}
+  catch(e){console.error('_abwSet',e);toast('⚠ Abwesenheiten speichern fehlgeschlagen');}
+}
+function _azValidate(t){
+  // erwartet HH:MM
+  return /^\d{2}:\d{2}$/.test(t);
+}
+function azSaveTag(pid,tag){
+  try{
+    const az=_azGet(pid);
+    const vEl=document.getElementById('az-'+tag+'-v');
+    const bEl=document.getElementById('az-'+tag+'-b');
+    const mvEl=document.getElementById('az-'+tag+'-mv');
+    const mbEl=document.getElementById('az-'+tag+'-mb');
+    if(!vEl||!bEl)return;
+    const v=vEl.value,b=bEl.value;
+    if(!_azValidate(v)||!_azValidate(b)||v>=b){toast('⚠ Ungültige Arbeitszeit für '+tag.toUpperCase());return;}
+    let mittag=null;
+    if(mvEl&&mbEl&&mvEl.value&&mbEl.value){
+      if(!_azValidate(mvEl.value)||!_azValidate(mbEl.value)||mvEl.value>=mbEl.value||mvEl.value<v||mbEl.value>b){
+        toast('⚠ Mittag muss innerhalb der Arbeitszeit liegen');return;
+      }
+      mittag={von:mvEl.value,bis:mbEl.value};
+    }
+    az[tag]={von:v,bis:b,mittag};
+    _azSet(pid,az);
+  }catch(e){console.error('azSaveTag',e);toast('⚠ Speichern fehlgeschlagen');}
+}
+function azToggleFrei(pid,tag,checked){
+  try{
+    const az=_azGet(pid);
+    if(checked){az[tag]=null;}
+    else{az[tag]=JSON.parse(JSON.stringify(_AZ_DEFAULT[tag]||_AZ_DEFAULT.mo));}
+    _azSet(pid,az);
+    openMeinProfil(); // rerender
+  }catch(e){console.error('azToggleFrei',e);}
+}
+function azAddAbw(pid){
+  try{
+    const vEl=document.getElementById('abw-new-von');
+    const bEl=document.getElementById('abw-new-bis');
+    const gEl=document.getElementById('abw-new-grund');
+    if(!vEl||!bEl)return;
+    const v=vEl.value,b=bEl.value,g=(gEl?.value||'').trim();
+    if(!v||!b){toast('⚠ Bitte Datum von und bis eintragen');return;}
+    if(v>b){toast('⚠ Von-Datum muss vor Bis-Datum liegen');return;}
+    const arr=_abwGet(pid);
+    arr.push({von:v,bis:b,grund:g});
+    arr.sort((a,b)=>a.von.localeCompare(b.von));
+    _abwSet(pid,arr);
+    openMeinProfil();
+  }catch(e){console.error('azAddAbw',e);toast('⚠ Hinzufügen fehlgeschlagen');}
+}
+function azDelAbw(pid,idx){
+  try{
+    const arr=_abwGet(pid);
+    arr.splice(idx,1);
+    _abwSet(pid,arr);
+    openMeinProfil();
+  }catch(e){console.error('azDelAbw',e);}
+}
+function rArbeitszeitenBlock(pid){
+  try{
+    const az=_azGet(pid);
+    const abw=_abwGet(pid);
+    const TAGE=[['mo','Mo'],['di','Di'],['mi','Mi'],['do','Do'],['fr','Fr'],['sa','Sa'],['so','So']];
+    let h='<details style="margin-bottom:10px"><summary style="cursor:pointer;padding:6px 0;font-size:12px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;list-style:none;display:flex;align-items:center;gap:6px"><span style="font-size:13px">⌚</span> Arbeitszeiten &amp; Abwesenheiten <span style="margin-left:auto;font-size:10px;font-weight:400;color:var(--t3)">▾</span></summary>';
+    h+='<div style="padding:10px 0 4px">';
+    h+='<div style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px">Arbeitszeiten</div>';
+    TAGE.forEach(([k,lbl])=>{
+      const cfg=az[k];
+      const frei=!cfg;
+      h+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap">';
+      h+='<span style="min-width:24px;font-size:12px;font-weight:600;color:var(--t2)">'+lbl+'</span>';
+      if(frei){
+        h+='<span style="font-size:11px;color:var(--t3);flex:1">frei</span>';
+        h+='<label style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--t3);cursor:pointer"><input type="checkbox" checked onchange="azToggleFrei(\''+pid+'\',\''+k+'\',this.checked)"> frei</label>';
+      }else{
+        const inp='style="width:76px;font-size:12px;padding:4px 6px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--text);font-family:inherit"';
+        h+='<input type="time" id="az-'+k+'-v" value="'+(cfg.von||'')+'" onblur="azSaveTag(\''+pid+'\',\''+k+'\')" '+inp+'>';
+        h+='<span style="font-size:11px;color:var(--t3)">–</span>';
+        h+='<input type="time" id="az-'+k+'-b" value="'+(cfg.bis||'')+'" onblur="azSaveTag(\''+pid+'\',\''+k+'\')" '+inp+'>';
+        h+='<span style="font-size:10px;color:var(--t3);margin-left:4px">Mittag</span>';
+        h+='<input type="time" id="az-'+k+'-mv" value="'+(cfg.mittag?.von||'')+'" onblur="azSaveTag(\''+pid+'\',\''+k+'\')" '+inp+'>';
+        h+='<span style="font-size:11px;color:var(--t3)">–</span>';
+        h+='<input type="time" id="az-'+k+'-mb" value="'+(cfg.mittag?.bis||'')+'" onblur="azSaveTag(\''+pid+'\',\''+k+'\')" '+inp+'>';
+        h+='<label style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--t3);cursor:pointer;margin-left:4px"><input type="checkbox" onchange="azToggleFrei(\''+pid+'\',\''+k+'\',this.checked)"> frei</label>';
+      }
+      h+='</div>';
+    });
+    // Abwesenheiten
+    h+='<div style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.4px;margin:14px 0 8px">Abwesenheiten · Urlaub · Feiertage</div>';
+    if(abw.length){
+      abw.forEach((a,i)=>{
+        h+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;padding:6px 10px;background:var(--gray-bg);border-radius:7px;font-size:12px">';
+        h+='<span style="min-width:180px;font-variant-numeric:tabular-nums">'+esc(a.von)+(a.bis&&a.bis!==a.von?' — '+esc(a.bis):'')+'</span>';
+        h+='<span style="flex:1;color:var(--t2)">'+esc(a.grund||'')+'</span>';
+        h+='<button onclick="azDelAbw(\''+pid+'\','+i+')" style="padding:2px 8px;font-size:11px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--t3);cursor:pointer;font-family:inherit">✕</button>';
+        h+='</div>';
+      });
+    }else{
+      h+='<div style="font-size:11px;color:var(--t3);margin-bottom:6px">Noch keine Einträge.</div>';
+    }
+    const inp='style="font-size:12px;padding:5px 7px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--text);font-family:inherit"';
+    h+='<div style="display:flex;gap:6px;align-items:center;margin-top:8px;flex-wrap:wrap">';
+    h+='<input type="date" id="abw-new-von" '+inp+'>';
+    h+='<span style="font-size:11px;color:var(--t3)">—</span>';
+    h+='<input type="date" id="abw-new-bis" '+inp+'>';
+    h+='<input type="text" id="abw-new-grund" placeholder="Grund (optional)" '+inp+' style="flex:1;min-width:120px;font-size:12px;padding:5px 7px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--text);font-family:inherit">';
+    h+='<button onclick="azAddAbw(\''+pid+'\')" class="btn btn-dk" style="font-size:11px;padding:5px 12px">+ Hinzu</button>';
+    h+='</div>';
+    h+='</div></details>';
+    return h;
+  }catch(e){console.error('rArbeitszeitenBlock',e);return'';}
+}
+
 function rKapazitaetBlock(pid){
   const k=getKapazitaet(pid);if(!k||!k.fh)return'';
   const fPct=Math.min(k.p1h/k.fh,1.4)*100/1.4;
@@ -4163,6 +4307,9 @@ function openMeinProfil(){
     })()
     +'<div style="height:1px;background:var(--bd);margin:4px 0 14px"></div>'
     +rKapazitaetBlock(aP)
+    // ── Arbeitszeiten & Abwesenheiten (kollabiert) ──
+    +'<div style="height:1px;background:var(--bd);margin:4px 0 14px"></div>'
+    +rArbeitszeitenBlock(aP)
     // ── PIN ──
     +'<div style="height:1px;background:var(--bd);margin:4px 0 14px"></div>'
     +'<div class="fl"><label>PIN ändern</label>'
