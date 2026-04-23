@@ -1856,6 +1856,144 @@ function getKapazitaet(pid){
   });
   return{fh,rh,p1h,p23h,rnd,sw};
 }
+// ─── Tages-Spange (v172.1) — horizontaler Zeit-Strip ─────────────────
+const _SPANGE_WEEKDAY=['so','mo','di','mi','do','fr','sa'];
+let _spangeTickIv=null;
+function _hhmmToMin(t){if(!t||!/^\d{2}:\d{2}$/.test(t))return null;const[h,m]=t.split(':').map(Number);return h*60+m;}
+function _minToHHMM(m){const h=Math.floor(m/60),mm=m%60;return String(h).padStart(2,'0')+':'+String(mm).padStart(2,'0');}
+function spangeHeutFenster(pid){
+  // gibt {von, bis, mittag, abwesend, grund, frei} zurück
+  const az=_azGet(pid);
+  const abw=_abwGet(pid);
+  // Abwesenheit prüfen
+  for(const a of abw){
+    if(a.von<=TODAY && TODAY<=a.bis)return{abwesend:true,grund:a.grund||'Abwesend'};
+  }
+  const d=new Date(TODAY+'T12:00:00');
+  const wdKey=_SPANGE_WEEKDAY[d.getDay()];
+  const cfg=az[wdKey];
+  if(!cfg)return{frei:true};
+  return{von:cfg.von,bis:cfg.bis,mittag:cfg.mittag};
+}
+function _spangeCollapsed(){return localStorage.getItem('spange_collapsed')!=='0';} // default: collapsed
+function spangeToggleCollapsed(){
+  const cur=_spangeCollapsed();
+  localStorage.setItem('spange_collapsed',cur?'0':'1');
+  if(typeof rTag==='function')rTag();
+}
+function spangeRender(pid){
+  try{
+    const fenster=spangeHeutFenster(pid);
+    // Abwesenheit / Frei-Tag → schlanke Leiste
+    if(fenster.abwesend){
+      return '<div class="tagesspange" style="margin-bottom:14px;padding:10px 14px;border-radius:10px;background:var(--gray-bg);border:1px dashed var(--bd);display:flex;align-items:center;gap:8px;font-size:12px;color:var(--t2)">'
+        +'<span style="font-size:14px">🌴</span>'
+        +'<span style="font-weight:600">Frei heute</span>'
+        +(fenster.grund?'<span style="color:var(--t3)">· '+esc(fenster.grund)+'</span>':'')
+        +'</div>';
+    }
+    if(fenster.frei){
+      return '<div class="tagesspange" style="margin-bottom:14px;padding:8px 14px;border-radius:10px;background:var(--gray-bg);border:1px dashed var(--bd);font-size:11px;color:var(--t3);text-align:center">Kein Arbeitstag</div>';
+    }
+    const vonMin=_hhmmToMin(fenster.von);
+    const bisMin=_hhmmToMin(fenster.bis);
+    if(vonMin==null||bisMin==null||bisMin<=vonMin)return'';
+    const span=bisMin-vonMin;
+    const collapsed=_spangeCollapsed();
+    const height=collapsed?'6px':'36px';
+    const pad=collapsed?'0':'0';
+    // Events sammeln (wie in rFixesHeute)
+    const kalHeute=(S.kalender||[]).filter(ev=>{
+      if(!ev.start)return false;
+      return localDate(ev.start)===TODAY;
+    }).map(ev=>({
+      _kind:'gcal',id:ev.id,titel:ev.titel,start:ev.start,end:ev.end
+    }));
+    const appEvents=(S.aufgaben||[]).filter(a=>
+      String(a.pid)===String(pid)&&a.dl===TODAY&&a.dlUhrzeit&&
+      !['erledigt','zurueckgegeben','archiviert','backlog'].includes(a.status)
+    ).filter(a=>/^\d{2}:\d{2}$/.test(a.dlUhrzeit)).map(a=>{
+      const [hh,mm]=a.dlUhrzeit.split(':').map(Number);
+      const start=new Date(TODAY+'T'+String(hh).padStart(2,'0')+':'+String(mm).padStart(2,'0')+':00');
+      const durMin=Math.round((parseFloat(a.geplant)||1)*60);
+      const end=new Date(start.getTime()+durMin*60000);
+      return{_kind:'app',id:a.id,titel:a.titel,start,end,prio:a.prio,status:a.status};
+    });
+    const all=[...kalHeute,...appEvents].sort((a,b)=>a.start-b.start);
+    // Overlap erkennen: jedes Event bekommt overlap=true wenn es mit einem anderen überlappt
+    all.forEach((ev,i)=>{
+      ev._overlap=all.some((o,j)=>j!==i&&o.start<ev.end&&o.end>ev.start);
+    });
+    // Container
+    let h='<div class="tagesspange" style="position:relative;margin-bottom:14px;background:var(--sf);border:1px solid var(--bd);border-radius:10px;padding:'+(collapsed?'4px 8px':'10px 14px 8px')+';overflow:hidden;cursor:'+(collapsed?'pointer':'default')+'"'
+      +(collapsed?' onclick="spangeToggleCollapsed()" title="Klick zum Ausklappen"':'')+'>';
+    if(!collapsed){
+      // Zeit-Labels (nur expanded)
+      h+='<div style="display:flex;justify-content:space-between;font-size:9px;color:var(--t3);font-variant-numeric:tabular-nums;margin-bottom:4px;font-weight:700;letter-spacing:.3px">';
+      const hourStart=Math.floor(vonMin/60);
+      const hourEnd=Math.ceil(bisMin/60);
+      for(let hr=hourStart;hr<=hourEnd;hr++){
+        if(hr>hourStart&&hr<hourEnd&&(hourEnd-hourStart)>8&&hr%2!==0)continue; // spare bei langem Tag
+        h+='<span>'+String(hr).padStart(2,'0')+'</span>';
+      }
+      h+='</div>';
+    }
+    // Track
+    h+='<div style="position:relative;height:'+height+';background:var(--gray-bg);border-radius:'+(collapsed?'3px':'6px')+';overflow:hidden">';
+    // Mittagspause-Overlay
+    if(fenster.mittag&&fenster.mittag.von&&fenster.mittag.bis){
+      const mv=_hhmmToMin(fenster.mittag.von),mb=_hhmmToMin(fenster.mittag.bis);
+      if(mv!=null&&mb!=null&&mb>mv){
+        const l=Math.max(0,(mv-vonMin)/span*100);
+        const w=Math.min(100-l,(mb-mv)/span*100);
+        h+='<div title="Mittagspause '+esc(fenster.mittag.von)+'–'+esc(fenster.mittag.bis)+'" style="position:absolute;top:0;bottom:0;left:'+l.toFixed(2)+'%;width:'+w.toFixed(2)+'%;background:repeating-linear-gradient(45deg,transparent,transparent 4px,var(--bd) 4px,var(--bd) 5px);pointer-events:none"></div>';
+      }
+    }
+    // Event-Segmente
+    all.forEach(ev=>{
+      const evStartMin=ev.start.getHours()*60+ev.start.getMinutes();
+      const evEndMin=ev.end.getHours()*60+ev.end.getMinutes();
+      // Clip auf Fenster
+      const sMin=Math.max(evStartMin,vonMin);
+      const eMin=Math.min(evEndMin,bisMin);
+      if(eMin<=sMin)return; // komplett außerhalb
+      const l=((sMin-vonMin)/span)*100;
+      const w=((eMin-sMin)/span)*100;
+      const clippedLeft=evStartMin<vonMin;
+      const clippedRight=evEndMin>bisMin;
+      let color,icon,onclick;
+      if(ev._kind==='gcal'){
+        color='var(--blue)';icon='📅';onclick='gcalShowEvent(\''+ev.id+'\')';
+      }else{
+        color=ev.prio==='P1'?'var(--red)':ev.prio==='P2'?'var(--blue)':'var(--t3)';
+        icon='📝';onclick='openDetail(\''+ev.id+'\')';
+      }
+      const border=ev._overlap?'2px solid var(--red)':'none';
+      const op=ev.status==='erledigt'?'0.45':'1';
+      const title=esc(ev.titel)+' · '+String(ev.start.getHours()).padStart(2,'0')+':'+String(ev.start.getMinutes()).padStart(2,'0')+'–'+String(ev.end.getHours()).padStart(2,'0')+':'+String(ev.end.getMinutes()).padStart(2,'0')+(ev._overlap?' · ⚠ Überlappt':'');
+      h+='<div onclick="event.stopPropagation();'+onclick+'" title="'+title+'" style="position:absolute;top:0;bottom:0;left:'+l.toFixed(2)+'%;width:'+w.toFixed(2)+'%;min-width:3px;background:'+color+';opacity:'+op+';border:'+border+';border-radius:'+(collapsed?'2px':'4px')+';cursor:pointer;overflow:hidden;'+(clippedLeft?'border-top-left-radius:0;border-bottom-left-radius:0;':'')+(clippedRight?'border-top-right-radius:0;border-bottom-right-radius:0;':'')+'">';
+      if(!collapsed&&w>8){
+        h+='<div style="font-size:10px;color:#fff;padding:4px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2;font-weight:600">'+icon+' '+esc(ev.titel)+'</div>';
+      }
+      h+='</div>';
+    });
+    // Jetzt-Linie (nur wenn heute im Fenster liegt) — wird in Chunk 3 live gemacht
+    const now=new Date();
+    const nowMin=now.getHours()*60+now.getMinutes();
+    if(nowMin>=vonMin&&nowMin<=bisMin&&localDate(now)===TODAY){
+      const nl=((nowMin-vonMin)/span)*100;
+      h+='<div class="spange-now" style="position:absolute;top:-2px;bottom:-2px;left:'+nl.toFixed(2)+'%;width:2px;background:var(--red);pointer-events:none;box-shadow:0 0 4px var(--red);z-index:5"></div>';
+    }
+    h+='</div>';
+    if(!collapsed){
+      // Toggle rechts oben
+      h+='<div style="display:flex;justify-content:flex-end;margin-top:4px"><button onclick="spangeToggleCollapsed()" title="Spange einklappen" style="padding:2px 8px;font-size:10px;border-radius:5px;border:1px solid var(--bd);background:var(--sf);color:var(--t3);cursor:pointer;font-family:inherit">⇅</button></div>';
+    }
+    h+='</div>';
+    return h;
+  }catch(e){console.error('spangeRender',e);return'';}
+}
+
 // ─── Arbeitszeiten & Abwesenheiten (per-device, localStorage) ───────
 // Gespeichert analog zu anderen Per-User-Settings (Fokus, Inbox, …)
 const _AZ_DEFAULT={
@@ -5282,6 +5420,9 @@ function rTag(){
     out+='<div style="flex-shrink:0">'+momentumRingHtml(aP)+'</div>';
     out+='</div>';
   }
+
+  // ── Tages-Spange (v172.1) ──
+  out+=spangeRender(aP);
 
   // ── Freitags-Paddel-Banner (ab 15 Uhr) ──
   if(isFridayAward()){
