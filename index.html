@@ -1867,20 +1867,32 @@ const _SPANGE_WEEKDAY=['so','mo','di','mi','do','fr','sa'];
 let _spangeTickIv=null;
 function _hhmmToMin(t){if(!t||!/^\d{2}:\d{2}$/.test(t))return null;const[h,m]=t.split(':').map(Number);return h*60+m;}
 function _minToHHMM(m){const h=Math.floor(m/60),mm=m%60;return String(h).padStart(2,'0')+':'+String(mm).padStart(2,'0');}
-function spangeHeutFenster(pid){
+function spangeHeutFenster(pid,dateStr){
   // gibt {von, bis, mittag, abwesend, grund, frei} zurück
+  dateStr=dateStr||TODAY;
   const az=_azGet(pid);
   const abw=_abwGet(pid);
   // Abwesenheit prüfen
   for(const a of abw){
-    if(a.von<=TODAY && TODAY<=a.bis)return{abwesend:true,grund:a.grund||'Abwesend'};
+    if(a.von<=dateStr && dateStr<=a.bis)return{abwesend:true,grund:a.grund||'Abwesend'};
   }
-  const d=new Date(TODAY+'T12:00:00');
+  const d=new Date(dateStr+'T12:00:00');
   const wdKey=_SPANGE_WEEKDAY[d.getDay()];
   const cfg=az[wdKey];
   if(!cfg)return{frei:true};
   return{von:cfg.von,bis:cfg.bis,mittag:cfg.mittag};
 }
+let _spangeDate=null; // null = TODAY, sonst 'YYYY-MM-DD'
+function _spangeGetDate(){return _spangeDate||TODAY;}
+function spangeNavDay(delta){
+  const cur=_spangeGetDate();
+  const d=new Date(cur+'T12:00:00');
+  d.setDate(d.getDate()+delta);
+  const nd=localDate(d);
+  _spangeDate=(nd===TODAY)?null:nd;
+  if(typeof render==='function')render();
+}
+function spangeToToday(){_spangeDate=null;if(typeof render==='function')render();}
 function _spangeCollapsed(){return localStorage.getItem('spange_collapsed')!=='0';} // default: collapsed
 function spangeToggleCollapsed(){
   const cur=_spangeCollapsed();
@@ -1946,17 +1958,30 @@ function spangeReorderChip(pid,srcId,dstId,before){
 function spangeRender(pid){
   try{
     if(!_spangeTickIv)spangeStartTick();
-    const fenster=spangeHeutFenster(pid);
-    // Abwesenheit / Frei-Tag → schlanke Leiste
+    const viewDate=_spangeGetDate();
+    const isToday=viewDate===TODAY;
+    const isPast=viewDate<TODAY;
+    const fenster=spangeHeutFenster(pid,viewDate);
+    // Nav-Leiste (für alle Zustände identisch, minimal)
+    const navBar=isToday?'':'<div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:4px;font-size:10px;color:var(--t3);font-weight:700"><span>'+_fmtDayShort(viewDate)+'</span><button onclick="spangeToToday()" style="padding:1px 7px;font-size:9px;border-radius:99px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);cursor:pointer;font-family:inherit;font-weight:700">Heute</button></div>';
+    const navArrows='<button onclick="event.stopPropagation();spangeNavDay(-1)" title="Vorheriger Tag" style="position:absolute;left:2px;top:50%;transform:translateY(-50%);width:16px;height:18px;padding:0;border:none;background:rgba(0,0,0,0.06);color:var(--t3);border-radius:3px;cursor:pointer;font-family:inherit;font-size:10px;line-height:18px;z-index:7;opacity:.6">‹</button>'
+      +'<button onclick="event.stopPropagation();spangeNavDay(1)" title="Nächster Tag" style="position:absolute;right:2px;top:50%;transform:translateY(-50%);width:16px;height:18px;padding:0;border:none;background:rgba(0,0,0,0.06);color:var(--t3);border-radius:3px;cursor:pointer;font-family:inherit;font-size:10px;line-height:18px;z-index:7;opacity:.6">›</button>';
+    // Abwesenheit / Frei-Tag → schlanke Leiste (mit Nav)
     if(fenster.abwesend){
-      return '<div class="tagesspange" style="margin-bottom:8px;padding:7px 12px;border-radius:9px;background:var(--gray-bg);border:1px dashed var(--bd);display:flex;align-items:center;gap:8px;font-size:12px;color:var(--t2)">'
+      return '<div class="tagesspange" style="position:relative;margin-bottom:6px;padding:5px 24px;border-radius:7px;background:var(--gray-bg);border:1px dashed var(--bd);display:flex;align-items:center;justify-content:center;gap:8px;font-size:12px;color:var(--t2)">'
+        +navArrows
         +'<span style="font-size:14px">🌴</span>'
-        +'<span style="font-weight:600">Frei heute</span>'
+        +'<span style="font-weight:600">'+(isToday?'Frei heute':'Frei am '+_fmtDayShort(viewDate))+'</span>'
         +(fenster.grund?'<span style="color:var(--t3)">· '+esc(fenster.grund)+'</span>':'')
+        +(isToday?'':'<button onclick="spangeToToday()" style="margin-left:6px;padding:1px 7px;font-size:9px;border-radius:99px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);cursor:pointer;font-family:inherit;font-weight:700">Heute</button>')
         +'</div>';
     }
     if(fenster.frei){
-      return '<div class="tagesspange" style="margin-bottom:8px;padding:6px 12px;border-radius:9px;background:var(--gray-bg);border:1px dashed var(--bd);font-size:11px;color:var(--t3);text-align:center">Kein Arbeitstag</div>';
+      return '<div class="tagesspange" style="position:relative;margin-bottom:6px;padding:4px 24px;border-radius:7px;background:var(--gray-bg);border:1px dashed var(--bd);font-size:11px;color:var(--t3);text-align:center">'
+        +navArrows
+        +(isToday?'Kein Arbeitstag':'Kein Arbeitstag ('+_fmtDayShort(viewDate)+')')
+        +(isToday?'':' <button onclick="spangeToToday()" style="margin-left:4px;padding:1px 7px;font-size:9px;border-radius:99px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);cursor:pointer;font-family:inherit;font-weight:700">Heute</button>')
+        +'</div>';
     }
     const workVonMin=_hhmmToMin(fenster.von);
     const workBisMin=_hhmmToMin(fenster.bis);
@@ -1967,21 +1992,22 @@ function spangeRender(pid){
     const bisMin=Math.min(24*60,workBisMin+BUFFER);
     const span=bisMin-vonMin;
     const collapsed=_spangeCollapsed();
-    const tlH=collapsed?'6px':'22px';
+    const tlH=collapsed?'6px':'20px';
+    const nowTs=Date.now();
     // ── Daten sammeln ─────────────────────────────────────────
-    const kalHeute=(S.kalender||[]).filter(ev=>ev.start&&localDate(ev.start)===TODAY)
+    const kalHeute=(S.kalender||[]).filter(ev=>ev.start&&localDate(ev.start)===viewDate)
       .map(ev=>({_kind:'gcal',id:ev.id,titel:ev.titel,start:ev.start,end:ev.end}));
     const appEvents=(S.aufgaben||[]).filter(a=>
-      String(a.pid)===String(pid)&&a.dl===TODAY&&a.dlUhrzeit&&
+      String(a.pid)===String(pid)&&a.dl===viewDate&&a.dlUhrzeit&&
       !['erledigt','zurueckgegeben','archiviert','backlog'].includes(a.status)
     ).filter(a=>/^\d{2}:\d{2}$/.test(a.dlUhrzeit)).map(a=>{
       const [hh,mm]=a.dlUhrzeit.split(':').map(Number);
-      const start=new Date(TODAY+'T'+String(hh).padStart(2,'0')+':'+String(mm).padStart(2,'0')+':00');
+      const start=new Date(viewDate+'T'+String(hh).padStart(2,'0')+':'+String(mm).padStart(2,'0')+':00');
       const end=new Date(start.getTime()+Math.round((parseFloat(a.geplant)||1)*60)*60000);
       return{_kind:'app',id:a.id,titel:a.titel,start,end,prio:a.prio,status:a.status};
     });
-    // Aktive laufende Aufgabe(n) → auf Timeline (hat echte Startzeit)
-    const aktive=(S.aufgaben||[]).filter(a=>
+    // Aktive laufende Aufgabe(n) → nur auf heutiger Timeline
+    const aktive=!isToday?[]:(S.aufgaben||[]).filter(a=>
       String(a.pid)===String(pid)&&a.status==='aktiv'&&a.aktSeit
     ).map(a=>{
       const start=new Date(a.aktSeit);
@@ -1993,20 +2019,31 @@ function spangeRender(pid){
     timeline.forEach((ev,i)=>{
       ev._overlap=timeline.some((o,j)=>j!==i&&o.start<ev.end&&o.end>ev.start);
     });
-    // Agenda-Chips: alle offenen eigenen Aufgaben (außer bereits auf Timeline als zeit-fix)
-    const onTimelineIds=new Set(appEvents.map(e=>String(e.id))); // aktive bleiben auch in Chips (Status "läuft")
-    const mineOpen=(S.aufgaben||[]).filter(a=>
+    // Agenda-Chips: nur für heute (nicht bei Vorschau), alle offenen eigenen Aufgaben
+    const onTimelineIds=new Set(appEvents.map(e=>String(e.id)));
+    const mineOpen=!isToday?[]:(S.aufgaben||[]).filter(a=>
       String(a.pid)===String(pid)&&
       !['erledigt','zurueckgegeben','archiviert','backlog'].includes(a.status)&&
       !onTimelineIds.has(String(a.id))
     );
     const chips=spangeApplyTagOrder(pid,mineOpen);
     // ── HTML rendern ──────────────────────────────────────────
-    let h='<div class="tagesspange" style="position:relative;margin-bottom:8px;background:var(--sf);border:1px solid var(--bd);border-radius:9px;padding:'+(collapsed?'3px 8px':'5px 8px 6px')+';'
+    const padExp=collapsed?'2px 22px':'3px 22px 4px';
+    let h='<div class="tagesspange" style="position:relative;margin-bottom:6px;background:var(--sf);border:1px solid var(--bd);border-radius:7px;padding:'+padExp+';'
       +(collapsed?'cursor:pointer" onclick="spangeToggleCollapsed()" title="Klick zum Ausklappen':'')+'">';
-    // Hour-Labels (winzig, nur expanded)
+    // Nav-Pfeile (immer sichtbar, links+rechts außerhalb des Tracks)
+    h+=navArrows;
+    // Datum-Pill (nur wenn != heute)
+    if(!isToday){
+      h+='<div style="position:absolute;top:-8px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:4px;background:var(--sf);border:1px solid var(--bd);border-radius:99px;padding:1px 8px;font-size:9px;font-weight:700;color:'+(isPast?'var(--t3)':'var(--blue)')+';z-index:8;white-space:nowrap">'
+        +esc(_fmtDayShort(viewDate))
+        +(isPast?' · vorbei':' · Vorschau')
+        +' <button onclick="event.stopPropagation();spangeToToday()" style="padding:0 5px;font-size:8px;border-radius:99px;border:none;background:transparent;color:var(--t3);cursor:pointer;font-family:inherit;font-weight:700">heute</button>'
+        +'</div>';
+    }
+    // Hour-Labels (nur expanded)
     if(!collapsed){
-      h+='<div style="position:relative;height:9px;margin-bottom:2px">';
+      h+='<div style="position:relative;height:8px;margin-bottom:1px">';
       const hourStart=Math.floor(vonMin/60);
       const hourEnd=Math.ceil(bisMin/60);
       const step=(hourEnd-hourStart)>10?2:1;
@@ -2052,50 +2089,58 @@ function spangeRender(pid){
       let color,onclick;
       if(ev._kind==='gcal'){color='var(--blue)';onclick='gcalShowEvent(\''+ev.id+'\')';}
       else{color=ev.prio==='P1'?'var(--red)':ev.prio==='P2'?'var(--blue)':'var(--t3)';onclick='openDetail(\''+ev.id+'\')';}
+      const isPastEv=isPast||(isToday&&ev.end.getTime()<nowTs);
       const border=ev._overlap?'2px solid var(--red)':'none';
-      const op=ev.status==='erledigt'?'0.45':'1';
+      const op=ev.status==='erledigt'?'0.35':(isPastEv?'0.4':'1');
+      const filter=isPastEv?'grayscale(0.5)':'none';
       const cls=ev._active?' spange-active':'';
-      const title=esc(ev.titel)+' · '+String(ev.start.getHours()).padStart(2,'0')+':'+String(ev.start.getMinutes()).padStart(2,'0')+'–'+String(ev.end.getHours()).padStart(2,'0')+':'+String(ev.end.getMinutes()).padStart(2,'0')+(ev._active?' · läuft':'')+(ev._overlap?' · ⚠ Überlappt':'');
-      h+='<div class="spange-seg'+cls+'" data-tid="'+ev.id+'" onclick="event.stopPropagation();'+onclick+'" title="'+title+'" style="position:absolute;top:0;bottom:0;left:'+l.toFixed(2)+'%;width:'+w.toFixed(2)+'%;min-width:3px;background:'+color+';opacity:'+op+';border:'+border+';border-radius:'+(collapsed?'2px':'3px')+';cursor:pointer;overflow:hidden;z-index:2">';
+      const title=esc(ev.titel)+' · '+String(ev.start.getHours()).padStart(2,'0')+':'+String(ev.start.getMinutes()).padStart(2,'0')+'–'+String(ev.end.getHours()).padStart(2,'0')+':'+String(ev.end.getMinutes()).padStart(2,'0')+(ev._active?' · läuft':'')+(isPastEv?' · vorbei':'')+(ev._overlap?' · ⚠ Überlappt':'');
+      h+='<div class="spange-seg'+cls+'" data-tid="'+ev.id+'" onclick="event.stopPropagation();'+onclick+'" title="'+title+'" style="position:absolute;top:0;bottom:0;left:'+l.toFixed(2)+'%;width:'+w.toFixed(2)+'%;min-width:3px;background:'+color+';opacity:'+op+';filter:'+filter+';border:'+border+';border-radius:'+(collapsed?'2px':'3px')+';cursor:pointer;overflow:hidden;z-index:2">';
       if(!collapsed&&w>10){
-        h+='<div style="font-size:9px;color:#fff;padding:3px 5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.15;font-weight:600">'+(clippedLeft?'… ':'')+esc(ev.titel)+(clippedRight?' …':'')+'</div>';
+        const deco=isPastEv?';text-decoration:line-through':'';
+        h+='<div style="font-size:9px;color:#fff;padding:2px 5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.15;font-weight:600'+deco+'">'+(clippedLeft?'… ':'')+esc(ev.titel)+(clippedRight?' …':'')+'</div>';
       }
       h+='</div>';
     });
-    // Jetzt-Linie
-    const now=new Date();
-    const nowMin=now.getHours()*60+now.getMinutes();
-    if(nowMin>=vonMin&&nowMin<=bisMin&&localDate(now)===TODAY){
-      const nl=((nowMin-vonMin)/span)*100;
-      h+='<div class="spange-now" style="position:absolute;top:-1px;bottom:-1px;left:'+nl.toFixed(2)+'%;width:2px;background:var(--red);pointer-events:none;box-shadow:0 0 3px var(--red);z-index:5"></div>';
-    }
-    // ⇅ Mini-Handle rechts (nur expanded, ghosted)
-    if(!collapsed){
-      h+='<button onclick="event.stopPropagation();spangeToggleCollapsed()" title="Einklappen" style="position:absolute;right:3px;top:50%;transform:translateY(-50%);width:16px;height:16px;padding:0;border-radius:3px;border:none;background:rgba(0,0,0,0.08);color:var(--t3);cursor:pointer;font-family:inherit;font-size:9px;line-height:16px;z-index:6;opacity:.6">⇅</button>';
+    // Jetzt-Linie (nur bei heutiger Ansicht)
+    if(isToday){
+      const now=new Date();
+      const nowMin=now.getHours()*60+now.getMinutes();
+      if(nowMin>=vonMin&&nowMin<=bisMin&&localDate(now)===TODAY){
+        const nl=((nowMin-vonMin)/span)*100;
+        h+='<div class="spange-now" style="position:absolute;top:-1px;bottom:-1px;left:'+nl.toFixed(2)+'%;width:2px;background:var(--red);pointer-events:none;box-shadow:0 0 3px var(--red);z-index:5"></div>';
+      }
     }
     h+='</div>'; // /timeline-track
-    // ── Agenda-Zone (nur expanded) ─────────────────────────────
+    // ⇅ Collapse-Handle (unterhalb des Tracks, als schmale Zeile)
     if(!collapsed){
-      if(chips.length){
-        h+='<div class="spange-agenda" style="display:flex;gap:4px;margin-top:5px;overflow-x:auto;padding:1px 0" data-pid="'+pid+'">';
-        chips.forEach(a=>{
-          const pc=a.prio==='P1'?'var(--red)':a.prio==='P2'?'var(--blue)':'var(--t3)';
-          const pbg=a.prio==='P1'?'var(--red-bg,rgba(239,68,68,0.1))':a.prio==='P2'?'var(--blue-bg,rgba(59,130,246,0.1))':'var(--gray-bg)';
-          const isActive=a.status==='aktiv';
-          const cls='spange-chip'+(isActive?' spange-active':'');
-          const label=a.titel.length>26?esc(a.titel.slice(0,25))+'…':esc(a.titel);
-          h+='<div class="'+cls+'" draggable="true" data-tid="'+a.id+'" data-pid="'+pid+'" onclick="openDetail(\''+a.id+'\')" ondragstart="spangeDragStart(event)" ondragend="spangeDragEnd(event)" ondragover="spangeDragOver(event)" ondragleave="spangeDragLeave(event)" ondrop="spangeDrop(event)" title="'+esc(a.titel)+' · '+a.prio+(isActive?' · läuft':'')+'" style="flex:0 0 auto;display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:99px;background:'+pbg+';border:1px solid '+pc+';color:'+pc+';font-size:10px;font-weight:600;line-height:1.4;white-space:nowrap;max-width:180px">'
-            +'<span style="font-size:8px;font-weight:700;letter-spacing:.3px">'+a.prio+'</span>'
-            +'<span style="overflow:hidden;text-overflow:ellipsis">'+label+'</span>'
-            +(isActive?'<span style="font-size:8px">●</span>':'')
-            +'</div>';
-        });
-        h+='</div>';
-      }
+      h+='<div style="display:flex;justify-content:center;margin-top:1px"><button onclick="event.stopPropagation();spangeToggleCollapsed()" title="Einklappen" style="width:40px;height:10px;padding:0;border:none;background:transparent;color:var(--t3);cursor:pointer;font-family:inherit;font-size:9px;line-height:10px;opacity:.5">⇅</button></div>';
+    }
+    // ── Agenda-Zone (nur expanded, nur heute, nur wenn Chips) ─
+    if(!collapsed&&isToday&&chips.length){
+      h+='<div class="spange-agenda" style="display:flex;flex-wrap:wrap;gap:3px;margin-top:3px;padding:0" data-pid="'+pid+'">';
+      chips.forEach(a=>{
+        const pc=a.prio==='P1'?'var(--red)':a.prio==='P2'?'var(--blue)':'var(--t3)';
+        const pbg=a.prio==='P1'?'var(--red-bg,rgba(239,68,68,0.08))':a.prio==='P2'?'var(--blue-bg,rgba(59,130,246,0.08))':'var(--gray-bg)';
+        const isActive=a.status==='aktiv';
+        const cls='spange-chip'+(isActive?' spange-active':'');
+        const label=a.titel.length>24?esc(a.titel.slice(0,23))+'…':esc(a.titel);
+        h+='<div class="'+cls+'" draggable="true" data-tid="'+a.id+'" data-pid="'+pid+'" onclick="openDetail(\''+a.id+'\')" ondragstart="spangeDragStart(event)" ondragend="spangeDragEnd(event)" ondragover="spangeDragOver(event)" ondragleave="spangeDragLeave(event)" ondrop="spangeDrop(event)" title="'+esc(a.titel)+' · '+a.prio+(isActive?' · läuft':'')+'" style="flex:0 0 auto;display:inline-flex;align-items:center;gap:4px;padding:2px 7px;border-radius:99px;background:'+pbg+';border:1px solid '+pc+';color:'+pc+';font-size:10px;font-weight:600;line-height:1.3;white-space:nowrap;max-width:180px">'
+          +'<span style="font-size:8px;font-weight:700;letter-spacing:.3px">'+a.prio+'</span>'
+          +'<span style="overflow:hidden;text-overflow:ellipsis">'+label+'</span>'
+          +(isActive?'<span style="font-size:8px">●</span>':'')
+          +'</div>';
+      });
+      h+='</div>';
     }
     h+='</div>'; // /tagesspange
     return h;
   }catch(e){console.error('spangeRender',e);return'';}
+}
+function _fmtDayShort(dateStr){
+  const d=new Date(dateStr+'T12:00:00');
+  const wd=['So','Mo','Di','Mi','Do','Fr','Sa'][d.getDay()];
+  return wd+' '+d.getDate()+'.'+(d.getMonth()+1)+'.';
 }
 // ── Drag-Reorder (Agenda-Chips) ──────────────────────────────
 function spangeDragStart(e){
