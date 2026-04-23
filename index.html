@@ -6066,7 +6066,7 @@ function openDetail(id){
   const kinder=S.aufgaben.filter(x=>String(x.parentId||'')===String(id));
   h+='<div style="margin-bottom:12px">';
   h+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px"><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3)">Unteraufgaben'+(kinder.length?' · '+kinder.filter(k=>k.status==='erledigt').length+'/'+kinder.length:'')+'</div>';
-  // + Unteraufgabe-Button entfernt — delegieren erfolgt jetzt per Checkliste-Eintrag: Schritt → "→ Delegieren" (wandelt in Unteraufgabe um).
+  h+='<button onclick="cm();openNeu({parent_id:\''+id+'\',pid:\''+(a.pid||'')+'\',teilzielId:\''+(a.teilzielId||'')+'\'})" style="font-size:11px;padding:5px 10px;border-radius:6px;background:transparent;color:var(--t3);border:1px dashed var(--bd);cursor:pointer;font-family:inherit" title="Unteraufgabe anlegen">+ Unteraufgabe</button>';
   h+='</div>';
   if(kinder.length){
     h+='<div style="display:flex;flex-direction:column;gap:5px;border-left:2px solid var(--bd);padding-left:10px">';
