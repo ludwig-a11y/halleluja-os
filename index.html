@@ -11187,8 +11187,40 @@ function gcalShowEvent(id){
     +'<div style="font-size:13px;color:var(--t2);margin-bottom:14px">'+fmt(ev.start)+' – '+fmt(ev.end)+(ev.ort?' &nbsp;·&nbsp; <span style="color:var(--t3)">'+esc(ev.ort)+'</span>':'')+'</div>'
     +(ev.beschreibung?'<div style="font-size:12px;color:var(--text);line-height:1.6;white-space:pre-wrap;background:var(--gray-bg);border-radius:8px;padding:10px 12px;margin-bottom:14px;max-height:200px;overflow-y:auto">'+esc(ev.beschreibung)+'</div>':'')
     +vorb
-    +'<div style="margin-top:10px"><button class="btn btn-gr" onclick="cm()">Schließen</button></div>';
+    +'<div style="margin-top:10px;display:flex;gap:8px;align-items:center"><button class="btn btn-gr" onclick="cm()">Schließen</button><button onclick="gcalDeleteEvent(\''+id+'\')" style="margin-left:auto;padding:9px 14px;border-radius:9px;border:1px solid var(--red-bd,#fca5a5);background:transparent;color:var(--red);cursor:pointer;font-family:inherit;font-size:12px;font-weight:600" title="Aus Google Kalender löschen">🗑 Löschen</button></div>';
   document.getElementById('ovl').classList.add('open');
+}
+async function gcalDeleteEvent(id){
+  const ev=(window._gcalEvtMap||{})[id];
+  if(!ev){toast('Event nicht gefunden');return;}
+  if(!confirm('Termin "'+ev.titel+'" wirklich aus dem Google Kalender löschen?\n\nDas kann nicht rückgängig gemacht werden.'))return;
+  const token=localStorage.getItem('gcal_token');
+  if(!token){toast('Nicht mit Google verbunden');return;}
+  try{
+    const resp=await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events/'+encodeURIComponent(id),
+      {method:'DELETE',headers:{Authorization:'Bearer '+token}});
+    if(resp.ok||resp.status===410||resp.status===404){
+      // lokal aufräumen
+      if(window._gcalEvtMap)delete window._gcalEvtMap[id];
+      S.kalender=(S.kalender||[]).filter(e=>e.id!==id);
+      // Falls ein App-Task dieses Event erzeugt hat → Mapping lösen
+      (S.aufgaben||[]).forEach(a=>{
+        if(gcalGetEvtId(a.id)===id)gcalSetEvtId(a.id,null);
+      });
+      cm();
+      toast('🗑 Termin gelöscht');
+      if(typeof render==='function')render();
+    }else if(resp.status===401){
+      localStorage.removeItem('gcal_token');
+      toast('Session abgelaufen — bitte neu verbinden');
+    }else if(resp.status===403){
+      toast('GCal: Keine Berechtigung zum Löschen');
+    }else{
+      const err=await resp.json().catch(()=>({}));
+      console.warn('gcalDeleteEvent:',resp.status,err);
+      toast('Fehler beim Löschen ('+resp.status+')');
+    }
+  }catch(e){console.warn('gcalDeleteEvent:',e);toast('Netzwerkfehler');}
 }
 function gcalOpenVorbereitung(evId,prepDate){
   const ev=(window._gcalEvtMap||{})[evId];if(!ev)return;
