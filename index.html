@@ -248,6 +248,12 @@ details.fixes-heute[open]>summary{border-radius:14px 14px 0 0}
 @keyframes bell-shake{0%,100%{transform:rotate(0)}15%{transform:rotate(18deg)}30%{transform:rotate(-16deg)}45%{transform:rotate(12deg)}60%{transform:rotate(-10deg)}75%{transform:rotate(6deg)}90%{transform:rotate(-4deg)}}
 @keyframes sonder-pulse{0%,100%{box-shadow:0 0 0 0 rgba(161,98,7,.4)}50%{box-shadow:0 0 0 8px rgba(161,98,7,0)}}
 .kpi-item.sonder{border-color:var(--amber);background:var(--amber-bg)}
+@keyframes spange-pulse{0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,.55)}50%{box-shadow:0 0 0 4px rgba(239,68,68,0)}}
+.spange-active{animation:spange-pulse 2s ease-in-out infinite}
+.spange-chip{user-select:none;-webkit-user-select:none}
+.spange-chip[draggable="true"]{cursor:grab}
+.spange-chip.drag-over{box-shadow:-2px 0 0 0 var(--blue)}
+.spange-chip.dragging{opacity:.4}
 </style>
 </head>
 <body>
@@ -1904,127 +1910,126 @@ function spangeStartTick(){
   if(_spangeTickIv)clearInterval(_spangeTickIv);
   _spangeTickIv=setInterval(spangeTick,60000);
 }
+// Tag-Order: manuelle Reihenfolge der offenen Aufgaben für heute (per pid, per date)
+function _tagOrderKey(pid){return 'tag_order_'+pid+'_'+TODAY;}
+function _tagOrderGet(pid){try{return JSON.parse(localStorage.getItem(_tagOrderKey(pid))||'[]');}catch(e){return [];}}
+function _tagOrderSet(pid,arr){localStorage.setItem(_tagOrderKey(pid),JSON.stringify(arr));}
+function spangeApplyTagOrder(pid,list){
+  // sortiert [list] so: erst alle IDs aus tag_order in deren Reihenfolge, dann Rest nach prio
+  const order=_tagOrderGet(pid);
+  const idx=new Map(order.map((id,i)=>[String(id),i]));
+  const po={'P1':0,'P2':1,'P3':2};
+  return [...list].sort((a,b)=>{
+    const ia=idx.has(String(a.id))?idx.get(String(a.id)):Infinity;
+    const ib=idx.has(String(b.id))?idx.get(String(b.id)):Infinity;
+    if(ia!==ib)return ia-ib;
+    return(po[a.prio]??3)-(po[b.prio]??3);
+  });
+}
+function spangeReorderChip(pid,srcId,dstId,before){
+  // verschiebt srcId vor/nach dstId
+  const mineToday=(S.aufgaben||[]).filter(a=>
+    String(a.pid)===String(pid)&&
+    !['erledigt','zurueckgegeben','archiviert','backlog'].includes(a.status)
+  );
+  const sorted=spangeApplyTagOrder(pid,mineToday);
+  const ids=sorted.map(a=>String(a.id));
+  const src=String(srcId),dst=String(dstId);
+  const sIdx=ids.indexOf(src);if(sIdx<0)return;
+  ids.splice(sIdx,1);
+  let dIdx=ids.indexOf(dst);
+  if(dIdx<0)dIdx=ids.length;
+  ids.splice(before?dIdx:dIdx+1,0,src);
+  _tagOrderSet(pid,ids);
+  if(typeof rTag==='function')render();
+}
 function spangeRender(pid){
   try{
     if(!_spangeTickIv)spangeStartTick();
     const fenster=spangeHeutFenster(pid);
     // Abwesenheit / Frei-Tag → schlanke Leiste
     if(fenster.abwesend){
-      return '<div class="tagesspange" style="margin-bottom:14px;padding:10px 14px;border-radius:10px;background:var(--gray-bg);border:1px dashed var(--bd);display:flex;align-items:center;gap:8px;font-size:12px;color:var(--t2)">'
+      return '<div class="tagesspange" style="margin-bottom:8px;padding:7px 12px;border-radius:9px;background:var(--gray-bg);border:1px dashed var(--bd);display:flex;align-items:center;gap:8px;font-size:12px;color:var(--t2)">'
         +'<span style="font-size:14px">🌴</span>'
         +'<span style="font-weight:600">Frei heute</span>'
         +(fenster.grund?'<span style="color:var(--t3)">· '+esc(fenster.grund)+'</span>':'')
         +'</div>';
     }
     if(fenster.frei){
-      return '<div class="tagesspange" style="margin-bottom:14px;padding:8px 14px;border-radius:10px;background:var(--gray-bg);border:1px dashed var(--bd);font-size:11px;color:var(--t3);text-align:center">Kein Arbeitstag</div>';
+      return '<div class="tagesspange" style="margin-bottom:8px;padding:6px 12px;border-radius:9px;background:var(--gray-bg);border:1px dashed var(--bd);font-size:11px;color:var(--t3);text-align:center">Kein Arbeitstag</div>';
     }
     const workVonMin=_hhmmToMin(fenster.von);
     const workBisMin=_hhmmToMin(fenster.bis);
     if(workVonMin==null||workBisMin==null||workBisMin<=workVonMin)return'';
-    // Display-Fenster = Arbeitszeit ±2h (damit Events knapp außerhalb sichtbar bleiben)
+    // Display-Fenster = Arbeitszeit ±2h
     const BUFFER=120;
     const vonMin=Math.max(0,workVonMin-BUFFER);
     const bisMin=Math.min(24*60,workBisMin+BUFFER);
     const span=bisMin-vonMin;
     const collapsed=_spangeCollapsed();
-    const height=collapsed?'6px':'36px';
-    const pad=collapsed?'0':'0';
-    // Events sammeln (wie in rFixesHeute)
-    const kalHeute=(S.kalender||[]).filter(ev=>{
-      if(!ev.start)return false;
-      return localDate(ev.start)===TODAY;
-    }).map(ev=>({
-      _kind:'gcal',id:ev.id,titel:ev.titel,start:ev.start,end:ev.end
-    }));
+    const tlH=collapsed?'6px':'22px';
+    // ── Daten sammeln ─────────────────────────────────────────
+    const kalHeute=(S.kalender||[]).filter(ev=>ev.start&&localDate(ev.start)===TODAY)
+      .map(ev=>({_kind:'gcal',id:ev.id,titel:ev.titel,start:ev.start,end:ev.end}));
     const appEvents=(S.aufgaben||[]).filter(a=>
       String(a.pid)===String(pid)&&a.dl===TODAY&&a.dlUhrzeit&&
       !['erledigt','zurueckgegeben','archiviert','backlog'].includes(a.status)
     ).filter(a=>/^\d{2}:\d{2}$/.test(a.dlUhrzeit)).map(a=>{
       const [hh,mm]=a.dlUhrzeit.split(':').map(Number);
       const start=new Date(TODAY+'T'+String(hh).padStart(2,'0')+':'+String(mm).padStart(2,'0')+':00');
-      const durMin=Math.round((parseFloat(a.geplant)||1)*60);
-      const end=new Date(start.getTime()+durMin*60000);
+      const end=new Date(start.getTime()+Math.round((parseFloat(a.geplant)||1)*60)*60000);
       return{_kind:'app',id:a.id,titel:a.titel,start,end,prio:a.prio,status:a.status};
     });
-    // Ghost-Segmente: aktive Aufgabe + Fokus-Aufgabe (heute anstehend, aber ohne fixe Zeit)
-    const ghostEvents=[];
-    const mineToday=(S.aufgaben||[]).filter(a=>
-      String(a.pid)===String(pid)&&
-      !['erledigt','zurueckgegeben','archiviert','backlog'].includes(a.status)
-    );
-    // Aktive → an echter Laufzeit positionieren
-    mineToday.filter(a=>a.status==='aktiv'&&a.aktSeit).forEach(a=>{
+    // Aktive laufende Aufgabe(n) → auf Timeline (hat echte Startzeit)
+    const aktive=(S.aufgaben||[]).filter(a=>
+      String(a.pid)===String(pid)&&a.status==='aktiv'&&a.aktSeit
+    ).map(a=>{
       const start=new Date(a.aktSeit);
-      if(localDate(start)!==TODAY)return;
-      const durMin=Math.round((parseFloat(a.geplant)||1)*60);
-      const end=new Date(start.getTime()+durMin*60000);
-      ghostEvents.push({_kind:'app',_ghost:true,_active:true,id:a.id,titel:a.titel,start,end,prio:a.prio,status:a.status});
+      const end=new Date(start.getTime()+Math.round((parseFloat(a.geplant)||1)*60)*60000);
+      return{_kind:'app',_active:true,id:a.id,titel:a.titel,start,end,prio:a.prio,status:a.status};
+    }).filter(ev=>localDate(ev.start)===TODAY);
+    // Timeline-Segmente: GCal + zeit-fixe App-Events + Aktive
+    const timeline=[...kalHeute,...appEvents,...aktive].sort((a,b)=>a.start-b.start);
+    timeline.forEach((ev,i)=>{
+      ev._overlap=timeline.some((o,j)=>j!==i&&o.start<ev.end&&o.end>ev.start);
     });
-    // Fokus-Aufgabe (explizit gewählt oder erste offene) → als "jetzt + geplant" platzieren, nur wenn nicht bereits als fixed/active drin
-    const _fokusPinId=localStorage.getItem('fokus_id_'+pid);
-    const alreadyIn=new Set([...appEvents,...ghostEvents].map(e=>e.id));
-    let fokusCandidate=null;
-    if(_fokusPinId){fokusCandidate=mineToday.find(a=>a.id===_fokusPinId&&!alreadyIn.has(a.id));}
-    if(!fokusCandidate){
-      // erste offene P1/P2/P3 (neu+backlog) ohne fixe Zeit, nicht bereits drin
-      const offen=mineToday.filter(a=>(a.status==='neu'||a.status==='backlog')&&!a.dlUhrzeit&&!alreadyIn.has(a.id))
-        .sort((x,y)=>{const po={'P1':0,'P2':1,'P3':2};return(po[x.prio]??3)-(po[y.prio]??3);});
-      fokusCandidate=offen[0]||null;
-    }
-    if(fokusCandidate&&!ghostEvents.some(g=>g._active)){
-      const now=new Date();
-      const nowMin=now.getHours()*60+now.getMinutes();
-      // Platziere ab jetzt (geclipped auf Fenster)
-      const startMin=Math.max(vonMin,Math.min(bisMin-15,nowMin));
-      const start=new Date(TODAY+'T'+String(Math.floor(startMin/60)).padStart(2,'0')+':'+String(startMin%60).padStart(2,'0')+':00');
-      const durMin=Math.round((parseFloat(fokusCandidate.geplant)||1)*60);
-      const end=new Date(start.getTime()+durMin*60000);
-      ghostEvents.push({_kind:'app',_ghost:true,_active:false,id:fokusCandidate.id,titel:fokusCandidate.titel,start,end,prio:fokusCandidate.prio,status:fokusCandidate.status});
-    }
-    const all=[...kalHeute,...appEvents,...ghostEvents].sort((a,b)=>a.start-b.start);
-    // Overlap erkennen: jedes Event bekommt overlap=true wenn es mit einem anderen überlappt
-    all.forEach((ev,i)=>{
-      ev._overlap=all.some((o,j)=>j!==i&&o.start<ev.end&&o.end>ev.start);
-    });
-    // Container
-    let h='<div class="tagesspange" style="position:relative;margin-bottom:14px;background:var(--sf);border:1px solid var(--bd);border-radius:10px;padding:'+(collapsed?'4px 8px':'10px 14px 8px')+';overflow:hidden;cursor:'+(collapsed?'pointer':'default')+'"'
-      +(collapsed?' onclick="spangeToggleCollapsed()" title="Klick zum Ausklappen"':'')+'>';
+    // Agenda-Chips: alle offenen eigenen Aufgaben (außer bereits auf Timeline als zeit-fix)
+    const onTimelineIds=new Set(appEvents.map(e=>String(e.id))); // aktive bleiben auch in Chips (Status "läuft")
+    const mineOpen=(S.aufgaben||[]).filter(a=>
+      String(a.pid)===String(pid)&&
+      !['erledigt','zurueckgegeben','archiviert','backlog'].includes(a.status)&&
+      !onTimelineIds.has(String(a.id))
+    );
+    const chips=spangeApplyTagOrder(pid,mineOpen);
+    // ── HTML rendern ──────────────────────────────────────────
+    let h='<div class="tagesspange" style="position:relative;margin-bottom:8px;background:var(--sf);border:1px solid var(--bd);border-radius:9px;padding:'+(collapsed?'3px 8px':'5px 8px 6px')+';'
+      +(collapsed?'cursor:pointer" onclick="spangeToggleCollapsed()" title="Klick zum Ausklappen':'')+'">';
+    // Hour-Labels (winzig, nur expanded)
     if(!collapsed){
-      // Zeit-Labels (nur expanded)
-      h+='<div style="display:flex;justify-content:space-between;font-size:9px;color:var(--t3);font-variant-numeric:tabular-nums;margin-bottom:4px;font-weight:700;letter-spacing:.3px">';
+      h+='<div style="position:relative;height:9px;margin-bottom:2px">';
       const hourStart=Math.floor(vonMin/60);
       const hourEnd=Math.ceil(bisMin/60);
-      for(let hr=hourStart;hr<=hourEnd;hr++){
-        if(hr>hourStart&&hr<hourEnd&&(hourEnd-hourStart)>8&&hr%2!==0)continue; // spare bei langem Tag
-        h+='<span>'+String(hr).padStart(2,'0')+'</span>';
+      const step=(hourEnd-hourStart)>10?2:1;
+      for(let hr=hourStart;hr<=hourEnd;hr+=step){
+        const x=((hr*60-vonMin)/span)*100;
+        if(x<0||x>100)continue;
+        h+='<span style="position:absolute;left:'+x.toFixed(2)+'%;transform:translateX(-50%);font-size:8px;color:var(--t3);font-variant-numeric:tabular-nums;font-weight:700;letter-spacing:.2px">'+String(hr).padStart(2,'0')+'</span>';
       }
       h+='</div>';
     }
-    // Track
-    h+='<div style="position:relative;height:'+height+';background:var(--gray-bg);border-radius:'+(collapsed?'3px':'6px')+';overflow:hidden">';
-    // Puffer-Zonen (vor Arbeitsbeginn, nach Arbeitsende) — leicht gedimmt
+    // Timeline-Track
+    h+='<div style="position:relative;height:'+tlH+';background:var(--gray-bg);border-radius:'+(collapsed?'3px':'4px')+';overflow:hidden">';
+    // Puffer-Zonen
     if(workVonMin>vonMin){
       const w=((workVonMin-vonMin)/span)*100;
-      h+='<div title="Vor Arbeitsbeginn ('+esc(fenster.von)+')" style="position:absolute;top:0;bottom:0;left:0;width:'+w.toFixed(2)+'%;background:rgba(0,0,0,0.04);pointer-events:none"></div>';
+      h+='<div title="Vor Arbeitsbeginn '+esc(fenster.von)+'" style="position:absolute;top:0;bottom:0;left:0;width:'+w.toFixed(2)+'%;background:rgba(0,0,0,0.05);pointer-events:none"></div>';
     }
     if(workBisMin<bisMin){
       const l=((workBisMin-vonMin)/span)*100;
       const w=((bisMin-workBisMin)/span)*100;
-      h+='<div title="Nach Arbeitsende ('+esc(fenster.bis)+')" style="position:absolute;top:0;bottom:0;left:'+l.toFixed(2)+'%;width:'+w.toFixed(2)+'%;background:rgba(0,0,0,0.04);pointer-events:none"></div>';
+      h+='<div title="Nach Arbeitsende '+esc(fenster.bis)+'" style="position:absolute;top:0;bottom:0;left:'+l.toFixed(2)+'%;width:'+w.toFixed(2)+'%;background:rgba(0,0,0,0.05);pointer-events:none"></div>';
     }
-    // Arbeitszeit-Grenzen als feine Linien
-    if(!collapsed){
-      if(workVonMin>vonMin){
-        const x=((workVonMin-vonMin)/span)*100;
-        h+='<div style="position:absolute;top:0;bottom:0;left:'+x.toFixed(2)+'%;width:1px;background:var(--bd);pointer-events:none"></div>';
-      }
-      if(workBisMin<bisMin){
-        const x=((workBisMin-vonMin)/span)*100;
-        h+='<div style="position:absolute;top:0;bottom:0;left:'+x.toFixed(2)+'%;width:1px;background:var(--bd);pointer-events:none"></div>';
-      }
-    }
-    // Mittagspause-Overlay
+    // Mittagspause
     if(fenster.mittag&&fenster.mittag.von&&fenster.mittag.bis){
       const mv=_hhmmToMin(fenster.mittag.von),mb=_hhmmToMin(fenster.mittag.bis);
       if(mv!=null&&mb!=null&&mb>mv){
@@ -2033,53 +2038,107 @@ function spangeRender(pid){
         h+='<div title="Mittagspause '+esc(fenster.mittag.von)+'–'+esc(fenster.mittag.bis)+'" style="position:absolute;top:0;bottom:0;left:'+l.toFixed(2)+'%;width:'+w.toFixed(2)+'%;background:repeating-linear-gradient(45deg,transparent,transparent 4px,var(--bd) 4px,var(--bd) 5px);pointer-events:none"></div>';
       }
     }
-    // Event-Segmente
-    all.forEach(ev=>{
+    // Timeline-Segmente
+    timeline.forEach(ev=>{
       const evStartMin=ev.start.getHours()*60+ev.start.getMinutes();
       const evEndMin=ev.end.getHours()*60+ev.end.getMinutes();
-      // Clip auf Fenster
       const sMin=Math.max(evStartMin,vonMin);
       const eMin=Math.min(evEndMin,bisMin);
-      if(eMin<=sMin)return; // komplett außerhalb
+      if(eMin<=sMin)return;
       const l=((sMin-vonMin)/span)*100;
       const w=((eMin-sMin)/span)*100;
       const clippedLeft=evStartMin<vonMin;
       const clippedRight=evEndMin>bisMin;
-      let color,icon,onclick;
-      if(ev._kind==='gcal'){
-        color='var(--blue)';icon='📅';onclick='gcalShowEvent(\''+ev.id+'\')';
-      }else{
-        color=ev.prio==='P1'?'var(--red)':ev.prio==='P2'?'var(--blue)':'var(--t3)';
-        icon='📝';onclick='openDetail(\''+ev.id+'\')';
-      }
-      const border=ev._overlap?'2px solid var(--red)':(ev._ghost?'1.5px dashed '+color:'none');
-      const op=ev.status==='erledigt'?'0.45':(ev._ghost?'0.85':'1');
-      const bg=ev._ghost?'transparent':color;
-      const tLabel=ev._ghost&&!ev._active?' · nicht geplant':(ev._active?' · aktiv':'');
-      const title=esc(ev.titel)+' · '+String(ev.start.getHours()).padStart(2,'0')+':'+String(ev.start.getMinutes()).padStart(2,'0')+'–'+String(ev.end.getHours()).padStart(2,'0')+':'+String(ev.end.getMinutes()).padStart(2,'0')+tLabel+(ev._overlap?' · ⚠ Überlappt':'');
-      const ic=ev._ghost?(ev._active?'▶':'◇'):icon;
-      h+='<div onclick="event.stopPropagation();'+onclick+'" title="'+title+'" style="position:absolute;top:0;bottom:0;left:'+l.toFixed(2)+'%;width:'+w.toFixed(2)+'%;min-width:3px;background:'+bg+';opacity:'+op+';border:'+border+';border-radius:'+(collapsed?'2px':'4px')+';cursor:pointer;overflow:hidden;'+(clippedLeft?'border-top-left-radius:0;border-bottom-left-radius:0;':'')+(clippedRight?'border-top-right-radius:0;border-bottom-right-radius:0;':'')+'">';
-      if(!collapsed&&w>8){
-        const txtCol=ev._ghost?color:'#fff';
-        h+='<div style="font-size:10px;color:'+txtCol+';padding:4px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2;font-weight:600">'+(clippedLeft?'… ':'')+ic+' '+esc(ev.titel)+(clippedRight?' …':'')+'</div>';
+      let color,onclick;
+      if(ev._kind==='gcal'){color='var(--blue)';onclick='gcalShowEvent(\''+ev.id+'\')';}
+      else{color=ev.prio==='P1'?'var(--red)':ev.prio==='P2'?'var(--blue)':'var(--t3)';onclick='openDetail(\''+ev.id+'\')';}
+      const border=ev._overlap?'2px solid var(--red)':'none';
+      const op=ev.status==='erledigt'?'0.45':'1';
+      const cls=ev._active?' spange-active':'';
+      const title=esc(ev.titel)+' · '+String(ev.start.getHours()).padStart(2,'0')+':'+String(ev.start.getMinutes()).padStart(2,'0')+'–'+String(ev.end.getHours()).padStart(2,'0')+':'+String(ev.end.getMinutes()).padStart(2,'0')+(ev._active?' · läuft':'')+(ev._overlap?' · ⚠ Überlappt':'');
+      h+='<div class="spange-seg'+cls+'" data-tid="'+ev.id+'" onclick="event.stopPropagation();'+onclick+'" title="'+title+'" style="position:absolute;top:0;bottom:0;left:'+l.toFixed(2)+'%;width:'+w.toFixed(2)+'%;min-width:3px;background:'+color+';opacity:'+op+';border:'+border+';border-radius:'+(collapsed?'2px':'3px')+';cursor:pointer;overflow:hidden;z-index:2">';
+      if(!collapsed&&w>10){
+        h+='<div style="font-size:9px;color:#fff;padding:3px 5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.15;font-weight:600">'+(clippedLeft?'… ':'')+esc(ev.titel)+(clippedRight?' …':'')+'</div>';
       }
       h+='</div>';
     });
-    // Jetzt-Linie (nur wenn heute im Fenster liegt) — wird in Chunk 3 live gemacht
+    // Jetzt-Linie
     const now=new Date();
     const nowMin=now.getHours()*60+now.getMinutes();
     if(nowMin>=vonMin&&nowMin<=bisMin&&localDate(now)===TODAY){
       const nl=((nowMin-vonMin)/span)*100;
-      h+='<div class="spange-now" style="position:absolute;top:-2px;bottom:-2px;left:'+nl.toFixed(2)+'%;width:2px;background:var(--red);pointer-events:none;box-shadow:0 0 4px var(--red);z-index:5"></div>';
+      h+='<div class="spange-now" style="position:absolute;top:-1px;bottom:-1px;left:'+nl.toFixed(2)+'%;width:2px;background:var(--red);pointer-events:none;box-shadow:0 0 3px var(--red);z-index:5"></div>';
     }
-    h+='</div>';
+    // ⇅ Mini-Handle rechts (nur expanded, ghosted)
     if(!collapsed){
-      // Toggle rechts oben
-      h+='<div style="display:flex;justify-content:flex-end;margin-top:4px"><button onclick="spangeToggleCollapsed()" title="Spange einklappen" style="padding:2px 8px;font-size:10px;border-radius:5px;border:1px solid var(--bd);background:var(--sf);color:var(--t3);cursor:pointer;font-family:inherit">⇅</button></div>';
+      h+='<button onclick="event.stopPropagation();spangeToggleCollapsed()" title="Einklappen" style="position:absolute;right:3px;top:50%;transform:translateY(-50%);width:16px;height:16px;padding:0;border-radius:3px;border:none;background:rgba(0,0,0,0.08);color:var(--t3);cursor:pointer;font-family:inherit;font-size:9px;line-height:16px;z-index:6;opacity:.6">⇅</button>';
     }
-    h+='</div>';
+    h+='</div>'; // /timeline-track
+    // ── Agenda-Zone (nur expanded) ─────────────────────────────
+    if(!collapsed){
+      if(chips.length){
+        h+='<div class="spange-agenda" style="display:flex;gap:4px;margin-top:5px;overflow-x:auto;padding:1px 0" data-pid="'+pid+'">';
+        chips.forEach(a=>{
+          const pc=a.prio==='P1'?'var(--red)':a.prio==='P2'?'var(--blue)':'var(--t3)';
+          const pbg=a.prio==='P1'?'var(--red-bg,rgba(239,68,68,0.1))':a.prio==='P2'?'var(--blue-bg,rgba(59,130,246,0.1))':'var(--gray-bg)';
+          const isActive=a.status==='aktiv';
+          const cls='spange-chip'+(isActive?' spange-active':'');
+          const label=a.titel.length>26?esc(a.titel.slice(0,25))+'…':esc(a.titel);
+          h+='<div class="'+cls+'" draggable="true" data-tid="'+a.id+'" data-pid="'+pid+'" onclick="openDetail(\''+a.id+'\')" ondragstart="spangeDragStart(event)" ondragend="spangeDragEnd(event)" ondragover="spangeDragOver(event)" ondragleave="spangeDragLeave(event)" ondrop="spangeDrop(event)" title="'+esc(a.titel)+' · '+a.prio+(isActive?' · läuft':'')+'" style="flex:0 0 auto;display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:99px;background:'+pbg+';border:1px solid '+pc+';color:'+pc+';font-size:10px;font-weight:600;line-height:1.4;white-space:nowrap;max-width:180px">'
+            +'<span style="font-size:8px;font-weight:700;letter-spacing:.3px">'+a.prio+'</span>'
+            +'<span style="overflow:hidden;text-overflow:ellipsis">'+label+'</span>'
+            +(isActive?'<span style="font-size:8px">●</span>':'')
+            +'</div>';
+        });
+        h+='</div>';
+      }
+    }
+    h+='</div>'; // /tagesspange
     return h;
   }catch(e){console.error('spangeRender',e);return'';}
+}
+// ── Drag-Reorder (Agenda-Chips) ──────────────────────────────
+function spangeDragStart(e){
+  try{
+    const t=e.currentTarget;
+    e.dataTransfer.effectAllowed='move';
+    e.dataTransfer.setData('text/plain',t.dataset.tid);
+    t.classList.add('dragging');
+    window._spangeDragSrc=t.dataset.tid;
+  }catch(err){console.warn('spangeDragStart',err);}
+}
+function spangeDragEnd(e){
+  try{
+    e.currentTarget.classList.remove('dragging');
+    document.querySelectorAll('.spange-chip.drag-over').forEach(el=>el.classList.remove('drag-over'));
+    window._spangeDragSrc=null;
+  }catch(err){console.warn('spangeDragEnd',err);}
+}
+function spangeDragOver(e){
+  e.preventDefault();
+  e.dataTransfer.dropEffect='move';
+  const t=e.currentTarget;
+  if(t.dataset.tid===window._spangeDragSrc)return;
+  t.classList.add('drag-over');
+}
+function spangeDragLeave(e){
+  e.currentTarget.classList.remove('drag-over');
+}
+function spangeDrop(e){
+  try{
+    e.preventDefault();
+    e.stopPropagation();
+    const t=e.currentTarget;
+    t.classList.remove('drag-over');
+    const src=window._spangeDragSrc||e.dataTransfer.getData('text/plain');
+    const dst=t.dataset.tid;
+    if(!src||!dst||src===dst)return;
+    const pid=t.dataset.pid;
+    // Drop-Seite bestimmen: vor Mitte = before, nach Mitte = after
+    const rect=t.getBoundingClientRect();
+    const before=(e.clientX-rect.left)<(rect.width/2);
+    spangeReorderChip(pid,src,dst,before);
+  }catch(err){console.warn('spangeDrop',err);}
 }
 
 // ─── Arbeitszeiten & Abwesenheiten (per-device, localStorage) ───────
@@ -5478,7 +5537,8 @@ function rTag(){
     return a.dl?-1:b.dl?1:0;
   });
   const erl=myA.filter(a=>a.status==='erledigt'&&a.updated_at&&localDate(new Date(a.updated_at))===TODAY);
-  const offene=[...neu,...bl].sort((a,b)=>{const po={'P1':0,'P2':1,'P3':2};return(po[a.prio]??3)-(po[b.prio]??3);});
+  // tag_order (aus Spange-Drag) hat Vorrang vor Prio-Sortierung
+  const offene=(typeof spangeApplyTagOrder==='function')?spangeApplyTagOrder(aP,[...neu,...bl]):[...neu,...bl].sort((a,b)=>{const po={'P1':0,'P2':1,'P3':2};return(po[a.prio]??3)-(po[b.prio]??3);});
   // ── Fokus: explizit gewählte Aufgabe nach oben ──
   let fokusId=localStorage.getItem('fokus_id_'+aP);
   if(fokusId){
