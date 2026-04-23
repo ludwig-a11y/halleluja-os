@@ -2674,20 +2674,25 @@ function momentumFarbe(score){
 }
 // Kompaktes Ring-Badge (Woche-Tab) — klein, klickbar, öffnet Info-Modal
 function momentumRingHtml(pid){
+  // Huberman-Pass v172.10: Ring neutral-grau, Rot nur bei Warnung (score<60).
+  // Gründe: ein konkurrierender Rot-Signal-Punkt im Screen zerstreut die Aufmerksamkeit
+  // („Dopamin-Splitter"). Rot behält Signalwirkung nur, wenn es selten auftritt.
   const m=getMomentumScore(pid);
   const streak=getPerfectStreak(pid);
-  const f=momentumFarbe(m.score);
   const scoreTxt=m.score==null?'—':m.score;
   const pct=m.score==null?0:Math.max(0,Math.min(100,m.score));
   const deg=Math.round(pct/100*360);
-  const ringBg=m.score==null?'var(--gray-bg)':'conic-gradient('+f.tc+' 0deg '+deg+'deg, var(--gray-bg) '+deg+'deg 360deg)';
+  const isWarn=m.score!=null&&m.score<60;
+  const ringColor=isWarn?'var(--red)':'var(--t3)';
+  const textColor=isWarn?'var(--red)':'var(--t2)';
+  const ringBg=m.score==null?'var(--gray-bg)':'conic-gradient('+ringColor+' 0deg '+deg+'deg, var(--gray-bg) '+deg+'deg 360deg)';
   let h='<button onclick="openMomentumInfo()" title="Momentum-Score" style="position:relative;width:72px;height:72px;border-radius:50%;border:none;padding:0;background:'+ringBg+';cursor:pointer;flex-shrink:0;font-family:inherit">';
   h+='<span style="position:absolute;inset:6px;border-radius:50%;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0">';
-  h+='<span style="font-size:20px;font-weight:800;color:'+f.tc+';line-height:1">'+scoreTxt+'</span>';
+  h+='<span style="font-size:20px;font-weight:800;color:'+textColor+';line-height:1">'+scoreTxt+'</span>';
   h+='<span style="font-size:8px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-top:2px">Momentum</span>';
   h+='</span>';
   if(streak>=1){
-    h+='<span style="position:absolute;top:-4px;right:-4px;background:'+f.tc+';color:#fff;font-size:10px;font-weight:800;border-radius:99px;padding:2px 6px;line-height:1;border:2px solid var(--bg)">🔥'+streak+'</span>';
+    h+='<span style="position:absolute;top:-4px;right:-4px;background:'+ringColor+';color:#fff;font-size:10px;font-weight:800;border-radius:99px;padding:2px 6px;line-height:1;border:2px solid var(--bg)">🔥'+streak+'</span>';
   }
   h+='</button>';
   return h;
@@ -5755,7 +5760,20 @@ function rTag(){
         if(fromN)hero+='<span style="font-size:10px;opacity:.35">von '+esc(fromN.name)+'</span>';
         hero+='</div>';
         if(naechste.notiz)hero+='<div style="font-size:12px;opacity:.5;font-style:italic;margin-bottom:14px">'+esc(naechste.notiz)+'</div>';
-        // ── Checkliste + Unteraufgaben (schlank wenn leer) ──
+        // ── Huberman-Pass v172.10: Commit zuerst, Zerlegung danach. ──
+        // Starten-Button VOR der Checklisten-/Subs-Box. Die geplante Dauer wird
+        // subtil mit im Button gezeigt — anchor'd den Scope im Anticipation-Moment.
+        {
+          const durTxt=naechste.geplant?fmtH(naechste.geplant):'';
+          hero+='<div style="display:flex;gap:10px;margin-bottom:12px">';
+          hero+='<button onclick="focusModus(\''+naechste.id+'\')" style="flex:1;padding:14px;border-radius:12px;background:var(--hero-t);color:var(--hero);border:none;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer;box-shadow:0 0 24px rgba(255,255,255,.12);transition:all .15s;display:flex;align-items:center;justify-content:center;gap:10px" onmouseenter="this.style.boxShadow=\'0 0 32px rgba(255,255,255,.25)\'" onmouseleave="this.style.boxShadow=\'0 0 24px rgba(255,255,255,.12)\'" onmousedown="this.style.transform=\'scale(.98)\'" onmouseup="this.style.transform=\'scale(1)\'">'
+            +(durTxt?'<span style="font-size:12px;font-weight:600;opacity:.45;font-variant-numeric:tabular-nums">⏱ '+durTxt+'</span>':'')
+            +'<span>▶ Starten</span>'
+            +'</button>';
+          hero+='<button onclick="openDetail(\''+naechste.id+'\')" style="padding:14px 18px;border-radius:12px;background:rgba(255,255,255,.1);color:rgba(255,255,255,.5);border:none;font-family:inherit;font-size:13px;font-weight:500;cursor:pointer;transition:background .15s" onmouseenter="this.style.background=\'rgba(255,255,255,.2)\'" onmouseleave="this.style.background=\'rgba(255,255,255,.1)\'">···</button>';
+          hero+='</div>';
+        }
+        // ── Checkliste + Unteraufgaben (unter dem Commit-Button, dezenter) ──
         {
           const hasUa=naechste.ua&&naechste.ua.length;
           const subs=S.aufgaben.filter(x=>x.parentId===naechste.id&&x.status!=='archiviert');
@@ -5781,17 +5799,13 @@ function rTag(){
           // Kompakte Link-Row wenn beide leer ODER als Ergänzung wenn nur eines gefüllt
           const linkParts=[];
           if(!hasUa)linkParts.push('<button onclick="document.getElementById(\'si-inline-'+naechste.id+'\')?.focus()||openDetail(\''+naechste.id+'\')" style="font-size:11px;padding:5px 10px;border-radius:6px;background:transparent;color:rgba(255,255,255,.55);border:1px dashed rgba(255,255,255,.2);cursor:pointer;font-family:inherit">+ Unteraufgabe</button>');
-          // + Unteraufgabe entfernt — Default: Schritte (Checkliste). Delegieren via Checkliste → "→ Delegieren"
-          if(linkParts.length)hero+='<div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">'+linkParts.join('')+'</div>';
+          if(linkParts.length)hero+='<div style="display:flex;gap:6px;flex-wrap:wrap">'+linkParts.join('')+'</div>';
           // Inline-Input für Schnell-Checkliste wenn komplett leer
           if(!hasUa){
-            hero+='<input id="si-inline-'+naechste.id+'" placeholder="Erster Checkliste-Eintrag…" onkeydown="if(event.key===\'Enter\'&&this.value.trim()){document.getElementById(\'si-'+naechste.id+'\')||this.setAttribute(\'data-aid\',\''+naechste.id+'\');const inp=this;inp.id=\'si-'+naechste.id+'\';addStep(\''+naechste.id+'\');}" style="display:none;width:100%;box-sizing:border-box;font-size:12px;padding:7px 10px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);color:#fff;border-radius:8px;margin-bottom:12px;font-family:inherit">';
+            hero+='<input id="si-inline-'+naechste.id+'" placeholder="Erster Checkliste-Eintrag…" onkeydown="if(event.key===\'Enter\'&&this.value.trim()){document.getElementById(\'si-'+naechste.id+'\')||this.setAttribute(\'data-aid\',\''+naechste.id+'\');const inp=this;inp.id=\'si-'+naechste.id+'\';addStep(\''+naechste.id+'\');}" style="display:none;width:100%;box-sizing:border-box;font-size:12px;padding:7px 10px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);color:#fff;border-radius:8px;font-family:inherit">';
           }
         }
-        hero+='<div style="display:flex;gap:10px">';
-        hero+='<button onclick="focusModus(\''+naechste.id+'\')" style="flex:1;padding:14px;border-radius:12px;background:var(--hero-t);color:var(--hero);border:none;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer;box-shadow:0 0 24px rgba(255,255,255,.12);transition:all .15s" onmouseenter="this.style.boxShadow=\'0 0 32px rgba(255,255,255,.25)\'" onmouseleave="this.style.boxShadow=\'0 0 24px rgba(255,255,255,.12)\'" onmousedown="this.style.transform=\'scale(.98)\'" onmouseup="this.style.transform=\'scale(1)\'">▶ Starten</button>';
-        hero+='<button onclick="openDetail(\''+naechste.id+'\')" style="padding:14px 18px;border-radius:12px;background:rgba(255,255,255,.1);color:rgba(255,255,255,.5);border:none;font-family:inherit;font-size:13px;font-weight:500;cursor:pointer;transition:background .15s" onmouseenter="this.style.background=\'rgba(255,255,255,.2)\'" onmouseleave="this.style.background=\'rgba(255,255,255,.1)\'">···</button>';
-        hero+='</div></div>';
+        hero+='</div>';
       }
     } else if(alleGeschafft||!myA.length){
       hero+='<div style="background:var(--green);border-radius:18px;padding:clamp(20px,5vw,32px) clamp(16px,4vw,24px);margin-bottom:16px;color:#fff;text-align:center">';
