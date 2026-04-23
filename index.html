@@ -9824,37 +9824,202 @@ function formatAuditDate(){
 }
 
 function mdRekaliExtractPersons(transkript){
-  // STUB — implementiert in Chunk 2
-  toast('mdRekaliExtractPersons: noch nicht implementiert');
-  return [];
+  if(!transkript||!S.personen?.length)return [];
+  const t=transkript.toLowerCase();
+  const matched=[];
+  S.personen.forEach(p=>{
+    if(!p.name)return;
+    const vorname=p.name.trim().split(/\s+/)[0].toLowerCase();
+    if(!vorname||vorname.length<2)return;
+    // Wortgrenzen beachten — kein Match innerhalb längerer Wörter
+    const re=new RegExp('\\b'+vorname.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\b','i');
+    if(re.test(t))matched.push(p.id);
+  });
+  if(matched.length===0){
+    // Fallback: alle Personen
+    return S.personen.map(p=>p.id);
+  }
+  return matched;
 }
 
 function mdRekaliBuildContext(){
-  // STUB — implementiert in Chunk 2
-  toast('mdRekaliBuildContext: noch nicht implementiert');
-  return null;
+  const transkript=(document.getElementById('md-text')?.value||'').trim();
+  const personIds=mdRekaliExtractPersons(transkript);
+  const personenMap={};
+  personIds.forEach(pid=>{
+    const p=S.personen.find(x=>x.id===pid);
+    if(p)personenMap[pid]=p.name;
+  });
+  const offeneStatus=['neu','backlog','aktiv','zugewiesen'];
+  let aufgaben=(S.aufgaben||[]).filter(a=>
+    offeneStatus.includes(a.status)&&personIds.includes(a.pid)
+  );
+  // Cap bei 100 — Prio-sortiert (P1 zuerst), dann nach erstellt_am (neueste zuerst)
+  if(aufgaben.length>100){
+    const prioRank={P1:1,P2:2,P3:3};
+    aufgaben=aufgaben.sort((a,b)=>{
+      const pa=prioRank[a.prio]||9,pb=prioRank[b.prio]||9;
+      if(pa!==pb)return pa-pb;
+      const da=a.erstellt_am||a.created_at||'',db=b.erstellt_am||b.created_at||'';
+      return db.localeCompare(da);
+    }).slice(0,100);
+  }
+  const aufgabenPayload=aufgaben.map(a=>({
+    id:a.id,titel:a.titel||'',prio:a.prio||null,pid:a.pid||null,ziel_id:a.ziel_id||null
+  }));
+  // Zusätzlich: aus diesem Meeting neu extrahierte Aufgaben als Kontext
+  const neuAusMeeting=(_mdTasks||[]).filter(t=>(t.typ||'aufgabe')==='aufgabe').map(t=>({
+    titel:t.titel||'',pid:t.pid||null,prio:t.prio||null,kontext:t.kontext||''
+  }));
+  return {transkript,aufgaben:aufgabenPayload,personenMap,neuAusMeeting};
 }
 
 async function mdRekaliStart(){
-  // STUB — implementiert in Chunk 2
-  toast('Rekalibrierung: Coming soon');
+  if(_mdRekali?.status==='loading')return;
+  const transkript=(document.getElementById('md-text')?.value||'').trim();
+  if(!transkript){toast('Kein Transkript vorhanden');return;}
+  _mdRekali={status:'loading',vorschlaege:[],fehler:null};
+  mdRekaliRender();
+  try{
+    const ctx=mdRekaliBuildContext();
+    if(!ctx.aufgaben.length){
+      _mdRekali={status:'empty',vorschlaege:[],fehler:null};
+      mdRekaliRender();
+      return;
+    }
+    const sys='Du bist ein Priorisierungs-Berater für das Team-OS Halleluja (Sauna-Firma).\n\n'
+      +'Du bekommst: ein Meeting-Transkript, bestehende offene Aufgaben der erwähnten Personen, '
+      +'und optional neu aus dem Meeting extrahierte Aufgaben als Kontext.\n\n'
+      +'Aufgabe: Identifiziere bestehende Aufgaben, deren Priorität angepasst werden sollte, '
+      +'basierend auf konkreten Aussagen im Transkript.\n\n'
+      +'Regeln:\n'
+      +'- Nur belegbare Änderungen vorschlagen — keine Vermutungen.\n'
+      +'- Prio-Werte sind P1 (hoch), P2 (mittel), P3 (niedrig).\n'
+      +'- Jede Änderung braucht eine max 200 Zeichen lange Begründung, direkt aus dem Transkript.\n'
+      +'- Wenn keine Änderungen gerechtfertigt: leeres vorschlaege-Array.\n'
+      +'- Nur EINE Änderung pro Aufgaben-ID (keine Duplikate).\n'
+      +'- Antwort NUR als JSON, kein Fließtext, kein Markdown-Codeblock.\n\n'
+      +'Format:\n{"vorschlaege":[{"targetId":"<id>","neuPrio":"P1|P2|P3","grund":"<max 200 Zeichen>"}]}';
+    let userMsg='TRANSKRIPT:\n'+ctx.transkript+'\n\n';
+    if(ctx.neuAusMeeting&&ctx.neuAusMeeting.length){
+      userMsg+='NEU AUS DIESEM MEETING EXTRAHIERT (Kontext):\n'+JSON.stringify(ctx.neuAusMeeting)+'\n\n';
+    }
+    userMsg+='BESTEHENDE OFFENE AUFGABEN (der erwähnten Personen):\n'+JSON.stringify(ctx.aufgaben)+'\n\n';
+    userMsg+='PERSONEN-MAP:\n'+JSON.stringify(ctx.personenMap)+'\n\n';
+    userMsg+='Heute: '+TODAY;
+    const resp=await fetch('https://halleluja-app.germanywestcentral.cloudapp.azure.com/n8n/webhook/ki-proxy',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:2000,system:sys,messages:[{role:'user',content:userMsg}]})
+    });
+    if(!resp.ok)throw new Error('KI-Proxy HTTP '+resp.status);
+    const data=await resp.json();
+    const raw=data.content?.map(c=>c.text||'').join('')||'';
+    let parsed;
+    try{parsed=JSON.parse(raw.replace(/```json|```/g,'').trim());}
+    catch(e){throw new Error('KI-Antwort nicht lesbar');}
+    if(!parsed||!Array.isArray(parsed.vorschlaege)){
+      throw new Error('KI-Antwort unvollständig');
+    }
+    // Validierung
+    const seenIds=new Set();
+    const validated=[];
+    parsed.vorschlaege.forEach((v,idx)=>{
+      if(!v||!v.targetId)return;
+      if(seenIds.has(v.targetId))return;
+      const a=S.aufgaben.find(x=>x.id===v.targetId);
+      if(!a)return;
+      if(!['P1','P2','P3'].includes(v.neuPrio))return;
+      if(!v.grund||typeof v.grund!=='string')return;
+      if(v.grund.length>400)return;
+      // Überspringe "Änderungen" die keine sind (gleiche Prio)
+      if(a.prio===v.neuPrio)return;
+      seenIds.add(v.targetId);
+      validated.push({
+        id:'r_'+Date.now()+'_'+idx,
+        targetId:v.targetId,
+        altPrio:a.prio||null,
+        neuPrio:v.neuPrio,
+        grund:v.grund.slice(0,200),
+        userStatus:'offen'
+      });
+    });
+    _mdRekali={status:'ready',vorschlaege:validated,fehler:null};
+    mdRekaliRender();
+  }catch(e){
+    console.error('mdRekaliStart error:',e);
+    _mdRekali={status:'error',vorschlaege:[],fehler:e.message||'Unbekannter Fehler'};
+    toast('⚠ Rekalibrierung fehlgeschlagen');
+    mdRekaliRender();
+  }
 }
 
 function mdRekaliRender(){
   try{
     const slot=document.getElementById('md-rekali-slot');
     if(!slot)return;
-    if(!_mdRekali||_mdRekali.status==='idle'||_mdRekali.status===undefined){
+    const st=_mdRekali?.status;
+    // Initial / idle
+    if(!_mdRekali||st==='idle'||st===undefined){
       slot.innerHTML='<div style="border:1px dashed var(--purple);border-radius:10px;padding:12px 16px;margin-bottom:4px">'
         +'<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'
         +'<button class="btn" onclick="mdRekaliStart()" style="background:transparent;border:1px solid var(--purple);color:var(--purple);font-size:12px;font-weight:600;padding:6px 14px;border-radius:7px">✦ Rekalibrierung prüfen</button>'
         +'<span style="font-size:11px;color:var(--t3)">Optional — KI prüft ob bestehende Aufgaben neu priorisiert werden sollten.</span>'
-        +'</div>'
+        +'</div></div>';
+      return;
+    }
+    // Loading
+    if(st==='loading'){
+      slot.innerHTML='<div style="border:1px solid var(--purple);border-radius:10px;padding:12px 16px;margin-bottom:4px;background:var(--sf)">'
+        +'<div style="display:flex;align-items:center;gap:10px">'
+        +'<span style="display:inline-block;animation:spin 1s linear infinite;color:var(--purple)">⟳</span>'
+        +'<span style="font-size:12px;color:var(--purple);font-weight:600">Prüfe bestehende Prioritäten…</span>'
+        +'</div></div>';
+      return;
+    }
+    // Empty — keine Aufgaben zum Rekalibrieren
+    if(st==='empty'){
+      slot.innerHTML='<div style="border:1px solid var(--bd);border-radius:10px;padding:12px 16px;margin-bottom:4px;background:var(--sf)">'
+        +'<div style="font-size:12px;color:var(--t2);margin-bottom:8px">ℹ️ Keine bestehenden Aufgaben zum Rekalibrieren gefunden.</div>'
+        +'<button class="btn" onclick="mdRekaliStart()" style="background:transparent;border:1px solid var(--purple);color:var(--purple);font-size:11px;padding:4px 10px;border-radius:6px">✦ Nochmal prüfen</button>'
         +'</div>';
       return;
     }
-    // Weitere Status-Zweige kommen in Chunk 3
-    slot.innerHTML='<div style="font-size:11px;color:var(--t3);padding:8px 0">Rekali-Status: '+esc(String(_mdRekali.status))+'</div>';
+    // Error
+    if(st==='error'){
+      slot.innerHTML='<div style="border:1px solid var(--red);border-radius:10px;padding:12px 16px;margin-bottom:4px;background:var(--sf)">'
+        +'<div style="font-size:12px;color:var(--red);margin-bottom:8px">⚠ Rekalibrierung fehlgeschlagen: '+esc(_mdRekali.fehler||'Unbekannt')+'</div>'
+        +'<button class="btn" onclick="mdRekaliStart()" style="background:transparent;border:1px solid var(--purple);color:var(--purple);font-size:11px;padding:4px 10px;border-radius:6px">✦ Erneut versuchen</button>'
+        +'</div>';
+      return;
+    }
+    // Ready — evtl. leere Liste
+    if(st==='ready'){
+      const vs=_mdRekali.vorschlaege||[];
+      if(!vs.length){
+        slot.innerHTML='<div style="border:1px solid var(--bd);border-radius:10px;padding:12px 16px;margin-bottom:4px;background:var(--sf)">'
+          +'<div style="font-size:12px;color:var(--t2);margin-bottom:8px">✓ Keine Prioritätsänderungen erkannt — bestehende Prios bleiben wie sie sind.</div>'
+          +'<button class="btn" onclick="mdRekaliStart()" style="background:transparent;border:1px solid var(--purple);color:var(--purple);font-size:11px;padding:4px 10px;border-radius:6px">✦ Nochmal prüfen</button>'
+          +'</div>';
+        return;
+      }
+      // Rohe Liste — volle Karten-UI kommt in Chunk 3
+      let html='<div style="border:1px solid var(--purple);border-radius:10px;padding:12px 16px;margin-bottom:4px;background:var(--sf)">';
+      html+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--purple);margin-bottom:10px">✦ Rekalibrierungs-Vorschläge · '+vs.length+'</div>';
+      vs.forEach(v=>{
+        const a=S.aufgaben.find(x=>x.id===v.targetId);
+        const titel=a?a.titel:'(Aufgabe nicht gefunden)';
+        html+='<div style="padding:8px 0;border-top:1px solid var(--bd);font-size:12px">';
+        html+='<div style="font-weight:600;color:var(--text);margin-bottom:3px">'+esc(titel)+'</div>';
+        html+='<div style="color:var(--t2);margin-bottom:3px">📊 '+(v.altPrio||'—')+' → <strong>'+v.neuPrio+'</strong></div>';
+        html+='<div style="color:var(--t3);font-style:italic">💬 '+esc(v.grund)+'</div>';
+        html+='</div>';
+      });
+      html+='</div>';
+      slot.innerHTML=html;
+      return;
+    }
+    // Fallback
+    slot.innerHTML='<div style="font-size:11px;color:var(--t3);padding:8px 0">Rekali-Status: '+esc(String(st))+'</div>';
   }catch(e){
     console.error('mdRekaliRender crash:',e);
     toast('⚠ Rekali-Anzeige Fehler: '+e.message);
