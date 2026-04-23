@@ -10002,16 +10002,42 @@ function mdRekaliRender(){
           +'</div>';
         return;
       }
-      // Rohe Liste — volle Karten-UI kommt in Chunk 3
+      const offen=vs.filter(v=>v.userStatus==='offen').length;
       let html='<div style="border:1px solid var(--purple);border-radius:10px;padding:12px 16px;margin-bottom:4px;background:var(--sf)">';
-      html+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--purple);margin-bottom:10px">✦ Rekalibrierungs-Vorschläge · '+vs.length+'</div>';
+      html+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">';
+      html+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--purple)">✦ Rekalibrierungs-Vorschläge · '+vs.length+'</div>';
+      html+='<div style="font-size:10px;color:var(--t3)">'+(offen===0?'✓ Alle entschieden':offen+' offen')+'</div>';
+      html+='</div>';
       vs.forEach(v=>{
         const a=S.aufgaben.find(x=>x.id===v.targetId);
         const titel=a?a.titel:'(Aufgabe nicht gefunden)';
-        html+='<div style="padding:8px 0;border-top:1px solid var(--bd);font-size:12px">';
-        html+='<div style="font-weight:600;color:var(--text);margin-bottom:3px">'+esc(titel)+'</div>';
-        html+='<div style="color:var(--t2);margin-bottom:3px">📊 '+(v.altPrio||'—')+' → <strong>'+v.neuPrio+'</strong></div>';
-        html+='<div style="color:var(--t3);font-style:italic">💬 '+esc(v.grund)+'</div>';
+        const pers=a&&a.pid?S.personen.find(p=>p.id===a.pid):null;
+        const persName=pers?pers.name:null;
+        const prioColor=v.neuPrio==='P1'?'var(--red)':v.neuPrio==='P2'?'var(--blue)':'var(--green)';
+        const prioIcon=v.neuPrio==='P1'?'🔴':v.neuPrio==='P2'?'🔵':'🟢';
+        const isOffen=v.userStatus==='offen';
+        const opacity=isOffen?'1':'0.55';
+        html+='<div id="md-rekali-card-'+v.id+'" style="padding:10px 0;border-top:1px solid var(--bd);font-size:12px;opacity:'+opacity+';transition:opacity .2s">';
+        html+='<div style="display:flex;align-items:flex-start;gap:6px;margin-bottom:4px">';
+        html+='<div style="flex:1">';
+        html+='<div style="font-weight:600;color:var(--text);margin-bottom:2px">'+esc(titel)+(persName?' <span style="color:var(--t3);font-weight:400;font-size:11px">('+esc(persName)+')</span>':'')+'</div>';
+        html+='<div style="color:var(--t2);margin-bottom:3px;font-size:11px">📊 <span style="color:var(--t3)">'+(v.altPrio||'—')+'</span> → <strong style="color:'+prioColor+'">'+prioIcon+' '+v.neuPrio+'</strong></div>';
+        html+='<div style="color:var(--t3);font-style:italic;font-size:11px;line-height:1.5">💬 '+esc(v.grund)+'</div>';
+        html+='</div>';
+        html+='</div>';
+        if(isOffen){
+          html+='<div id="md-rekali-actions-'+v.id+'" style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">';
+          html+='<button class="btn" onclick="mdRekaliAccept(\''+v.id+'\')" style="background:var(--green-bg);border:1px solid var(--green);color:var(--green);font-size:11px;padding:4px 10px;border-radius:6px;font-weight:600">✓ Annehmen</button>';
+          html+='<button class="btn" onclick="mdRekaliReject(\''+v.id+'\')" style="background:transparent;border:1px solid var(--bd);color:var(--t2);font-size:11px;padding:4px 10px;border-radius:6px">✕ Ablehnen</button>';
+          html+='<button class="btn" onclick="mdRekaliEdit(\''+v.id+'\')" style="background:transparent;border:1px solid var(--bd);color:var(--t2);font-size:11px;padding:4px 10px;border-radius:6px">✎ Bearbeiten</button>';
+          html+='</div>';
+        }else if(v.userStatus==='bestaetigt'){
+          html+='<div style="margin-top:6px"><span style="display:inline-block;font-size:10px;font-weight:700;color:var(--green);background:var(--green-bg);padding:3px 8px;border-radius:6px">✓ Bestätigt</span></div>';
+        }else if(v.userStatus==='abgelehnt'){
+          html+='<div style="margin-top:6px"><span style="display:inline-block;font-size:10px;font-weight:700;color:var(--t3);background:var(--sf);border:1px solid var(--bd);padding:3px 8px;border-radius:6px">✕ Abgelehnt</span></div>';
+        }else if(v.userStatus==='bearbeitet'){
+          html+='<div style="margin-top:6px"><span style="display:inline-block;font-size:10px;font-weight:700;color:var(--blue);background:var(--blue-bg);padding:3px 8px;border-radius:6px">✎ Bearbeitet & bestätigt → '+v.neuPrio+'</span></div>';
+        }
         html+='</div>';
       });
       html+='</div>';
