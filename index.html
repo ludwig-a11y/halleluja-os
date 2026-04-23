@@ -10133,6 +10133,12 @@ function mdRekaliGateCheck(){
 // ===== MEETING DUMP — REKALIBRIERUNG ENDE =====
 
 async function mdConfirm(){
+  // Rekali-Gate: offene Vorschlaege muessen entschieden sein
+  if(!mdRekaliGateCheck()){
+    const offen=(_mdRekali?.vorschlaege||[]).filter(v=>v.userStatus==='offen').length;
+    toast('⚠ '+offen+' Rekalibrierungs-Vorschlag'+(offen===1?'':'e')+' offen — bitte zuerst entscheiden');
+    return;
+  }
   const toCreate=[];
   _mdTasks.forEach((t,i)=>{
     const chk=document.getElementById('md-chk-'+i);if(!chk||!chk.checked)return;
