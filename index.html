@@ -1886,6 +1886,7 @@ function rKapazitaetBlock(pid){
   let meetH=0;
   (S.kalender||[]).forEach(ev=>{
     if(!ev.start||!ev.end)return;
+    if(localDate(ev.start)!==TODAY)return; // nur heute (seit 7-Tage-Scope)
     if(ev.titel&&ev.titel.startsWith('⚡ P1'))return; // eigene Power Activities überspringen
     meetH+=Math.max(0,(ev.end.getTime()-ev.start.getTime())/3600000);
   });
@@ -10792,12 +10793,14 @@ async function gcalFetchToday(){
   if(!token){S.kalender=[];return;}
   const d=new Date();
   const start=new Date(d.getFullYear(),d.getMonth(),d.getDate(),0,0,0).toISOString();
-  const end=new Date(d.getFullYear(),d.getMonth(),d.getDate(),23,59,59).toISOString();
+  // 7-Tage-Fenster: heute 00:00 bis heute+6 23:59 — für Tages- UND Wochenansicht
+  const endD=new Date(d.getFullYear(),d.getMonth(),d.getDate()+6,23,59,59);
+  const end=endD.toISOString();
   try{
     const resp=await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events'
       +'?timeMin='+encodeURIComponent(start)
       +'&timeMax='+encodeURIComponent(end)
-      +'&singleEvents=true&orderBy=startTime&maxResults=25',
+      +'&singleEvents=true&orderBy=startTime&maxResults=100',
       {headers:{Authorization:'Bearer '+token}});
     if(resp.status===401){
       // Token ungültig → still erneuern statt rauswerfen
