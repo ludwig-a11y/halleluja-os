@@ -1881,8 +1881,31 @@ function spangeToggleCollapsed(){
   localStorage.setItem('spange_collapsed',cur?'0':'1');
   if(typeof rTag==='function')rTag();
 }
+function spangeTick(){
+  try{
+    const el=document.querySelector('.spange-now');
+    if(!el)return;
+    const pid=typeof aP!=='undefined'?aP:null;
+    if(!pid)return;
+    const fenster=spangeHeutFenster(pid);
+    if(!fenster||fenster.abwesend||fenster.frei)return;
+    const vonMin=_hhmmToMin(fenster.von),bisMin=_hhmmToMin(fenster.bis);
+    if(vonMin==null||bisMin==null||bisMin<=vonMin)return;
+    const now=new Date();
+    if(localDate(now)!==TODAY){el.style.display='none';return;}
+    const nowMin=now.getHours()*60+now.getMinutes();
+    if(nowMin<vonMin||nowMin>bisMin){el.style.display='none';return;}
+    el.style.display='';
+    el.style.left=(((nowMin-vonMin)/(bisMin-vonMin))*100).toFixed(2)+'%';
+  }catch(e){/* silent */}
+}
+function spangeStartTick(){
+  if(_spangeTickIv)clearInterval(_spangeTickIv);
+  _spangeTickIv=setInterval(spangeTick,60000);
+}
 function spangeRender(pid){
   try{
+    if(!_spangeTickIv)spangeStartTick();
     const fenster=spangeHeutFenster(pid);
     // Abwesenheit / Frei-Tag → schlanke Leiste
     if(fenster.abwesend){
