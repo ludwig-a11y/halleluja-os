@@ -1955,9 +1955,10 @@ function spangeReorderChip(pid,srcId,dstId,before){
   _tagOrderSet(pid,ids);
   if(typeof rTag==='function')render();
 }
-function spangeRender(pid){
+function spangeRender(pid,opts){
   try{
     if(!_spangeTickIv)spangeStartTick();
+    const inline=!!(opts&&opts.inline);
     const viewDate=_spangeGetDate();
     const isToday=viewDate===TODAY;
     const isPast=viewDate<TODAY;
@@ -1968,7 +1969,7 @@ function spangeRender(pid){
       +'<button onclick="event.stopPropagation();spangeNavDay(1)" title="Nächster Tag" style="position:absolute;right:2px;top:50%;transform:translateY(-50%);width:16px;height:18px;padding:0;border:none;background:rgba(0,0,0,0.06);color:var(--t3);border-radius:3px;cursor:pointer;font-family:inherit;font-size:10px;line-height:18px;z-index:7;opacity:.6">›</button>';
     // Abwesenheit / Frei-Tag → schlanke Leiste (mit Nav)
     if(fenster.abwesend){
-      return '<div class="tagesspange" style="position:relative;margin-bottom:6px;padding:5px 24px;border-radius:7px;background:var(--gray-bg);border:1px dashed var(--bd);display:flex;align-items:center;justify-content:center;gap:8px;font-size:12px;color:var(--t2)">'
+      return '<div class="tagesspange" style="position:relative;'+(inline?'':'margin-bottom:6px;')+'padding:5px 24px;border-radius:7px;background:'+(inline?'transparent':'var(--gray-bg)')+';border:1px dashed var(--bd);display:flex;align-items:center;justify-content:center;gap:8px;font-size:12px;color:var(--t2)">'
         +navArrows
         +'<span style="font-size:14px">🌴</span>'
         +'<span style="font-weight:600">'+(isToday?'Frei heute':'Frei am '+_fmtDayShort(viewDate))+'</span>'
@@ -1977,7 +1978,7 @@ function spangeRender(pid){
         +'</div>';
     }
     if(fenster.frei){
-      return '<div class="tagesspange" style="position:relative;margin-bottom:6px;padding:4px 24px;border-radius:7px;background:var(--gray-bg);border:1px dashed var(--bd);font-size:11px;color:var(--t3);text-align:center">'
+      return '<div class="tagesspange" style="position:relative;'+(inline?'':'margin-bottom:6px;')+'padding:4px 24px;border-radius:7px;background:'+(inline?'transparent':'var(--gray-bg)')+';border:1px dashed var(--bd);font-size:11px;color:var(--t3);text-align:center">'
         +navArrows
         +(isToday?'Kein Arbeitstag':'Kein Arbeitstag ('+_fmtDayShort(viewDate)+')')
         +(isToday?'':' <button onclick="spangeToToday()" style="margin-left:4px;padding:1px 7px;font-size:9px;border-radius:99px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);cursor:pointer;font-family:inherit;font-weight:700">Heute</button>')
@@ -2028,8 +2029,8 @@ function spangeRender(pid){
     );
     const chips=spangeApplyTagOrder(pid,mineOpen);
     // ── HTML rendern ──────────────────────────────────────────
-    const padExp=collapsed?'2px 22px':'3px 22px 4px';
-    let h='<div class="tagesspange" style="position:relative;margin-bottom:6px;background:var(--sf);border:1px solid var(--bd);border-radius:7px;padding:'+padExp+';'
+    const padExp=inline?(collapsed?'0 22px':'2px 22px 2px'):(collapsed?'2px 22px':'3px 22px 4px');
+    let h='<div class="tagesspange" style="position:relative;'+(inline?'':'margin-bottom:6px;')+'background:'+(inline?'transparent':'var(--sf)')+';border:'+(inline?'none':'1px solid var(--bd)')+';border-radius:7px;padding:'+padExp+';'
       +(collapsed?'cursor:pointer" onclick="spangeToggleCollapsed()" title="Klick zum Ausklappen':'')+'">';
     // Nav-Pfeile (immer sichtbar, links+rechts außerhalb des Tracks)
     h+=navArrows;
@@ -2108,7 +2109,7 @@ function spangeRender(pid){
       const nowMin=now.getHours()*60+now.getMinutes();
       if(nowMin>=vonMin&&nowMin<=bisMin&&localDate(now)===TODAY){
         const nl=((nowMin-vonMin)/span)*100;
-        h+='<div class="spange-now" style="position:absolute;top:-1px;bottom:-1px;left:'+nl.toFixed(2)+'%;width:2px;background:var(--red);pointer-events:none;box-shadow:0 0 3px var(--red);z-index:5"></div>';
+        h+='<div class="spange-now" style="position:absolute;top:-1px;bottom:-1px;left:'+nl.toFixed(2)+'%;width:2px;background:var(--red);pointer-events:none;box-shadow:0 0 3px var(--red);z-index:5;transition:left .6s ease"></div>';
       }
     }
     h+='</div>'; // /timeline-track
@@ -5607,15 +5608,13 @@ function rTag(){
     let _stk=0,_sd=new Date(TODAY+'T12:00:00');
     if(!_dbd[TODAY])_sd.setDate(_sd.getDate()-1);
     while(_dbd[localDate(_sd)]){_stk++;_sd.setDate(_sd.getDate()-1);}
-    out+='<div style="display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:16px">';
-    out+='<div style="min-width:0"><div style="font-size:15px;font-weight:700;color:var(--text)">'+wt+'</div>';
-    out+='<div style="font-size:12px;color:var(--t2)">'+tag+'. '+mon+(_stk>=2?' · <span style="color:var(--orange)">🔥 '+_stk+' Tage Streak</span>':'')+'</div></div>';
+    out+='<div style="display:flex;align-items:center;gap:14px;margin-bottom:14px">';
+    out+='<div style="flex-shrink:0;min-width:0"><div style="font-size:15px;font-weight:700;color:var(--text);line-height:1.2">'+wt+'</div>';
+    out+='<div style="font-size:12px;color:var(--t2);line-height:1.25">'+tag+'. '+mon+(_stk>=2?' · <span style="color:var(--orange)">🔥 '+_stk+' Tage Streak</span>':'')+'</div></div>';
+    out+='<div style="flex:1;min-width:0">'+spangeRender(aP,{inline:true})+'</div>';
     out+='<div style="flex-shrink:0">'+momentumRingHtml(aP)+'</div>';
     out+='</div>';
   }
-
-  // ── Tages-Spange (v172.1) ──
-  out+=spangeRender(aP);
 
   // ── Freitags-Paddel-Banner (ab 15 Uhr) ──
   if(isFridayAward()){
