@@ -1942,7 +1942,42 @@ function spangeRender(pid){
       const end=new Date(start.getTime()+durMin*60000);
       return{_kind:'app',id:a.id,titel:a.titel,start,end,prio:a.prio,status:a.status};
     });
-    const all=[...kalHeute,...appEvents].sort((a,b)=>a.start-b.start);
+    // Ghost-Segmente: aktive Aufgabe + Fokus-Aufgabe (heute anstehend, aber ohne fixe Zeit)
+    const ghostEvents=[];
+    const mineToday=(S.aufgaben||[]).filter(a=>
+      String(a.pid)===String(pid)&&
+      !['erledigt','zurueckgegeben','archiviert','backlog'].includes(a.status)
+    );
+    // Aktive → an echter Laufzeit positionieren
+    mineToday.filter(a=>a.status==='aktiv'&&a.aktSeit).forEach(a=>{
+      const start=new Date(a.aktSeit);
+      if(localDate(start)!==TODAY)return;
+      const durMin=Math.round((parseFloat(a.geplant)||1)*60);
+      const end=new Date(start.getTime()+durMin*60000);
+      ghostEvents.push({_kind:'app',_ghost:true,_active:true,id:a.id,titel:a.titel,start,end,prio:a.prio,status:a.status});
+    });
+    // Fokus-Aufgabe (explizit gewählt oder erste offene) → als "jetzt + geplant" platzieren, nur wenn nicht bereits als fixed/active drin
+    const _fokusPinId=localStorage.getItem('fokus_id_'+pid);
+    const alreadyIn=new Set([...appEvents,...ghostEvents].map(e=>e.id));
+    let fokusCandidate=null;
+    if(_fokusPinId){fokusCandidate=mineToday.find(a=>a.id===_fokusPinId&&!alreadyIn.has(a.id));}
+    if(!fokusCandidate){
+      // erste offene P1/P2/P3 (neu+backlog) ohne fixe Zeit, nicht bereits drin
+      const offen=mineToday.filter(a=>(a.status==='neu'||a.status==='backlog')&&!a.dlUhrzeit&&!alreadyIn.has(a.id))
+        .sort((x,y)=>{const po={'P1':0,'P2':1,'P3':2};return(po[x.prio]??3)-(po[y.prio]??3);});
+      fokusCandidate=offen[0]||null;
+    }
+    if(fokusCandidate&&!ghostEvents.some(g=>g._active)){
+      const now=new Date();
+      const nowMin=now.getHours()*60+now.getMinutes();
+      // Platziere ab jetzt (geclipped auf Fenster)
+      const startMin=Math.max(vonMin,Math.min(bisMin-15,nowMin));
+      const start=new Date(TODAY+'T'+String(Math.floor(startMin/60)).padStart(2,'0')+':'+String(startMin%60).padStart(2,'0')+':00');
+      const durMin=Math.round((parseFloat(fokusCandidate.geplant)||1)*60);
+      const end=new Date(start.getTime()+durMin*60000);
+      ghostEvents.push({_kind:'app',_ghost:true,_active:false,id:fokusCandidate.id,titel:fokusCandidate.titel,start,end,prio:fokusCandidate.prio,status:fokusCandidate.status});
+    }
+    const all=[...kalHeute,...appEvents,...ghostEvents].sort((a,b)=>a.start-b.start);
     // Overlap erkennen: jedes Event bekommt overlap=true wenn es mit einem anderen überlappt
     all.forEach((ev,i)=>{
       ev._overlap=all.some((o,j)=>j!==i&&o.start<ev.end&&o.end>ev.start);
@@ -1991,12 +2026,16 @@ function spangeRender(pid){
         color=ev.prio==='P1'?'var(--red)':ev.prio==='P2'?'var(--blue)':'var(--t3)';
         icon='📝';onclick='openDetail(\''+ev.id+'\')';
       }
-      const border=ev._overlap?'2px solid var(--red)':'none';
-      const op=ev.status==='erledigt'?'0.45':'1';
-      const title=esc(ev.titel)+' · '+String(ev.start.getHours()).padStart(2,'0')+':'+String(ev.start.getMinutes()).padStart(2,'0')+'–'+String(ev.end.getHours()).padStart(2,'0')+':'+String(ev.end.getMinutes()).padStart(2,'0')+(ev._overlap?' · ⚠ Überlappt':'');
-      h+='<div onclick="event.stopPropagation();'+onclick+'" title="'+title+'" style="position:absolute;top:0;bottom:0;left:'+l.toFixed(2)+'%;width:'+w.toFixed(2)+'%;min-width:3px;background:'+color+';opacity:'+op+';border:'+border+';border-radius:'+(collapsed?'2px':'4px')+';cursor:pointer;overflow:hidden;'+(clippedLeft?'border-top-left-radius:0;border-bottom-left-radius:0;':'')+(clippedRight?'border-top-right-radius:0;border-bottom-right-radius:0;':'')+'">';
+      const border=ev._overlap?'2px solid var(--red)':(ev._ghost?'1.5px dashed '+color:'none');
+      const op=ev.status==='erledigt'?'0.45':(ev._ghost?'0.85':'1');
+      const bg=ev._ghost?'transparent':color;
+      const tLabel=ev._ghost&&!ev._active?' · nicht geplant':(ev._active?' · aktiv':'');
+      const title=esc(ev.titel)+' · '+String(ev.start.getHours()).padStart(2,'0')+':'+String(ev.start.getMinutes()).padStart(2,'0')+'–'+String(ev.end.getHours()).padStart(2,'0')+':'+String(ev.end.getMinutes()).padStart(2,'0')+tLabel+(ev._overlap?' · ⚠ Überlappt':'');
+      const ic=ev._ghost?(ev._active?'▶':'◇'):icon;
+      h+='<div onclick="event.stopPropagation();'+onclick+'" title="'+title+'" style="position:absolute;top:0;bottom:0;left:'+l.toFixed(2)+'%;width:'+w.toFixed(2)+'%;min-width:3px;background:'+bg+';opacity:'+op+';border:'+border+';border-radius:'+(collapsed?'2px':'4px')+';cursor:pointer;overflow:hidden;'+(clippedLeft?'border-top-left-radius:0;border-bottom-left-radius:0;':'')+(clippedRight?'border-top-right-radius:0;border-bottom-right-radius:0;':'')+'">';
       if(!collapsed&&w>8){
-        h+='<div style="font-size:10px;color:#fff;padding:4px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2;font-weight:600">'+icon+' '+esc(ev.titel)+'</div>';
+        const txtCol=ev._ghost?color:'#fff';
+        h+='<div style="font-size:10px;color:'+txtCol+';padding:4px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2;font-weight:600">'+ic+' '+esc(ev.titel)+'</div>';
       }
       h+='</div>';
     });
