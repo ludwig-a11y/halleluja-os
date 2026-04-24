@@ -8411,6 +8411,9 @@ function editTZ(zid,tzid){
     +'<div class="fl"><label>Gehört zu</label><select id="tzz">'+zielOpts+'</select></div>'
     +'<div class="f2"><div class="fl"><label>Verantwortlich</label><select id="tzv">'+S.personen.map(p=>'<option value="'+p.id+'"'+(tz.verantwortlichId===p.id?' selected':'')+'>'+esc(p.name)+'</option>').join('')+'</select></div>'
     +'<div class="fl"><label>Bis wann</label><input type="date" id="tzd" value="'+(tz.datum||'')+'"></div></div>'
+    // v174.2 §14: Leading-Metrik + Anker am Edit-Modal (auch für Bestandsziele nachrüstbar).
+    +'<div class="fl"><label>Leading-Metrik (Verb) · optional</label><input id="tzmetrik" value="'+esc(tz.metrik||'')+'" placeholder="z.B. Call gemacht, Reinigung erledigt"></div>'
+    +'<div class="fl"><label>Anker (Anzahl, optional)</label><input id="tzzw" type="number" min="1" value="'+(tz.zielWert||'')+'" placeholder="z.B. 200"></div>'
     +(isGF()?'<div class="fl"><label style="display:flex;align-items:center;gap:8px;text-transform:none;font-size:13px;font-weight:400"><input type="checkbox" id="tzvert" '+(tz.vertraulich?'checked':'')+' style="width:auto"> 🔒 Vertraulich</label><div style="font-size:10px;color:var(--t3);margin-top:2px">Sichtbar für: Geschäftsführung &amp; Verantwortlicher</div></div>':'')
     +'<div class="mf"><button class="btn btn-red" onclick="delTZ(\''+zid+'\',\''+tzid+'\')">Löschen</button><button class="btn btn-gr" onclick="cm()">Abbrechen</button><button class="btn btn-dk" onclick="saveTZ(\''+zid+'\',\''+tzid+'\')">Speichern</button></div>';
   document.getElementById('ovl').classList.add('open');
@@ -8422,17 +8425,24 @@ async function saveTZ(zid,tzid){
   const tzVertEl=document.getElementById('tzvert');
   const vertraulich=tzVertEl?tzVertEl.checked:((z.teilziele||[]).find(t=>t.id===tzid)?.vertraulich||false);
   const newZid=document.getElementById('tzz')?.value||zid;
+  // v174.2 §14: Leading-Metrik + Anker aus Edit-Modal auslesen (optional).
+  const metrikEl=document.getElementById('tzmetrik');
+  const zwEl=document.getElementById('tzzw');
+  const metrik=metrikEl?(metrikEl.value||'').trim()||null:null;
+  const zwRaw=zwEl?(zwEl.value||'').trim():'';
+  const zielwert=zwRaw?parseInt(zwRaw,10):null;
+  const zwFinal=Number.isFinite(zielwert)?zielwert:null;
   if(tzid){
     const tz=(z.teilziele||[]).find(t=>t.id===tzid);
-    if(tz){tz.name=name;tz.verantwortlichId=vid;tz.datum=datum;tz.vertraulich=vertraulich;tz.zielId=newZid;}
+    if(tz){tz.name=name;tz.verantwortlichId=vid;tz.datum=datum;tz.vertraulich=vertraulich;tz.zielId=newZid;tz.metrik=metrik;tz.zielWert=zwFinal;}
     if(newZid!==zid){
       z.teilziele=(z.teilziele||[]).filter(t=>t.id!==tzid);
       const nz=zielObj(newZid);if(nz){nz.teilziele=nz.teilziele||[];nz.teilziele.push(tz);}
     }
-    await dbPatch('teilziele',tzid,{name,verantwortlich_id:vid,datum:datum||null,ziel_id:newZid,vertraulich});
+    await dbPatch('teilziele',tzid,{name,verantwortlich_id:vid,datum:datum||null,ziel_id:newZid,vertraulich,metrik,zielwert:zwFinal});
   } else {
-    const id=nid('tz'),rec={id,ziel_id:zid,name,verantwortlich_id:vid,datum:datum||null,erledigt:false,vertraulich:false,status:'aktiv'};
-    z.teilziele=z.teilziele||[];z.teilziele.push({...rec,zielId:zid,verantwortlichId:vid,datum:datum||'',vertraulich:false,status:'aktiv'});
+    const id=nid('tz'),rec={id,ziel_id:zid,name,verantwortlich_id:vid,datum:datum||null,erledigt:false,vertraulich:false,status:'aktiv',metrik,zielwert:zwFinal};
+    z.teilziele=z.teilziele||[];z.teilziele.push({...rec,zielId:zid,verantwortlichId:vid,datum:datum||'',vertraulich:false,status:'aktiv',metrik,zielWert:zwFinal});
     await dbInsert('teilziele',rec);
   }
   cm();rZiele();
