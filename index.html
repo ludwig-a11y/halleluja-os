@@ -481,7 +481,7 @@ function meilensteinOptgroups(pid,selTzId='',ownOnly=false){
         if(tz){inaktiv={t:tz,z};break;}
       }
       if(inaktiv){
-        const status=inaktiv.t.erledigt?'erledigt':(inaktiv.t.status==='archiviert'?'archiviert':'inaktiv');
+        const status=inaktiv.t.erledigt?'erledigt':(inaktiv.t.status==='archiviert'?'archiviert':(inaktiv.t.status==='pausiert'?'pausiert':'inaktiv'));
         out+='<optgroup label="⚠️ Nicht mehr aktiv"><option value="'+inaktiv.t.id+'" data-ziel-id="'+inaktiv.z.id+'" data-datum="'+(inaktiv.t.datum||'')+'" selected>'+esc(inaktiv.t.name)+' ('+status+')</option></optgroup>';
       }
     }
@@ -1526,7 +1526,8 @@ function rMorgenPreview(pid){
   // P1-Aufgaben morgen (oder überfällig P1)
   const tasksMorgen=S.aufgaben.filter(a=>
     String(a.pid)===String(pid)&&a.prio==='P1'&&a.dl===tomorrow&&
-    !['erledigt','zurueckgegeben','archiviert'].includes(a.status)
+    !['erledigt','zurueckgegeben','archiviert'].includes(a.status)&&
+    !taskIsPaused(a)&&!taskIsArchived(a)  // v175
   );
   if(!kalMorgen.length&&!tasksMorgen.length)return'';
   const total=kalMorgen.length+tasksMorgen.length;
@@ -1575,6 +1576,7 @@ function rDeadlineAlarm(pid){
     a.dl&&a.dl<=TODAY&&
     a.inboxStatus!=='neu'&&  // #3: Inbox-Items erst nach Triage alarmieren
     !['erledigt','zurueckgegeben','archiviert','backlog'].includes(a.status)&&
+    !taskIsPaused(a)&&!taskIsArchived(a)&&  // v175: Pausierte/archivierte MS → kein Deadline-Alarm
     !(a.teilzielId&&big3TzIds.has(String(a.teilzielId)))
   ).sort((a,b)=>(a.dl||'').localeCompare(b.dl||''));
   if(!overdue.length)return'';
@@ -1856,6 +1858,18 @@ function _tzById(tzId){
   for(const z of S.ziele||[]){for(const t of (z.teilziele||[])){if(String(t.id)===String(tzId))return t;}}
   return null;
 }
+// v175 §14+: Rekalibrierungs-Primitive. Pause = reversibel, ruht sichtbar. Archiv = raus aus Standard-Views.
+// Auf Teilziel-Ebene (nicht Aufgabe) — Pause ist eine Ziel-Entscheidung, Aufgaben erben sie.
+function tzStatus(tzOrId){
+  const tz=typeof tzOrId==='string'?_tzById(tzOrId):tzOrId;
+  return tz?(tz.status||'aktiv'):'aktiv';
+}
+function tzIsPaused(tzOrId){return tzStatus(tzOrId)==='pausiert';}
+function tzIsArchived(tzOrId){return tzStatus(tzOrId)==='archiviert';}
+// Aufgaben-Sicht: derived. Pause/Archiv einer MS zieht alle verknüpften Aufgaben mit.
+function taskMsStatus(a){return a&&a.teilzielId?tzStatus(a.teilzielId):'aktiv';}
+function taskIsPaused(a){return taskMsStatus(a)==='pausiert';}
+function taskIsArchived(a){return taskMsStatus(a)==='archiviert';}
 function msInputs(tzId){return(S.monatszielInputs||[]).filter(i=>String(i.teilzielId)===String(tzId));}
 function msCount(tzId){return msInputs(tzId).length;}
 function msInputsToday(tzId){return msInputs(tzId).filter(i=>i.datum===TODAY);}
@@ -1873,6 +1887,8 @@ async function msPushInput(tzId,quelle){
   if(!tzId)return;
   const tz=_tzById(tzId);
   if(!tz||!tz.metrik)return; // Non-Leading-MS bekommen keine Inputs
+  // v175: Pausierte/archivierte MS zählen keine neuen Inputs. Historische Inputs bleiben.
+  if(tzIsPaused(tz)||tzIsArchived(tz))return;
   const id=nid('mi');
   const countBefore=msCount(tzId);
   const local={id,teilzielId:tzId,datum:TODAY,quelle:quelle||'manual',createdBy:aP||null,createdAt:new Date().toISOString()};
@@ -3447,7 +3463,7 @@ function updateWRTZSection(){
   if(lw){[1,2,3].forEach(n=>{if(lw['big3_'+n]&&!lw['big3_'+n+'_done'])carryOver.push(lw['big3_'+n]);});}
 
   // 2. Offene P1-Aufgaben dieser Person
-  const p1Tasks=(S.aufgaben||[]).filter(a=>String(a.pid)===String(aP)&&a.prio==='P1'&&!a.parentId&&!['erledigt','zurueckgegeben'].includes(a.status||'')).slice(0,5);
+  const p1Tasks=(S.aufgaben||[]).filter(a=>String(a.pid)===String(aP)&&a.prio==='P1'&&!a.parentId&&!['erledigt','zurueckgegeben'].includes(a.status||'')&&!taskIsPaused(a)&&!taskIsArchived(a)).slice(0,5);
 
   const kandidatBtn=(text,icon,accentColor,accentBg)=>{
     const safe=text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
@@ -5735,8 +5751,12 @@ function rTag(){
     return a.dl?-1:b.dl?1:0;
   });
   const erl=myA.filter(a=>a.status==='erledigt'&&a.updated_at&&localDate(new Date(a.updated_at))===TODAY);
+  // v175: Aufgaben pausierter/archivierter MS aus Fokus-Fluss ausklammern. Laufende (aktiv) bleiben unberührt.
+  const neuLive=neu.filter(a=>!taskIsPaused(a)&&!taskIsArchived(a));
+  const blLive=bl.filter(a=>!taskIsPaused(a)&&!taskIsArchived(a));
+  const pausedTasks=[...neu,...bl].filter(a=>taskIsPaused(a));
   // tag_order (aus Spange-Drag) hat Vorrang vor Prio-Sortierung
-  const offene=(typeof spangeApplyTagOrder==='function')?spangeApplyTagOrder(aP,[...neu,...bl]):[...neu,...bl].sort((a,b)=>{const po={'P1':0,'P2':1,'P3':2};return(po[a.prio]??3)-(po[b.prio]??3);});
+  const offene=(typeof spangeApplyTagOrder==='function')?spangeApplyTagOrder(aP,[...neuLive,...blLive]):[...neuLive,...blLive].sort((a,b)=>{const po={'P1':0,'P2':1,'P3':2};return(po[a.prio]??3)-(po[b.prio]??3);});
   // ── Fokus: explizit gewählte Aufgabe nach oben ──
   let fokusId=localStorage.getItem('fokus_id_'+aP);
   if(fokusId){
@@ -5745,7 +5765,7 @@ function rTag(){
     else if(fi<0){localStorage.removeItem('fokus_id_'+aP);fokusId=null;}
   }
   const naechste=aktiv.length?null:(offene[0]||null);
-  const alleGeschafft=!aktiv.length&&!neu.length&&!bl.length;
+  const alleGeschafft=!aktiv.length&&!neuLive.length&&!blLive.length;
   let out='';
 
   // ── Datum-Header mit Uhr + Streak ──
@@ -6501,6 +6521,33 @@ function rTag(){
   }
 
   // "Weitere ohne Ziel" + "Geplante Zukunfts-Aufgaben" — entfernt (Sam-Move: nur 3 Wochenziele zählen heute)
+
+  // ── v175 §14+: Pausierte Aufgaben — gedimmt, collapsed, zählen nicht im Fokus-Fluss ──
+  if(pausedTasks.length){
+    // Gruppiere nach MS für visuelle Plastizität („diese 3 sind wegen MS X pausiert")
+    const _byTz={};
+    pausedTasks.forEach(a=>{const k=String(a.teilzielId||'_');if(!_byTz[k])_byTz[k]={tz:_tzById(a.teilzielId),tasks:[]};_byTz[k].tasks.push(a);});
+    out+='<details class="fm-hide" style="margin-bottom:12px;opacity:.72">';
+    out+='<summary style="list-style:none;cursor:pointer;padding:10px 14px;background:var(--gray-bg);border:1px dashed var(--bd);border-radius:10px;display:flex;align-items:center;gap:10px">';
+    out+='<span style="font-size:14px">⏸</span>';
+    out+='<span style="font-size:12px;font-weight:600;color:var(--t2)">Pausiert</span>';
+    out+='<span style="font-size:10px;color:var(--t3);margin-left:auto">'+pausedTasks.length+' Aufgabe'+(pausedTasks.length>1?'n':'')+' · zählen nicht</span>';
+    out+='<span style="font-size:10px;color:var(--t3)">▾</span>';
+    out+='</summary>';
+    out+='<div style="padding:6px 4px 2px">';
+    Object.values(_byTz).forEach(grp=>{
+      const tzN=grp.tz?grp.tz.name:'—';
+      out+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--t3);margin:8px 2px 4px">⏸ '+esc(tzN)+' · pausiert</div>';
+      grp.tasks.forEach(a=>{
+        out+='<div onclick="openDetail(\''+a.id+'\')" style="display:flex;align-items:center;gap:8px;padding:6px 10px;margin-bottom:3px;background:var(--sf);border:1px solid var(--bd);border-radius:8px;cursor:pointer">';
+        out+='<span style="width:8px;height:8px;border-radius:50%;background:var(--t3);flex-shrink:0"></span>';
+        out+='<span style="flex:1;min-width:0;font-size:12px;color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(a.titel)+'</span>';
+        if(a.prio)out+='<span style="font-size:9px;font-weight:700;color:var(--t3);flex-shrink:0">'+a.prio+'</span>';
+        out+='</div>';
+      });
+    });
+    out+='</div></details>';
+  }
 
   if(erl.length){
     out+='<details style="margin-bottom:12px"><summary style="list-style:none;cursor:pointer;padding:12px 16px;background:var(--green-bg);border:1px solid var(--green-bd);border-radius:12px;display:flex;align-items:center;justify-content:space-between">';
@@ -8024,7 +8071,11 @@ function rZiele(){
     }
 
     // Monatsziele — inline, ausklappbar bei >5
-    const myTZ=(z.teilziele||[]).filter(tz=>(!tz.vertraulich||isGF()||tz.verantwortlichId===aP)&&(tz.status||'aktiv')==='aktiv').sort((a,b)=>{
+    // v175: Aktive separat von Pausiert/Archiv. Pausiert sichtbar-gedimmt, Archiv hinter Toggle.
+    const _tzVisible=(z.teilziele||[]).filter(tz=>!tz.vertraulich||isGF()||tz.verantwortlichId===aP);
+    const _tzPausiert=_tzVisible.filter(tz=>tz.status==='pausiert');
+    const _tzArchiv=_tzVisible.filter(tz=>tz.status==='archiviert');
+    const myTZ=_tzVisible.filter(tz=>(tz.status||'aktiv')==='aktiv').sort((a,b)=>{
       // Eigene zuerst, dann nach Deadline aufsteigend
       const aM=String(a.verantwortlichId)===String(aP)?0:1;
       const bM=String(b.verantwortlichId)===String(aP)?0:1;
@@ -8104,6 +8155,8 @@ function rZiele(){
           out+='</div>';
           // Edit-Icon (Monatsziel bearbeiten)
           if(canManageTZ(z.id))out+='<button title="Monatsziel bearbeiten" onclick="event.stopPropagation();editTZ(\''+z.id+'\',\''+tz.id+'\')" style="flex-shrink:0;width:24px;height:24px;border-radius:6px;border:1px solid '+f.bd+';background:transparent;color:var(--t3);cursor:pointer;font-family:inherit;font-size:12px;line-height:1;padding:0;display:flex;align-items:center;justify-content:center">✎</button>';
+          // v175: Pause-Button (ruht reversibel, Aufgaben werden beim Verantwortlichen gedimmt)
+          if(canManageTZ(z.id)&&!tz.erledigt)out+='<button title="Monatsziel pausieren (Aufgaben werden beim Verantwortlichen gedimmt)" onclick="event.stopPropagation();pauseTZ(\''+z.id+'\',\''+tz.id+'\')" style="flex-shrink:0;width:24px;height:24px;border-radius:6px;border:1px solid '+f.bd+';background:transparent;color:var(--t3);cursor:pointer;font-family:inherit;font-size:11px;line-height:1;padding:0;display:flex;align-items:center;justify-content:center">⏸</button>';
           if(!tz.erledigt)out+='<button title="Aufgabe zu diesem Monatsziel hinzufügen" onclick="event.stopPropagation();addAufgabeToMS(\''+z.id+'\',\''+tz.id+'\')" style="flex-shrink:0;width:24px;height:24px;border-radius:6px;border:1px solid '+f.bd+';background:transparent;color:'+f.tc+';cursor:pointer;font-family:inherit;font-size:15px;font-weight:700;line-height:1;padding:0;display:flex;align-items:center;justify-content:center">+</button>';
           out+='</div>';
           // ── Aufgeklappter Bereich: Aufgaben gruppiert nach Zuständigem ──
@@ -8178,6 +8231,51 @@ function rZiele(){
         out+='</div>';
         if(collapsed)out+='<button onclick="localStorage.setItem(\''+collapseKey+'\',\'1\');rZiele();" style="margin-top:6px;width:100%;font-size:10px;padding:5px;border-radius:7px;border:1px dashed '+f.bd+';background:transparent;color:var(--t2);cursor:pointer;font-family:inherit">+ '+(myTZ.length-5)+' weitere zeigen</button>';
         else if(myTZ.length>5)out+='<button onclick="localStorage.removeItem(\''+collapseKey+'\');rZiele();" style="margin-top:6px;width:100%;font-size:10px;padding:5px;border-radius:7px;border:1px dashed '+f.bd+';background:transparent;color:var(--t2);cursor:pointer;font-family:inherit">↑ weniger zeigen</button>';
+      }
+      out+='</div>';
+    }
+
+    // v175 §14+: Pausierte Monatsziele — sichtbar gedimmt, 1-Tap-Reaktivierung
+    if(_tzPausiert.length){
+      out+='<div style="border-top:1px dashed '+f.bd+';padding-top:10px;margin-bottom:8px;opacity:.72">';
+      out+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);margin-bottom:8px">⏸ Pausiert · '+_tzPausiert.length+'</div>';
+      out+='<div style="display:flex;flex-direction:column;gap:5px">';
+      _tzPausiert.forEach(tz=>{
+        const _tzVer=person(tz.verantwortlichId);
+        const _tzVerN=_tzVer?(String(tz.verantwortlichId)===String(aP)?'du':_tzVer.name.split(' ')[0]):'—';
+        const _pausedA=S.aufgaben.filter(a=>String(a.teilzielId)===String(tz.id)&&a.status!=='erledigt'&&a.status!=='archiviert').length;
+        out+='<div style="display:flex;align-items:center;gap:10px;padding:7px 11px;border:1px dashed var(--bd);border-radius:8px;background:var(--gray-bg)">';
+        out+='<span style="font-size:12px;color:var(--t3)">⏸</span>';
+        out+='<div style="flex:1;min-width:0">';
+        out+='<div style="font-size:12px;font-weight:600;color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(tz.name)+'</div>';
+        out+='<div style="font-size:10px;color:var(--t3);margin-top:1px">'+esc(_tzVerN)+(_pausedA?' · '+_pausedA+' Aufgabe'+(_pausedA>1?'n':'')+' ruhen':'')+'</div>';
+        out+='</div>';
+        if(canManageTZ(z.id)){
+          out+='<button title="Reaktivieren" onclick="reactivateTZ(\''+z.id+'\',\''+tz.id+'\')" style="flex-shrink:0;font-size:11px;padding:4px 10px;border-radius:7px;border:1px solid '+f.bd+';background:var(--sf);color:'+f.tc+';cursor:pointer;font-family:inherit;font-weight:600">▶ Reaktivieren</button>';
+          out+='<button title="Bearbeiten" onclick="editTZ(\''+z.id+'\',\''+tz.id+'\')" style="flex-shrink:0;width:22px;height:22px;border-radius:5px;border:1px solid '+f.bd+';background:transparent;color:var(--t3);cursor:pointer;font-family:inherit;font-size:11px;padding:0">✎</button>';
+          out+='<button title="Archivieren" onclick="archiveTZ(\''+z.id+'\',\''+tz.id+'\')" style="flex-shrink:0;width:22px;height:22px;border-radius:5px;border:1px solid '+f.bd+';background:transparent;color:var(--t3);cursor:pointer;font-family:inherit;font-size:10px;padding:0">📦</button>';
+        }
+        out+='</div>';
+      });
+      out+='</div></div>';
+    }
+
+    // v175: Archivierte MS — hinter Toggle, kein Rauschen im Default
+    if(_tzArchiv.length){
+      const _archKey='zarch_'+z.id;
+      const _archOpen=localStorage.getItem(_archKey)==='1';
+      out+='<div style="margin-bottom:8px">';
+      out+='<button onclick="localStorage.setItem(\''+_archKey+'\',\''+(_archOpen?'0':'1')+'\');rZiele()" style="font-size:10px;padding:4px 10px;border-radius:6px;border:1px dashed var(--bd);background:transparent;color:var(--t3);cursor:pointer;font-family:inherit">📦 Archiv · '+_tzArchiv.length+(_archOpen?' ↑':' ↓')+'</button>';
+      if(_archOpen){
+        out+='<div style="display:flex;flex-direction:column;gap:4px;margin-top:6px;opacity:.55">';
+        _tzArchiv.forEach(tz=>{
+          out+='<div style="display:flex;align-items:center;gap:8px;padding:5px 10px;border:1px dashed var(--bd);border-radius:7px;background:var(--gray-bg)">';
+          out+='<span style="font-size:11px;color:var(--t3);flex-shrink:0">📦</span>';
+          out+='<span style="flex:1;min-width:0;font-size:11px;color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(tz.name)+'</span>';
+          if(canManageTZ(z.id))out+='<button onclick="reactivateTZ(\''+z.id+'\',\''+tz.id+'\')" style="flex-shrink:0;font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);cursor:pointer;font-family:inherit">▶ Reaktivieren</button>';
+          out+='</div>';
+        });
+        out+='</div>';
       }
       out+='</div>';
     }
@@ -8414,6 +8512,12 @@ function editTZ(zid,tzid){
     // v174.2 §14: Leading-Metrik + Anker am Edit-Modal (auch für Bestandsziele nachrüstbar).
     +'<div class="fl"><label>Leading-Metrik (Verb) · optional</label><input id="tzmetrik" value="'+esc(tz.metrik||'')+'" placeholder="z.B. Call gemacht, Reinigung erledigt"></div>'
     +'<div class="fl"><label>Anker (Anzahl, optional)</label><input id="tzzw" type="number" min="1" value="'+(tz.zielWert||'')+'" placeholder="z.B. 200"></div>'
+    // v175 §14+: Status (Rekalibrierung). Pause = reversibel, Archiv = raus aus Views.
+    +(canManageTZ(zid)?('<div class="fl"><label>Status</label><select id="tzstatus">'
+      +'<option value="aktiv"'+((tz.status||'aktiv')==='aktiv'?' selected':'')+'>▶ Aktiv</option>'
+      +'<option value="pausiert"'+(tz.status==='pausiert'?' selected':'')+'>⏸ Pausiert · ruht, Aufgaben gedimmt</option>'
+      +'<option value="archiviert"'+(tz.status==='archiviert'?' selected':'')+'>📦 Archiviert · raus aus Views</option>'
+      +'</select></div>'):'')
     +(isGF()?'<div class="fl"><label style="display:flex;align-items:center;gap:8px;text-transform:none;font-size:13px;font-weight:400"><input type="checkbox" id="tzvert" '+(tz.vertraulich?'checked':'')+' style="width:auto"> 🔒 Vertraulich</label><div style="font-size:10px;color:var(--t3);margin-top:2px">Sichtbar für: Geschäftsführung &amp; Verantwortlicher</div></div>':'')
     +'<div class="mf"><button class="btn btn-red" onclick="delTZ(\''+zid+'\',\''+tzid+'\')">Löschen</button><button class="btn btn-gr" onclick="cm()">Abbrechen</button><button class="btn btn-dk" onclick="saveTZ(\''+zid+'\',\''+tzid+'\')">Speichern</button></div>';
   document.getElementById('ovl').classList.add('open');
@@ -8432,14 +8536,19 @@ async function saveTZ(zid,tzid){
   const zwRaw=zwEl?(zwEl.value||'').trim():'';
   const zielwert=zwRaw?parseInt(zwRaw,10):null;
   const zwFinal=Number.isFinite(zielwert)?zielwert:null;
+  // v175: Status aus Selector (nur übernehmen wenn Feld existiert, sonst Bestand lassen)
+  const statusEl=document.getElementById('tzstatus');
+  const newStatus=statusEl?(statusEl.value||'aktiv'):null;
   if(tzid){
     const tz=(z.teilziele||[]).find(t=>t.id===tzid);
-    if(tz){tz.name=name;tz.verantwortlichId=vid;tz.datum=datum;tz.vertraulich=vertraulich;tz.zielId=newZid;tz.metrik=metrik;tz.zielWert=zwFinal;}
+    if(tz){tz.name=name;tz.verantwortlichId=vid;tz.datum=datum;tz.vertraulich=vertraulich;tz.zielId=newZid;tz.metrik=metrik;tz.zielWert=zwFinal;if(newStatus)tz.status=newStatus;}
     if(newZid!==zid){
       z.teilziele=(z.teilziele||[]).filter(t=>t.id!==tzid);
       const nz=zielObj(newZid);if(nz){nz.teilziele=nz.teilziele||[];nz.teilziele.push(tz);}
     }
-    await dbPatch('teilziele',tzid,{name,verantwortlich_id:vid,datum:datum||null,ziel_id:newZid,vertraulich,metrik,zielwert:zwFinal});
+    const _patch={name,verantwortlich_id:vid,datum:datum||null,ziel_id:newZid,vertraulich,metrik,zielwert:zwFinal};
+    if(newStatus)_patch.status=newStatus;
+    await dbPatch('teilziele',tzid,_patch);
   } else {
     const id=nid('tz'),rec={id,ziel_id:zid,name,verantwortlich_id:vid,datum:datum||null,erledigt:false,vertraulich:false,status:'aktiv',metrik,zielwert:zwFinal};
     z.teilziele=z.teilziele||[];z.teilziele.push({...rec,zielId:zid,verantwortlichId:vid,datum:datum||'',vertraulich:false,status:'aktiv',metrik,zielWert:zwFinal});
@@ -8453,6 +8562,28 @@ async function delTZ(zid,tzid){
   z.teilziele=(z.teilziele||[]).filter(t=>t.id!==tzid);
   S.aufgaben.forEach(a=>{if(a.teilzielId===tzid)a.teilzielId=null;});
   await dbDelete('teilziele',tzid);cm();rZiele();
+}
+// v175 §14+: Rekalibrierungs-Aktionen. Pause = reversibel, Archiv = raus aus Standard-Views.
+// Kaskade ist derived: Aufgaben-Sicht zieht tz.status, kein Schreiben auf aufgaben nötig.
+async function setTZStatus(zid,tzid,newStatus){
+  const z=zielObj(zid);if(!z)return;
+  const tz=(z.teilziele||[]).find(t=>t.id===tzid);if(!tz)return;
+  const prev=tz.status||'aktiv';
+  if(prev===newStatus)return;
+  tz.status=newStatus;
+  try{render();}catch(_){}
+  const ok=await dbPatch('teilziele',tzid,{status:newStatus});
+  if(!ok){tz.status=prev;try{toast('⚠ Speichern fehlgeschlagen','var(--red)');}catch(_){}try{render();}catch(_){}return;}
+  const lbl={aktiv:'▶ Reaktiviert',pausiert:'⏸ Pausiert',archiviert:'📦 Archiviert'}[newStatus]||'✓';
+  try{toast(lbl+' · '+tz.name);}catch(_){}
+}
+function pauseTZ(zid,tzid){setTZStatus(zid,tzid,'pausiert');}
+function reactivateTZ(zid,tzid){setTZStatus(zid,tzid,'aktiv');}
+async function archiveTZ(zid,tzid){
+  const z=zielObj(zid);if(!z)return;
+  const tz=(z.teilziele||[]).find(t=>t.id===tzid);if(!tz)return;
+  if(!confirm('Monatsziel archivieren?\n\n"'+tz.name+'" verschwindet aus allen Ansichten. Reversibel über Archiv-Toggle im Ziele-Tab.'))return;
+  setTZStatus(zid,tzid,'archiviert');
 }
 
 // ── Power-Aktivitäten ──
