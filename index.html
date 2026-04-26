@@ -2066,9 +2066,10 @@ async function winSet(opts){
 }
 
 // Block anhängen. ok=true → +1; bei KPI-Kopplung wird kpi_val++ geschrieben.
-async function winPushBlock({ok,label,hits}){
+async function winPushBlock({ok,label,hits,manuell}){
   const w=winHeute(aP); if(!w){toast('Kein WIN für heute');return;}
   const block={ts:new Date().toISOString(), ok:!!ok, label:label||'', hits:hits||[]};
+  if(manuell)block.manuell=true;
   w.blocks=w.blocks||[]; w.blocks.push(block);
   // KPI-Hit: bei Kopplung jeder ok-Block schreibt +1 in den KPI (oder bei mehreren hits: +hits.length)
   if(ok&&w.einheit==='kpi'&&w.kpiId){
@@ -2131,6 +2132,38 @@ async function winUndoLastBlock(){
   try{render();}catch(_){}
   try{await dbPatch('win_tage',w.id,{blocks:w.blocks,erreicht_at:w.erreichtAt});}catch(_){}
   toast('Block zurückgenommen');
+}
+
+// Per-Block löschen (Logbuch-Pflege). Daten dürfen nicht lügen.
+async function winDeleteBlock(idx){
+  const w=winHeute(aP); if(!w||!w.blocks||idx<0||idx>=w.blocks.length)return;
+  if(!confirm('Diesen Block aus dem Logbuch entfernen?'))return;
+  const b=w.blocks[idx];
+  // KPI-Decrement
+  if(b&&b.ok&&w.einheit==='kpi'&&w.kpiId){
+    try{
+      const cur=getKpiTodayVal(w.kpiId,w.pid)??(()=>{const e=S.kpiVals[w.pid+'-'+w.kpiId];return (e&&e.datum===TODAY)?e.val:0;})();
+      const dec=Math.max(1,(b.hits||[]).length||1);
+      await _saveKpi(w.kpiId,w.pid,Math.max(0,(cur||0)-dec));
+    }catch(_){}
+  }
+  // Aufgaben-Hits zurück auf 'neu'
+  if(b&&b.ok&&b.hits&&b.hits.length){
+    for(const h of b.hits){
+      const a=S.aufgaben.find(x=>x.id===h.tid);
+      if(a&&a.status==='erledigt'){
+        a.status='neu';
+        try{await dbPatch('aufgaben',a.id,{status:'neu'});}catch(_){}
+      }
+    }
+  }
+  w.blocks.splice(idx,1);
+  if(w.erreichtAt&&!winErreicht(w))w.erreichtAt=null;
+  try{await dbPatch('win_tage',w.id,{blocks:w.blocks,erreicht_at:w.erreichtAt});}catch(_){}
+  // Detail-Overlay neu zeichnen, damit Liste aktuell ist
+  try{const ov=document.getElementById('win-detail');if(ov){ov.remove();if(window.winOpenDetail)window.winOpenDetail();}}catch(_){}
+  try{render();}catch(_){}
+  toast('Block gelöscht');
 }
 
 // WIN ausschalten: Datensatz bleibt (Historie), nur Toggle-Flag im LocalStorage
@@ -6063,10 +6096,17 @@ function rTag(){
       out+='<span style="font-size:32px;font-weight:800;color:var(--text);line-height:1;font-variant-numeric:tabular-nums">'+_cnt+'</span>';
       out+='<span style="font-size:16px;color:var(--t3);font-weight:600">/ '+_N+' '+esc(_einh)+'</span>';
       out+='</div>';
-      // Quick-Tap Button-Reihe
-      const _qLbl=_w.einheit==='kpi'?'+1 '+_einh:'✓ Block produktiv';
+      // Block-Erfassung: nur via Ritual (Maker-Modus). Daten dürfen nicht lügen.
+      // Task-WIN → Maker-Modus startet 25-min-Timer auf der Aufgabe.
+      // Frei-WIN ohne Task → Logbuch öffnet manuelles Buchen (mit manuell-Marker).
+      const _winTask=_w.taskId?S.aufgaben.find(a=>a.id===_w.taskId):null;
       out+='<div style="display:flex;gap:8px;flex-wrap:wrap">';
-      out+='<button onclick="event.stopPropagation();winQuickTap()" style="flex:1;min-width:140px;padding:13px;border-radius:10px;background:var(--text);color:var(--bg);border:none;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer">'+_qLbl+'</button>';
+      if(_winTask&&_winTask.status!=='erledigt'){
+        out+='<button onclick="event.stopPropagation();makerModus(\''+_winTask.id+'\')" style="flex:1;min-width:140px;padding:13px;border-radius:10px;background:var(--text);color:var(--bg);border:none;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer">▶ Block starten</button>';
+      } else {
+        // Kein gekoppelter Task — Maker braucht eine Aufgabe. Manuelle Buchung über Logbuch (mit Marker).
+        out+='<button onclick="event.stopPropagation();winOpenDetail()" style="flex:1;min-width:140px;padding:13px;border-radius:10px;background:var(--text);color:var(--bg);border:none;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer">Block buchen</button>';
+      }
       out+='<button onclick="event.stopPropagation();winOpenDetail()" style="padding:13px 14px;border-radius:10px;background:transparent;color:var(--text);border:1px solid var(--bd);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer">Logbuch</button>';
       out+='</div>';
       // Sammel-Tick-Banner: wenn missing > 1, sanfter Hinweis
@@ -12663,16 +12703,23 @@ window.addEventListener('keydown',e=>{
     if(!(w.blocks||[]).length){
       html+='<div style="font-size:12px;color:var(--t3);font-style:italic">— noch leer —</div>';
     } else {
-      let n=0;
+      // Pro Block 1 Logbuch-Zeile (egal wie viele Hits) — sonst lässt sich nicht klar löschen.
       w.blocks.forEach((b,i)=>{
+        const _del='<button onclick="winDeleteBlock('+i+')" title="Block löschen" style="background:transparent;border:none;color:var(--t3);font-size:14px;cursor:pointer;padding:2px 6px;line-height:1">✕</button>';
+        const _man=b.manuell?' <span style="font-size:10px;color:var(--t3);font-style:italic">manuell</span>':'';
         if(b.ok){
+          let mainTxt='';
           if(b.hits&&b.hits.length){
-            b.hits.forEach(h=>{n++;html+='<div style="display:flex;gap:10px;font-size:13px;padding:3px 0;border-bottom:1px solid var(--bd)"><span style="color:var(--gold-t);width:24px">✓</span><span style="flex:1;text-decoration:line-through;color:var(--t2)">'+esc(h.name)+'</span></div>';});
+            mainTxt=b.hits.map(h=>'<span style="text-decoration:line-through;color:var(--t2)">'+esc(h.name)+'</span>').join(', ');
+            if(b.label)mainTxt+=' <span style="color:var(--t3)">·</span> '+esc(b.label);
+          } else if(b.label){
+            mainTxt=esc(b.label);
+          } else {
+            mainTxt='<span style="color:var(--t3)">Block '+(i+1)+' produktiv</span>';
           }
-          if(b.label){n++;html+='<div style="display:flex;gap:10px;font-size:13px;padding:3px 0;border-bottom:1px solid var(--bd)"><span style="color:var(--gold-t);width:24px">·</span><span style="flex:1">'+esc(b.label)+'</span></div>';}
-          if(!b.label&&!(b.hits&&b.hits.length)){n++;html+='<div style="display:flex;gap:10px;font-size:13px;padding:3px 0;border-bottom:1px solid var(--bd)"><span style="color:var(--gold-t);width:24px">+</span><span style="flex:1;color:var(--t3)">Block '+(i+1)+' produktiv</span></div>';}
+          html+='<div style="display:flex;gap:10px;align-items:center;font-size:13px;padding:3px 0;border-bottom:1px solid var(--bd)"><span style="color:var(--gold-t);width:24px">✓</span><span style="flex:1">'+mainTxt+_man+'</span>'+_del+'</div>';
         } else {
-          html+='<div style="display:flex;gap:10px;font-size:13px;padding:3px 0;border-bottom:1px solid var(--bd);opacity:.6"><span style="color:var(--red,#ef6f6f);width:24px">—</span><span style="flex:1;color:var(--t3)">Block '+(i+1)+' · Tal</span></div>';
+          html+='<div style="display:flex;gap:10px;align-items:center;font-size:13px;padding:3px 0;border-bottom:1px solid var(--bd);opacity:.65"><span style="color:var(--red,#ef6f6f);width:24px">—</span><span style="flex:1;color:var(--t3)">Block '+(i+1)+' · Tal'+_man+'</span>'+_del+'</div>';
         }
       });
     }
@@ -12754,8 +12801,8 @@ window.addEventListener('keydown',e=>{
       }
     }
     const ok=hits.length>0||label.length>0;
-    if(ok)await winPushBlock({ok:true,label,hits});
-    else await winPushBlock({ok:false,label:'',hits:[]});
+    if(ok)await winPushBlock({ok:true,label,hits,manuell:true});
+    else await winPushBlock({ok:false,label:'',hits:[],manuell:true});
     document.getElementById('win-detail')?.remove();
     if(ok)_winShowUndo();
   };
