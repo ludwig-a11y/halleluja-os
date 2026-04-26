@@ -12531,7 +12531,8 @@ window.addEventListener('keydown',e=>{
     wrap.onclick=e=>{if(e.target===wrap)wrap.remove();};
     let html='<div style="background:var(--bg);width:100%;max-width:560px;max-height:88vh;overflow:auto;border-radius:16px 16px 0 0;padding:18px 18px 24px;border:1px solid var(--bd);border-bottom:none">';
     html+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px"><div style="font-size:11px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:var(--gold-t)">⌖ WIN setzen</div><div style="flex:1;font-size:12px;color:var(--t3)">Was ist heute dein Nordstern?</div><button onclick="document.getElementById(\'win-picker\').remove()" style="background:transparent;border:none;color:var(--t3);font-size:18px;cursor:pointer">✕</button></div>';
-    html+='<div style="font-size:11px;color:var(--t3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">Aus heutigen Aufgaben</div>';
+    html+='<div style="background:var(--gray-bg);border:1px solid var(--bd);border-radius:8px;padding:9px 11px;margin-bottom:14px;font-size:11px;color:var(--t2);line-height:1.5"><b style="color:var(--text)">Wie das funktioniert:</b><br><b>WIN-Anker</b> = die EINE Aufgabe heute (Single-Goal). <b>Tagesziel</b> = Block-Quota für den ganzen Tag (egal welche Aufgabe). Beispiel: Anker nach 2 Blöcken fertig → Quota läuft weiter, andere Aufgaben zählen mit.</div>';
+    html+='<div style="font-size:11px;color:var(--t3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">⌖ WIN-Anker · Aus heutigen Aufgaben</div>';
     html+='<div id="winp-tasks" style="margin-bottom:10px">';
     if(big3.length){
       html+='<div style="font-size:10px;color:var(--gold-t);margin:4px 0 2px;font-weight:700">⭐ Big3</div>';
@@ -12545,11 +12546,13 @@ window.addEventListener('keydown',e=>{
       html+='<div style="font-size:12px;color:var(--t3);font-style:italic;padding:8px 0">— keine offenen Aufgaben heute —</div>';
     }
     html+='</div>';
-    html+='<div style="font-size:11px;color:var(--t3);text-transform:uppercase;letter-spacing:.6px;margin:14px 0 6px">…oder frei</div>';
-    html+='<input id="winp-free" type="text" placeholder="z.B. Termine machen" value="'+esc(prefill.label||'')+'" style="width:100%;background:transparent;border:1px solid var(--bd);color:var(--text);padding:9px 11px;border-radius:8px;font:inherit;outline:none;box-sizing:border-box;margin-bottom:14px">';
+    html+='<div style="font-size:11px;color:var(--t3);text-transform:uppercase;letter-spacing:.6px;margin:14px 0 6px">…oder Anker frei formulieren</div>';
+    // Frei-Text NUR vorbefüllen wenn keine Task ausgewählt (sonst verwirrt es)
+    html+='<input id="winp-free" type="text" placeholder="z.B. Termine machen" value="'+esc(prefill.taskId?'':(prefill.label||''))+'" oninput="_winFreeInput()" style="width:100%;background:transparent;border:1px solid var(--bd);color:var(--text);padding:9px 11px;border-radius:8px;font:inherit;outline:none;box-sizing:border-box;margin-bottom:14px">';
     // Ziel + Einheit
-    html+='<div style="display:flex;gap:10px;align-items:center;margin-bottom:10px;flex-wrap:wrap">';
-    html+='<label style="font-size:12px;color:var(--t2)">Tagesziel: <input id="winp-n" type="number" min="1" max="99" value="'+(prefill.nZiel||10)+'" style="width:60px;background:transparent;border:1px solid var(--bd);color:var(--text);padding:6px 8px;border-radius:6px;font:inherit;text-align:center;margin-left:4px"></label>';
+    html+='<div style="font-size:11px;color:var(--t3);text-transform:uppercase;letter-spacing:.6px;margin-top:8px;margin-bottom:6px">Tages-Quota · alle produktiven Blöcke heute</div>';
+    html+='<div style="display:flex;gap:10px;align-items:center;margin-bottom:4px;flex-wrap:wrap">';
+    html+='<label style="font-size:12px;color:var(--t2)">Quota: <input id="winp-n" type="number" min="1" max="99" value="'+(prefill.nZiel||10)+'" style="width:60px;background:transparent;border:1px solid var(--bd);color:var(--text);padding:6px 8px;border-radius:6px;font:inherit;text-align:center;margin-left:4px"></label>';
     html+='<label style="font-size:12px;color:var(--t2)">Einheit: <select id="winp-einh" onchange="_winToggleKpi()" style="background:var(--sf);border:1px solid var(--bd);color:var(--text);padding:6px 8px;border-radius:6px;font:inherit;margin-left:4px"><option value="block"'+(prefill.einheit==='block'?' selected':'')+'>Blöcke</option><option value="kpi"'+(prefill.einheit==='kpi'?' selected':'')+'>KPI-Hits</option></select></label>';
     html+='</div>';
     // KPI-Auswahl
@@ -12587,8 +12590,18 @@ window.addEventListener('keydown',e=>{
   function _winPickRow(a,pref){
     const sel=pref.taskId===a.id?' checked':'';
     const slotMark=a.big3Slot?'⭐ ':'';
-    return '<label style="display:flex;align-items:center;gap:9px;padding:8px 6px;border-radius:6px;cursor:pointer" onmouseover="this.style.background=\'var(--sf)\'" onmouseout="this.style.background=\'transparent\'"><input type="radio" name="winp-task" value="'+a.id+'"'+sel+' style="accent-color:var(--gold-t);transform:scale(1.15)"><span style="font-size:13px;flex:1">'+slotMark+esc(a.titel)+'</span></label>';
+    const blocksHint=a.geplant?' <span style="font-size:10px;color:var(--t3);margin-left:6px">~'+(typeof taskPlannedBlocks==='function'?taskPlannedBlocks(a):'?')+' Bl</span>':'';
+    return '<label style="display:flex;align-items:center;gap:9px;padding:8px 6px;border-radius:6px;cursor:pointer" onmouseover="this.style.background=\'var(--sf)\'" onmouseout="this.style.background=\'transparent\'"><input type="radio" name="winp-task" value="'+a.id+'"'+sel+' onchange="_winTaskPicked(\''+a.id+'\')" style="accent-color:var(--gold-t);transform:scale(1.15)"><span style="font-size:13px;flex:1">'+slotMark+esc(a.titel)+blocksHint+'</span></label>';
   }
+  // User wählt Task → Frei-Text leeren. Quota nicht überschreiben (Tages-Quota ist absichtlich unabhängig).
+  window._winTaskPicked=function(id){
+    const fr=document.getElementById('winp-free'); if(fr)fr.value='';
+  };
+  // User tippt im Frei-Text → Radio-Auswahl lösen
+  window._winFreeInput=function(){
+    const fr=document.getElementById('winp-free'); if(!fr||!fr.value)return;
+    document.querySelectorAll('input[name="winp-task"]:checked').forEach(r=>{r.checked=false;});
+  };
   window._winToggleKpi=function(){
     const v=document.getElementById('winp-einh').value;
     document.getElementById('winp-kpiwrap').style.display=v==='kpi'?'block':'none';
