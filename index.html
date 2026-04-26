@@ -2068,8 +2068,12 @@ async function winSet(opts){
 // Block anhängen. ok=true → +1; bei KPI-Kopplung wird kpi_val++ geschrieben.
 async function winPushBlock({ok,label,hits,manuell}){
   const w=winHeute(aP); if(!w){toast('Kein WIN für heute');return;}
+  // Bonus-Markierung: wenn WIN bereits erreicht, ist der neue Block "Bonus" (Kür, nicht Pflicht).
+  // Daten dürfen nicht lügen — Bonus wird klar separiert in Logbuch und Auswertung.
+  const wasErreicht=winErreicht(w);
   const block={ts:new Date().toISOString(), ok:!!ok, label:label||'', hits:hits||[]};
   if(manuell)block.manuell=true;
+  if(wasErreicht&&ok)block.bonus=true;
   w.blocks=w.blocks||[]; w.blocks.push(block);
   // KPI-Hit: bei Kopplung jeder ok-Block schreibt +1 in den KPI (oder bei mehreren hits: +hits.length)
   if(ok&&w.einheit==='kpi'&&w.kpiId){
@@ -2132,6 +2136,20 @@ async function winUndoLastBlock(){
   try{render();}catch(_){}
   try{await dbPatch('win_tage',w.id,{blocks:w.blocks,erreicht_at:w.erreichtAt});}catch(_){}
   toast('Block zurückgenommen');
+}
+
+// Ziel erhöhen — Single-Goal bleibt, Latte wandert. Doktrin: Re-Anchor statt zweiter WIN.
+async function winRaiseGoal(by){
+  const w=winHeute(aP); if(!w)return;
+  const newN=Math.max(1,(w.nZiel||1)+(by||1));
+  if(!confirm('Ziel von '+w.nZiel+' auf '+newN+' erhöhen?'))return;
+  w.nZiel=newN;
+  // Wenn neue Latte wieder unter Count, erreichtAt bleibt; sonst löschen für Re-Toast bei Wieder-Reach.
+  const cnt=winCount(w);
+  if(cnt<newN)w.erreichtAt=null;
+  try{await dbPatch('win_tage',w.id,{n_ziel:newN,erreicht_at:w.erreichtAt});}catch(e){console.error('winRaiseGoal',e);}
+  try{render();}catch(_){}
+  toast('Ziel: '+newN+' Blöcke');
 }
 
 // Per-Block löschen (Logbuch-Pflege). Daten dürfen nicht lügen.
@@ -6106,20 +6124,35 @@ function rTag(){
       // Block-Erfassung: nur via Ritual (Maker-Modus). Daten dürfen nicht lügen.
       const _winTask=_w.taskId?S.aufgaben.find(a=>a.id===_w.taskId):null;
       // Button-Layout konsistent zu Aktiv-Task-Hero:
-      //   Cost-Pille links (25 min Fokus-Commitment, Sam Ovens / Pomodoro)
-      //   Haupt-Action rechts. Pille erdet den Button visuell.
-      if(_winTask&&_winTask.status!=='erledigt'&&!_erreicht){
-        const _nextN=_cnt+1;
+      //   Cost-Pille links (Commitment-Anker), Haupt-Action rechts.
+      // Erreicht-State: Bonus-Pille (gold) statt regulärer Cost-Pille — Kür, nicht Pflicht.
+      const _nextN=_cnt+1;
+      const _bonusBlocks=(_w.blocks||[]).filter(b=>b.bonus&&b.ok).length;
+      if(_winTask&&_winTask.status!=='erledigt'){
+        const _pillBg=_erreicht?'linear-gradient(135deg,#d4af37,#f0c674)':'rgba(0,0,0,.08)';
+        const _pillCol=_erreicht?'#1a1a1a':'var(--bg)';
+        const _pillTxt=_erreicht
+          ?'🌟 Bonus'+(_bonusBlocks?' · '+(_bonusBlocks+1):'')
+          :'⏱ '+WIN_BLOCK_MIN+' min · Block '+_nextN;
         out+='<button onclick="event.stopPropagation();makerModus(\''+_winTask.id+'\')" style="width:100%;padding:14px 16px;border-radius:14px;background:var(--text);color:var(--bg);border:none;font-family:inherit;font-size:14px;font-weight:700;letter-spacing:.2px;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.18);transition:transform .15s ease, box-shadow .15s ease;display:flex;align-items:center;justify-content:space-between;gap:12px" onmouseenter="this.style.transform=\'translateY(-1px)\';this.style.boxShadow=\'0 8px 24px rgba(0,0,0,.26)\'" onmouseleave="this.style.transform=\'translateY(0)\';this.style.boxShadow=\'0 4px 16px rgba(0,0,0,.18)\'">'
-          +'<span style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:99px;background:rgba(0,0,0,.08);font-size:11px;font-weight:700;color:var(--bg);font-variant-numeric:tabular-nums;letter-spacing:.2px">⏱ '+WIN_BLOCK_MIN+' min · Block '+_nextN+'</span>'
-          +'<span style="display:inline-flex;align-items:center;gap:6px">▶ Block starten</span>'
+          +'<span style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:99px;background:'+_pillBg+';font-size:11px;font-weight:700;color:'+_pillCol+';font-variant-numeric:tabular-nums;letter-spacing:.2px">'+_pillTxt+'</span>'
+          +'<span style="display:inline-flex;align-items:center;gap:6px">▶ '+(_erreicht?'Bonus-Block':'Block starten')+'</span>'
           +'</button>';
-      } else if(!_erreicht){
-        // Frei-WIN ohne Task: kein Timer-Ritual, also keine Cost-Pille — ehrlich asymmetrisch.
+      } else {
+        // Frei-WIN ohne Task — manuelle Buchung (oder Bonus-manuell wenn erreicht).
+        const _pillBg=_erreicht?'linear-gradient(135deg,#d4af37,#f0c674)':'rgba(0,0,0,.08)';
+        const _pillCol=_erreicht?'#1a1a1a':'var(--bg)';
+        const _pillTxt=_erreicht?'🌟 Bonus':'📝 manuell';
         out+='<button onclick="event.stopPropagation();winOpenDetail()" style="width:100%;padding:14px 16px;border-radius:14px;background:var(--text);color:var(--bg);border:none;font-family:inherit;font-size:14px;font-weight:700;letter-spacing:.2px;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.18);display:flex;align-items:center;justify-content:space-between;gap:12px">'
-          +'<span style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:99px;background:rgba(0,0,0,.08);font-size:11px;font-weight:700;color:var(--bg);letter-spacing:.2px">📝 manuell</span>'
-          +'<span style="display:inline-flex;align-items:center;gap:6px">Block buchen</span>'
+          +'<span style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:99px;background:'+_pillBg+';font-size:11px;font-weight:700;color:'+_pillCol+';letter-spacing:.2px">'+_pillTxt+'</span>'
+          +'<span style="display:inline-flex;align-items:center;gap:6px">'+(_erreicht?'Bonus buchen':'Block buchen')+'</span>'
           +'</button>';
+      }
+      // Erreicht-State: dezenter "Ziel erhöhen"-Link unter dem CTA — falls die Latte höher soll
+      if(_erreicht){
+        out+='<div style="display:flex;justify-content:center;gap:14px;margin-top:8px">';
+        out+='<button onclick="event.stopPropagation();winRaiseGoal(5)" style="background:transparent;border:none;color:var(--gold-t);font-size:10px;font-family:inherit;font-weight:700;letter-spacing:.6px;text-transform:uppercase;cursor:pointer;padding:4px 8px">↑ Ziel +5 erhöhen</button>';
+        out+='</div>';
       }
       // Logbuch als dezenter Text-Link unter dem CTA
       out+='<div style="display:flex;justify-content:center;margin-top:'+(_erreicht?'4px':'10px')+'">';
@@ -12721,10 +12754,14 @@ window.addEventListener('keydown',e=>{
     if(!(w.blocks||[]).length){
       html+='<div style="font-size:12px;color:var(--t3);font-style:italic">— noch leer —</div>';
     } else {
-      // Pro Block 1 Logbuch-Zeile (egal wie viele Hits) — sonst lässt sich nicht klar löschen.
-      w.blocks.forEach((b,i)=>{
+      // Reguläre Blocks zuerst, Bonus-Blocks darunter als eigene Sektion.
+      // Daten dürfen nicht lügen — Bonus ist Kür, separat ausgewiesen.
+      const _regBlocks=[], _bonusList=[];
+      w.blocks.forEach((b,i)=>{ (b.bonus?_bonusList:_regBlocks).push({b,i}); });
+      const _renderBlock=({b,i})=>{
         const _del='<button onclick="winDeleteBlock('+i+')" title="Block löschen" style="background:transparent;border:none;color:var(--t3);font-size:14px;cursor:pointer;padding:2px 6px;line-height:1">✕</button>';
         const _man=b.manuell?' <span style="font-size:10px;color:var(--t3);font-style:italic">manuell</span>':'';
+        const _icon=b.bonus?'<span style="color:var(--gold-t);width:24px">🌟</span>':(b.ok?'<span style="color:var(--gold-t);width:24px">✓</span>':'<span style="color:var(--red,#ef6f6f);width:24px">—</span>');
         if(b.ok){
           let mainTxt='';
           if(b.hits&&b.hits.length){
@@ -12733,13 +12770,18 @@ window.addEventListener('keydown',e=>{
           } else if(b.label){
             mainTxt=esc(b.label);
           } else {
-            mainTxt='<span style="color:var(--t3)">Block '+(i+1)+' produktiv</span>';
+            mainTxt='<span style="color:var(--t3)">Block '+(i+1)+(b.bonus?' · Bonus':' produktiv')+'</span>';
           }
-          html+='<div style="display:flex;gap:10px;align-items:center;font-size:13px;padding:3px 0;border-bottom:1px solid var(--bd)"><span style="color:var(--gold-t);width:24px">✓</span><span style="flex:1">'+mainTxt+_man+'</span>'+_del+'</div>';
+          return '<div style="display:flex;gap:10px;align-items:center;font-size:13px;padding:3px 0;border-bottom:1px solid var(--bd)">'+_icon+'<span style="flex:1">'+mainTxt+_man+'</span>'+_del+'</div>';
         } else {
-          html+='<div style="display:flex;gap:10px;align-items:center;font-size:13px;padding:3px 0;border-bottom:1px solid var(--bd);opacity:.65"><span style="color:var(--red,#ef6f6f);width:24px">—</span><span style="flex:1;color:var(--t3)">Block '+(i+1)+' · Tal'+_man+'</span>'+_del+'</div>';
+          return '<div style="display:flex;gap:10px;align-items:center;font-size:13px;padding:3px 0;border-bottom:1px solid var(--bd);opacity:.65">'+_icon+'<span style="flex:1;color:var(--t3)">Block '+(i+1)+' · Tal'+_man+'</span>'+_del+'</div>';
         }
-      });
+      };
+      _regBlocks.forEach(x=>{ html+=_renderBlock(x); });
+      if(_bonusList.length){
+        html+='<div style="margin-top:10px;font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--gold-t);padding:6px 0 4px">🌟 Bonus · '+_bonusList.length+'</div>';
+        _bonusList.forEach(x=>{ html+=_renderBlock(x); });
+      }
     }
     html+='</div>';
     // Kryptonit
