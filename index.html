@@ -692,7 +692,7 @@ function normalizeAufgabe(a){
     wochenresetId:a.wochenreset_id||null,big3Slot:a.big3_slot||null};
 }
 async function loadData(){
-  const [personen,teams,ziele,kpis,teilziele,aufgaben,kpiVals,checkins,signale,wochenresets,beobachtungen,kontextFeed,decisionRequests,meetings,paddelGewinner,monatszielInputs]=await Promise.all([
+  const [personen,teams,ziele,kpis,teilziele,aufgaben,kpiVals,checkins,signale,wochenresets,beobachtungen,kontextFeed,decisionRequests,meetings,paddelGewinner,monatszielInputs,winTage]=await Promise.all([
     dbGet('personen','select=*&order=ci'),dbGet('teams','select=*'),
     dbGet('ziele','select=*&order=created_at'),dbGet('kpis','select=*'),
     dbGet('teilziele','select=*&order=created_at'),dbGet('aufgaben','select=*&order=created_at'),
@@ -706,6 +706,8 @@ async function loadData(){
     dbGet('paddel_gewinner','select=*&order=erstellt_am.desc'),
     // v174: Input-Log für Leading-Indikatoren. Tolerant gegenüber fehlender Tabelle (Migration nötig).
     dbGet('monatsziel_inputs','select=*&order=datum.desc').catch(()=>[]),
+    // v176: WIN-Tage. Tolerant gegenüber fehlender Tabelle (Migration nötig).
+    dbGet('win_tage','select=*&order=datum.desc&limit=200').catch(()=>[]),
   ]);
   S.personen=personen||[];
   S.teams=(teams||[]).map(t=>({...t,members:t.members||[]}));
@@ -738,6 +740,17 @@ async function loadData(){
   S.paddelGewinner=(paddelGewinner||[]);
   // v174: Leading-Indicator-Inputs (camelCase-Mapping)
   S.monatszielInputs=(monatszielInputs||[]).map(i=>({id:i.id,teilzielId:i.teilziel_id,datum:i.datum,quelle:i.quelle||'manual',createdBy:i.created_by||null,createdAt:i.created_at||null}));
+  // v176: WIN-Tage (camelCase-Mapping). blocks/kryptonit als Arrays defensiv defaulten.
+  S.winTage=(winTage||[]).map(w=>({
+    id:w.id, pid:w.pid, datum:w.datum,
+    taskId:w.task_id||null, label:w.label||'',
+    nZiel:w.n_ziel||1, einheit:w.einheit||'block', kpiId:w.kpi_id||null,
+    kryptonit:Array.isArray(w.kryptonit)?w.kryptonit:[],
+    blocks:Array.isArray(w.blocks)?w.blocks:[],
+    startH:w.start_h??8, endH:w.end_h??17,
+    erreichtAt:w.erreicht_at||null,
+    createdAt:w.created_at||null, createdBy:w.created_by||null
+  }));
   S.checkins={};
   (checkins||[]).forEach(c=>{if(!S.checkins[c.pid]||c.datum>S.checkins[c.pid].date)S.checkins[c.pid]={date:c.datum,morgen:c.morgen,abend:c.abend};});
   S.signale=(signale||[]);
@@ -1923,6 +1936,179 @@ function msOnTaskDone(a,quelle){
     msPushInput(a.teilzielId,quelle||('task:'+a.id));
   }catch(e){console.error('msOnTaskDone',e);}
 }
+
+// ── v176 WIN-Modus — Was Ist jetzt wichtig ────────────────────────────────
+// Doktrin: Mental Model §13 (Dopamin am Input), §14 (Leading), Sam Ovens (one-thing).
+// +1 = "Block produktiv". Counter zeigt Blöcke ODER KPI-Hits (je nach Kopplung).
+// Schweigen = Tal. Wer in Flow war, korrigiert per Sammel-Tick rückwärts.
+const WIN_BLOCK_MIN=25, WIN_PAUSE_MIN=5, WIN_CYCLE_MIN=30;
+
+function winHeute(pid){
+  pid=pid||aP;
+  return (S.winTage||[]).find(w=>w.pid===pid&&w.datum===TODAY)||null;
+}
+function winYesterdayLast(pid){
+  pid=pid||aP;
+  const list=(S.winTage||[]).filter(w=>w.pid===pid&&w.datum<TODAY).sort((a,b)=>b.datum.localeCompare(a.datum));
+  return list[0]||null;
+}
+function winErreicht(w){
+  if(!w)return false;
+  return winCount(w)>=(w.nZiel||1);
+}
+// Counter-Display: KPI-gekoppelt → KPI-Wert heute; sonst → produktive Blöcke
+function winCount(w){
+  if(!w)return 0;
+  if(w.einheit==='kpi'&&w.kpiId){
+    const e=S.kpiVals[w.pid+'-'+w.kpiId];
+    return (e&&e.datum===TODAY)?e.val:0;
+  }
+  return (w.blocks||[]).filter(b=>b.ok).length;
+}
+function winEinheitLbl(w){
+  if(!w)return '';
+  if(w.einheit==='kpi'&&w.kpiId){
+    const k=(S.ziele||[]).flatMap(z=>z.kpis||[]).find(x=>x.id===w.kpiId);
+    return k?(k.label||'KPI'):'KPI';
+  }
+  return 'Blöcke';
+}
+// Wie viele Blöcke seit Start vergangen sein müssten (für Tal-Visualisierung)
+function winExpectedBlocks(w){
+  if(!w)return 0;
+  const start=(w.startH??8), end=(w.endH??17);
+  const now=new Date();
+  const cur=now.getHours()+now.getMinutes()/60;
+  if(cur<start)return 0;
+  const runMin=Math.min((end-start)*60, (cur-start)*60);
+  return Math.floor(runMin/WIN_CYCLE_MIN);
+}
+function winTotalBlocks(w){
+  const start=(w&&w.startH)??8, end=(w&&w.endH)??17;
+  return Math.floor((end-start)*60/WIN_CYCLE_MIN);
+}
+function winMissingCount(w){
+  return Math.max(0, winExpectedBlocks(w)-(w.blocks||[]).length);
+}
+
+// Upsert WIN für heute. opts: {taskId, label, nZiel, einheit, kpiId, kryptonit, startH, endH}
+async function winSet(opts){
+  if(!aP){toast('Bitte Person wählen');return null;}
+  let w=winHeute(aP);
+  const isNew=!w;
+  if(isNew){
+    w={
+      id:'win_'+Date.now()+'_'+Math.random().toString(36).slice(2,8),
+      pid:aP, datum:TODAY,
+      taskId:opts.taskId||null, label:opts.label||'',
+      nZiel:opts.nZiel||1, einheit:opts.einheit||'block', kpiId:opts.kpiId||null,
+      kryptonit:opts.kryptonit||[],
+      blocks:[], startH:opts.startH??8, endH:opts.endH??17,
+      erreichtAt:null, createdAt:new Date().toISOString(), createdBy:aP
+    };
+    S.winTage=S.winTage||[]; S.winTage.unshift(w);
+  } else {
+    Object.assign(w,{
+      taskId:opts.taskId!==undefined?opts.taskId:w.taskId,
+      label:opts.label!==undefined?opts.label:w.label,
+      nZiel:opts.nZiel||w.nZiel,
+      einheit:opts.einheit||w.einheit,
+      kpiId:opts.kpiId!==undefined?opts.kpiId:w.kpiId,
+      kryptonit:opts.kryptonit||w.kryptonit,
+      startH:opts.startH??w.startH, endH:opts.endH??w.endH
+    });
+  }
+  try{render();}catch(_){}
+  try{
+    const rec={
+      id:w.id, pid:w.pid, datum:w.datum,
+      task_id:w.taskId, label:w.label, n_ziel:w.nZiel, einheit:w.einheit, kpi_id:w.kpiId,
+      kryptonit:w.kryptonit, blocks:w.blocks,
+      start_h:w.startH, end_h:w.endH,
+      created_by:w.createdBy
+    };
+    if(isNew){
+      const ok=await dbInsert('win_tage',rec);
+      if(!ok){S.winTage=S.winTage.filter(x=>x.id!==w.id);toast('⚠ WIN nicht gespeichert');render();return null;}
+    } else {
+      await dbPatch('win_tage',w.id,{task_id:w.taskId,label:w.label,n_ziel:w.nZiel,einheit:w.einheit,kpi_id:w.kpiId,kryptonit:w.kryptonit,start_h:w.startH,end_h:w.endH});
+    }
+  }catch(e){console.error('winSet',e);}
+  return w;
+}
+
+// Block anhängen. ok=true → +1; bei KPI-Kopplung wird kpi_val++ geschrieben.
+async function winPushBlock({ok,label,hits}){
+  const w=winHeute(aP); if(!w){toast('Kein WIN für heute');return;}
+  const block={ts:new Date().toISOString(), ok:!!ok, label:label||'', hits:hits||[]};
+  w.blocks=w.blocks||[]; w.blocks.push(block);
+  // KPI-Hit: bei Kopplung jeder ok-Block schreibt +1 in den KPI (oder bei mehreren hits: +hits.length)
+  if(ok&&w.einheit==='kpi'&&w.kpiId){
+    const inc=Math.max(1,(hits||[]).length||1);
+    try{
+      const cur=getKpiTodayVal(w.kpiId,w.pid)??(()=>{const e=S.kpiVals[w.pid+'-'+w.kpiId];return (e&&e.datum===TODAY)?e.val:0;})();
+      await _saveKpi(w.kpiId,w.pid,(cur||0)+inc);
+    }catch(e){console.error('winKpiWrite',e);}
+  }
+  // Erreicht-Markierung
+  if(!w.erreichtAt&&winErreicht(w)){
+    w.erreichtAt=new Date().toISOString();
+    setTimeout(()=>{try{toast('✓ WIN erreicht.');}catch(_){}},250);
+  }
+  try{render();}catch(_){}
+  try{await dbPatch('win_tage',w.id,{blocks:w.blocks,erreicht_at:w.erreichtAt});}catch(e){console.error('winPushBlock',e);}
+}
+
+// Sammel-Tick: N produktive Blöcke rückwirkend (Flow-Auftauchen)
+async function winSammelTick(count,label){
+  const w=winHeute(aP); if(!w||count<=0)return;
+  const ts=new Date().toISOString();
+  for(let i=0;i<count;i++){
+    w.blocks.push({ts,ok:true,label:i===0?(label||'Flow'):'',hits:[]});
+  }
+  if(w.einheit==='kpi'&&w.kpiId){
+    try{
+      const cur=getKpiTodayVal(w.kpiId,w.pid)??(()=>{const e=S.kpiVals[w.pid+'-'+w.kpiId];return (e&&e.datum===TODAY)?e.val:0;})();
+      await _saveKpi(w.kpiId,w.pid,(cur||0)+count);
+    }catch(e){console.error('winSammelKpi',e);}
+  }
+  if(!w.erreichtAt&&winErreicht(w)){w.erreichtAt=ts;}
+  try{render();}catch(_){}
+  try{await dbPatch('win_tage',w.id,{blocks:w.blocks,erreicht_at:w.erreichtAt});}catch(e){console.error('winSammelTick',e);}
+}
+
+// Undo: letzten Block entfernen (wenn Versehen).
+async function winUndoLastBlock(){
+  const w=winHeute(aP); if(!w||!w.blocks.length)return;
+  const last=w.blocks.pop();
+  // KPI rückgängig
+  if(last.ok&&w.einheit==='kpi'&&w.kpiId){
+    try{
+      const cur=getKpiTodayVal(w.kpiId,w.pid)??(()=>{const e=S.kpiVals[w.pid+'-'+w.kpiId];return (e&&e.datum===TODAY)?e.val:0;})();
+      const dec=Math.max(1,(last.hits||[]).length||1);
+      await _saveKpi(w.kpiId,w.pid,Math.max(0,(cur||0)-dec));
+    }catch(e){}
+  }
+  // Aufgaben-Hits rückgängig (status zurück auf neu)
+  if(last.hits&&last.hits.length){
+    for(const h of last.hits){
+      const a=S.aufgaben.find(x=>x.id===h.tid);
+      if(a&&a.status==='erledigt'){
+        a.status='neu';
+        try{await dbPatch('aufgaben',a.id,{status:'neu'});}catch(_){}
+      }
+    }
+  }
+  if(w.erreichtAt&&!winErreicht(w))w.erreichtAt=null;
+  try{render();}catch(_){}
+  try{await dbPatch('win_tage',w.id,{blocks:w.blocks,erreicht_at:w.erreichtAt});}catch(_){}
+  toast('Block zurückgenommen');
+}
+
+// WIN ausschalten: Datensatz bleibt (Historie), nur Toggle-Flag im LocalStorage
+function winOff(){try{localStorage.setItem('win_off_'+aP+'_'+TODAY,'1');render();}catch(_){}}
+function winOn(){try{localStorage.removeItem('win_off_'+aP+'_'+TODAY);render();}catch(_){}}
+function winIsOff(){try{return localStorage.getItem('win_off_'+aP+'_'+TODAY)==='1';}catch(_){return false;}}
 
 function openDelegOverdue(){
   try{
@@ -5786,6 +5972,70 @@ function rTag(){
     out+='<div style="flex:1 1 220px;min-width:0;order:2">'+spangeRender(aP,{inline:true})+'</div>';
     out+='<div style="flex:0 0 auto;order:3">'+momentumRingHtml(aP)+'</div>';
     out+='</div>';
+  }
+
+  // ── v176 WIN-Modus — Was Ist jetzt wichtig ──
+  // Vor §14, weil tagesgebundener als Monatsziel. Wenn Switch aus → kompakter "WIN setzen?"-Hint.
+  {
+    const _w=winHeute(aP);
+    const _winActive=_w&&!winIsOff();
+    if(_winActive){
+      const _cnt=winCount(_w);
+      const _N=_w.nZiel||1;
+      const _einh=winEinheitLbl(_w);
+      const _missing=winMissingCount(_w);
+      const _expected=winExpectedBlocks(_w);
+      const _total=winTotalBlocks(_w);
+      const _erreicht=winErreicht(_w);
+      const _name=esc(_w.label||(S.aufgaben.find(a=>a.id===_w.taskId)?.titel)||'WIN');
+      out+='<div class="fm-hide" style="background:linear-gradient(180deg,var(--sf) 0%,var(--bg) 100%);border:1.5px solid var(--gold-t);border-radius:14px;padding:14px 16px;margin-bottom:14px;cursor:pointer" onclick="winOpenDetail()">';
+      out+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">';
+      out+='<div style="font-size:10px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:var(--gold-t)">⌖ WIN</div>';
+      out+='<div style="flex:1;font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+_name+'</div>';
+      out+='<button onclick="event.stopPropagation();winOff()" title="WIN-Modus aus" style="background:transparent;border:none;color:var(--t3);font-size:14px;cursor:pointer;padding:2px 6px">✕</button>';
+      out+='</div>';
+      // Counter-Zeile
+      out+='<div style="display:flex;align-items:baseline;gap:14px;margin-bottom:10px;flex-wrap:wrap">';
+      out+='<div><span style="font-size:36px;font-weight:800;color:var(--text);line-height:1;font-variant-numeric:tabular-nums">'+_cnt+'</span><span style="font-size:18px;color:var(--t3);font-weight:600"> / '+_N+'</span><div style="font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.4px;margin-top:3px">'+esc(_einh)+(_erreicht?' · ✓ erreicht':'')+'</div></div>';
+      // Mini-Sparkline: produktive vs Tal Punkte
+      out+='<div style="flex:1;min-width:140px;display:flex;align-items:flex-end;gap:2px;height:32px">';
+      for(let i=0;i<_total;i++){
+        const b=_w.blocks[i];
+        const isExpected=i<_expected;
+        let h,bg;
+        if(b){h=b.ok?20:6; bg=b.ok?'var(--green,#7ad08a)':'var(--red,#ef6f6f)';}
+        else if(isExpected){h=10; bg='var(--t3)';} // Tal in Echtzeit
+        else {h=4; bg='var(--bd)';} // future
+        out+='<div style="flex:1;height:'+h+'px;background:'+bg+';border-radius:1px;min-width:3px"'+(isExpected&&!b?' title="Tal · noch nicht bestätigt"':'')+'></div>';
+      }
+      out+='</div></div>';
+      // Quick-Tap Button-Reihe
+      const _qLbl=_w.einheit==='kpi'?'+1 '+_einh:'✓ Block produktiv';
+      out+='<div style="display:flex;gap:8px;flex-wrap:wrap">';
+      out+='<button onclick="event.stopPropagation();winQuickTap()" style="flex:1;min-width:140px;padding:12px;border-radius:10px;background:var(--text);color:var(--bg);border:none;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer">'+_qLbl+'</button>';
+      out+='<button onclick="event.stopPropagation();winOpenDetail()" style="padding:12px 14px;border-radius:10px;background:transparent;color:var(--text);border:1px solid var(--bd);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer">Logbuch</button>';
+      out+='</div>';
+      // Sammel-Tick-Banner: wenn missing > 1, sanfter Hinweis
+      if(_missing>=2&&!_erreicht){
+        out+='<div style="margin-top:10px;padding:9px 11px;background:var(--amber-bg);border-radius:8px;font-size:12px;color:var(--text);display:flex;align-items:center;gap:8px;flex-wrap:wrap">';
+        out+='<span style="font-weight:700">'+_missing+' Blöcke ohne Antwort</span>';
+        out+='<span style="color:var(--t2);flex:1;min-width:120px">— im Flow gewesen?</span>';
+        out+='<button onclick="event.stopPropagation();winSammelTick('+_missing+',\'Flow\')" style="background:var(--text);color:var(--bg);border:none;border-radius:8px;padding:6px 10px;font:600 12px inherit;cursor:pointer">✓ alle '+_missing+' produktiv</button>';
+        out+='</div>';
+      }
+      out+='</div>';
+    } else if(!winIsOff()) {
+      // WIN nicht gesetzt → kompakter Hint zum Setzen (wenn nicht explizit aus)
+      const _yest=winYesterdayLast(aP);
+      const _hint=_yest?('Letzter WIN: '+esc(_yest.label||'…')+' · übernehmen?'):'Heute einen WIN setzen?';
+      out+='<div class="fm-hide" style="background:var(--sf);border:1px dashed var(--bd);border-radius:14px;padding:11px 14px;margin-bottom:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">';
+      out+='<div style="font-size:10px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:var(--t3)">⌖ WIN</div>';
+      out+='<div style="flex:1;font-size:12px;color:var(--t2);min-width:120px">'+_hint+'</div>';
+      if(_yest){out+='<button onclick="winTakeOverYesterday()" style="background:var(--text);color:var(--bg);border:none;border-radius:8px;padding:7px 11px;font:600 12px inherit;cursor:pointer">Übernehmen</button>';}
+      out+='<button onclick="winOpenPicker()" style="background:transparent;color:var(--text);border:1px solid var(--bd);border-radius:8px;padding:7px 11px;font:600 12px inherit;cursor:pointer">Setzen</button>';
+      out+='<button onclick="winOff()" title="ausblenden" style="background:transparent;color:var(--t3);border:none;font-size:13px;cursor:pointer;padding:2px 4px">✕</button>';
+      out+='</div>';
+    }
   }
 
   // ── v174 §14: Leading-Indicator-Hero ──
@@ -11932,6 +12182,296 @@ window.addEventListener('keydown',e=>{
     }
     // Token abgelaufen → User muss selbst auf "GCal verbinden" klicken (user-initiated)
   }
+  // ── v176 WIN-Modus: UI (Picker, Detail, Quick-Tap, Pulse) ─────────────
+  // Quick-Tap: 1-Tap-Variante für Mobile. Bei Aufgaben-Kopplung wird ggf. Aufgabe abgehakt.
+  window.winQuickTap=async function(){
+    const w=winHeute(aP); if(!w)return;
+    // Wenn taskId vorhanden und Aufgabe noch nicht erledigt: hak ab + +1.
+    let hits=[];
+    if(w.taskId){
+      const a=S.aufgaben.find(x=>x.id===w.taskId);
+      if(a&&a.status!=='erledigt'){
+        // Bei Multi-Output (Sales): nur dann Aufgabe schließen, wenn das WIRKLICH 1:1 ist.
+        // Konvention: bei einheit='kpi' wird Aufgabe NICHT abgehakt (KPI zählt). Bei einheit='block' UND nZiel=1 → abhaken.
+        if(w.einheit==='block'&&w.nZiel===1){
+          a.status='erledigt'; a.updated_at=new Date().toISOString();
+          try{await dbPatch('aufgaben',a.id,{status:'erledigt',updated_at:a.updated_at});}catch(_){}
+          msOnTaskDone(a,'win:'+w.id);
+          hits.push({tid:a.id,name:a.titel});
+        }
+      }
+    }
+    await winPushBlock({ok:true,label:'',hits});
+    // Undo-Toast
+    _winShowUndo();
+  };
+
+  function _winShowUndo(){
+    let bar=document.getElementById('win-undo-bar');
+    if(bar)bar.remove();
+    bar=document.createElement('div');
+    bar.id='win-undo-bar';
+    bar.style.cssText='position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:9999;background:var(--text);color:var(--bg);padding:10px 14px 10px 16px;border-radius:999px;box-shadow:0 8px 24px rgba(0,0,0,.18);display:flex;align-items:center;gap:10px;font-family:inherit;font-size:13px;font-weight:600';
+    bar.innerHTML='<span>+1 verbucht</span><button onclick="winUndoLastBlock();this.parentNode.remove()" style="background:rgba(255,255,255,.18);color:inherit;border:none;border-radius:99px;padding:5px 12px;font:600 12px inherit;cursor:pointer">Rückgängig</button>';
+    document.body.appendChild(bar);
+    setTimeout(()=>{try{bar.remove();}catch(_){}},5000);
+  }
+
+  // ── WIN-Picker ──────────────────────────────────────────────────────
+  window.winOpenPicker=function(prefill){
+    prefill=prefill||{};
+    const todayTasks=S.aufgaben.filter(a=>a.pid===aP&&a.status!=='erledigt'&&a.status!=='archiviert'&&a.status!=='zugewiesen'&&a.status!=='zurueckgegeben'&&!taskIsPaused(a)&&!taskIsArchived(a));
+    const big3=todayTasks.filter(a=>a.big3Slot);
+    const restTasks=todayTasks.filter(a=>!a.big3Slot).slice(0,12);
+    const allKpis=(S.ziele||[]).flatMap(z=>(z.kpis||[]).map(k=>({k,zName:z.name})));
+
+    const wrap=document.createElement('div');
+    wrap.id='win-picker';
+    wrap.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9998;display:flex;align-items:flex-end;justify-content:center;padding:0';
+    wrap.onclick=e=>{if(e.target===wrap)wrap.remove();};
+    let html='<div style="background:var(--bg);width:100%;max-width:560px;max-height:88vh;overflow:auto;border-radius:16px 16px 0 0;padding:18px 18px 24px;border:1px solid var(--bd);border-bottom:none">';
+    html+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px"><div style="font-size:11px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:var(--gold-t)">⌖ WIN setzen</div><div style="flex:1;font-size:12px;color:var(--t3)">Was ist heute dein Nordstern?</div><button onclick="document.getElementById(\'win-picker\').remove()" style="background:transparent;border:none;color:var(--t3);font-size:18px;cursor:pointer">✕</button></div>';
+    html+='<div style="font-size:11px;color:var(--t3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">Aus heutigen Aufgaben</div>';
+    html+='<div id="winp-tasks" style="margin-bottom:10px">';
+    if(big3.length){
+      html+='<div style="font-size:10px;color:var(--gold-t);margin:4px 0 2px;font-weight:700">⭐ Big3</div>';
+      big3.forEach(a=>{html+=_winPickRow(a,prefill);});
+    }
+    if(restTasks.length){
+      html+='<div style="font-size:10px;color:var(--t3);margin:8px 0 2px">weitere Aufgaben</div>';
+      restTasks.forEach(a=>{html+=_winPickRow(a,prefill);});
+    }
+    if(!big3.length&&!restTasks.length){
+      html+='<div style="font-size:12px;color:var(--t3);font-style:italic;padding:8px 0">— keine offenen Aufgaben heute —</div>';
+    }
+    html+='</div>';
+    html+='<div style="font-size:11px;color:var(--t3);text-transform:uppercase;letter-spacing:.6px;margin:14px 0 6px">…oder frei</div>';
+    html+='<input id="winp-free" type="text" placeholder="z.B. Termine machen" value="'+esc(prefill.label||'')+'" style="width:100%;background:transparent;border:1px solid var(--bd);color:var(--text);padding:9px 11px;border-radius:8px;font:inherit;outline:none;box-sizing:border-box;margin-bottom:14px">';
+    // Ziel + Einheit
+    html+='<div style="display:flex;gap:10px;align-items:center;margin-bottom:10px;flex-wrap:wrap">';
+    html+='<label style="font-size:12px;color:var(--t2)">Tagesziel: <input id="winp-n" type="number" min="1" max="99" value="'+(prefill.nZiel||10)+'" style="width:60px;background:transparent;border:1px solid var(--bd);color:var(--text);padding:6px 8px;border-radius:6px;font:inherit;text-align:center;margin-left:4px"></label>';
+    html+='<label style="font-size:12px;color:var(--t2)">Einheit: <select id="winp-einh" onchange="_winToggleKpi()" style="background:var(--sf);border:1px solid var(--bd);color:var(--text);padding:6px 8px;border-radius:6px;font:inherit;margin-left:4px"><option value="block"'+(prefill.einheit==='block'?' selected':'')+'>Blöcke</option><option value="kpi"'+(prefill.einheit==='kpi'?' selected':'')+'>KPI-Hits</option></select></label>';
+    html+='</div>';
+    // KPI-Auswahl
+    html+='<div id="winp-kpiwrap" style="margin-bottom:14px;'+(prefill.einheit==='kpi'?'':'display:none')+'">';
+    html+='<label style="font-size:11px;color:var(--t3);text-transform:uppercase;letter-spacing:.6px">An KPI koppeln</label>';
+    html+='<select id="winp-kpi" style="width:100%;background:var(--sf);border:1px solid var(--bd);color:var(--text);padding:8px 10px;border-radius:8px;font:inherit;margin-top:4px">';
+    html+='<option value="">— wählen —</option>';
+    // Gruppieren nach Ziel
+    const _byZ={}; allKpis.forEach(({k,zName})=>{(_byZ[zName]=_byZ[zName]||[]).push(k);});
+    Object.entries(_byZ).forEach(([zName,ks])=>{
+      html+='<optgroup label="'+esc(zName)+'">';
+      ks.forEach(k=>{html+='<option value="'+k.id+'"'+(prefill.kpiId===k.id?' selected':'')+'>'+esc(k.label||'KPI')+'</option>';});
+      html+='</optgroup>';
+    });
+    html+='</select>';
+    html+='<div style="font-size:11px;color:var(--t3);font-style:italic;margin-top:4px">→ jeder +1 schreibt automatisch in den KPI-Wert.</div>';
+    html+='</div>';
+    // Kryptonit
+    html+='<div style="margin-bottom:14px"><div style="font-size:11px;color:var(--t3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">Kryptonit · was hält dich heute auf?</div>';
+    const _kr=prefill.kryptonit||[{},{},{}];
+    while(_kr.length<3)_kr.push({});
+    for(let i=0;i<3;i++){
+      html+='<div style="display:flex;gap:6px;margin:4px 0;align-items:center">';
+      html+='<input class="winp-kf" type="text" placeholder="Feind '+(i+1)+'" value="'+esc(_kr[i].feind||'')+'" style="flex:1;background:transparent;border:1px solid var(--bd);color:var(--text);padding:7px 9px;border-radius:6px;font:13px inherit;outline:none">';
+      html+='<span style="color:var(--t3);font-size:13px">→</span>';
+      html+='<input class="winp-kg" type="text" placeholder="Gegenmittel" value="'+esc(_kr[i].gegen||'')+'" style="flex:1;background:transparent;border:1px solid var(--bd);color:var(--text);padding:7px 9px;border-radius:6px;font:13px inherit;outline:none">';
+      html+='</div>';
+    }
+    html+='</div>';
+    html+='<div style="display:flex;gap:8px;margin-top:6px"><button onclick="_winSaveFromPicker()" style="flex:1;background:var(--text);color:var(--bg);border:none;border-radius:10px;padding:13px;font:700 14px inherit;cursor:pointer">WIN setzen</button><button onclick="document.getElementById(\'win-picker\').remove()" style="background:transparent;color:var(--text);border:1px solid var(--bd);border-radius:10px;padding:13px 18px;font:600 14px inherit;cursor:pointer">Abbrechen</button></div>';
+    html+='</div>';
+    wrap.innerHTML=html;
+    document.body.appendChild(wrap);
+  };
+  function _winPickRow(a,pref){
+    const sel=pref.taskId===a.id?' checked':'';
+    const slotMark=a.big3Slot?'⭐ ':'';
+    return '<label style="display:flex;align-items:center;gap:9px;padding:8px 6px;border-radius:6px;cursor:pointer" onmouseover="this.style.background=\'var(--sf)\'" onmouseout="this.style.background=\'transparent\'"><input type="radio" name="winp-task" value="'+a.id+'"'+sel+' style="accent-color:var(--gold-t);transform:scale(1.15)"><span style="font-size:13px;flex:1">'+slotMark+esc(a.titel)+'</span></label>';
+  }
+  window._winToggleKpi=function(){
+    const v=document.getElementById('winp-einh').value;
+    document.getElementById('winp-kpiwrap').style.display=v==='kpi'?'block':'none';
+  };
+  window._winSaveFromPicker=async function(){
+    const sel=document.querySelector('input[name="winp-task"]:checked');
+    const taskId=sel?sel.value:null;
+    const free=(document.getElementById('winp-free').value||'').trim();
+    const label=taskId?(S.aufgaben.find(a=>a.id===taskId)?.titel||''):free;
+    if(!taskId&&!free){toast('Aufgabe oder Frei-Text wählen');return;}
+    const nZiel=parseInt(document.getElementById('winp-n').value)||1;
+    const einheit=document.getElementById('winp-einh').value||'block';
+    const kpiId=einheit==='kpi'?(document.getElementById('winp-kpi').value||null):null;
+    const feinde=[...document.querySelectorAll('.winp-kf')].map(e=>e.value.trim());
+    const gegen=[...document.querySelectorAll('.winp-kg')].map(e=>e.value.trim());
+    const kryptonit=feinde.map((f,i)=>({feind:f,gegen:gegen[i]||''})).filter(k=>k.feind||k.gegen);
+    document.getElementById('win-picker').remove();
+    winOn();
+    await winSet({taskId,label,nZiel,einheit,kpiId,kryptonit});
+  };
+
+  // Übernahme von gestern: Picker mit Werten vorbefüllt
+  window.winTakeOverYesterday=function(){
+    const y=winYesterdayLast(aP); if(!y){winOpenPicker();return;}
+    winOpenPicker({taskId:y.taskId,label:y.label,nZiel:y.nZiel,einheit:y.einheit,kpiId:y.kpiId,kryptonit:y.kryptonit});
+  };
+
+  // ── WIN-Detail (Gipfel + Logbuch + Kryptonit + Block-Dialog) ────────
+  window.winOpenDetail=function(){
+    const w=winHeute(aP); if(!w){winOpenPicker();return;}
+    const todayTasks=S.aufgaben.filter(a=>a.pid===aP&&a.status!=='erledigt'&&a.status!=='archiviert'&&!taskIsPaused(a)&&!taskIsArchived(a)).slice(0,8);
+    const wrap=document.createElement('div');
+    wrap.id='win-detail';
+    wrap.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9998;display:flex;align-items:flex-end;justify-content:center';
+    wrap.onclick=e=>{if(e.target===wrap)wrap.remove();};
+    let html='<div style="background:var(--bg);width:100%;max-width:640px;max-height:92vh;overflow:auto;border-radius:16px 16px 0 0;padding:16px 18px 24px;border:1px solid var(--bd);border-bottom:none">';
+    const cnt=winCount(w), N=w.nZiel||1, einh=winEinheitLbl(w), erreicht=winErreicht(w);
+    const name=esc(w.label||(S.aufgaben.find(a=>a.id===w.taskId)?.titel)||'WIN');
+    html+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px"><div style="font-size:11px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:var(--gold-t)">⌖ WIN</div><div style="flex:1;font-size:14px;font-weight:700">'+name+'</div><button onclick="winOpenPicker({taskId:winHeute(aP).taskId,label:winHeute(aP).label,nZiel:winHeute(aP).nZiel,einheit:winHeute(aP).einheit,kpiId:winHeute(aP).kpiId,kryptonit:winHeute(aP).kryptonit});document.getElementById(\'win-detail\').remove()" title="WIN bearbeiten" style="background:transparent;border:1px solid var(--bd);color:var(--text);padding:5px 10px;border-radius:6px;font:600 11px inherit;cursor:pointer">✎</button><button onclick="document.getElementById(\'win-detail\').remove()" style="background:transparent;border:none;color:var(--t3);font-size:18px;cursor:pointer">✕</button></div>';
+    // Counter & Status
+    html+='<div style="display:flex;align-items:baseline;gap:18px;margin-bottom:12px;flex-wrap:wrap"><div><span style="font-size:48px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums">'+cnt+'</span><span style="font-size:20px;color:var(--t3);font-weight:600"> / '+N+'</span><div style="font-size:11px;color:var(--t3);text-transform:uppercase;letter-spacing:.4px;margin-top:3px">'+esc(einh)+'</div></div>';
+    if(erreicht){html+='<div style="font-size:13px;color:var(--green,#7ad08a);font-weight:700">✓ WIN erreicht — Bonus läuft</div>';}
+    html+='</div>';
+    // Gipfel-SVG
+    html+='<div style="margin:6px 0 14px">'+_winGipfelSvg(w)+'</div>';
+    // Block-Dialog
+    html+='<div style="border:1px solid var(--bd);border-radius:10px;padding:11px 13px;margin-bottom:14px">';
+    html+='<div style="font-size:11px;color:var(--t3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px">Block fertig — was hat sich bewegt?</div>';
+    todayTasks.forEach(a=>{
+      html+='<label style="display:flex;align-items:center;gap:8px;padding:5px 0;font-size:13px;cursor:pointer"><input type="checkbox" class="wind-tcb" data-tid="'+a.id+'" style="accent-color:var(--gold-t);transform:scale(1.1)"><span>'+esc(a.titel)+'</span></label>';
+    });
+    if(!todayTasks.length)html+='<div style="font-size:12px;color:var(--t3);font-style:italic">— keine offenen Aufgaben —</div>';
+    html+='<input id="wind-label" type="text" placeholder="…oder frei: was war\'s?" style="width:100%;background:transparent;border:1px solid var(--bd);color:var(--text);padding:7px 9px;border-radius:6px;font:13px inherit;outline:none;box-sizing:border-box;margin-top:8px">';
+    html+='<div style="display:flex;gap:8px;margin-top:9px"><button onclick="_winCommitBlock()" style="flex:1;background:var(--text);color:var(--bg);border:none;border-radius:8px;padding:10px;font:700 13px inherit;cursor:pointer">✓ Block fertig</button></div>';
+    html+='<div style="font-size:10px;color:var(--t3);font-style:italic;margin-top:6px">Schweigen = Tal. Kein Selbst-Etikettieren.</div>';
+    html+='</div>';
+    // Logbuch
+    html+='<div style="margin-bottom:12px"><div style="font-size:11px;color:var(--t3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">Logbuch · '+(w.blocks||[]).length+' Blöcke</div>';
+    if(!(w.blocks||[]).length){
+      html+='<div style="font-size:12px;color:var(--t3);font-style:italic">— noch leer —</div>';
+    } else {
+      let n=0;
+      w.blocks.forEach((b,i)=>{
+        if(b.ok){
+          if(b.hits&&b.hits.length){
+            b.hits.forEach(h=>{n++;html+='<div style="display:flex;gap:10px;font-size:13px;padding:3px 0;border-bottom:1px solid var(--bd)"><span style="color:var(--gold-t);width:24px">✓</span><span style="flex:1;text-decoration:line-through;color:var(--t2)">'+esc(h.name)+'</span></div>';});
+          }
+          if(b.label){n++;html+='<div style="display:flex;gap:10px;font-size:13px;padding:3px 0;border-bottom:1px solid var(--bd)"><span style="color:var(--gold-t);width:24px">·</span><span style="flex:1">'+esc(b.label)+'</span></div>';}
+          if(!b.label&&!(b.hits&&b.hits.length)){n++;html+='<div style="display:flex;gap:10px;font-size:13px;padding:3px 0;border-bottom:1px solid var(--bd)"><span style="color:var(--gold-t);width:24px">+</span><span style="flex:1;color:var(--t3)">Block '+(i+1)+' produktiv</span></div>';}
+        } else {
+          html+='<div style="display:flex;gap:10px;font-size:13px;padding:3px 0;border-bottom:1px solid var(--bd);opacity:.6"><span style="color:var(--red,#ef6f6f);width:24px">—</span><span style="flex:1;color:var(--t3)">Block '+(i+1)+' · Tal</span></div>';
+        }
+      });
+    }
+    html+='</div>';
+    // Kryptonit
+    if((w.kryptonit||[]).length){
+      html+='<div style="margin-bottom:6px"><div style="font-size:11px;color:var(--t3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">Kryptonit</div>';
+      w.kryptonit.forEach(k=>{
+        if(!k.feind&&!k.gegen)return;
+        html+='<div style="font-size:12px;padding:3px 0"><span style="color:var(--red,#ef6f6f)">'+esc(k.feind||'?')+'</span> <span style="color:var(--t3)">→</span> <span>'+esc(k.gegen||'?')+'</span></div>';
+      });
+      html+='</div>';
+    }
+    html+='</div>';
+    wrap.innerHTML=html;
+    document.body.appendChild(wrap);
+  };
+
+  function _winGipfelSvg(w){
+    const W=600,H=180,padL=28,padR=18,padT=14,padB=22;
+    const wPx=W-padL-padR, hPx=H-padT-padB;
+    const total=winTotalBlocks(w), exp=winExpectedBlocks(w);
+    const startH=w.startH??8, endH=w.endH??17;
+    const N=Math.max(1,w.nZiel||1);
+    const xFor=b=>padL+(b/total)*wPx;
+    const yFor=v=>padT+hPx-(Math.min(v,N*1.2)/N)*hPx*0.83;  // ein bisschen Headroom für Bonus
+    let s='<svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none" style="width:100%;height:160px;display:block">';
+    // Achsen
+    s+='<line x1="'+padL+'" y1="'+(H-padB)+'" x2="'+(W-padR)+'" y2="'+(H-padB)+'" stroke="var(--bd)" stroke-width="1"/>';
+    s+='<line x1="'+padL+'" y1="'+padT+'" x2="'+padL+'" y2="'+(H-padB)+'" stroke="var(--bd)" stroke-width="1"/>';
+    // Stunden-Ticks
+    for(let h=startH;h<=endH;h++){
+      const x=padL+((h-startH)*60/WIN_CYCLE_MIN/total)*wPx;
+      s+='<line x1="'+x+'" y1="'+(H-padB)+'" x2="'+x+'" y2="'+(H-padB+3)+'" stroke="var(--bd)"/>';
+      s+='<text x="'+x+'" y="'+(H-padB+14)+'" text-anchor="middle" fill="var(--t3)" font-size="9" font-family="inherit">'+h+'h</text>';
+    }
+    s+='<text x="'+(padL-5)+'" y="'+(yFor(N)+3)+'" text-anchor="end" fill="var(--t3)" font-size="9" font-family="inherit">'+N+'</text>';
+    // Plan-Linie
+    s+='<line x1="'+xFor(0)+'" y1="'+yFor(0)+'" x2="'+xFor(total)+'" y2="'+yFor(N)+'" stroke="var(--t3)" stroke-width="1" stroke-dasharray="3 4" opacity=".5"/>';
+    // Real-Linie
+    if((w.blocks||[]).length){
+      let cum=0,d='M '+xFor(0)+' '+yFor(0);
+      const valFor=b=>{
+        if(!b.ok)return 0;
+        if(w.einheit==='kpi'&&w.kpiId)return Math.max(1,(b.hits||[]).length||1);
+        return 1;
+      };
+      w.blocks.forEach((b,i)=>{cum+=valFor(b); d+=' L '+xFor(i+1)+' '+yFor(cum);});
+      s+='<path d="'+d+'" stroke="var(--green,#7ad08a)" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>';
+      cum=0;
+      w.blocks.forEach((b,i)=>{cum+=valFor(b); s+='<circle cx="'+xFor(i+1)+'" cy="'+yFor(cum)+'" r="3.2" fill="'+(b.ok?'var(--green,#7ad08a)':'var(--red,#ef6f6f)')+'"/>';});
+    }
+    // Now-Line + leere Tal-Markierungen
+    if(exp>0&&exp<=total){
+      const nx=xFor(exp);
+      s+='<line x1="'+nx+'" y1="'+padT+'" x2="'+nx+'" y2="'+(H-padB)+'" stroke="var(--gold-t)" stroke-width="1" stroke-dasharray="2 3"/>';
+    }
+    // Stern am Gipfel
+    const gx=xFor(total),gy=yFor(N);
+    s+='<polygon points="'+gx+','+(gy-7)+' '+(gx+2)+','+(gy-2)+' '+(gx+7)+','+(gy-1)+' '+(gx+3)+','+(gy+1.5)+' '+(gx+4.5)+','+(gy+7)+' '+gx+','+(gy+3)+' '+(gx-4.5)+','+(gy+7)+' '+(gx-3)+','+(gy+1.5)+' '+(gx-7)+','+(gy-1)+' '+(gx-2)+','+(gy-2)+'" fill="var(--gold-t)"/>';
+    s+='</svg>';
+    return s;
+  }
+
+  window._winCommitBlock=async function(){
+    const checks=[...document.querySelectorAll('.wind-tcb:checked')];
+    const labelEl=document.getElementById('wind-label');
+    const label=(labelEl?.value||'').trim();
+    const hits=[];
+    for(const c of checks){
+      const tid=c.dataset.tid;
+      const a=S.aufgaben.find(x=>x.id===tid);
+      if(a&&a.status!=='erledigt'){
+        a.status='erledigt'; a.updated_at=new Date().toISOString();
+        try{await dbPatch('aufgaben',a.id,{status:'erledigt',updated_at:a.updated_at});}catch(_){}
+        msOnTaskDone(a,'win:block');
+        hits.push({tid:a.id,name:a.titel});
+      }
+    }
+    const ok=hits.length>0||label.length>0;
+    if(ok)await winPushBlock({ok:true,label,hits});
+    else await winPushBlock({ok:false,label:'',hits:[]});
+    document.getElementById('win-detail')?.remove();
+    if(ok)_winShowUndo();
+  };
+
+  // ── Block-Pulse: Tab-Title-Tick + Visibility-Sammel-Tick ──────────────
+  // Pulse alle 60s: prüft ob neuer erwarteter Block. Tab-Title bekommt Marker.
+  let _winPulseInt=null;
+  function _winPulseTick(){
+    try{
+      if(!aP)return;
+      const w=winHeute(aP); if(!w||winIsOff()){if(document.title.startsWith('● '))document.title=document.title.replace(/^● /,'');return;}
+      const missing=winMissingCount(w);
+      const erreicht=winErreicht(w);
+      const base=document.title.replace(/^● \(\d+\) |^● /,'');
+      if(erreicht){document.title=base.replace(/^✓ /,''); document.title='✓ '+document.title;return;}
+      if(missing>=1){
+        document.title='● ('+missing+') '+base.replace(/^✓ /,'');
+      } else {
+        document.title=base.replace(/^✓ /,'');
+      }
+    }catch(e){console.error('winPulseTick',e);}
+  }
+  if(_winPulseInt)clearInterval(_winPulseInt);
+  _winPulseInt=setInterval(_winPulseTick,60000);
+  setTimeout(_winPulseTick,2000);
+  // Visibility-Wechsel: bei Wieder-Auftauchen sanft an Sammel-Tick erinnern (durch Render — Hero-Banner).
+  document.addEventListener('visibilitychange',()=>{
+    if(document.visibilityState==='visible'){try{render();_winPulseTick();}catch(_){}}
+  });
+
   // GCal Token Auto-Refresh: nur wenn Tab aktiv UND User-Interaktion stattfand
   let _gcalLastInteraction=Date.now();
   document.addEventListener('click',()=>_gcalLastInteraction=Date.now(),{passive:true});
