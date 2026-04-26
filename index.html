@@ -12573,29 +12573,9 @@ window.addEventListener('keydown',e=>{
     }
     // Token abgelaufen → User muss selbst auf "GCal verbinden" klicken (user-initiated)
   }
-  // ── v176 WIN-Modus: UI (Picker, Detail, Quick-Tap, Pulse) ─────────────
-  // Quick-Tap: 1-Tap-Variante für Mobile. Bei Aufgaben-Kopplung wird ggf. Aufgabe abgehakt.
-  window.winQuickTap=async function(){
-    const w=winHeute(aP); if(!w)return;
-    // Wenn taskId vorhanden und Aufgabe noch nicht erledigt: hak ab + +1.
-    let hits=[];
-    if(w.taskId){
-      const a=S.aufgaben.find(x=>x.id===w.taskId);
-      if(a&&a.status!=='erledigt'){
-        // Bei Multi-Output (Sales): nur dann Aufgabe schließen, wenn das WIRKLICH 1:1 ist.
-        // Konvention: bei einheit='kpi' wird Aufgabe NICHT abgehakt (KPI zählt). Bei einheit='block' UND nZiel=1 → abhaken.
-        if(w.einheit==='block'&&w.nZiel===1){
-          a.status='erledigt'; a.updated_at=new Date().toISOString();
-          try{await dbPatch('aufgaben',a.id,{status:'erledigt',updated_at:a.updated_at});}catch(_){}
-          msOnTaskDone(a,'win:'+w.id);
-          hits.push({tid:a.id,name:a.titel});
-        }
-      }
-    }
-    await winPushBlock({ok:true,label:'',hits});
-    // Undo-Toast
-    _winShowUndo();
-  };
+  // ── v176 WIN-Modus: UI (Picker, Detail, Pulse) ────────────────────────
+  // (Quick-Tap entfernt in v176-7: Block-Erfassung läuft ausschließlich
+  //  über Maker-Ritual oder manuell-markiertes Logbuch-Commit.)
 
   function _winShowUndo(){
     let bar=document.getElementById('win-undo-bar');
@@ -12805,7 +12785,9 @@ window.addEventListener('keydown',e=>{
     const total=winTotalBlocks(w), exp=winExpectedBlocks(w);
     const startH=w.startH??8, endH=w.endH??17;
     const N=Math.max(1,w.nZiel||1);
-    const xFor=b=>padL+(b/total)*wPx;
+    // x-Clamp: Bonus-Blocks können total überschreiten (mehr Blocks als Tag-Capacity).
+    // Stop-am-Gipfel verhindert dass Punkte aus dem SVG laufen.
+    const xFor=b=>padL+(Math.min(b,total)/total)*wPx;
     const yFor=v=>padT+hPx-(Math.min(v,N*1.2)/N)*hPx*0.83;  // ein bisschen Headroom für Bonus
     let s='<svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none" style="width:100%;height:160px;display:block">';
     // Achsen
@@ -12831,7 +12813,13 @@ window.addEventListener('keydown',e=>{
       w.blocks.forEach((b,i)=>{cum+=valFor(b); d+=' L '+xFor(i+1)+' '+yFor(cum);});
       s+='<path d="'+d+'" stroke="var(--green,#7ad08a)" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>';
       cum=0;
-      w.blocks.forEach((b,i)=>{cum+=valFor(b); s+='<circle cx="'+xFor(i+1)+'" cy="'+yFor(cum)+'" r="3.2" fill="'+(b.ok?'var(--green,#7ad08a)':'var(--red,#ef6f6f)')+'"/>';});
+      // Bonus-Blocks bekommen goldenen Dot — visuell von Pflicht-Blocks getrennt.
+      w.blocks.forEach((b,i)=>{
+        cum+=valFor(b);
+        const _fill=b.bonus?'var(--gold-t)':(b.ok?'var(--green,#7ad08a)':'var(--red,#ef6f6f)');
+        const _r=b.bonus?3.8:3.2;
+        s+='<circle cx="'+xFor(i+1)+'" cy="'+yFor(cum)+'" r="'+_r+'" fill="'+_fill+'"'+(b.bonus?' stroke="var(--bg)" stroke-width="1"':'')+'/>';
+      });
     }
     // Now-Line + leere Tal-Markierungen
     if(exp>0&&exp<=total){
