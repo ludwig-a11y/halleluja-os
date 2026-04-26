@@ -2029,11 +2029,17 @@ async function winSet(opts){
     };
     if(isNew){
       const ok=await dbInsert('win_tage',rec);
-      if(!ok){S.winTage=S.winTage.filter(x=>x.id!==w.id);toast('⚠ WIN nicht gespeichert');render();return null;}
+      if(!ok){
+        S.winTage=S.winTage.filter(x=>x.id!==w.id);
+        toast('⚠ WIN nicht gespeichert · Tabelle win_tage angelegt? (Migration v176)');
+        console.warn('[v176] dbInsert win_tage failed — likely missing table. Run migrations/v176_win_modus.sql in Supabase.');
+        render();
+        return null;
+      }
     } else {
       await dbPatch('win_tage',w.id,{task_id:w.taskId,label:w.label,n_ziel:w.nZiel,einheit:w.einheit,kpi_id:w.kpiId,kryptonit:w.kryptonit,start_h:w.startH,end_h:w.endH});
     }
-  }catch(e){console.error('winSet',e);}
+  }catch(e){console.error('winSet',e);toast('⚠ Fehler beim Speichern (Konsole)');}
   return w;
 }
 
