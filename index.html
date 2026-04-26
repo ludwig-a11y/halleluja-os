@@ -6073,45 +6073,50 @@ function rTag(){
       const _bs=winBlockStatus(_w);
       const _phaseColor=_bs.phase==='block'?'var(--green,#7ad08a)':_bs.phase==='pause'?'var(--gold-t)':_bs.phase==='after'?'var(--t3)':'var(--t3)';
       const _phaseDot=_bs.phase==='block'?'●':_bs.phase==='pause'?'○':'·';
-      out+='<div class="fm-hide" style="background:linear-gradient(180deg,var(--sf) 0%,var(--bg) 100%);border:1.5px solid var(--gold-t);border-radius:14px;padding:16px 18px;margin-bottom:14px;cursor:pointer;box-shadow:0 4px 24px rgba(0,0,0,.12)" onclick="winOpenDetail()">';
-      // Kopfzeile: WIN-Tag + Live-Uhr + Phase
-      out+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">';
+      // ── v176-8 Refactor: kohärenter Hero, Glow statt Border, Counter inline,
+      //   Phase-Pille auf Chart, ein primärer CTA, Logbuch als Text-Link.
+      out+='<div class="fm-hide" style="position:relative;background:linear-gradient(180deg,var(--sf) 0%,var(--bg) 100%);border-radius:18px;padding:18px 18px 16px;margin-bottom:14px;cursor:pointer;box-shadow:0 0 0 1px rgba(212,175,55,.22), 0 10px 36px rgba(212,175,55,.07), 0 4px 16px rgba(0,0,0,.18);transition:box-shadow .2s ease" onmouseenter="this.style.boxShadow=\'0 0 0 1px rgba(212,175,55,.32), 0 14px 44px rgba(212,175,55,.10), 0 6px 20px rgba(0,0,0,.22)\'" onmouseleave="this.style.boxShadow=\'0 0 0 1px rgba(212,175,55,.22), 0 10px 36px rgba(212,175,55,.07), 0 4px 16px rgba(0,0,0,.18)\'" onclick="winOpenDetail()">';
+      // Kopfzeile: WIN-Label + Uhr + ✕
+      out+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">';
       out+='<div style="font-size:10px;font-weight:800;letter-spacing:1.4px;text-transform:uppercase;color:var(--gold-t)">⌖ WIN</div>';
       out+='<div style="flex:1"></div>';
-      out+='<div id="win-clock" style="font-size:13px;font-weight:700;color:var(--text);font-variant-numeric:tabular-nums;letter-spacing:.5px">'+winNowHHMM()+'</div>';
-      out+='<button onclick="event.stopPropagation();winOff()" title="WIN-Modus aus" style="background:transparent;border:none;color:var(--t3);font-size:14px;cursor:pointer;padding:2px 6px">✕</button>';
+      out+='<div id="win-clock" style="font-size:11px;font-weight:600;color:var(--t3);font-variant-numeric:tabular-nums;letter-spacing:.5px">'+winNowHHMM()+'</div>';
+      out+='<button onclick="event.stopPropagation();winOff()" title="WIN-Modus aus" style="background:transparent;border:none;color:var(--t3);font-size:13px;cursor:pointer;padding:2px 4px;line-height:1">✕</button>';
       out+='</div>';
-      // WIN-Name als Hauptzeile
-      out+='<div style="font-size:18px;font-weight:800;color:var(--text);margin-bottom:4px;line-height:1.25">'+_name+'</div>';
-      // Block-Status Live-Zeile (Phase + Countdown)
-      out+='<div id="win-blockstatus" style="display:flex;align-items:center;gap:7px;font-size:12px;color:var(--t2);margin-bottom:10px;font-variant-numeric:tabular-nums">';
-      out+='<span style="color:'+_phaseColor+';font-size:10px">'+_phaseDot+'</span>';
-      out+='<span>'+esc(_bs.label||'')+'</span>';
-      if(_erreicht)out+='<span style="margin-left:auto;color:var(--green);font-weight:700">✓ erreicht</span>';
-      out+='</div>';
-      // Gipfel-SVG — prominente Aufstiegs-Visualisierung
-      out+='<div style="margin:0 -4px 10px -4px">'+(window._winGipfelSvg?window._winGipfelSvg(_w):'')+'</div>';
-      // Counter
-      out+='<div style="display:flex;align-items:baseline;gap:6px;margin-bottom:11px">';
-      out+='<span style="font-size:32px;font-weight:800;color:var(--text);line-height:1;font-variant-numeric:tabular-nums">'+_cnt+'</span>';
-      out+='<span style="font-size:16px;color:var(--t3);font-weight:600">/ '+_N+' '+esc(_einh)+'</span>';
+      // Titel + inline Counter rechts (eine diagonale: Name → Fortschritt)
+      out+='<div style="display:flex;align-items:baseline;gap:14px;margin-bottom:14px">';
+      out+='<div style="flex:1;font-size:20px;font-weight:800;color:var(--text);line-height:1.2;min-width:0;overflow:hidden;text-overflow:ellipsis">'+_name+'</div>';
+      out+='<div style="font-variant-numeric:tabular-nums;white-space:nowrap;text-align:right">';
+      out+='<span style="font-size:28px;font-weight:800;color:var(--text);line-height:1">'+_cnt+'</span>';
+      out+='<span style="font-size:14px;color:var(--t3);font-weight:600"> / '+_N+'</span>';
+      out+='<div style="font-size:9px;color:var(--t3);text-transform:uppercase;letter-spacing:.6px;margin-top:2px;font-weight:700">'+esc(_einh)+'</div>';
+      out+='</div></div>';
+      // Chart als Bühne — full-bleed, Phase-Pille als Overlay top-right
+      out+='<div style="position:relative;margin:0 -6px 14px -6px">';
+      out+=(window._winGipfelSvg?window._winGipfelSvg(_w):'');
+      if(_erreicht){
+        out+='<div style="position:absolute;top:6px;right:8px;display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:99px;background:rgba(122,208,138,.18);font-size:11px;color:var(--green,#7ad08a);font-weight:700;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)">✓ erreicht</div>';
+      } else {
+        out+='<div id="win-blockstatus" style="position:absolute;top:6px;right:8px;display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:99px;background:rgba(0,0,0,.42);font-size:11px;color:var(--t2);font-variant-numeric:tabular-nums;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)">';
+        out+='<span style="color:'+_phaseColor+';font-size:9px;line-height:1">'+_phaseDot+'</span>';
+        out+='<span>'+esc(_bs.label||'')+'</span>';
+        out+='</div>';
+      }
       out+='</div>';
       // Block-Erfassung: nur via Ritual (Maker-Modus). Daten dürfen nicht lügen.
-      // Task-WIN → Maker-Modus startet 25-min-Timer auf der Aufgabe.
-      // Frei-WIN ohne Task → Logbuch öffnet manuelles Buchen (mit manuell-Marker).
       const _winTask=_w.taskId?S.aufgaben.find(a=>a.id===_w.taskId):null;
-      out+='<div style="display:flex;gap:8px;flex-wrap:wrap">';
-      if(_winTask&&_winTask.status!=='erledigt'){
-        out+='<button onclick="event.stopPropagation();makerModus(\''+_winTask.id+'\')" style="flex:1;min-width:140px;padding:13px;border-radius:10px;background:var(--text);color:var(--bg);border:none;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer">▶ Block starten</button>';
-      } else {
-        // Kein gekoppelter Task — Maker braucht eine Aufgabe. Manuelle Buchung über Logbuch (mit Marker).
-        out+='<button onclick="event.stopPropagation();winOpenDetail()" style="flex:1;min-width:140px;padding:13px;border-radius:10px;background:var(--text);color:var(--bg);border:none;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer">Block buchen</button>';
+      if(_winTask&&_winTask.status!=='erledigt'&&!_erreicht){
+        out+='<button onclick="event.stopPropagation();makerModus(\''+_winTask.id+'\')" style="width:100%;padding:15px;border-radius:14px;background:var(--text);color:var(--bg);border:none;font-family:inherit;font-size:14px;font-weight:700;letter-spacing:.2px;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.18);transition:transform .15s ease, box-shadow .15s ease" onmouseenter="this.style.transform=\'translateY(-1px)\';this.style.boxShadow=\'0 8px 24px rgba(0,0,0,.26)\'" onmouseleave="this.style.transform=\'translateY(0)\';this.style.boxShadow=\'0 4px 16px rgba(0,0,0,.18)\'">▶ Block starten</button>';
+      } else if(!_erreicht){
+        out+='<button onclick="event.stopPropagation();winOpenDetail()" style="width:100%;padding:15px;border-radius:14px;background:var(--text);color:var(--bg);border:none;font-family:inherit;font-size:14px;font-weight:700;letter-spacing:.2px;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.18)">Block buchen</button>';
       }
-      out+='<button onclick="event.stopPropagation();winOpenDetail()" style="padding:13px 14px;border-radius:10px;background:transparent;color:var(--text);border:1px solid var(--bd);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer">Logbuch</button>';
+      // Logbuch als dezenter Text-Link unter dem CTA
+      out+='<div style="display:flex;justify-content:center;margin-top:'+(_erreicht?'4px':'10px')+'">';
+      out+='<button onclick="event.stopPropagation();winOpenDetail()" style="background:transparent;border:none;color:var(--t3);font-size:10px;font-family:inherit;font-weight:700;letter-spacing:.8px;text-transform:uppercase;cursor:pointer;padding:4px 8px">→ Logbuch · '+(_w.blocks||[]).length+' Blöcke</button>';
       out+='</div>';
       // Sammel-Tick-Banner: wenn missing > 1, sanfter Hinweis
       if(_missing>=2&&!_erreicht&&_bs.phase!=='after'){
-        out+='<div style="margin-top:10px;padding:9px 11px;background:var(--amber-bg);border-radius:8px;font-size:12px;color:var(--text);display:flex;align-items:center;gap:8px;flex-wrap:wrap">';
+        out+='<div style="margin-top:10px;padding:9px 11px;background:var(--amber-bg);border-radius:10px;font-size:12px;color:var(--text);display:flex;align-items:center;gap:8px;flex-wrap:wrap">';
         out+='<span style="font-weight:700">'+_missing+' Blöcke ohne Antwort</span>';
         out+='<span style="color:var(--t2);flex:1;min-width:120px">— im Flow gewesen?</span>';
         out+='<button onclick="event.stopPropagation();winSammelTick('+_missing+',\'Flow\')" style="background:var(--text);color:var(--bg);border:none;border-radius:8px;padding:6px 10px;font:600 12px inherit;cursor:pointer">✓ alle '+_missing+' produktiv</button>';
@@ -6340,9 +6345,11 @@ function rTag(){
           const durTxt=naechste.geplant?fmtH(naechste.geplant):'';
           hero+='<div style="display:flex;gap:10px;margin-bottom:12px">';
           const _pBn=taskPlannedBlocks(naechste);
-          hero+='<button onclick="makerModus(\''+naechste.id+'\')" style="flex:1;padding:14px;border-radius:12px;background:var(--hero-t);color:var(--hero);border:none;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer;box-shadow:0 0 24px rgba(255,255,255,.12);transition:all .15s;display:flex;align-items:center;justify-content:center;gap:10px" onmouseenter="this.style.boxShadow=\'0 0 32px rgba(255,255,255,.25)\'" onmouseleave="this.style.boxShadow=\'0 0 24px rgba(255,255,255,.12)\'" onmousedown="this.style.transform=\'scale(.98)\'" onmouseup="this.style.transform=\'scale(1)\'">'
-            +(durTxt?'<span style="font-size:12px;font-weight:600;opacity:.45;font-variant-numeric:tabular-nums">⏱ '+durTxt+(_pBn?' · '+_pBn+' Bl':'')+'</span>':'')
-            +'<span>▶ Block starten</span>'
+          // Button-Layout: Dur-Pille links (mit Kontrast-Tint, lesbar), Haupt-Label rechts.
+          // space-between sorgt für klare Action-Bar-Optik.
+          hero+='<button onclick="makerModus(\''+naechste.id+'\')" style="flex:1;padding:14px 16px;border-radius:12px;background:var(--hero-t);color:var(--hero);border:none;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer;box-shadow:0 0 24px rgba(255,255,255,.12);transition:all .15s;display:flex;align-items:center;justify-content:'+(durTxt?'space-between':'center')+';gap:12px" onmouseenter="this.style.boxShadow=\'0 0 32px rgba(255,255,255,.25)\'" onmouseleave="this.style.boxShadow=\'0 0 24px rgba(255,255,255,.12)\'" onmousedown="this.style.transform=\'scale(.98)\'" onmouseup="this.style.transform=\'scale(1)\'">'
+            +(durTxt?'<span style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:99px;background:rgba(0,0,0,.08);font-size:11px;font-weight:700;color:var(--hero);font-variant-numeric:tabular-nums;letter-spacing:.2px">⏱ '+durTxt+(_pBn?' · '+_pBn+' Bl':'')+'</span>':'')
+            +'<span style="display:inline-flex;align-items:center;gap:6px">▶ Block starten</span>'
             +'</button>';
           hero+='<button onclick="openDetail(\''+naechste.id+'\')" style="padding:14px 18px;border-radius:12px;background:rgba(255,255,255,.1);color:rgba(255,255,255,.5);border:none;font-family:inherit;font-size:13px;font-weight:500;cursor:pointer;transition:background .15s" onmouseenter="this.style.background=\'rgba(255,255,255,.2)\'" onmouseleave="this.style.background=\'rgba(255,255,255,.1)\'">···</button>';
           hero+='</div>';
