@@ -1990,6 +1990,28 @@ function winTotalBlocks(w){
 function winMissingCount(w){
   return Math.max(0, winExpectedBlocks(w)-(w.blocks||[]).length);
 }
+// Live block-status: phase + remaining minutes
+function winBlockStatus(w){
+  if(!w)return{phase:'before',label:''};
+  const startH=w.startH??8, endH=w.endH??17;
+  const now=new Date();
+  const nowMin=now.getHours()*60+now.getMinutes();
+  const startMin=startH*60, endMin=endH*60;
+  const total=winTotalBlocks(w);
+  if(nowMin<startMin)return{phase:'before',label:'Tag startet '+startH+':00',n:0,total};
+  if(nowMin>=endMin)return{phase:'after',label:'Tag vorbei',n:total,total};
+  const intoDay=nowMin-startMin;
+  const cycleIdx=Math.floor(intoDay/WIN_CYCLE_MIN);
+  const intoCycle=intoDay-cycleIdx*WIN_CYCLE_MIN;
+  if(intoCycle<WIN_BLOCK_MIN){
+    const remain=WIN_BLOCK_MIN-intoCycle;
+    return{phase:'block',n:cycleIdx+1,total,remain,label:'Block '+(cycleIdx+1)+'/'+total+' · noch '+remain+' min'};
+  } else {
+    const remain=WIN_CYCLE_MIN-intoCycle;
+    return{phase:'pause',n:cycleIdx+1,total,remain,label:'Pause · '+remain+' min bis Block '+(cycleIdx+2)};
+  }
+}
+function winNowHHMM(){const d=new Date();return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');}
 
 // Upsert WIN für heute. opts: {taskId, label, nZiel, einheit, kpiId, kryptonit, startH, endH}
 async function winSet(opts){
@@ -5982,6 +6004,7 @@ function rTag(){
 
   // ── v176 WIN-Modus — Was Ist jetzt wichtig ──
   // Vor §14, weil tagesgebundener als Monatsziel. Wenn Switch aus → kompakter "WIN setzen?"-Hint.
+  let _winDimOpen=false;
   {
     const _w=winHeute(aP);
     const _winActive=_w&&!winIsOff();
@@ -5990,39 +6013,42 @@ function rTag(){
       const _N=_w.nZiel||1;
       const _einh=winEinheitLbl(_w);
       const _missing=winMissingCount(_w);
-      const _expected=winExpectedBlocks(_w);
-      const _total=winTotalBlocks(_w);
       const _erreicht=winErreicht(_w);
       const _name=esc(_w.label||(S.aufgaben.find(a=>a.id===_w.taskId)?.titel)||'WIN');
-      out+='<div class="fm-hide" style="background:linear-gradient(180deg,var(--sf) 0%,var(--bg) 100%);border:1.5px solid var(--gold-t);border-radius:14px;padding:14px 16px;margin-bottom:14px;cursor:pointer" onclick="winOpenDetail()">';
-      out+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">';
-      out+='<div style="font-size:10px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:var(--gold-t)">⌖ WIN</div>';
-      out+='<div style="flex:1;font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+_name+'</div>';
+      const _bs=winBlockStatus(_w);
+      const _phaseColor=_bs.phase==='block'?'var(--green,#7ad08a)':_bs.phase==='pause'?'var(--gold-t)':_bs.phase==='after'?'var(--t3)':'var(--t3)';
+      const _phaseDot=_bs.phase==='block'?'●':_bs.phase==='pause'?'○':'·';
+      out+='<div class="fm-hide" style="background:linear-gradient(180deg,var(--sf) 0%,var(--bg) 100%);border:1.5px solid var(--gold-t);border-radius:14px;padding:16px 18px;margin-bottom:14px;cursor:pointer;box-shadow:0 4px 24px rgba(0,0,0,.12)" onclick="winOpenDetail()">';
+      // Kopfzeile: WIN-Tag + Live-Uhr + Phase
+      out+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">';
+      out+='<div style="font-size:10px;font-weight:800;letter-spacing:1.4px;text-transform:uppercase;color:var(--gold-t)">⌖ WIN</div>';
+      out+='<div style="flex:1"></div>';
+      out+='<div id="win-clock" style="font-size:13px;font-weight:700;color:var(--text);font-variant-numeric:tabular-nums;letter-spacing:.5px">'+winNowHHMM()+'</div>';
       out+='<button onclick="event.stopPropagation();winOff()" title="WIN-Modus aus" style="background:transparent;border:none;color:var(--t3);font-size:14px;cursor:pointer;padding:2px 6px">✕</button>';
       out+='</div>';
-      // Counter-Zeile
-      out+='<div style="display:flex;align-items:baseline;gap:14px;margin-bottom:10px;flex-wrap:wrap">';
-      out+='<div><span style="font-size:36px;font-weight:800;color:var(--text);line-height:1;font-variant-numeric:tabular-nums">'+_cnt+'</span><span style="font-size:18px;color:var(--t3);font-weight:600"> / '+_N+'</span><div style="font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.4px;margin-top:3px">'+esc(_einh)+(_erreicht?' · ✓ erreicht':'')+'</div></div>';
-      // Mini-Sparkline: produktive vs Tal Punkte
-      out+='<div style="flex:1;min-width:140px;display:flex;align-items:flex-end;gap:2px;height:32px">';
-      for(let i=0;i<_total;i++){
-        const b=_w.blocks[i];
-        const isExpected=i<_expected;
-        let h,bg;
-        if(b){h=b.ok?20:6; bg=b.ok?'var(--green,#7ad08a)':'var(--red,#ef6f6f)';}
-        else if(isExpected){h=10; bg='var(--t3)';} // Tal in Echtzeit
-        else {h=4; bg='var(--bd)';} // future
-        out+='<div style="flex:1;height:'+h+'px;background:'+bg+';border-radius:1px;min-width:3px"'+(isExpected&&!b?' title="Tal · noch nicht bestätigt"':'')+'></div>';
-      }
-      out+='</div></div>';
+      // WIN-Name als Hauptzeile
+      out+='<div style="font-size:18px;font-weight:800;color:var(--text);margin-bottom:4px;line-height:1.25">'+_name+'</div>';
+      // Block-Status Live-Zeile (Phase + Countdown)
+      out+='<div id="win-blockstatus" style="display:flex;align-items:center;gap:7px;font-size:12px;color:var(--t2);margin-bottom:10px;font-variant-numeric:tabular-nums">';
+      out+='<span style="color:'+_phaseColor+';font-size:10px">'+_phaseDot+'</span>';
+      out+='<span>'+esc(_bs.label||'')+'</span>';
+      if(_erreicht)out+='<span style="margin-left:auto;color:var(--green);font-weight:700">✓ erreicht</span>';
+      out+='</div>';
+      // Gipfel-SVG — prominente Aufstiegs-Visualisierung
+      out+='<div style="margin:0 -4px 10px -4px">'+(window._winGipfelSvg?window._winGipfelSvg(_w):'')+'</div>';
+      // Counter
+      out+='<div style="display:flex;align-items:baseline;gap:6px;margin-bottom:11px">';
+      out+='<span style="font-size:32px;font-weight:800;color:var(--text);line-height:1;font-variant-numeric:tabular-nums">'+_cnt+'</span>';
+      out+='<span style="font-size:16px;color:var(--t3);font-weight:600">/ '+_N+' '+esc(_einh)+'</span>';
+      out+='</div>';
       // Quick-Tap Button-Reihe
       const _qLbl=_w.einheit==='kpi'?'+1 '+_einh:'✓ Block produktiv';
       out+='<div style="display:flex;gap:8px;flex-wrap:wrap">';
-      out+='<button onclick="event.stopPropagation();winQuickTap()" style="flex:1;min-width:140px;padding:12px;border-radius:10px;background:var(--text);color:var(--bg);border:none;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer">'+_qLbl+'</button>';
-      out+='<button onclick="event.stopPropagation();winOpenDetail()" style="padding:12px 14px;border-radius:10px;background:transparent;color:var(--text);border:1px solid var(--bd);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer">Logbuch</button>';
+      out+='<button onclick="event.stopPropagation();winQuickTap()" style="flex:1;min-width:140px;padding:13px;border-radius:10px;background:var(--text);color:var(--bg);border:none;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer">'+_qLbl+'</button>';
+      out+='<button onclick="event.stopPropagation();winOpenDetail()" style="padding:13px 14px;border-radius:10px;background:transparent;color:var(--text);border:1px solid var(--bd);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer">Logbuch</button>';
       out+='</div>';
       // Sammel-Tick-Banner: wenn missing > 1, sanfter Hinweis
-      if(_missing>=2&&!_erreicht){
+      if(_missing>=2&&!_erreicht&&_bs.phase!=='after'){
         out+='<div style="margin-top:10px;padding:9px 11px;background:var(--amber-bg);border-radius:8px;font-size:12px;color:var(--text);display:flex;align-items:center;gap:8px;flex-wrap:wrap">';
         out+='<span style="font-weight:700">'+_missing+' Blöcke ohne Antwort</span>';
         out+='<span style="color:var(--t2);flex:1;min-width:120px">— im Flow gewesen?</span>';
@@ -6030,6 +6056,12 @@ function rTag(){
         out+='</div>';
       }
       out+='</div>';
+      // ── DIM-WRAPPER: alles andere zurücktreten lassen, solange WIN nicht erreicht ──
+      // "Nur das oder nichts" — Sam Ovens Single-Goal. Klickbar bleibt alles.
+      if(!_erreicht&&_bs.phase!=='after'){
+        out+='<div id="win-dim-wrap" style="opacity:.32;filter:saturate(.55);transition:opacity .25s ease, filter .25s ease" onmouseover="this.style.opacity=.8;this.style.filter=\'saturate(.85)\'" onmouseout="this.style.opacity=.32;this.style.filter=\'saturate(.55)\'">';
+        _winDimOpen=true;
+      }
     } else if(!winIsOff()) {
       // WIN nicht gesetzt → kompakter Hint zum Setzen (wenn nicht explizit aus)
       const _yest=winYesterdayLast(aP);
@@ -6829,6 +6861,7 @@ function rTag(){
   out+=rCleanup(aP);
   out+=rMorgenPreview(aP);
 
+  if(_winDimOpen)out+='</div>';
   document.getElementById('main').innerHTML=out;
   startTimers();
 }
@@ -12384,6 +12417,7 @@ window.addEventListener('keydown',e=>{
     document.body.appendChild(wrap);
   };
 
+  window._winGipfelSvg=_winGipfelSvg;
   function _winGipfelSvg(w){
     const W=600,H=180,padL=28,padR=18,padT=14,padB=22;
     const wPx=W-padL-padR, hPx=H-padT-padB;
@@ -12462,11 +12496,21 @@ window.addEventListener('keydown',e=>{
       const missing=winMissingCount(w);
       const erreicht=winErreicht(w);
       const base=document.title.replace(/^● \(\d+\) |^● /,'');
-      if(erreicht){document.title=base.replace(/^✓ /,''); document.title='✓ '+document.title;return;}
-      if(missing>=1){
-        document.title='● ('+missing+') '+base.replace(/^✓ /,'');
-      } else {
-        document.title=base.replace(/^✓ /,'');
+      if(erreicht){document.title=base.replace(/^✓ /,''); document.title='✓ '+document.title;}
+      else if(missing>=1){document.title='● ('+missing+') '+base.replace(/^✓ /,'');}
+      else {document.title=base.replace(/^✓ /,'');}
+      // Live-Hero-Update: Uhr + Block-Status (60s-Tick reicht für minutengenaue Anzeige)
+      const clkEl=document.getElementById('win-clock');
+      if(clkEl)clkEl.textContent=winNowHHMM();
+      const bsEl=document.getElementById('win-blockstatus');
+      if(bsEl){
+        const bs=winBlockStatus(w);
+        const phaseColor=bs.phase==='block'?'var(--green,#7ad08a)':bs.phase==='pause'?'var(--gold-t)':'var(--t3)';
+        const phaseDot=bs.phase==='block'?'●':bs.phase==='pause'?'○':'·';
+        let html='<span style="color:'+phaseColor+';font-size:10px">'+phaseDot+'</span>';
+        html+='<span>'+(bs.label||'').replace(/[<>&]/g,'')+'</span>';
+        if(erreicht)html+='<span style="margin-left:auto;color:var(--green);font-weight:700">✓ erreicht</span>';
+        bsEl.innerHTML=html;
       }
     }catch(e){console.error('winPulseTick',e);}
   }
