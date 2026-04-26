@@ -6105,10 +6105,21 @@ function rTag(){
       out+='</div>';
       // Block-Erfassung: nur via Ritual (Maker-Modus). Daten dürfen nicht lügen.
       const _winTask=_w.taskId?S.aufgaben.find(a=>a.id===_w.taskId):null;
+      // Button-Layout konsistent zu Aktiv-Task-Hero:
+      //   Cost-Pille links (25 min Fokus-Commitment, Sam Ovens / Pomodoro)
+      //   Haupt-Action rechts. Pille erdet den Button visuell.
       if(_winTask&&_winTask.status!=='erledigt'&&!_erreicht){
-        out+='<button onclick="event.stopPropagation();makerModus(\''+_winTask.id+'\')" style="width:100%;padding:15px;border-radius:14px;background:var(--text);color:var(--bg);border:none;font-family:inherit;font-size:14px;font-weight:700;letter-spacing:.2px;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.18);transition:transform .15s ease, box-shadow .15s ease" onmouseenter="this.style.transform=\'translateY(-1px)\';this.style.boxShadow=\'0 8px 24px rgba(0,0,0,.26)\'" onmouseleave="this.style.transform=\'translateY(0)\';this.style.boxShadow=\'0 4px 16px rgba(0,0,0,.18)\'">▶ Block starten</button>';
+        const _nextN=_cnt+1;
+        out+='<button onclick="event.stopPropagation();makerModus(\''+_winTask.id+'\')" style="width:100%;padding:14px 16px;border-radius:14px;background:var(--text);color:var(--bg);border:none;font-family:inherit;font-size:14px;font-weight:700;letter-spacing:.2px;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.18);transition:transform .15s ease, box-shadow .15s ease;display:flex;align-items:center;justify-content:space-between;gap:12px" onmouseenter="this.style.transform=\'translateY(-1px)\';this.style.boxShadow=\'0 8px 24px rgba(0,0,0,.26)\'" onmouseleave="this.style.transform=\'translateY(0)\';this.style.boxShadow=\'0 4px 16px rgba(0,0,0,.18)\'">'
+          +'<span style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:99px;background:rgba(0,0,0,.08);font-size:11px;font-weight:700;color:var(--bg);font-variant-numeric:tabular-nums;letter-spacing:.2px">⏱ '+WIN_BLOCK_MIN+' min · Block '+_nextN+'</span>'
+          +'<span style="display:inline-flex;align-items:center;gap:6px">▶ Block starten</span>'
+          +'</button>';
       } else if(!_erreicht){
-        out+='<button onclick="event.stopPropagation();winOpenDetail()" style="width:100%;padding:15px;border-radius:14px;background:var(--text);color:var(--bg);border:none;font-family:inherit;font-size:14px;font-weight:700;letter-spacing:.2px;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.18)">Block buchen</button>';
+        // Frei-WIN ohne Task: kein Timer-Ritual, also keine Cost-Pille — ehrlich asymmetrisch.
+        out+='<button onclick="event.stopPropagation();winOpenDetail()" style="width:100%;padding:14px 16px;border-radius:14px;background:var(--text);color:var(--bg);border:none;font-family:inherit;font-size:14px;font-weight:700;letter-spacing:.2px;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.18);display:flex;align-items:center;justify-content:space-between;gap:12px">'
+          +'<span style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:99px;background:rgba(0,0,0,.08);font-size:11px;font-weight:700;color:var(--bg);letter-spacing:.2px">📝 manuell</span>'
+          +'<span style="display:inline-flex;align-items:center;gap:6px">Block buchen</span>'
+          +'</button>';
       }
       // Logbuch als dezenter Text-Link unter dem CTA
       out+='<div style="display:flex;justify-content:center;margin-top:'+(_erreicht?'4px':'10px')+'">';
