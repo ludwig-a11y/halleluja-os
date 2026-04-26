@@ -6073,6 +6073,12 @@ function rTag(){
       out+='<button onclick="winOpenPicker()" style="background:transparent;color:var(--text);border:1px solid var(--bd);border-radius:8px;padding:7px 11px;font:600 12px inherit;cursor:pointer">Setzen</button>';
       out+='<button onclick="winOff()" title="ausblenden" style="background:transparent;color:var(--t3);border:none;font-size:13px;cursor:pointer;padding:2px 4px">✕</button>';
       out+='</div>';
+    } else {
+      // WIN explizit ausgeblendet → mini Recovery-Pille, damit man immer zurück kommt
+      const _hasW=!!winHeute(aP);
+      out+='<div class="fm-hide" style="margin-bottom:10px;display:flex;justify-content:flex-end">';
+      out+='<button onclick="winOn()" title="WIN-Modus einblenden" style="background:transparent;color:var(--t3);border:1px dashed var(--bd);border-radius:99px;padding:4px 10px;font:600 10px inherit;letter-spacing:.8px;text-transform:uppercase;cursor:pointer">⌖ WIN '+(_hasW?'einblenden':'setzen')+'</button>';
+      out+='</div>';
     }
   }
 
