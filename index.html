@@ -3488,11 +3488,13 @@ function openWochenreset(){
       +'<div style="font-size:10px;color:var(--t3);margin-top:2px">'+(isB?'📁 ':'')+'<span style="color:var(--t2)">'+esc(z.name.length>40?z.name.slice(0,40)+'…':z.name)+'</span>'+(dlLabel?' · '+dlLabel:'')+'</div>'
       +'</div>';
   };
-  // Monatsziele sammeln: Meine zuerst, dann Andere
-  const alleZ=S.ziele.filter(z=>z.status!=='vorschlag');
+  // Monatsziele sammeln: Meine zuerst, dann Andere.
+  // Filter konsistent zum Rest des Systems: vorschlag/archiviert raus auf Ziel-Ebene,
+  // pausiert/archiviert/erledigt raus auf MS-Ebene (kanonische Helper).
+  const alleZ=S.ziele.filter(z=>!['vorschlag','archiviert'].includes(z.status));
   const myTZGroups=[],otherTZGroups=[];
   alleZ.forEach(z=>{
-    const tza=(z.teilziele||[]).filter(t=>!t.erledigt&&(t.status||'aktiv')==='aktiv');
+    const tza=(z.teilziele||[]).filter(t=>!t.erledigt&&!tzIsPaused(t)&&!tzIsArchived(t));
     if(!tza.length)return;
     const mine=String(z.verantwortlichId)===String(aP)||tza.some(t=>String(t.verantwortlichId)===String(aP));
     if(mine)myTZGroups.push({z,tza});else otherTZGroups.push({z,tza});
