@@ -2475,38 +2475,38 @@ function spangeRender(pid,opts){
         +' <button onclick="event.stopPropagation();spangeToToday()" style="padding:0 5px;font-size:8px;border-radius:99px;border:none;background:transparent;color:var(--t3);cursor:pointer;font-family:inherit;font-weight:700">heute</button>'
         +'</div>';
     }
-    // Hour-Labels (nur expanded)
+    // Hour-Labels (nur expanded) — heller, mit Tick
     if(!collapsed){
-      h+='<div style="position:relative;height:8px;margin-bottom:1px">';
+      h+='<div style="position:relative;height:10px;margin-bottom:2px">';
       const hourStart=Math.floor(vonMin/60);
       const hourEnd=Math.ceil(bisMin/60);
       const step=(hourEnd-hourStart)>10?2:1;
       for(let hr=hourStart;hr<=hourEnd;hr+=step){
         const x=((hr*60-vonMin)/span)*100;
         if(x<0||x>100)continue;
-        h+='<span style="position:absolute;left:'+x.toFixed(2)+'%;transform:translateX(-50%);font-size:8px;color:var(--t3);font-variant-numeric:tabular-nums;font-weight:700;letter-spacing:.2px">'+String(hr).padStart(2,'0')+'</span>';
+        h+='<span style="position:absolute;left:'+x.toFixed(2)+'%;transform:translateX(-50%);font-size:9px;color:var(--t2);font-variant-numeric:tabular-nums;font-weight:700;letter-spacing:.3px">'+String(hr).padStart(2,'0')+'</span>';
       }
       h+='</div>';
     }
-    // Timeline-Track
-    h+='<div style="position:relative;height:'+tlH+';background:var(--gray-bg);border-radius:'+(collapsed?'3px':'4px')+';overflow:hidden">';
-    // Puffer-Zonen
+    // Timeline-Track — Border + sichtbarer bg, klare Definition vom Seiten-bg
+    h+='<div style="position:relative;height:'+tlH+';background:var(--sf);border:1px solid var(--bd);border-radius:'+(collapsed?'3px':'4px')+';overflow:hidden">';
+    // Puffer-Zonen (vor/nach Arbeitszeit) — diagonale Schraffur, klar als "nicht-Arbeit" markiert
     if(workVonMin>vonMin){
       const w=((workVonMin-vonMin)/span)*100;
-      h+='<div title="Vor Arbeitsbeginn '+esc(fenster.von)+'" style="position:absolute;top:0;bottom:0;left:0;width:'+w.toFixed(2)+'%;background:rgba(0,0,0,0.05);pointer-events:none"></div>';
+      h+='<div title="Vor Arbeitsbeginn '+esc(fenster.von)+'" style="position:absolute;top:0;bottom:0;left:0;width:'+w.toFixed(2)+'%;background:repeating-linear-gradient(135deg,transparent,transparent 5px,var(--bd) 5px,var(--bd) 6px),var(--gray-bg);pointer-events:none;opacity:.85"></div>';
     }
     if(workBisMin<bisMin){
       const l=((workBisMin-vonMin)/span)*100;
       const w=((bisMin-workBisMin)/span)*100;
-      h+='<div title="Nach Arbeitsende '+esc(fenster.bis)+'" style="position:absolute;top:0;bottom:0;left:'+l.toFixed(2)+'%;width:'+w.toFixed(2)+'%;background:rgba(0,0,0,0.05);pointer-events:none"></div>';
+      h+='<div title="Nach Arbeitsende '+esc(fenster.bis)+'" style="position:absolute;top:0;bottom:0;left:'+l.toFixed(2)+'%;width:'+w.toFixed(2)+'%;background:repeating-linear-gradient(135deg,transparent,transparent 5px,var(--bd) 5px,var(--bd) 6px),var(--gray-bg);pointer-events:none;opacity:.85"></div>';
     }
-    // Mittagspause
+    // Mittagspause — stärkerer Stripe-Kontrast (var(--t3) statt --bd)
     if(fenster.mittag&&fenster.mittag.von&&fenster.mittag.bis){
       const mv=_hhmmToMin(fenster.mittag.von),mb=_hhmmToMin(fenster.mittag.bis);
       if(mv!=null&&mb!=null&&mb>mv){
         const l=Math.max(0,(mv-vonMin)/span*100);
         const w=Math.min(100-l,(mb-mv)/span*100);
-        h+='<div title="Mittagspause '+esc(fenster.mittag.von)+'–'+esc(fenster.mittag.bis)+'" style="position:absolute;top:0;bottom:0;left:'+l.toFixed(2)+'%;width:'+w.toFixed(2)+'%;background:repeating-linear-gradient(45deg,transparent,transparent 4px,var(--bd) 4px,var(--bd) 5px);pointer-events:none"></div>';
+        h+='<div title="Mittagspause '+esc(fenster.mittag.von)+'–'+esc(fenster.mittag.bis)+'" style="position:absolute;top:0;bottom:0;left:'+l.toFixed(2)+'%;width:'+w.toFixed(2)+'%;background:repeating-linear-gradient(45deg,transparent,transparent 3px,var(--t3) 3px,var(--t3) 4px);pointer-events:none;opacity:.55"></div>';
       }
     }
     // Timeline-Segmente
