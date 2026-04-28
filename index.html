@@ -12716,7 +12716,15 @@ window.addEventListener('keydown',e=>{
   // ── WIN-Detail (Gipfel + Logbuch + Kryptonit + Block-Dialog) ────────
   window.winOpenDetail=function(){
     const w=winHeute(aP); if(!w){winOpenPicker();return;}
-    const todayTasks=S.aufgaben.filter(a=>a.pid===aP&&a.status!=='erledigt'&&a.status!=='archiviert'&&!taskIsPaused(a)&&!taskIsArchived(a)).slice(0,8);
+    // Filter: nur aktiv/neu (was ich heute plausibel anhaken könnte).
+    // Konsistent zum WIN-Picker-Filter — schließt zugewiesen/zurueckgegeben/
+    // backlog/paused/archived aus. Daten dürfen nicht lügen.
+    const todayTasks=S.aufgaben.filter(a=>
+      a.pid===aP &&
+      ['aktiv','neu'].includes(a.status) &&
+      !taskIsPaused(a) &&
+      !taskIsArchived(a)
+    ).slice(0,8);
     const wrap=document.createElement('div');
     wrap.id='win-detail';
     wrap.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9998;display:flex;align-items:flex-end;justify-content:center';
