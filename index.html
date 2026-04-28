@@ -2491,24 +2491,25 @@ function spangeRender(pid,opts){
       h+='</div>';
     }
     // Timeline-Track — sichtbare aber ruhige Kante
-    h+='<div style="position:relative;height:'+tlH+';background:var(--sf);border:1px solid var(--t3);border-radius:'+(collapsed?'3px':'5px')+';overflow:hidden">';
-    // Puffer-Zonen — ruhigere Schraffur (zurück zu --t3 mit weniger Opacity)
+    h+='<div style="position:relative;height:'+tlH+';background:var(--sf);border:1px solid var(--bd);border-radius:'+(collapsed?'3px':'5px')+';overflow:hidden">';
+    // Puffer-Zonen — solides Dimmen statt Schraffur (Schraffur wird über große Flächen unruhig)
+    // Nur Mittagspause behält Hatch — kleiner Marker, kommuniziert "Pause" sofort.
     if(workVonMin>vonMin){
       const w=((workVonMin-vonMin)/span)*100;
-      h+='<div title="Vor Arbeitsbeginn '+esc(fenster.von)+'" style="position:absolute;top:0;bottom:0;left:0;width:'+w.toFixed(2)+'%;background:repeating-linear-gradient(135deg,transparent,transparent 5px,var(--t3) 5px,var(--t3) 6px),var(--gray-bg);pointer-events:none;opacity:.3"></div>';
+      h+='<div title="Vor Arbeitsbeginn '+esc(fenster.von)+'" style="position:absolute;top:0;bottom:0;left:0;width:'+w.toFixed(2)+'%;background:var(--gray-bg);pointer-events:none"></div>';
     }
     if(workBisMin<bisMin){
       const l=((workBisMin-vonMin)/span)*100;
       const w=((bisMin-workBisMin)/span)*100;
-      h+='<div title="Nach Arbeitsende '+esc(fenster.bis)+'" style="position:absolute;top:0;bottom:0;left:'+l.toFixed(2)+'%;width:'+w.toFixed(2)+'%;background:repeating-linear-gradient(135deg,transparent,transparent 5px,var(--t3) 5px,var(--t3) 6px),var(--gray-bg);pointer-events:none;opacity:.3"></div>';
+      h+='<div title="Nach Arbeitsende '+esc(fenster.bis)+'" style="position:absolute;top:0;bottom:0;left:'+l.toFixed(2)+'%;width:'+w.toFixed(2)+'%;background:var(--gray-bg);pointer-events:none"></div>';
     }
-    // Mittagspause — etwas kräftiger als Puffer (Mittag ist relevanter Marker)
+    // Mittagspause — Hatch behalten (kleiner Marker, Pause-Konvention)
     if(fenster.mittag&&fenster.mittag.von&&fenster.mittag.bis){
       const mv=_hhmmToMin(fenster.mittag.von),mb=_hhmmToMin(fenster.mittag.bis);
       if(mv!=null&&mb!=null&&mb>mv){
         const l=Math.max(0,(mv-vonMin)/span*100);
         const w=Math.min(100-l,(mb-mv)/span*100);
-        h+='<div title="Mittagspause '+esc(fenster.mittag.von)+'–'+esc(fenster.mittag.bis)+'" style="position:absolute;top:0;bottom:0;left:'+l.toFixed(2)+'%;width:'+w.toFixed(2)+'%;background:repeating-linear-gradient(45deg,transparent,transparent 4px,var(--t3) 4px,var(--t3) 5px);pointer-events:none;opacity:.4"></div>';
+        h+='<div title="Mittagspause '+esc(fenster.mittag.von)+'–'+esc(fenster.mittag.bis)+'" style="position:absolute;top:0;bottom:0;left:'+l.toFixed(2)+'%;width:'+w.toFixed(2)+'%;background:repeating-linear-gradient(45deg,transparent,transparent 4px,var(--t3) 4px,var(--t3) 5px);pointer-events:none;opacity:.35"></div>';
       }
     }
     // Timeline-Segmente
