@@ -2462,11 +2462,12 @@ function spangeRender(pid,opts){
     );
     const chips=spangeApplyTagOrder(pid,mineOpen);
     // ── HTML rendern ──────────────────────────────────────────
-    const padExp=inline?(collapsed?'0 22px':'2px 22px 2px'):(collapsed?'2px 22px':'3px 22px 4px');
+    // Layout: tagesspange ohne H-Padding. Hour-Labels mit margin (22px Arrow-Gutter).
+    // Track in eigenem Wrapper mit Arrow-Gutter — navArrows scopen nur zum Track,
+    // top:50% trifft dadurch immer Track-Mitte (unabhängig von Agenda-Chips drunter).
+    const padExp=inline?(collapsed?'0':'2px 0 2px'):(collapsed?'2px 0':'3px 0 4px');
     let h='<div class="tagesspange" style="position:relative;'+(inline?'':'margin-bottom:6px;')+'background:'+(inline?'transparent':'var(--sf)')+';border:'+(inline?'none':'1px solid var(--bd)')+';border-radius:7px;padding:'+padExp+';'
       +(collapsed?'cursor:pointer" onclick="spangeToggleCollapsed()" title="Klick zum Ausklappen':'')+'">';
-    // Nav-Pfeile (immer sichtbar, links+rechts außerhalb des Tracks)
-    h+=navArrows;
     // Datum-Pill (nur wenn != heute)
     if(!isToday){
       h+='<div style="position:absolute;top:-8px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:4px;background:var(--sf);border:1px solid var(--bd);border-radius:99px;padding:1px 8px;font-size:9px;font-weight:700;color:'+(isPast?'var(--t3)':'var(--blue)')+';z-index:8;white-space:nowrap">'
@@ -2475,9 +2476,9 @@ function spangeRender(pid,opts){
         +' <button onclick="event.stopPropagation();spangeToToday()" style="padding:0 5px;font-size:8px;border-radius:99px;border:none;background:transparent;color:var(--t3);cursor:pointer;font-family:inherit;font-weight:700">heute</button>'
         +'</div>';
     }
-    // Hour-Labels — gut lesbar, ruhige Tinte
+    // Hour-Labels — gleiches H-Margin wie Track-Wrapper (22px) für saubere Ausrichtung
     if(!collapsed){
-      h+='<div style="position:relative;height:13px;margin-bottom:2px">';
+      h+='<div style="position:relative;height:13px;margin:0 22px 2px">';
       const hourStart=Math.floor(vonMin/60);
       const hourEnd=Math.ceil(bisMin/60);
       const step=(hourEnd-hourStart)>10?2:1;
@@ -2490,6 +2491,10 @@ function spangeRender(pid,opts){
       }
       h+='</div>';
     }
+    // Track-Wrapper mit Arrow-Gutter — navArrows positionieren sich relativ hierzu,
+    // top:50% trifft dadurch garantiert Track-Mitte.
+    h+='<div style="position:relative;padding:0 22px">';
+    h+=navArrows;
     // Timeline-Track — sichtbare aber ruhige Kante
     h+='<div style="position:relative;height:'+tlH+';background:var(--sf);border:1px solid var(--bd);border-radius:'+(collapsed?'3px':'5px')+';overflow:hidden">';
     // Puffer-Zonen — solides Dimmen statt Schraffur (Schraffur wird über große Flächen unruhig)
@@ -2549,13 +2554,16 @@ function spangeRender(pid,opts){
       }
     }
     h+='</div>'; // /timeline-track
+    h+='</div>'; // /track-wrapper (mit navArrows-Gutter)
     // ⇅ Collapse-Handle (unterhalb des Tracks, als schmale Zeile)
     if(!collapsed){
       h+='<div style="display:flex;justify-content:center;margin-top:1px"><button onclick="event.stopPropagation();spangeToggleCollapsed()" title="Einklappen" style="width:40px;height:10px;padding:0;border:none;background:transparent;color:var(--t3);cursor:pointer;font-family:inherit;font-size:9px;line-height:10px;opacity:.5">⇅</button></div>';
     }
     // ── Agenda-Zone (nur expanded, nur heute, nur wenn Chips) ─
+    // Linke Kante an Track-Anfang ausrichten (22px Margin) — Chips fühlen sich
+    // dadurch als Fortsetzung des Tracks an, nicht als separater Block.
     if(!collapsed&&isToday&&chips.length){
-      h+='<div class="spange-agenda" style="display:flex;flex-wrap:wrap;gap:3px;margin-top:3px;padding:0" data-pid="'+pid+'">';
+      h+='<div class="spange-agenda" style="display:flex;flex-wrap:wrap;gap:3px;margin:1px 22px 0;padding:0" data-pid="'+pid+'">';
       chips.forEach(a=>{
         const pc=a.prio==='P1'?'var(--red)':a.prio==='P2'?'var(--blue)':'var(--t3)';
         const pbg=a.prio==='P1'?'var(--red-bg,rgba(239,68,68,0.08))':a.prio==='P2'?'var(--blue-bg,rgba(59,130,246,0.08))':'var(--gray-bg)';
