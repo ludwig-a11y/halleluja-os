@@ -9294,7 +9294,7 @@ function rZiele(){
   const meineVorschlaege=vorschlaege.filter(z=>String(z.vorgeschlagen_von)===String(aP));
   let out='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">'
     +'<div style="font-size:16px;font-weight:700">Ziele'+(isGF()&&vorschlaege.length?' <span style="font-size:11px;background:var(--amber);color:#fff;border-radius:99px;padding:1px 7px;font-weight:700;vertical-align:middle">'+vorschlaege.length+'</span>':'')+'</div>'
-    +(isGF()?'<div style="display:flex;gap:8px"><button class="btn" style="border:1px solid var(--bd);background:var(--sf);color:var(--t2)" onclick="openFokusCoach(\'kaskade\')">🌱 Kaskade-Session</button><button class="btn btn-dk" onclick="addZiel()">+ Neues Ziel</button><button class="btn" style="border:1px solid var(--bd);background:var(--gray-bg);color:var(--t2)" onclick="addBereich()">📁 + Bereich</button></div>':'<div style="display:flex;gap:8px"><button class="btn" style="border:1px solid var(--bd);background:var(--sf);color:var(--t2)" onclick="openFokusCoach(\'kaskade\')">🌱 Kaskade-Session</button><button class="btn btn-dk" onclick="vorschlagenZiel()">+ Ziel vorschlagen</button></div>')
+    +(isGF()?'<div style="display:flex;gap:8px"><button class="btn" style="border:1px solid var(--bd);background:var(--sf);color:var(--t2)" onclick="openFokusCoach(\'kaskade\')">🌱 Kaskade-Session</button><button class="btn btn-dk" onclick="openZielBereichChooser()">+ Neu</button></div>':'<div style="display:flex;gap:8px"><button class="btn" style="border:1px solid var(--bd);background:var(--sf);color:var(--t2)" onclick="openFokusCoach(\'kaskade\')">🌱 Kaskade-Session</button><button class="btn btn-dk" onclick="vorschlagenZiel()">+ Ziel vorschlagen</button></div>')
     +'</div>';
   if(isGF()&&vorschlaege.length){
     out+='<div style="background:var(--amber-bg);border:1.5px solid var(--amber-bd);border-radius:12px;padding:14px 16px;margin-bottom:20px">';
@@ -10009,6 +10009,33 @@ async function rejectPowerAkt(zid,tzid){
   toast('Power-Aktivität abgelehnt');
 }
 
+// v180: Chooser-Modal mit messerscharfen Definitionen.
+function openZielBereichChooser(){
+  document.getElementById('mb').innerHTML=
+    '<div class="mt">+ Neu anlegen</div>'
+    +'<div style="font-size:12px;color:var(--t2);margin-bottom:14px;line-height:1.5">Wähle den Typ — die Logik des Systems hängt davon ab.</div>'
+    +'<div onclick="cm();addZiel()" style="cursor:pointer;border:1.5px solid var(--bd);border-radius:12px;padding:14px 16px;margin-bottom:10px;transition:border-color .15s" onmouseenter="this.style.borderColor=\'var(--blue)\'" onmouseleave="this.style.borderColor=\'var(--bd)\'">'
+      +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">'
+        +'<span style="font-size:20px">🎯</span>'
+        +'<div style="font-size:15px;font-weight:700">Ziel</div>'
+        +'<span style="font-size:9px;font-weight:700;padding:2px 8px;border-radius:99px;background:var(--red-bg);color:var(--red);border:1px solid var(--red-bd);text-transform:uppercase;letter-spacing:.5px">Verfehlt = Review</span>'
+      +'</div>'
+      +'<div style="font-size:12px;color:var(--t2);line-height:1.5;margin-bottom:6px"><i>„Was muss bis wann erreicht sein?"</i> — messbarer Wert + Datum.<br><b>Darunter leben Monatsziele:</b> harte Zwischen-Outcomes. Verfehlt = Review-Zwang am Monatsende.</div>'
+      +'<div style="font-size:11px;color:var(--t3)">Beispiele: „1500 Termine bis 30.06.", „30k MRR bis Q2", „50 Saunen im April"</div>'
+    +'</div>'
+    +'<div onclick="cm();addBereich()" style="cursor:pointer;border:1.5px solid var(--bd);border-radius:12px;padding:14px 16px;margin-bottom:10px;transition:border-color .15s" onmouseenter="this.style.borderColor=\'var(--amber,#d97706)\'" onmouseleave="this.style.borderColor=\'var(--bd)\'">'
+      +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">'
+        +'<span style="font-size:20px">📁</span>'
+        +'<div style="font-size:15px;font-weight:700">Bereich</div>'
+        +'<span style="font-size:9px;font-weight:700;padding:2px 8px;border-radius:99px;background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-bd);text-transform:uppercase;letter-spacing:.5px">Verlängerbar</span>'
+      +'</div>'
+      +'<div style="font-size:12px;color:var(--t2);line-height:1.5;margin-bottom:6px"><i>„Welches Thema betreuen wir kontinuierlich?"</i> — Name + Verantwortlicher.<br><b>Darunter leben Themengebiete:</b> laufende Schwerpunkte mit weicher Zielmarke. Datum bleibt verlängerbar.</div>'
+      +'<div style="font-size:11px;color:var(--t3)">Beispiele: „Entwicklung Halleluja Sauna", „Finanz", „Operations"</div>'
+    +'</div>'
+    +'<div style="background:var(--gray-bg);border-radius:8px;padding:9px 12px;font-size:11px;color:var(--t2);margin-bottom:14px;line-height:1.5"><b>Faustregel:</b> Wenn der 1. Mai dein April-Ergebnis zerstören würde → <b>Ziel</b>. Wenn nicht → <b>Bereich</b>.</div>'
+    +'<div class="mf"><button class="btn btn-gr" onclick="cm()">Abbrechen</button></div>';
+  document.getElementById('ovl').classList.add('open');
+}
 async function addZiel(){
   const id=nid('z'),rec={id,name:'Neues Ziel',farbe:Math.floor(Math.random()*FARBEN.length),pct:0,verantwortlich_id:null,vertraulich:false};
   S.ziele.push({...rec,verantwortlichId:null,kpis:[],teilziele:[]});
@@ -10022,7 +10049,8 @@ async function addBereich(){
 }
 function editBereich(zid){
   const z=S.ziele.find(x=>x.id===zid);if(!z)return;
-  document.getElementById('mb').innerHTML='<div class="mt">📁 Bereich bearbeiten</div>'
+  document.getElementById('mb').innerHTML='<div class="mt">📁 Bereich bearbeiten <span style="font-size:11px;color:var(--t3);font-weight:400;margin-left:6px">ⓘ <a onclick="openZielBereichInfo()" style="color:var(--t3);text-decoration:underline;cursor:pointer">was ist ein Bereich?</a></span></div>'
+    +'<div style="background:var(--amber-bg);border:1px solid var(--amber-bd);border-radius:8px;padding:9px 12px;margin-bottom:14px;font-size:11px;color:var(--text);line-height:1.5">📁 <b>Bereich</b> = laufendes Thema ohne harte Frist. Darunter leben <b>Themengebiete</b> mit weicher Zielmarke (verlängerbar, kein Review-Zwang).</div>'
     +'<div class="fl"><label>Name</label><input id="zn" value="'+esc(z.name)+'" placeholder="z.B. Finanzbuchhaltung, Fuhrpark…" autofocus></div>'
     +'<div class="fl"><label>Verantwortlich (Team-Lead)</label><select id="zver"><option value="">— niemand —</option>'+S.personen.map(p=>'<option value="'+p.id+'"'+(z.verantwortlichId===p.id?' selected':'')+'>'+esc(p.name)+'</option>').join('')+'</select></div>'
     +'<div class="fl"><label>Farbe</label><div style="display:flex;gap:8px;margin-top:4px">'+FARBEN.map((f,i)=>'<div onclick="selZF('+i+')" id="zfc'+i+'" style="width:24px;height:24px;border-radius:50%;background:'+f.tc+';cursor:pointer;border:'+((z.farbe||0)===i?'3px':'2px')+' solid '+((z.farbe||0)===i?'var(--text)':'transparent')+'"></div>').join('')+'</div></div>'
@@ -10042,7 +10070,8 @@ async function saveBereich(zid){
 function editZiel(zid){
   const z=S.ziele.find(x=>x.id===zid);if(!z)return;
   if(z.status==='bereich')return editBereich(zid);
-  document.getElementById('mb').innerHTML='<div class="mt">Ziel bearbeiten</div>'
+  document.getElementById('mb').innerHTML='<div class="mt">🎯 Ziel bearbeiten <span style="font-size:11px;color:var(--t3);font-weight:400;margin-left:6px">ⓘ <a onclick="openZielBereichInfo()" style="color:var(--t3);text-decoration:underline;cursor:pointer">was ist ein Ziel?</a></span></div>'
+    +'<div style="background:var(--red-bg);border:1px solid var(--red-bd);border-radius:8px;padding:9px 12px;margin-bottom:14px;font-size:11px;color:var(--text);line-height:1.5">🎯 <b>Ziel</b> = Outcome mit harter Frist. Darunter leben <b>Monatsziele</b>: harte Zwischen-Outcomes. Verfehlt = Review-Zwang am Monatsende.</div>'
     +'<div class="fl"><label>Name</label><input id="zn" value="'+esc(z.name)+'" autofocus></div>'
     +'<div class="fl"><label>Verantwortlich</label><select id="zver"><option value="">— niemand —</option>'+S.personen.map(p=>'<option value="'+p.id+'"'+(z.verantwortlichId===p.id?' selected':'')+'>'+esc(p.name)+'</option>').join('')+'</select></div>'
     +'<div class="fl"><label style="display:flex;align-items:center;gap:8px;text-transform:none;font-size:13px;font-weight:400"><input type="checkbox" id="zvert" '+(z.vertraulich?'checked':'')+' style="width:auto"> 🔒 Vertraulich</label><div style="font-size:10px;color:var(--t3);margin-top:2px">Sichtbar für: nur Geschäftsführung</div></div>'
@@ -10082,8 +10111,29 @@ async function delZiel(zid){
   await dbDelete('ziele',zid);cm();rZiele();
 }
 
+// Info-Modal mit Vollerklärung Ziel vs Bereich
+function openZielBereichInfo(){
+  document.getElementById('mb').innerHTML=
+    '<div class="mt">🎯 Ziel vs. 📁 Bereich</div>'
+    +'<div style="background:var(--red-bg);border:1px solid var(--red-bd);border-radius:10px;padding:12px 14px;margin-bottom:10px;font-size:12px;color:var(--text);line-height:1.55">'
+      +'<div style="font-size:14px;font-weight:700;margin-bottom:6px">🎯 Ziel <span style="font-size:9px;font-weight:700;padding:2px 7px;border-radius:99px;background:var(--red);color:#fff;margin-left:4px">Outcome</span></div>'
+      +'<i>„Was muss bis wann erreicht sein?"</i> — messbarer Wert + Datum.<br>'
+      +'<b>Darunter leben Monatsziele</b> — harte Zwischen-Outcomes auf dem Weg zum Ziel. Verfehlt = das System zwingt am Monatsende ein Review.<br>'
+      +'<span style="color:var(--t2);font-size:11px">Beispiele: „1500 Termine bis 30.06.", „30k MRR bis Q2", „50 Saunen im April"</span>'
+    +'</div>'
+    +'<div style="background:var(--amber-bg);border:1px solid var(--amber-bd);border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:12px;color:var(--text);line-height:1.55">'
+      +'<div style="font-size:14px;font-weight:700;margin-bottom:6px">📁 Bereich <span style="font-size:9px;font-weight:700;padding:2px 7px;border-radius:99px;background:var(--amber);color:#fff;margin-left:4px">Projekt</span></div>'
+      +'<i>„Welches Thema betreuen wir kontinuierlich?"</i> — Name + Verantwortlicher.<br>'
+      +'<b>Darunter leben Themengebiete</b> — laufende Schwerpunkte mit weicher Zielmarke. Du darfst sie verlängern, schieben oder schließen, wann du willst.<br>'
+      +'<span style="color:var(--t2);font-size:11px">Beispiele: „Entwicklung Halleluja Sauna", „Finanz", „Operations"</span>'
+    +'</div>'
+    +'<div style="background:var(--gray-bg);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--text);margin-bottom:14px;line-height:1.55"><b>Faustregel:</b> Wenn der 1. Mai dein April-Ergebnis zerstören würde → <b>Ziel</b>. Wenn nicht → <b>Bereich</b>.</div>'
+    +'<div class="mf"><button class="btn btn-gr" onclick="cm()">Schließen</button></div>';
+  document.getElementById('ovl').classList.add('open');
+}
 function vorschlagenZiel(){
-  document.getElementById('mb').innerHTML='<div class="mt">Ziel vorschlagen</div>'
+  document.getElementById('mb').innerHTML='<div class="mt">🎯 Ziel vorschlagen <span style="font-size:11px;color:var(--t3);font-weight:400;margin-left:6px">ⓘ <a onclick="openZielBereichInfo()" style="color:var(--t3);text-decoration:underline;cursor:pointer">was ist ein Ziel?</a></span></div>'
+    +'<div style="background:var(--red-bg);border:1px solid var(--red-bd);border-radius:8px;padding:9px 12px;margin-bottom:10px;font-size:11px;color:var(--text);line-height:1.5">🎯 <b>Ziel</b> = Outcome mit harter Frist. Darunter leben <b>Monatsziele</b>. Verfehlt = Review-Zwang.</div>'
     +'<div style="font-size:12px;color:var(--t2);margin-bottom:14px;line-height:1.5">Wird zur Freigabe an die Geschäftsführung gesendet.</div>'
     +'<div class="fl"><label>Zielname</label><input id="vzn" placeholder="z.B. Kundenzufriedenheit bis Q3 steigern" autofocus></div>'
     +'<div class="fl"><label>Farbe</label><div style="display:flex;gap:8px;margin-top:4px">'+FARBEN.map((f,i)=>'<div onclick="selVZF('+i+')" id="vzfc'+i+'" style="width:24px;height:24px;border-radius:50%;background:'+f.tc+';cursor:pointer;border:'+(i===0?'3px':'2px')+' solid '+(i===0?'var(--text)':'transparent')+'"></div>').join('')+'</div></div>'
