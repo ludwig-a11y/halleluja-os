@@ -8396,6 +8396,34 @@ function rMonat(){
     +'<button onclick="openAddMonatszielFromMonat()" class="btn btn-dk" style="font-size:12px">+ Monatsziel</button>'
     +'</div>';
 
+  // v180: Verfehlt-Block — semantisch DER richtige Ort: Monatsübersicht = Reflexionssicht.
+  {
+    const _vList=tzVerfehltMS();
+    if(_vList.length){
+      out+='<div style="background:var(--red-bg);border:1.5px solid var(--red-bd);border-radius:12px;padding:14px 16px;margin-bottom:18px">';
+      out+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">';
+      out+='<span style="font-size:18px">⚠</span>';
+      out+='<div style="flex:1"><div style="font-size:13px;font-weight:700;color:var(--red)">'+_vList.length+' Monatsziel'+(_vList.length>1?'e':'')+' aus dem letzten Monat verfehlt</div>';
+      out+='<div style="font-size:11px;color:var(--t3);margin-top:1px">Aufräumen, bevor du im neuen Monat planst.</div></div>';
+      out+='</div>';
+      // Inline-Liste mit den drei Aktionen pro MZ — direkt klärbar, kein extra Modal nötig.
+      _vList.forEach(({z,t})=>{
+        const links=tzCountLinks(t.id);
+        const dat=t.datum?t.datum.slice(8)+'.'+t.datum.slice(5,7)+'.':'';
+        out+='<div style="background:var(--sf);border:1px solid var(--red-bd);border-radius:9px;padding:10px 12px;margin-bottom:8px">';
+        out+='<div style="font-size:10px;font-weight:700;color:var(--red);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px">verfehlt seit '+dat+' · '+esc(z.name)+'</div>';
+        out+='<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px">'+esc(t.name)+'</div>';
+        out+='<div style="font-size:10px;color:var(--t3);margin-bottom:8px">'+links.aufgaben.length+' Aufgabe'+(links.aufgaben.length===1?'':'n')+' · '+links.wzSlots+' Wochenziel-Slot'+(links.wzSlots===1?'':'s')+'</div>';
+        out+='<div style="display:flex;gap:6px;flex-wrap:wrap">';
+        out+='<button onclick="_reviewArchivierenStart(\''+z.id+'\',\''+t.id+'\')" class="btn btn-sm" style="background:var(--gray-bg)">🗄 Archivieren</button>';
+        out+='<button onclick="_reviewNeuFormulierenStart(\''+z.id+'\',\''+t.id+'\')" class="btn btn-sm" style="background:var(--blue-bg);color:var(--blue);border-color:var(--blue-bd)">🔄 Neu formulieren</button>';
+        out+='<button onclick="_reviewMarkErreicht(\''+z.id+'\',\''+t.id+'\')" class="btn btn-sm" style="background:var(--green-bg);color:var(--green);border-color:var(--green-bd)">✓ Doch erreicht</button>';
+        out+='</div></div>';
+      });
+      out+='</div>';
+    }
+  }
+
   if(!alleTZ.length){
     out+='<div style="text-align:center;padding:40px 20px">'
       +'<div style="font-size:32px;margin-bottom:12px">🗓</div>'
