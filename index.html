@@ -2210,6 +2210,178 @@ function tzIstUeberfaelligProjekt(tzOrId){
   if((tz.status||'aktiv')!=='aktiv')return false;
   return !!(tz.datum&&tz.datum<TODAY);
 }
+// v180: Liste aller verfehlten Outcome-Monatsziele (für aktiven User; GF sieht alle).
+function tzVerfehltMS(){
+  const list=[];
+  S.ziele.forEach(z=>{
+    if(istBereich(z.id))return;
+    if(z.vertraulich&&!isGF()&&z.verantwortlichId!==aP)return;
+    (z.teilziele||[]).forEach(t=>{
+      if(!tzIstVerfehlt(t))return;
+      const mine=String(t.verantwortlichId)===String(aP)||String(z.verantwortlichId)===String(aP);
+      if(isGF()||mine)list.push({z,t});
+    });
+  });
+  return list;
+}
+// Aufgaben + Wochenziel-Slots eines MZ zählen.
+function tzCountLinks(tzId){
+  const aufg=S.aufgaben.filter(a=>String(a.teilzielId)===String(tzId)&&a.status!=='erledigt'&&a.status!=='archiviert');
+  let wzSlots=0;
+  (S.wochenresets||[]).forEach(wr=>{
+    [1,2,3].forEach(n=>{if(String(wr['big3_'+n+'_tz_id'])===String(tzId))wzSlots++;});
+  });
+  return {aufgaben:aufg,wzSlots};
+}
+// ── Review-Modal (Phase 5/Commit 3) ─────────────────────────────────
+function openVerfehltReview(){
+  const list=tzVerfehltMS();
+  if(!list.length){toast('Keine verfehlten Monatsziele');return;}
+  let h='<div class="mt">⚠ Verfehlte Monatsziele · Review</div>';
+  h+='<div style="font-size:12px;color:var(--t2);margin-bottom:14px;line-height:1.5">Diese Monatsziele haben ihre Deadline überschritten und wurden nicht erreicht. Pro Ziel: archivieren, neu formulieren, oder doch noch erledigt markieren.</div>';
+  list.forEach(({z,t})=>{
+    const links=tzCountLinks(t.id);
+    const dat=t.datum?t.datum.slice(8)+'.'+t.datum.slice(5,7)+'.':'';
+    h+='<div style="background:var(--sf);border:1.5px solid var(--red-bd);border-radius:10px;padding:12px 14px;margin-bottom:10px">';
+    h+='<div style="font-size:10px;font-weight:700;color:var(--red);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">verfehlt seit '+dat+' · Ziel: '+esc(z.name)+'</div>';
+    h+='<div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:6px">'+esc(t.name)+'</div>';
+    h+='<div style="font-size:11px;color:var(--t3);margin-bottom:10px">'+links.aufgaben.length+' offene Aufgabe'+(links.aufgaben.length===1?'':'n')+' · '+links.wzSlots+' Wochenziel-Slot'+(links.wzSlots===1?'':'s')+' verknüpft</div>';
+    h+='<div style="display:flex;gap:6px;flex-wrap:wrap">';
+    h+='<button onclick="_reviewArchivierenStart(\''+z.id+'\',\''+t.id+'\')" class="btn btn-sm" style="background:var(--gray-bg)">🗄 Verfehlt — archivieren</button>';
+    h+='<button onclick="_reviewNeuFormulierenStart(\''+z.id+'\',\''+t.id+'\')" class="btn btn-sm" style="background:var(--blue-bg);color:var(--blue);border-color:var(--blue-bd)">🔄 Neu formulieren</button>';
+    h+='<button onclick="_reviewMarkErreicht(\''+z.id+'\',\''+t.id+'\')" class="btn btn-sm" style="background:var(--green-bg);color:var(--green);border-color:var(--green-bd)">✓ Doch erreicht</button>';
+    h+='</div></div>';
+  });
+  h+='<div class="mf"><button class="btn btn-gr" onclick="_reviewSnooze()">🔕 Erinnere mich morgen</button><button class="btn btn-gr" onclick="cm()">Schließen</button></div>';
+  document.getElementById('mb').innerHTML=h;
+  document.getElementById('ovl').classList.add('open');
+}
+async function _reviewMarkErreicht(zid,tzid){
+  const z=zielObj(zid);if(!z)return;
+  const tz=(z.teilziele||[]).find(t=>t.id===tzid);if(!tz)return;
+  tz.erledigt=true;
+  await dbPatch('teilziele',tzid,{erledigt:true}).catch(()=>{});
+  toast('✓ Doch erreicht — '+tz.name);
+  // Modal neu rendern, falls noch andere Verfehlte da sind
+  if(tzVerfehltMS().length){openVerfehltReview();}else{cm();render();}
+}
+function _reviewArchivierenStart(zid,tzid){
+  const z=zielObj(zid);if(!z)return;
+  const tz=(z.teilziele||[]).find(t=>t.id===tzid);if(!tz)return;
+  const links=tzCountLinks(tzid);
+  // Andere aktive MS für Umhängen-Picker
+  const otherMS=[];
+  S.ziele.forEach(zi=>{(zi.teilziele||[]).forEach(t2=>{if(t2.id!==tzid&&!t2.erledigt&&(t2.status||'aktiv')==='aktiv'){otherMS.push({z:zi,t:t2});}});});
+  const otherOpts=otherMS.map(({z:zi,t:t2})=>'<option value="'+t2.id+'" data-zid="'+zi.id+'">'+(zi.status==='bereich'?'📁 ':'')+esc(zi.name)+' › '+esc(t2.name)+'</option>').join('');
+  let h='<div class="mt">🗄 Archivieren — '+esc(tz.name)+'</div>';
+  h+='<div style="background:var(--amber-bg);border:1px solid var(--amber-bd);border-radius:8px;padding:10px 12px;margin-bottom:14px;font-size:12px;color:var(--text)">ℹ Dieses Monatsziel wird als <b>verfehlt archiviert</b>. '+links.aufgaben.length+' Aufgabe'+(links.aufgaben.length===1?'':'n')+' und '+links.wzSlots+' Wochenziel-Slot'+(links.wzSlots===1?'':'s')+' hängen daran. Was soll passieren?</div>';
+  if(links.aufgaben.length){
+    h+='<div class="fl"><label>Aufgaben</label><select id="rev-arch-auf">'
+      +'<option value="losloesen">Bezug auflösen — Aufgaben behalten, ohne Monatsziel</option>'
+      +'<option value="mitarchivieren">Mit archivieren</option>'
+      +(otherOpts?'<option value="umhaengen">↗ Auf anderes Monatsziel umhängen …</option>':'')
+      +'</select></div>';
+    if(otherOpts)h+='<div class="fl" id="rev-arch-auf-target-wrap" style="display:none"><label>Ziel-Monatsziel</label><select id="rev-arch-auf-target">'+otherOpts+'</select></div>';
+  }
+  if(links.wzSlots){
+    h+='<div class="fl"><label>Wochenziel-Slots</label><select id="rev-arch-wz">'
+      +'<option value="losloesen">Bezug auflösen — Slots bleiben, ohne Monatsziel-Verknüpfung</option>'
+      +'<option value="behalten">Verknüpfung behalten (zeigt dann archiviert-Hinweis)</option>'
+      +'</select></div>';
+  }
+  h+='<div class="mf"><button class="btn btn-gr" onclick="openVerfehltReview()">← zurück</button><button class="btn btn-red" onclick="_reviewArchivierenFinal(\''+zid+'\',\''+tzid+'\')">Archivieren</button></div>';
+  document.getElementById('mb').innerHTML=h;
+  // Auf Toggle reagieren: Umhängen-Target zeigen
+  const sel=document.getElementById('rev-arch-auf');
+  if(sel){
+    sel.addEventListener('change',()=>{
+      const w=document.getElementById('rev-arch-auf-target-wrap');
+      if(w)w.style.display=sel.value==='umhaengen'?'':'none';
+    });
+  }
+}
+async function _reviewArchivierenFinal(zid,tzid){
+  const z=zielObj(zid);if(!z)return;
+  const tz=(z.teilziele||[]).find(t=>t.id===tzid);if(!tz)return;
+  const links=tzCountLinks(tzid);
+  const aufAction=document.getElementById('rev-arch-auf')?.value;
+  const aufTarget=document.getElementById('rev-arch-auf-target')?.value;
+  const aufTargetZid=document.getElementById('rev-arch-auf-target')?.selectedOptions?.[0]?.dataset?.zid;
+  const wzAction=document.getElementById('rev-arch-wz')?.value;
+  // 1. MZ archivieren
+  tz.status='archiviert';
+  await dbPatch('teilziele',tzid,{status:'archiviert'}).catch(()=>{});
+  // 2. Aufgaben behandeln
+  if(links.aufgaben.length&&aufAction){
+    for(const a of links.aufgaben){
+      if(aufAction==='losloesen'){
+        a.teilzielId=null;
+        await dbPatch('aufgaben',a.id,{teilziel_id:null}).catch(()=>{});
+      } else if(aufAction==='mitarchivieren'){
+        a.status='archiviert';
+        await dbPatch('aufgaben',a.id,{status:'archiviert'}).catch(()=>{});
+      } else if(aufAction==='umhaengen'&&aufTarget){
+        a.teilzielId=aufTarget;
+        a.zielId=aufTargetZid||a.zielId;
+        await dbPatch('aufgaben',a.id,{teilziel_id:aufTarget,ziel_id:aufTargetZid||a.zielId}).catch(()=>{});
+      }
+    }
+  }
+  // 3. Wochenziel-Slots behandeln
+  if(links.wzSlots&&wzAction==='losloesen'){
+    for(const wr of (S.wochenresets||[])){
+      const patch={};
+      [1,2,3].forEach(n=>{if(String(wr['big3_'+n+'_tz_id'])===String(tzid)){wr['big3_'+n+'_tz_id']=null;patch['big3_'+n+'_tz_id']=null;}});
+      if(Object.keys(patch).length)await dbPatch('wochenresets',wr.id,patch).catch(()=>{});
+    }
+  }
+  toast('🗄 Archiviert — '+tz.name);
+  if(tzVerfehltMS().length){openVerfehltReview();}else{cm();render();}
+}
+function _reviewNeuFormulierenStart(zid,tzid){
+  const z=zielObj(zid);if(!z)return;
+  const tz=(z.teilziele||[]).find(t=>t.id===tzid);if(!tz)return;
+  const links=tzCountLinks(tzid);
+  // Default-Datum: ein Monat ab heute
+  const _dt=new Date(TODAY+'T00:00:00');_dt.setMonth(_dt.getMonth()+1);
+  const newDefault=_dt.toISOString().slice(0,10);
+  let h='<div class="mt">🔄 Neu formulieren — '+esc(tz.name)+'</div>';
+  h+='<div style="background:var(--blue-bg);border:1px solid var(--blue-bd);border-radius:8px;padding:10px 12px;margin-bottom:14px;font-size:12px;color:var(--text);line-height:1.5">ℹ <b>Beim Neu-Formulieren ziehen automatisch mit:</b><br>'
+    +'• '+links.aufgaben.length+' Aufgabe'+(links.aufgaben.length===1?'':'n')+'<br>'
+    +'• '+links.wzSlots+' Wochenziel-Slot'+(links.wzSlots===1?'':'s')+'<br>'
+    +'<span style="color:var(--t2)">MZ bleibt verknüpft — alle Bezüge laufen weiter.</span></div>';
+  h+='<div class="fl"><label>Titel</label><input id="rev-nf-titel" value="'+esc(tz.name)+'"></div>';
+  h+='<div class="f2"><div class="fl"><label>Neue Deadline</label><input type="date" id="rev-nf-datum" value="'+newDefault+'"></div>'
+    +'<div class="fl"><label>Anker (optional)</label><input id="rev-nf-zw" type="number" min="1" value="'+(tz.zielWert||'')+'"></div></div>';
+  h+='<div class="mf"><button class="btn btn-gr" onclick="openVerfehltReview()">← zurück</button><button class="btn btn-dk" onclick="_reviewNeuFormulierenSave(\''+zid+'\',\''+tzid+'\')">OK · neu formulieren</button></div>';
+  document.getElementById('mb').innerHTML=h;
+  setTimeout(()=>document.getElementById('rev-nf-titel')?.focus(),50);
+}
+async function _reviewNeuFormulierenSave(zid,tzid){
+  const z=zielObj(zid);if(!z)return;
+  const tz=(z.teilziele||[]).find(t=>t.id===tzid);if(!tz)return;
+  const titel=(document.getElementById('rev-nf-titel')?.value||'').trim();
+  const datum=document.getElementById('rev-nf-datum')?.value||null;
+  const zw=parseInt(document.getElementById('rev-nf-zw')?.value||'',10);
+  if(!titel){toast('⚠ Titel fehlt');return;}
+  if(!datum){toast('⚠ Datum fehlt');return;}
+  tz.name=titel;tz.datum=datum;tz.zielWert=Number.isFinite(zw)?zw:null;
+  await dbPatch('teilziele',tzid,{name:titel,datum,zielwert:tz.zielWert}).catch(()=>{});
+  toast('🔄 Neu formuliert — '+titel);
+  if(tzVerfehltMS().length){openVerfehltReview();}else{cm();render();}
+}
+function _reviewSnooze(){
+  localStorage.setItem('verfehltSnooze_'+aP+'_'+TODAY,'1');
+  cm();toast('🔕 Erinnere morgen wieder');
+}
+// Auto-Trigger: einmalig pro Render-Session, wenn verfehlt + nicht gesnoozt.
+function _checkVerfehltReview(){
+  if(!aP)return;
+  if(localStorage.getItem('verfehltSnooze_'+aP+'_'+TODAY))return;
+  const list=tzVerfehltMS();
+  if(!list.length)return;
+  setTimeout(()=>openVerfehltReview(),400);
+}
 // Aufgaben-Sicht: derived. Pause/Archiv einer MS zieht alle verknüpften Aufgaben mit.
 function taskMsStatus(a){return a&&a.teilzielId?tzStatus(a.teilzielId):'aktiv';}
 // v178: Pause kann jetzt zwei Quellen haben — Monatsziel-Pause (vererbt) oder Direkt-Pause (pausiertBis).
@@ -5579,6 +5751,8 @@ function nav(v,btn){
 function render(){
   // v178: Auto-Resume pausierter Aufgaben (einmalig pro Render-Zyklus, idempotent).
   try{if(!window._resumeChecked){window._resumeChecked=true;autoResumePausedTasks().then(()=>showResumeToastIfAny());}}catch(e){console.error('render:autoResume',e);}
+  // v180: Verfehlt-Review-Modal Auto-Trigger (einmalig, snooze-bar pro Tag).
+  try{if(!window._verfehltChecked){window._verfehltChecked=true;_checkVerfehltReview();}}catch(e){console.error('render:checkVerfehlt',e);}
   // Jede rView ist ein eigener Sandbox-Block: eine einzelne kaputte Aufgabe/KPI darf nicht die
   // komplette App weiß-screenen. Bei Fehler: Konsole + Fallback-Hinweis im Haupt-Container.
   const _safe=(label,fn)=>{try{fn();}catch(e){
@@ -6859,6 +7033,17 @@ function rTag(){
     }
   }
 
+  // v180: Verfehlt-Banner — sticky an oberster Stelle, falls Outcomes verfehlt.
+  {
+    const _vList=tzVerfehltMS();
+    if(_vList.length){
+      out+='<div onclick="openVerfehltReview()" style="background:var(--red-bg);border:1.5px solid var(--red-bd);border-radius:10px;padding:11px 14px;margin-bottom:12px;cursor:pointer;display:flex;align-items:center;gap:10px;transition:transform .12s" onmouseenter="this.style.transform=\'translateY(-1px)\'" onmouseleave="this.style.transform=\'translateY(0)\'">';
+      out+='<span style="font-size:18px">⚠</span>';
+      out+='<div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:700;color:var(--red)">'+_vList.length+' Monatsziel'+(_vList.length>1?'e':'')+' verfehlt — Review fällig</div>';
+      out+='<div style="font-size:10px;color:var(--t3);margin-top:1px">Tippen: archivieren, neu formulieren oder doch erreicht markieren</div></div>';
+      out+='<span style="color:var(--red);font-size:14px;flex-shrink:0">→</span></div>';
+    }
+  }
   // ── "Fixes heute" — ganz oben, damit keine Termine übersehen werden ──
   out+=rFixesHeute(aP);
 
