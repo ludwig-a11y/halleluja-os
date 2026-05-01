@@ -2044,13 +2044,19 @@ async function cleanupToWochenziel(taskId,wrId,combined){
   let zielId=null;
   S.ziele.forEach(z=>{(z.teilziele||[]).forEach(t=>{if(String(t.id)===String(tzId))zielId=z.id;});});
   if(!zielId){toast('⚠️ Monatsziel dieses Wochenziels existiert nicht mehr','var(--red)');return;}
-  const prev={teilzielId:a.teilzielId,zielId:a.zielId,wochenresetId:a.wochenresetId,big3Slot:a.big3Slot};
-  a._busy=true;a.teilzielId=tzId;a.zielId=zielId;a.wochenresetId=wrId;a.big3Slot=slot;
+  // v181: Vom Parkplatz zurück ins Spiel — Status auf 'neu' (falls backlog), Park-Felder löschen.
+  const prev={teilzielId:a.teilzielId,zielId:a.zielId,wochenresetId:a.wochenresetId,big3Slot:a.big3Slot,
+    status:a.status,pausiertBis:a.pausiertBis};
+  a._busy=true;
+  a.teilzielId=tzId;a.zielId=zielId;a.wochenresetId=wrId;a.big3Slot=slot;
+  const patch={teilziel_id:tzId,ziel_id:zielId,wochenreset_id:wrId,big3_slot:slot};
+  if(a.status==='backlog'){a.status='neu';patch.status='neu';}
+  if(a.pausiertBis){a.pausiertBis=null;patch.pausiert_bis=null;}
   render();
-  const ok=await dbPatch('aufgaben',taskId,{teilziel_id:tzId,ziel_id:zielId,wochenreset_id:wrId,big3_slot:slot});
+  const ok=await dbPatch('aufgaben',taskId,patch);
   a._busy=false;
-  if(!ok){a.teilzielId=prev.teilzielId;a.zielId=prev.zielId;a.wochenresetId=prev.wochenresetId;a.big3Slot=prev.big3Slot;toast('⚠️ Speichern fehlgeschlagen','var(--red)');render();return;}
-  toast('✓ Zu Wochenziel zugeordnet');
+  if(!ok){Object.assign(a,prev);toast('⚠️ Speichern fehlgeschlagen','var(--red)');render();return;}
+  toast('✓ Zu Wochenziel zugeordnet — vom Parkplatz geholt');
 }
 
 // ─── INBOX (End-of-Day Ritual) ──────────────────────────────────
