@@ -2163,6 +2163,33 @@ function tzStatus(tzOrId){
 }
 function tzIsPaused(tzOrId){return tzStatus(tzOrId)==='pausiert';}
 function tzIsArchived(tzOrId){return tzStatus(tzOrId)==='archiviert';}
+// v180: Outcome vs Projekt — Verhalten leitet sich vom Parent ab.
+// Ziel (status≠bereich) → "Monatsziel" (Outcome, harte Frist, Verfehlt = Review)
+// Bereich (status='bereich') → "Themengebiet" (laufender Schwerpunkt, Datum verlängerbar)
+function tzIstUnterBereich(tzOrId){
+  const tz=typeof tzOrId==='string'?_tzById(tzOrId):tzOrId;
+  return !!(tz&&istBereich(tz.zielId));
+}
+function tzLabel(tzOrId){return tzIstUnterBereich(tzOrId)?'Themengebiet':'Monatsziel';}
+function tzLabelPlural(tzOrId){return tzIstUnterBereich(tzOrId)?'Themengebiete':'Monatsziele';}
+// "Verfehlt" — nur für Outcome-Monatsziele (unter Ziel). Themengebiete kennen nur "überfällig".
+function tzIstVerfehlt(tzOrId){
+  const tz=typeof tzOrId==='string'?_tzById(tzOrId):tzOrId;
+  if(!tz)return false;
+  if(tzIstUnterBereich(tz))return false;
+  if(tz.erledigt)return false;
+  if((tz.status||'aktiv')!=='aktiv')return false;
+  return !!(tz.datum&&tz.datum<TODAY);
+}
+// Themengebiet überfällig — gedimmt, aber kein Review-Zwang.
+function tzIstUeberfaelligProjekt(tzOrId){
+  const tz=typeof tzOrId==='string'?_tzById(tzOrId):tzOrId;
+  if(!tz)return false;
+  if(!tzIstUnterBereich(tz))return false;
+  if(tz.erledigt)return false;
+  if((tz.status||'aktiv')!=='aktiv')return false;
+  return !!(tz.datum&&tz.datum<TODAY);
+}
 // Aufgaben-Sicht: derived. Pause/Archiv einer MS zieht alle verknüpften Aufgaben mit.
 function taskMsStatus(a){return a&&a.teilzielId?tzStatus(a.teilzielId):'aktiv';}
 // v178: Pause kann jetzt zwei Quellen haben — Monatsziel-Pause (vererbt) oder Direkt-Pause (pausiertBis).
@@ -4449,10 +4476,12 @@ function openBig3Detail(wrId,slot){
     h+='<div style="font-size:12px;color:var(--t3);font-style:italic">Noch kein Monatsziel verknüpft</div>';
   }
   h+='</div>';
-  h+='<button onclick="b3EditMs()" style="font-size:11px;padding:4px 8px;border-radius:6px;border:1px solid var(--bd);background:transparent;color:var(--t3);cursor:pointer;font-family:inherit;flex-shrink:0" title="Monatsziel ändern">✎</button>';
+  // v180: Label folgt Parent — wenn current MS unter Bereich → "Themengebiet", sonst "Monatsziel"
+  const _b3Lbl=tzId?tzLabel(tzId):'Monatsziel';
+  h+='<button onclick="b3EditMs()" style="font-size:11px;padding:4px 8px;border-radius:6px;border:1px solid var(--bd);background:transparent;color:var(--t3);cursor:pointer;font-family:inherit;flex-shrink:0" title="'+_b3Lbl+' ändern">✎</button>';
   h+='</div>';
   h+='<div id="b3-ms-edit" style="display:none;gap:6px;align-items:center;flex-wrap:wrap;padding:9px 12px;background:var(--sf);border-left:3px solid var(--inv);border-radius:0 8px 8px 0">';
-  h+='<span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);flex-shrink:0">Monatsziel</span>';
+  h+='<span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);flex-shrink:0">'+_b3Lbl+'</span>';
   h+='<select id="b3-ms-select" onchange="b3SaveMs(\''+wrId+'\','+slot+')" style="flex:1;min-width:0;font-size:12px;padding:6px 9px;border-radius:7px;border:1px solid var(--bd);background:var(--sf);color:var(--text);font-family:inherit;cursor:pointer">'+meilensteinOptgroups(wr.pid||aP,tzId||'',true)+'</select>';
   h+='<button onclick="b3CancelMs()" style="font-size:11px;padding:6px 9px;border-radius:7px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);cursor:pointer;font-family:inherit;flex-shrink:0" title="Abbrechen">×</button>';
   h+='</div>';
@@ -4938,7 +4967,9 @@ function openOnboarding(step){
     const existTZ=z?(z.teilziele||[]).filter(t=>!t.erledigt&&(t.status||'aktiv')==='aktiv'):[];
     let tzExistHtml='';
     if(existTZ.length){
-      tzExistHtml+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);margin-bottom:8px">Bestehenden Monatsziel wählen</div>';
+      // v180: Label folgt Parent
+      const _onbLbl=z&&istBereich(z.id)?'Themengebiet':'Monatsziel';
+      tzExistHtml+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);margin-bottom:8px">Bestehendes '+_onbLbl+' wählen</div>';
       tzExistHtml+=existTZ.map(t=>{const sel=t.id===window._onb.tzId;return'<div onclick="window._onb.tzId=\''+t.id+'\';document.querySelectorAll(\'.onb-tzw\').forEach(x=>{x.style.borderColor=\'var(--bd)\';x.style.background=\'var(--sf)\'});this.style.borderColor=\'var(--green)\';this.style.background=\'var(--green-bg)\';document.getElementById(\'onb-new-tz\').style.display=\'none\'" class="onb-tzw" style="cursor:pointer;border:1.5px solid '+(sel?'var(--green)':'var(--bd)')+';border-radius:8px;padding:9px 12px;margin-bottom:6px;background:'+(sel?'var(--green-bg)':'var(--sf)')+';font-size:13px;font-weight:600">'+esc(t.name)+(t.datum?'<span style="font-size:10px;color:var(--t3);font-weight:400;margin-left:6px">bis '+t.datum.slice(8)+'.'+t.datum.slice(5,7)+'.</span>':'')+'</div>';}).join('');
       tzExistHtml+='<div style="text-align:center;font-size:11px;color:var(--t3);margin:10px 0">— oder neues Monatsziel anlegen —</div>';
     }
@@ -7373,7 +7404,33 @@ function rTag(){
     out+='</div></details>';
   }
 
-  // v179: "Andere warten auf dich" — Aufgaben, die mit dir verknüpft sind oder bei denen du im wartet_auf_pid stehst.
+  // v179: "Ich warte auf andere" — eigene wartende Aufgaben, sichtbar gemacht.
+  {
+    const meineWartenden=S.aufgaben.filter(a=>String(a.pid)===String(aP)&&a.wartetAufPid&&a.status!=='erledigt'&&a.status!=='archiviert');
+    if(meineWartenden.length){
+      out+='<div style="background:var(--gray-bg);border:1px solid var(--bd);border-radius:12px;padding:12px 14px;margin-bottom:12px">';
+      out+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><span style="font-size:14px">🕒</span>';
+      out+='<span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t2)">Ich warte auf andere · '+meineWartenden.length+'</span></div>';
+      meineWartenden.slice(0,5).forEach(w=>{
+        const auf=person(w.wartetAufPid);
+        const linked=w.wartetAufAufgabeId?S.aufgaben.find(x=>x.id===w.wartetAufAufgabeId):null;
+        const linkedLbl=linked?(linked.titel.length>40?linked.titel.slice(0,40)+'…':linked.titel):null;
+        out+='<div onclick="openDetail(\''+w.id+'\')" style="display:flex;align-items:center;gap:8px;padding:7px 0;border-top:1px solid var(--bd);cursor:pointer">';
+        out+='<div style="flex:1;min-width:0">';
+        out+='<div style="font-size:12px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(w.titel)+'</div>';
+        out+='<div style="font-size:10px;color:var(--t3);margin-top:1px">';
+        out+='wartet auf '+(auf?esc(auf.name.split(' ')[0]):'?');
+        if(linkedLbl)out+=' · ↗ '+esc(linkedLbl);
+        else out+=' · nur Marker';
+        out+='</div></div>';
+        out+='<button onclick="event.stopPropagation();clearWartet(\''+w.id+'\')" class="btn btn-sm" style="flex-shrink:0">▶ Reaktivieren</button>';
+        out+='</div>';
+      });
+      if(meineWartenden.length>5)out+='<div style="font-size:10px;color:var(--t3);margin-top:4px">… '+(meineWartenden.length-5)+' weitere</div>';
+      out+='</div>';
+    }
+  }
+  // v179: "Andere warten auf dich" — du bist Bottleneck.
   {
     const wartenAufMich=S.aufgaben.filter(a=>String(a.wartetAufPid)===String(aP)&&a.status!=='erledigt'&&a.status!=='archiviert');
     if(wartenAufMich.length){
@@ -7384,16 +7441,22 @@ function rTag(){
         const wOwner=person(w.pid);
         const linked=w.wartetAufAufgabeId?S.aufgaben.find(x=>x.id===w.wartetAufAufgabeId):null;
         const linkedLbl=linked?(linked.titel.length>40?linked.titel.slice(0,40)+'…':linked.titel):null;
-        out+='<div onclick="openDetail(\''+w.id+'\')" style="display:flex;align-items:center;gap:8px;padding:7px 0;border-top:1px solid var(--amber-bd);cursor:pointer">';
+        const linkedMine=linked&&String(linked.pid)===String(aP);
+        // Klick auf Zeile: wenn linked + meine → Simons Aufgabe öffnen, sonst Info-Toast (nicht meine Aufgabe).
+        const rowClick=linkedMine?'openDetail(\''+linked.id+'\')':'toast(\'ℹ Diese Aufgabe gehört '+esc(wOwner?wOwner.name.split(\' \')[0]:'?')+'\')';
+        out+='<div onclick="'+rowClick+'" style="display:flex;align-items:center;gap:8px;padding:7px 0;border-top:1px solid var(--amber-bd);cursor:pointer">';
         out+='<div style="flex:1;min-width:0">';
         out+='<div style="font-size:12px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(w.titel)+'</div>';
         out+='<div style="font-size:10px;color:var(--t3);margin-top:1px">';
         if(wOwner)out+=esc(wOwner.name.split(' ')[0])+' wartet';
         if(linkedLbl)out+=' · ↗ '+esc(linkedLbl);
-        else out+=' · nur Marker';
+        else out+=' · nur Marker (keine Aufgabe an dich)';
         out+='</div></div>';
-        if(linked&&String(linked.pid)===String(aP)){
+        // Geliefert-Button: bei linked+meine → Simons Aufgabe erledigen (Auto-Resolve), sonst clearWartet bei Owner.
+        if(linkedMine){
           out+='<button onclick="event.stopPropagation();setStatusModal(\''+linked.id+'\',\'erledigt\')" class="btn btn-sm" style="flex-shrink:0">✓ Erledigt</button>';
+        } else {
+          out+='<button onclick="event.stopPropagation();clearWartet(\''+w.id+'\')" class="btn btn-sm" style="flex-shrink:0">✓ Geliefert</button>';
         }
         out+='</div>';
       });
@@ -9186,7 +9249,9 @@ function rZiele(){
       const showTZ=collapsed?myTZ.slice(0,5):myTZ;
       out+='<div style="border-top:1px solid '+f.bd+';padding-top:10px;margin-bottom:8px">';
       out+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">';
-      out+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3)">🗓 Monatsziele'+(myTZ.length?' · '+myTZ.length:'')+(tzErledigtAll?' · '+tzErledigtAll+' erledigt':'')+'</div>';
+      // v180: Label folgt Parent-Typ — Bereich → "Themengebiete", Ziel → "Monatsziele"
+      const _zLblPlural=istBereich(z.id)?'Themengebiete':'Monatsziele';
+      out+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3)">🗓 '+_zLblPlural+(myTZ.length?' · '+myTZ.length:'')+(tzErledigtAll?' · '+tzErledigtAll+' erledigt':'')+'</div>';
       out+='</div>';
       if(myTZ.length){
         out+='<div style="display:flex;flex-direction:column;gap:5px">';
