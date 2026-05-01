@@ -1961,13 +1961,13 @@ function rCleanup(pid){
   });
   h+='</div></div>';
   h+='<div style="font-size:11px;color:var(--t3);margin:8px 0 10px">Geparkte und ungeordnete Aufgaben — täglich aufräumen, damit nichts versandet. Schlafende sind gegraut.</div>';
-  // Wochenziel-Options für Dropdown
+  // Wochenziel-Options für Dropdown — v181: alle Slots mit Text zeigen, auch wenn tz_id fehlt.
   const wrNow=dieseWocheReset(pid);
   const wzOpts=[];
   if(wrNow){
     [1,2,3].forEach(n=>{
-      const txt=wrNow['big3_'+n];const tzId=wrNow['big3_'+n+'_tz_id'];
-      if(txt&&tzId)wzOpts.push({n,txt,tzId});
+      const txt=wrNow['big3_'+n];const tzId=wrNow['big3_'+n+'_tz_id']||null;
+      if(txt)wzOpts.push({n,txt,tzId});
     });
   }
   items.forEach(a=>{
@@ -1987,7 +1987,8 @@ function rCleanup(pid){
       h+='<option value="">→ Wochenziel…</option>';
       wzOpts.forEach(o=>{
         const label=o.txt.length>28?o.txt.slice(0,28)+'…':o.txt;
-        h+='<option value="'+o.n+'|'+o.tzId+'">'+o.n+': '+esc(label)+'</option>';
+        // v181: tzId optional — leer wenn nicht gesetzt
+        h+='<option value="'+o.n+'|'+(o.tzId||'')+'">'+o.n+': '+esc(label)+'</option>';
       });
       h+='</select>';
     }
@@ -2037,19 +2038,23 @@ async function setWochenziel(taskId,wrId,combined){
   toast('✓ Wochenziel-Zuordnung gespeichert');
 }
 async function cleanupToWochenziel(taskId,wrId,combined){
-  const [slotStr,tzId]=(combined||'').split('|');
+  const [slotStr,tzIdRaw]=(combined||'').split('|');
   const slot=parseInt(slotStr,10);
-  if(!slot||!tzId)return;
+  const tzId=tzIdRaw||null; // v181: tzId optional — Wochenziel kann ohne Monatsziel-Bezug existieren
+  if(!slot)return;
   const a=S.aufgaben.find(x=>x.id===taskId);if(!a||a._busy)return;
   let zielId=null;
-  S.ziele.forEach(z=>{(z.teilziele||[]).forEach(t=>{if(String(t.id)===String(tzId))zielId=z.id;});});
-  if(!zielId){toast('⚠️ Monatsziel dieses Wochenziels existiert nicht mehr','var(--red)');return;}
+  if(tzId){
+    S.ziele.forEach(z=>{(z.teilziele||[]).forEach(t=>{if(String(t.id)===String(tzId))zielId=z.id;});});
+    if(!zielId){toast('⚠️ Monatsziel dieses Wochenziels existiert nicht mehr','var(--red)');return;}
+  }
   // v181: Vom Parkplatz zurück ins Spiel — Status auf 'neu' (falls backlog), Park-Felder löschen.
   const prev={teilzielId:a.teilzielId,zielId:a.zielId,wochenresetId:a.wochenresetId,big3Slot:a.big3Slot,
     status:a.status,pausiertBis:a.pausiertBis};
   a._busy=true;
-  a.teilzielId=tzId;a.zielId=zielId;a.wochenresetId=wrId;a.big3Slot=slot;
-  const patch={teilziel_id:tzId,ziel_id:zielId,wochenreset_id:wrId,big3_slot:slot};
+  a.wochenresetId=wrId;a.big3Slot=slot;
+  const patch={wochenreset_id:wrId,big3_slot:slot};
+  if(tzId){a.teilzielId=tzId;a.zielId=zielId;patch.teilziel_id=tzId;patch.ziel_id=zielId;}
   if(a.status==='backlog'){a.status='neu';patch.status='neu';}
   if(a.pausiertBis){a.pausiertBis=null;patch.pausiert_bis=null;}
   render();
@@ -7135,7 +7140,8 @@ function rTag(){
       out+='<div style="display:flex;align-items:flex-start;gap:10px">';
       out+='<div onclick="event.stopPropagation();toggleBig3(\''+wrAktuell.id+'\',\''+doneF+'\')" title="Wochenziel erledigt markieren" style="width:20px;height:20px;border-radius:5px;flex-shrink:0;cursor:pointer;margin-top:1px;'+(done?'background:var(--green);border:1.5px solid var(--green);display:flex;align-items:center;justify-content:center':'border:1.5px solid var(--bd)')+'">'+(done?'<span style="color:#fff;font-size:11px;font-weight:800">✓</span>':'')+'</div>';
       out+='<div style="flex:1;min-width:0">';
-      out+='<div style="font-size:13px;font-weight:700;'+(done?'color:var(--t3);text-decoration:line-through':'color:var(--text)')+';line-height:1.35">'+esc(txt)+'</div>';
+      // v181: Slot-Nummer als Badge vor dem Titel — 1/2/3 immer sichtbar
+      out+='<div style="font-size:13px;font-weight:700;'+(done?'color:var(--t3);text-decoration:line-through':'color:var(--text)')+';line-height:1.35;display:flex;align-items:baseline;gap:8px"><span style="font-size:11px;font-weight:800;color:'+(done?'var(--t3)':_wzAccent)+';flex-shrink:0;letter-spacing:.5px">'+n+'</span><span style="flex:1;min-width:0">'+esc(txt)+'</span></div>';
       if(_msNameW)out+='<div style="font-size:10px;color:var(--t3);margin-top:2px">→ Monatsziel: '+esc(_msNameW)+'</div>';
       // v178 Phase 3: Bottleneck-Badge — wenn Slot blockiert (kein aktiver Hero, nur Geparkte)
       if(!done&&!hero&&_slotGeparkt.length){
