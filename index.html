@@ -689,7 +689,89 @@ function normalizeAufgabe(a){
     missCount:a.miss_count||0,lastMissAction:a.last_miss_action||null,
     lastMissAt:a.last_miss_at||null,lastMissNote:a.last_miss_note||null,
     shiftCount:a.shift_count||0,inboxStatus:a.inbox_status||null,
-    wochenresetId:a.wochenreset_id||null,big3Slot:a.big3_slot||null};
+    wochenresetId:a.wochenreset_id||null,big3Slot:a.big3_slot||null,
+    sortIndex:a.sort_index??null};
+}
+// ── v177: Manuelle Reihenfolge — Pfeile ↑↓ + Sort-Helfer ─────────
+// Doktrin: manuell zuerst (sortIndex), dann Deadline-Fallback, dann createdAt.
+// sortIndex=null → noch nie manuell sortiert → fällt auf Default zurück.
+function cmpSortIdx(a,b,dlField){
+  const ai=(a&&a.sortIndex!=null)?a.sortIndex:null;
+  const bi=(b&&b.sortIndex!=null)?b.sortIndex:null;
+  if(ai!=null&&bi!=null)return ai-bi;
+  if(ai!=null)return -1;
+  if(bi!=null)return 1;
+  const ad=(dlField&&a&&a[dlField])||'9999-12-31';
+  const bd=(dlField&&b&&b[dlField])||'9999-12-31';
+  if(ad!==bd)return ad.localeCompare(bd);
+  return (a?.created_at||a?.createdAt||'').localeCompare(b?.created_at||b?.createdAt||'');
+}
+function arrowsHTML(handlerUp,handlerDown,canUp,canDown){
+  const base='width:18px;height:14px;padding:0;border:1px solid var(--bd);background:var(--sf);color:var(--t2);cursor:pointer;font-family:inherit;font-size:9px;line-height:1;display:flex;align-items:center;justify-content:center;border-radius:3px;user-select:none';
+  const dis=';opacity:.25;cursor:default;pointer-events:none';
+  return '<div style="display:flex;flex-direction:column;gap:2px;flex-shrink:0" onclick="event.stopPropagation()">'
+    +'<button type="button" title="Nach oben" onclick="event.stopPropagation();'+handlerUp+'" style="'+base+(canUp?'':dis)+'">▲</button>'
+    +'<button type="button" title="Nach unten" onclick="event.stopPropagation();'+handlerDown+'" style="'+base+(canDown?'':dis)+'">▼</button>'
+    +'</div>';
+}
+async function moveSortItem(table,items,id,dir){
+  if(!Array.isArray(items)||items.length<2)return;
+  const idx=items.findIndex(x=>String(x.id)===String(id));if(idx<0)return;
+  const ni=idx+(dir==='up'?-1:1);if(ni<0||ni>=items.length)return;
+  if(items.some(x=>x.sortIndex==null)){
+    const patches=[];
+    items.forEach((x,i)=>{const v=(i+1)*10;if(x.sortIndex!==v){x.sortIndex=v;patches.push([x.id,v]);}});
+    await Promise.all(patches.map(([pid,si])=>dbPatch(table,pid,{sort_index:si}).catch(()=>{})));
+  }
+  const a=items[idx],b=items[ni],av=a.sortIndex,bv=b.sortIndex;
+  a.sortIndex=bv;b.sortIndex=av;
+  await Promise.all([dbPatch(table,a.id,{sort_index:bv}).catch(()=>{}),dbPatch(table,b.id,{sort_index:av}).catch(()=>{})]);
+  render();
+}
+async function moveBig3(wrId,slot,dir){
+  const wr=(S.wochenresets||[]).find(w=>w.id===wrId);if(!wr)return;
+  const nSlot=slot+(dir==='up'?-1:1);if(nSlot<1||nSlot>3)return;
+  const suf=['','_done','_tz_id'];
+  const patch={};
+  suf.forEach(s=>{
+    const fk='big3_'+slot+s,gk='big3_'+nSlot+s;
+    const tmp=wr[fk];wr[fk]=wr[gk]??null;wr[gk]=tmp??null;
+    patch[fk]=wr[fk];patch[gk]=wr[gk];
+  });
+  await dbPatch('wochenresets',wrId,patch).catch(()=>{});
+  render();
+}
+// Reihenfolge der Monatsziele in einer Zielkarte tauschen (Pfeile ↑↓).
+async function moveTzInZielkarte(zielId,tzId,dir){
+  const z=S.ziele.find(x=>x.id===zielId);if(!z)return;
+  const myTZ=(z.teilziele||[]).filter(tz=>(!tz.vertraulich||isGF()||tz.verantwortlichId===aP)&&(tz.status||'aktiv')==='aktiv').sort((a,b)=>{
+    const aM=String(a.verantwortlichId)===String(aP)?0:1;
+    const bM=String(b.verantwortlichId)===String(aP)?0:1;
+    if(aM!==bM)return aM-bM;
+    return cmpSortIdx(a,b,'datum');
+  });
+  await moveSortItem('teilziele',myTZ,tzId,dir);
+}
+// Reihenfolge der Aufgaben innerhalb eines Wochenziel-Slots tauschen (Pfeile ↑↓).
+async function moveAufgabeInSlot(wrId,slot,aufId,dir){
+  const wr=(S.wochenresets||[]).find(w=>w.id===wrId);if(!wr)return;
+  const _sm=slotMembership(wr,slot);
+  const _belongs=_sm.belongs;
+  const slotTasks=S.aufgaben.filter(a=>a.pid===aP&&_belongs(a)&&a.status!=='erledigt'&&a.status!=='archiviert').sort(cmpAufgabeSlot);
+  await moveSortItem('aufgaben',slotTasks,aufId,dir);
+}
+// Wochenziele-Sort-Helfer für Aufgaben unter einem big3-Slot.
+// Aufgaben mit sortIndex=null werden auf (P1>P2>P3) + Deadline sortiert.
+function cmpAufgabeSlot(a,b){
+  const ai=a.sortIndex!=null?a.sortIndex:null,bi=b.sortIndex!=null?b.sortIndex:null;
+  if(ai!=null&&bi!=null)return ai-bi;
+  if(ai!=null)return -1;
+  if(bi!=null)return 1;
+  const pr={P1:1,P2:2,P3:3};
+  const ap=pr[a.prio]||9,bp=pr[b.prio]||9;
+  if(ap!==bp)return ap-bp;
+  const ad=a.dl||'9999-12-31',bd=b.dl||'9999-12-31';
+  return ad.localeCompare(bd);
 }
 async function loadData(){
   const [personen,teams,ziele,kpis,teilziele,aufgaben,kpiVals,checkins,signale,wochenresets,beobachtungen,kontextFeed,decisionRequests,meetings,paddelGewinner,monatszielInputs,winTage]=await Promise.all([
@@ -714,7 +796,7 @@ async function loadData(){
   S.ziele=(ziele||[]).map(z=>({
     ...z,verantwortlichId:z.verantwortlich_id,
     kpis:(kpis||[]).filter(k=>k.ziel_id===z.id).map(k=>({...k,zielId:k.ziel_id,teilzielId:k.teilziel_id||null,prio:k.prio||null})),
-    teilziele:(teilziele||[]).filter(t=>t.ziel_id===z.id).map(t=>({...t,zielId:t.ziel_id,verantwortlichId:t.verantwortlich_id,datum:t.datum||'',status:t.status||'aktiv',metrik:t.metrik||null,zielWert:t.zielwert||null}))
+    teilziele:(teilziele||[]).filter(t=>t.ziel_id===z.id).map(t=>({...t,zielId:t.ziel_id,verantwortlichId:t.verantwortlich_id,datum:t.datum||'',status:t.status||'aktiv',metrik:t.metrik||null,zielWert:t.zielwert||null,sortIndex:t.sort_index??null}))
   }));
   S.aufgaben=(aufgaben||[]).map(normalizeAufgabe);
   // Auto-reassign: @mention in Titel → Person zuweisen
@@ -3562,7 +3644,7 @@ function openWochenreset(){
     +'<input type="hidden" id="wr-ziel" value="'+selZielId+'">'
     +'<input type="hidden" id="wr-focus-tz" value="'+selTZId+'">'
     +(wr?'<textarea id="wr-blockiert" style="display:none">'+esc(wr.blockiert||'')+'</textarea>':'')
-    +'<div style="margin-left:32px">'+msHtml+'</div>'
+    +'<div id="wr-tz-list" style="margin-left:32px">'+msHtml+'</div>'
     // Step 2: Wochenziele
     +'<div style="display:flex;align-items:center;gap:10px;margin-top:14px;margin-bottom:6px">'
     +'<span style="background:'+(selTZId?'var(--inv)':'var(--bd)')+';color:'+(selTZId?'var(--inv-t)':'var(--t3)')+';font-size:12px;font-weight:800;width:22px;height:22px;border-radius:99px;display:flex;align-items:center;justify-content:center;flex-shrink:0">2</span>'
@@ -3738,7 +3820,38 @@ function selectWrTZ(zielId,tzId){
   if(s2circle){s2circle.style.background='var(--inv)';s2circle.style.color='var(--inv-t)';}
   const s2sub=document.getElementById('wr-step2-sub');
   if(s2sub){s2sub.style.color='var(--t2)';s2sub.textContent='Wähle aus Vorschlägen oder trage eigene ein (max. 3)';}
+  _wrCollapseTZList(tzId);
   updateWRTZSection();
+}
+function _wrCollapseTZList(tzId){
+  const list=document.getElementById('wr-tz-list');if(!list)return;
+  list.querySelectorAll('.wtz-opt').forEach(x=>{
+    const oc=x.getAttribute('onclick')||'';
+    x.style.display=oc.includes("'"+tzId+"'")?'':'none';
+  });
+  list.querySelectorAll('details').forEach(d=>{
+    const hasVisible=Array.from(d.querySelectorAll('.wtz-opt')).some(x=>x.style.display!=='none');
+    if(hasVisible){d.open=true;const sum=d.querySelector('summary');if(sum)sum.style.display='none';}
+    else{d.style.display='none';}
+  });
+  let chg=document.getElementById('wr-tz-change');
+  if(!chg){
+    chg=document.createElement('div');
+    chg.id='wr-tz-change';
+    chg.style.cssText='font-size:11px;color:var(--t3);cursor:pointer;padding:8px 0 0;text-decoration:underline';
+    chg.textContent='↻ Anderes Monatsziel wählen';
+    chg.onclick=_wrExpandTZList;
+    list.appendChild(chg);
+  }else{chg.style.display='';}
+}
+function _wrExpandTZList(){
+  const list=document.getElementById('wr-tz-list');if(!list)return;
+  list.querySelectorAll('.wtz-opt').forEach(x=>{x.style.display='';});
+  list.querySelectorAll('details').forEach(d=>{
+    d.style.display='';
+    const sum=d.querySelector('summary');if(sum)sum.style.display='';
+  });
+  const chg=document.getElementById('wr-tz-change');if(chg)chg.style.display='none';
 }
 function updateWRTZSection(){
   const zielId=document.getElementById('wr-ziel')?.value;
@@ -6498,10 +6611,12 @@ function rTag(){
       const _sm=slotMembership(wrAktuell,n);
       const _belongs=_sm.belongs;
       // Eigene offene Aufgaben im Slot (für "Los"-Button + Liste)
-      const slotTasks=S.aufgaben.filter(a=>a.pid===aP&&_belongs(a)&&a.status!=='erledigt'&&a.status!=='archiviert');
+      // v177: Sort = manueller sortIndex (Pfeile) zuerst, dann P1>P2>P3 + Deadline-Fallback
+      const slotTasks=S.aufgaben.filter(a=>a.pid===aP&&_belongs(a)&&a.status!=='erledigt'&&a.status!=='archiviert').sort(cmpAufgabeSlot);
       // Delegationen: von mir rausgegeben, andere pid, noch offen
       const slotDelegiert=S.aufgaben.filter(a=>_belongs(a)&&String(a.erstelltVon)===String(aP)&&String(a.pid)!==String(aP)&&a.status!=='erledigt'&&a.status!=='archiviert');
-      const linkedTask=slotTasks.find(a=>a.prio==='P1')||slotTasks[0]||null;
+      // Hero = oberster Task nach Sort (nicht mehr P1-bevorzugt — manuelle Reihenfolge gewinnt)
+      const linkedTask=slotTasks[0]||null;
       // Card-Click: öffnet Wochenziel-Übersichts-Modal (immer, auch ohne linkedTask).
       const cardAction='openBig3Detail(\''+wrAktuell.id+'\','+n+')';
       const cardCursor='cursor:pointer';
@@ -6533,7 +6648,12 @@ function rTag(){
       out+='<div style="flex:1;min-width:0">';
       out+='<div style="font-size:13px;font-weight:700;'+(done?'color:var(--t3);text-decoration:line-through':'color:var(--text)')+';line-height:1.35">'+esc(txt)+'</div>';
       if(_msNameW)out+='<div style="font-size:10px;color:var(--t3);margin-top:2px">→ Monatsziel: '+esc(_msNameW)+'</div>';
-      out+='</div></div>';
+      out+='</div>';
+      // v177: Pfeile ↑↓ — Wochenziel-Reihenfolge tauschen (big3-Slot-Swap)
+      const _wzPrev=n>1&&!!wrAktuell['big3_'+(n-1)];
+      const _wzNext=n<3&&!!wrAktuell['big3_'+(n+1)];
+      out+=arrowsHTML('moveBig3(\''+wrAktuell.id+'\','+n+',\'up\')','moveBig3(\''+wrAktuell.id+'\','+n+',\'down\')',_wzPrev,_wzNext);
+      out+='</div>';
 
       if(!done){
         // ── Hero-Task: die EINE nächste Aufgabe, prominent mit Start-Button ──
@@ -6563,10 +6683,16 @@ function rTag(){
           out+='<div style="padding:4px 0 2px 0">';
           weitere.forEach(a=>{
             const isAk=a.status==='aktiv';
+            // v177: Index in slotTasks (inkl. Hero), damit Pfeil ↑ den ersten "weitere" mit dem Hero tauschen kann
+            const _aIdx=slotTasks.findIndex(x=>x.id===a.id);
             out+='<div onclick="event.stopPropagation();openDetail(\''+a.id+'\')" style="display:flex;align-items:center;gap:7px;padding:5px 6px;cursor:pointer;border-radius:6px" onmouseenter="this.style.background=\'var(--gray-bg)\'" onmouseleave="this.style.background=\'transparent\'">';
             out+='<div onclick="event.stopPropagation();setStatusModal(\''+a.id+'\',\'erledigt\')" style="width:12px;height:12px;border-radius:3px;flex-shrink:0;cursor:pointer;border:1.5px solid '+(isAk?'var(--blue)':'var(--bd)')+'"></div>';
             out+='<span style="font-size:12px;color:'+(isAk?'var(--blue)':'var(--text)')+';flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(a.titel)+'</span>';
             if(a.prio)out+='<span style="font-size:9px;font-weight:700;color:'+(a.prio==='P1'?'var(--red)':'var(--t3)')+';flex-shrink:0">'+a.prio+'</span>';
+            // v177: Pfeile ↑↓ für Aufgaben-Reihenfolge im Wochenziel-Slot
+            if(slotTasks.length>1){
+              out+=arrowsHTML('moveAufgabeInSlot(\''+wrAktuell.id+'\','+n+',\''+a.id+'\',\'up\')','moveAufgabeInSlot(\''+wrAktuell.id+'\','+n+',\''+a.id+'\',\'down\')',_aIdx>0,_aIdx<slotTasks.length-1);
+            }
             out+='<span style="font-size:11px;color:var(--t3);flex-shrink:0">▶</span>';
             out+='</div>';
           });
@@ -8724,11 +8850,11 @@ function rZiele(){
     const _tzPausiert=_tzVisible.filter(tz=>tz.status==='pausiert');
     const _tzArchiv=_tzVisible.filter(tz=>tz.status==='archiviert');
     const myTZ=_tzVisible.filter(tz=>(tz.status||'aktiv')==='aktiv').sort((a,b)=>{
-      // Eigene zuerst, dann nach Deadline aufsteigend
+      // v177: Eigene zuerst, dann manueller sortIndex (Pfeile), dann Deadline-Fallback
       const aM=String(a.verantwortlichId)===String(aP)?0:1;
       const bM=String(b.verantwortlichId)===String(aP)?0:1;
       if(aM!==bM)return aM-bM;
-      return (a.datum||'9999-12-31').localeCompare(b.datum||'9999-12-31');
+      return cmpSortIdx(a,b,'datum');
     });
     const tzErledigtAll=(z.teilziele||[]).filter(tz=>tz.erledigt).length;
     if(myTZ.length||isGF()){
@@ -8767,6 +8893,11 @@ function rZiele(){
           const _rowRadius=_expanded?'8px 8px 0 0':'8px';
           out+='<div style="display:flex;align-items:center;gap:10px;padding:8px 11px;border:'+_rowBorder+';border-radius:'+_rowRadius+';background:var(--sf);transition:background .12s'+(_expanded?';border-bottom:none':'')+'" onmouseenter="if(!this.dataset.exp)this.style.background=\''+f.bg+'\'" onmouseleave="if(!this.dataset.exp)this.style.background=\'var(--sf)\'"'+(_expanded?' data-exp="1"':'')+'>';
           if(canManageTZ(z.id))out+='<input type="checkbox" '+(tz.erledigt?'checked':'')+' onclick="event.stopPropagation();toggleTZ(\''+z.id+'\',\''+tz.id+'\')" style="flex-shrink:0;margin:0;width:14px;height:14px;accent-color:'+f.tc+';cursor:pointer">';
+          // v177: Pfeile ↑↓ — Monatsziel-Reihenfolge in Zielkarte
+          if(canManageTZ(z.id)&&myTZ.length>1){
+            const _idx=myTZ.findIndex(x=>x.id===tz.id);
+            out+=arrowsHTML('moveTzInZielkarte(\''+z.id+'\',\''+tz.id+'\',\'up\')','moveTzInZielkarte(\''+z.id+'\',\''+tz.id+'\',\'down\')',_idx>0,_idx<myTZ.length-1);
+          }
           // Verantwortlicher — eigene gedimmt, fremde hervorgehoben
           const _tzVer=person(tz.verantwortlichId);
           const _isMine=String(tz.verantwortlichId)===String(aP);
