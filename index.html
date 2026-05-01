@@ -1919,22 +1919,28 @@ function rDeadlineAlarm(pid){
   return h;
 }
 
-// ─── CLEANUP (Konzept B) ────────────────────────────────────────
-// Aufgaben ohne Monatsziel, sichtbar ab konfigurierbarer Uhrzeit (min 15:00).
-// "Fokus endet. Jetzt aufräumen." Zählt nicht fürs Paddel.
+// ─── CLEANUP · DEIN PARKPLATZ (v181) ────────────────────────────
+// Tagestermin (ab 15:00) zum Aufräumen: alle geparkten Aufgaben + Pflege-Bedarf.
+// Doktrin: nichts versandet — alles erscheint spätestens hier, täglich klärbar.
 function rCleanup(pid){
   const cfgKey='cleanup_start_'+pid;
-  // #6: NaN-Guard — korrupter localStorage-Wert fällt auf Default 15 zurück
   const raw=parseInt(localStorage.getItem(cfgKey)||'15',10);
   const startH=Math.min(18,Math.max(15,isNaN(raw)?15:raw));
   const nowH=new Date().getHours();
   if(nowH<startH)return'';
-  const items=S.aufgaben.filter(a=>
-    String(a.pid)===String(pid)&&
-    !a.teilzielId&&
-    !(a.dl&&a.dl<=TODAY)&&  // #2: Tasks mit Deadline im Alarm, nicht im Cleanup
-    !['erledigt','zurueckgegeben','archiviert'].includes(a.status)
-  ).sort((a,b)=>{
+  const items=S.aufgaben.filter(a=>{
+    if(String(a.pid)!==String(pid))return false;
+    if(['erledigt','zurueckgegeben','archiviert'].includes(a.status))return false;
+    // Geparkt: Status=backlog, pausiert mit Datum, oder wartet-auf-Person.
+    const isParked=a.status==='backlog'||a.pausiertBis||a.wartetAufPid;
+    // Pflege-Bedarf: kein Monatsziel + keine Deadline (Alarm hat Deadlines)
+    const isPflege=!a.teilzielId&&!(a.dl&&a.dl<=TODAY);
+    return isParked||isPflege;
+  }).sort((a,b)=>{
+    // Reihenfolge: aktive Pflege-Items zuerst, dann geparkte ohne Datum, dann schlafende mit Datum
+    const aSleep=a.pausiertBis&&a.pausiertBis>TODAY?1:0;
+    const bSleep=b.pausiertBis&&b.pausiertBis>TODAY?1:0;
+    if(aSleep!==bSleep)return aSleep-bSleep;
     const po={'P1':0,'P2':1,'P3':2};
     return (po[a.prio]??3)-(po[b.prio]??3);
   });
@@ -1942,7 +1948,7 @@ function rCleanup(pid){
   let h='<div style="background:var(--sf);border:1.5px solid var(--bd);border-radius:14px;padding:12px 14px;margin-bottom:14px">';
   h+='<div style="display:flex;align-items:center;gap:8px">';
   h+='<span style="font-size:15px">🧹</span>';
-  h+='<span style="font-size:13px;font-weight:700">Cleanup ab '+startH+':00</span>';
+  h+='<span style="font-size:13px;font-weight:700">Cleanup · Dein Parkplatz</span>';
   h+='<span style="background:var(--gray-bg);color:var(--t2);font-size:10px;font-weight:700;padding:2px 9px;border-radius:99px">'+items.length+'</span>';
   h+='<button onclick="toggleCleanupSettings()" style="margin-left:auto;background:none;border:none;cursor:pointer;font-size:14px;color:var(--t3);padding:8px 10px;min-width:36px;min-height:36px" title="Cleanup-Startzeit ändern">⚙</button>';
   h+='</div>';
@@ -1954,7 +1960,7 @@ function rCleanup(pid){
     h+='<button onclick="setCleanupStart(\''+pid+'\','+h2+')" style="font-size:11px;padding:5px 12px;border-radius:7px;border:1px solid '+(sel?'var(--inv)':'var(--bd)')+';background:'+(sel?'var(--inv)':'var(--sf)')+';color:'+(sel?'var(--inv-t)':'var(--t2)')+';cursor:pointer;font-family:inherit;font-weight:'+(sel?'700':'500')+'">'+h2+':00</button>';
   });
   h+='</div></div>';
-  h+='<div style="font-size:11px;color:var(--t3);margin:8px 0 10px">Aufgaben ohne Monatsziel — zählt nicht fürs Paddel.</div>';
+  h+='<div style="font-size:11px;color:var(--t3);margin:8px 0 10px">Geparkte und ungeordnete Aufgaben — täglich aufräumen, damit nichts versandet. Schlafende sind gegraut.</div>';
   // Wochenziel-Options für Dropdown
   const wrNow=dieseWocheReset(pid);
   const wzOpts=[];
@@ -1966,9 +1972,16 @@ function rCleanup(pid){
   }
   items.forEach(a=>{
     const prioCol=prioColor(a.prio);
-    h+='<div style="background:var(--gray-bg);border:1px solid var(--bd);border-radius:10px;padding:9px 12px;margin-bottom:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">';
+    // v181: Schlafend (geparkt mit Datum > heute) → 50% Opazität
+    const _sleep=a.pausiertBis&&a.pausiertBis>TODAY;
+    const _rowOp=_sleep?'opacity:.55;':'';
+    h+='<div style="background:var(--gray-bg);border:1px solid var(--bd);border-radius:10px;padding:9px 12px;margin-bottom:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;'+_rowOp+'">';
     if(a.prio)h+='<span style="font-size:10px;font-weight:700;color:'+prioCol+';white-space:nowrap;min-width:18px">'+a.prio+'</span>';
     h+='<span style="flex:1;min-width:140px;font-size:13px;cursor:pointer;overflow:hidden;text-overflow:ellipsis" onclick="openDetail(\''+a.id+'\')">'+esc(a.titel)+'</span>';
+    // v181: Pflege-Marker pro Item
+    const _stB=statusBadge(a);if(_stB)h+=_stB;
+    if(a.status==='backlog'&&!a.pausiertBis)h+='<span style="font-size:9px;font-weight:700;padding:2px 7px;border-radius:99px;background:var(--gray-bg);color:var(--t2);border:1px solid var(--bd);white-space:nowrap">🅿️ ohne Datum</span>';
+    if(!a.teilzielId)h+='<span style="font-size:9px;font-weight:700;padding:2px 7px;border-radius:99px;background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-bd);white-space:nowrap" title="Kein Monatsziel zugeordnet">⚠ kein Ziel</span>';
     if(wzOpts.length){
       h+='<select onchange="if(this.value)cleanupToWochenziel(\''+a.id+'\',\''+wrNow.id+'\',this.value)" style="font-size:11px;padding:5px 8px;border-radius:8px;border:1px solid var(--blue-bd);background:var(--blue-bg);color:var(--blue);font-family:inherit;cursor:pointer;font-weight:600;max-width:180px">';
       h+='<option value="">→ Wochenziel…</option>';
