@@ -7648,7 +7648,8 @@ function rTag(){
         const linkedLbl=linked?(linked.titel.length>40?linked.titel.slice(0,40)+'…':linked.titel):null;
         const linkedMine=linked&&String(linked.pid)===String(aP);
         // Klick auf Zeile: wenn linked + meine → Simons Aufgabe öffnen, sonst Info-Toast (nicht meine Aufgabe).
-        const rowClick=linkedMine?'openDetail(\''+linked.id+'\')':'toast(\'ℹ Diese Aufgabe gehört '+esc(wOwner?wOwner.name.split(\' \')[0]:'?')+'\')';
+        const _wOwnerFn=wOwner?wOwner.name.split(' ')[0]:'?';
+        const rowClick=linkedMine?'openDetail(\''+linked.id+'\')':'toast(\'ℹ Diese Aufgabe gehört '+esc(_wOwnerFn)+'\')';
         out+='<div onclick="'+rowClick+'" style="display:flex;align-items:center;gap:8px;padding:7px 0;border-top:1px solid var(--amber-bd);cursor:pointer">';
         out+='<div style="flex:1;min-width:0">';
         out+='<div style="font-size:12px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(w.titel)+'</div>';
