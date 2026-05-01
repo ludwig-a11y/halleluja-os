@@ -2268,6 +2268,7 @@ async function _reviewMarkErreicht(zid,tzid){
 function _reviewArchivierenStart(zid,tzid){
   const z=zielObj(zid);if(!z)return;
   const tz=(z.teilziele||[]).find(t=>t.id===tzid);if(!tz)return;
+  document.getElementById('ovl').classList.add('open');
   const links=tzCountLinks(tzid);
   // Andere aktive MS für Umhängen-Picker
   const otherMS=[];
@@ -2341,6 +2342,7 @@ async function _reviewArchivierenFinal(zid,tzid){
 function _reviewNeuFormulierenStart(zid,tzid){
   const z=zielObj(zid);if(!z)return;
   const tz=(z.teilziele||[]).find(t=>t.id===tzid);if(!tz)return;
+  document.getElementById('ovl').classList.add('open');
   const links=tzCountLinks(tzid);
   // Default-Datum: ein Monat ab heute
   const _dt=new Date(TODAY+'T00:00:00');_dt.setMonth(_dt.getMonth()+1);
