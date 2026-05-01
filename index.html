@@ -2210,7 +2210,9 @@ function tzIstUeberfaelligProjekt(tzOrId){
   if((tz.status||'aktiv')!=='aktiv')return false;
   return !!(tz.datum&&tz.datum<TODAY);
 }
-// v180: Liste aller verfehlten Outcome-Monatsziele (für aktiven User; GF sieht alle).
+// v180: Liste verfehlter Outcome-Monatsziele.
+// Default = nur eigene (Owner = aP). Für Team-Sicht später eigene Funktion.
+// GF sieht NICHT automatisch alle — fremde Ziele sollen nicht in der persönlichen Reflexion auftauchen.
 function tzVerfehltMS(){
   const list=[];
   S.ziele.forEach(z=>{
@@ -2218,8 +2220,8 @@ function tzVerfehltMS(){
     if(z.vertraulich&&!isGF()&&z.verantwortlichId!==aP)return;
     (z.teilziele||[]).forEach(t=>{
       if(!tzIstVerfehlt(t))return;
-      const mine=String(t.verantwortlichId)===String(aP)||String(z.verantwortlichId)===String(aP);
-      if(isGF()||mine)list.push({z,t});
+      const mine=String(t.verantwortlichId)===String(aP);
+      if(mine)list.push({z,t});
     });
   });
   return list;
