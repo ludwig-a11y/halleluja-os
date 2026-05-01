@@ -451,18 +451,29 @@ async function scrubOrphans(){
 }
 function meilensteinOptgroups(pid,selTzId='',ownOnly=false){
   const sichtbar=S.ziele.filter(z=>(!z.vertraulich||isGF())&&z.status!=='vorschlag');
-  const withTz=sichtbar.map(z=>({z,tz:(z.teilziele||[]).filter(t=>!t.erledigt&&(t.status||'aktiv')==='aktiv')})).filter(x=>x.tz.length);
+  // v180: Verfehlt-Outcomes (Outcome-Monatsziele mit Datum<heute) aus aktiven Gruppen raus → eigene "⚠ Verfehlt"-Gruppe unten.
+  const withTz=sichtbar.map(z=>{
+    const all=(z.teilziele||[]).filter(t=>!t.erledigt&&(t.status||'aktiv')==='aktiv');
+    return {z, tz: all.filter(t=>!tzIstVerfehlt(t))};
+  }).filter(x=>x.tz.length);
+  const verfehlt=[];
+  sichtbar.forEach(z=>{(z.teilziele||[]).forEach(t=>{if(tzIstVerfehlt(t))verfehlt.push({z,t});});});
   const meine=withTz.filter(x=>String(x.z.verantwortlichId)===String(pid)||x.tz.some(t=>String(t.verantwortlichId)===String(pid)));
   const andere=withTz.filter(x=>!meine.find(m=>m.z.id===x.z.id)&&x.z.status!=='bereich');
   const bereiche=withTz.filter(x=>x.z.status==='bereich'&&!meine.find(m=>m.z.id===x.z.id));
   const meineIds=new Set(meine.map(m=>m.z.id));
+  const optLabel=t=>{
+    const dat=t.datum?' · bis '+t.datum.slice(8)+'.'+t.datum.slice(5,7)+'.':'';
+    // Themengebiet überfällig → Hint-Präfix (anwählbar, nur visueller Stups)
+    if(tzIstUeberfaelligProjekt(t))return '⚠ überfällig — '+esc(t.name)+dat;
+    return esc(t.name)+dat;
+  };
   const mkGroup=(label,items)=>{
     if(!items.length)return '';
     return items.map(({z,tz})=>{
       const prefix=z.status==='bereich'?'📁 ':'';
       return '<optgroup label="'+esc(prefix+(z.name||''))+'">'+tz.map(t=>{
-        const dat=t.datum?' · bis '+t.datum.slice(8)+'.'+t.datum.slice(5,7)+'.':'';
-        return '<option value="'+t.id+'" data-ziel-id="'+z.id+'" data-datum="'+(t.datum||'')+'"'+(selTzId===t.id?' selected':'')+'>'+esc(t.name)+dat+'</option>';
+        return '<option value="'+t.id+'" data-ziel-id="'+z.id+'" data-datum="'+(t.datum||'')+'"'+(selTzId===t.id?' selected':'')+'>'+optLabel(t)+'</option>';
       }).join('')+'</optgroup>';
     }).join('');
   };
@@ -470,6 +481,15 @@ function meilensteinOptgroups(pid,selTzId='',ownOnly=false){
   out+=mkGroup('Meine',meine);
   if(!ownOnly)out+=mkGroup('Andere',andere);
   out+=mkGroup('Bereiche',bereiche);
+  // v180: Verfehlte Outcome-Monatsziele am Ende, gedimmt — Stups Richtung Review.
+  if(verfehlt.length){
+    out+='<optgroup label="⚠ Verfehlt — Review fällig">'
+      +verfehlt.map(({z,t})=>{
+        const dat=t.datum?' · seit '+t.datum.slice(8)+'.'+t.datum.slice(5,7)+'.':'';
+        return '<option value="'+t.id+'" data-ziel-id="'+z.id+'" data-datum="'+(t.datum||'')+'"'+(selTzId===t.id?' selected':'')+'>'+esc(z.name)+' › '+esc(t.name)+dat+'</option>';
+      }).join('')
+      +'</optgroup>';
+  }
   // Fallback: wenn selTzId auf einen erledigten/archivierten TZ zeigt, als disabled-Info anzeigen statt still verschwinden lassen
   if(selTzId){
     const aktivMatch=sichtbar.some(z=>(z.teilziele||[]).some(t=>t.id===selTzId&&!t.erledigt&&(t.status||'aktiv')==='aktiv'));
@@ -9308,7 +9328,9 @@ function rZiele(){
             out+='<div style="display:flex;align-items:center;gap:8px">';
             out+='<div style="flex:0 0 60px;height:4px;background:var(--bd);border-radius:99px;overflow:hidden"><div style="height:100%;width:'+_fill+'%;background:'+_barCol+';transition:width .2s"></div></div>';
             let _lbl='';
-            if(_overdue)_lbl='<span style="color:var(--red);font-weight:700">⚠ überfällig '+Math.abs(_daysLeft)+'d</span>';
+            // v180: Outcome verfehlt → "Review fällig" (rot), Themengebiet überfällig → "Datum aktualisieren?" (gelb)
+            if(_overdue&&!istBereich(z.id))_lbl='<span style="color:var(--red);font-weight:700">⚠ Verfehlt — Review fällig ('+Math.abs(_daysLeft)+'d)</span>';
+            else if(_overdue&&istBereich(z.id))_lbl='<span style="color:var(--amber,#d97706);font-weight:700">⚠ Überfällig — Datum aktualisieren? ('+Math.abs(_daysLeft)+'d)</span>';
             else if(_daysLeft===0)_lbl='<span style="color:var(--red);font-weight:700">heute fällig</span>';
             else if(_urgent)_lbl='<span style="color:var(--red);font-weight:700">⚠ in '+_daysLeft+' Tagen</span>';
             else if(_warn)_lbl='<span style="color:var(--amber,#d97706);font-weight:700">in '+_daysLeft+' Tagen</span>';
