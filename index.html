@@ -9090,13 +9090,13 @@ function rMonat(){
       kwLoad.set(k.jahr*100+k.kw,wr?[1,2,3].filter(n=>wr['big3_'+n]).length:0);
     });
 
-    const COL_POOL=160,COL_KW=140,GAP=6;
-    const totalW=COL_POOL+(COL_KW+GAP)*kws.length+GAP;
+    const COL_POOL=150,COL_KW=130,COL_MZ=200,GAP=6;
+    const totalW=COL_POOL+(COL_KW+GAP)*kws.length+COL_MZ+GAP*2;
 
     out+='<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -4px;padding:0 4px 4px">';
     out+='<div style="min-width:'+totalW+'px">';
 
-    // ── Header-Zeile (Pool · KWs) ──
+    // ── Header-Zeile (📥 Pool · KWs · 🏁 Ziel) ──
     out+='<div style="display:flex;gap:'+GAP+'px;align-items:flex-end;padding:0 0 8px 0">';
     out+='<div style="width:'+COL_POOL+'px;flex-shrink:0;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);padding:4px 8px;text-align:center">📥 Pool</div>';
     kws.forEach(k=>{
@@ -9111,6 +9111,7 @@ function rMonat(){
       out+='<div style="font-size:9px;color:var(--t3);margin-top:1px">ab '+monLbl+'</div>';
       out+='</div>';
     });
+    out+='<div style="width:'+COL_MZ+'px;flex-shrink:0;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);padding:4px 8px;text-align:center">🏁 Ziel</div>';
     out+='</div>';
 
     // ── Body pro Ziel-Gruppe ──
@@ -9150,28 +9151,28 @@ function rMonat(){
         out+='<input id="'+inpId+'" placeholder="+ Wochenziel" style="width:100%;font-size:11px;padding:5px 7px;border:1px solid var(--bd);border-radius:6px;background:var(--sf);color:var(--text);font-family:inherit;margin-top:auto" onkeydown="if(event.key===\'Enter\'){event.preventDefault();_mmAddPool(\''+tz.id+'\',\''+inpId+'\')}">';
         out+='</div>';
 
-        // ── KW-Zellen (bis Deadline) + MZ-Marker in Deadline-KW + Extend-Zonen danach ──
+        // ── KW-Zellen (alle gleichberechtigte Drop-Zonen für Wochenziele) ──
         kws.forEach(k=>{
           const kwKey=k.jahr*100+k.kw;
           const isAfter=kwKey>effKwKey;
-          if(isAfter){
-            // v188: sichtbare Extend-Zone — Drop hier erweitert die Deadline auf diese KW.
-            // Sehr dezent (gepunktet, niedrige Opacity), aber Drag-Target.
-            out+='<div data-mzp-zone="kw|'+(findOrCreateWrFor(aP,k.kw,k.jahr)?.id||'')+'|'+k.kw+'|'+k.jahr+'" data-mzp-extends="'+tz.id+'" style="width:'+COL_KW+'px;flex-shrink:0;background:transparent;border:1px dotted var(--bd);border-radius:8px;padding:5px;min-height:64px;display:flex;align-items:center;justify-content:center;opacity:.45" ondragover="_mzpDragOver(event,this)" ondragleave="_mzpDragLeave(this)" ondrop="_mzpDrop(event,this)" title="Hier ablegen → Deadline auf KW '+k.kw+' verlängern">';
-            out+='<div style="font-size:9px;color:var(--t3);text-align:center;line-height:1.3">↶<br>Deadline<br>verlängern</div>';
-            out+='</div>';
-            return;
-          }
           const isDeadline=kwKey===effKwKey;
           const wr=findOrCreateWrFor(aP,k.kw,k.jahr);
           const isToday=(k.jahr===todayK.jahr&&k.kw===todayK.kw);
           const isPast=kwKey<(todayK.jahr*100+todayK.kw);
-          // Hintergrund: Deadline-KW = MZ-Farbe gedimmt; sonst normal
-          const cellBg=isDeadline?(f.bg||'var(--sf)'):(isToday?'var(--blue-bg)':(isPast?'var(--gray-bg)':'var(--sf)'));
-          const cellBorder=isDeadline?('1.5px solid '+(isAlarm?'var(--amber-bd)':isFell?'var(--red-bd)':f.bd)):(isToday?'1.5px solid var(--blue-bd)':(isPast?'1px solid var(--bd)':'1px dashed var(--bd)'));
-          out+='<div data-mzp-zone="kw|'+(wr?wr.id:'')+'|'+k.kw+'|'+k.jahr+'" style="width:'+COL_KW+'px;flex-shrink:0;background:'+cellBg+';border:'+cellBorder+';border-radius:8px;padding:5px;min-height:64px;display:flex;flex-direction:column" ondragover="_mzpDragOver(event,this)" ondragleave="_mzpDragLeave(this)" ondrop="_mzpDrop(event,this)">';
-
-          // Big3-Slots dieses MZ in dieser KW (Slots = der Weg)
+          // KWs nach Deadline: Auto-Extend-Zonen (gepunktet, gedimmt)
+          if(isAfter){
+            out+='<div data-mzp-zone="kw|'+(wr?wr.id:'')+'|'+k.kw+'|'+k.jahr+'" data-mzp-extends="'+tz.id+'" style="width:'+COL_KW+'px;flex-shrink:0;background:transparent;border:1px dotted var(--bd);border-radius:8px;padding:5px;min-height:64px;display:flex;align-items:center;justify-content:center;opacity:.45" ondragover="_mzpDragOver(event,this)" ondragleave="_mzpDragLeave(this)" ondrop="_mzpDrop(event,this)" title="Hier ablegen → Deadline auf KW '+k.kw+' verlängern">';
+            out+='<div style="font-size:9px;color:var(--t3);text-align:center;line-height:1.3">↶<br>Deadline<br>verlängern</div>';
+            out+='</div>';
+            return;
+          }
+          // Hintergrund/Border: Deadline-KW = subtiler Akzent in Ziel-Farbe; sonst normal
+          const cellBg=isToday?'var(--blue-bg)':(isPast?'var(--gray-bg)':'var(--sf)');
+          const cellBorder=isToday?'1.5px solid var(--blue-bd)':(isPast?'1px solid var(--bd)':'1px dashed var(--bd)');
+          // Deadline-KW: zusätzlicher rechter Border in Ziel-Farbe (zeigt visuell auf die MZ-Karte rechts)
+          const cellBorderR=isDeadline?';border-right:3px solid '+f.tc:'';
+          out+='<div data-mzp-zone="kw|'+(wr?wr.id:'')+'|'+k.kw+'|'+k.jahr+'" style="width:'+COL_KW+'px;flex-shrink:0;background:'+cellBg+';border:'+cellBorder+cellBorderR+';border-radius:8px;padding:5px;min-height:64px;display:flex;flex-direction:column" ondragover="_mzpDragOver(event,this)" ondragleave="_mzpDragLeave(this)" ondrop="_mzpDrop(event,this)">';
+          // Big3-Slots dieses MZ in dieser KW
           let any=false;
           if(wr){
             [1,2,3].forEach(slot=>{
@@ -9189,27 +9190,25 @@ function rMonat(){
               out+='</div>';
             });
           }
-          if(!any&&!isDeadline)out+='<div style="font-size:10px;color:var(--t3);text-align:center;padding:18px 0;font-style:italic;flex:1">—</div>';
-
-          // v187: MZ-Marker als FOOTER unten in Deadline-KW (Slots = der Weg, 🏁 = Ankunft)
-          if(isDeadline){
-            const dlLbl=tz._effDatum.slice(8,10)+'.'+tz._effDatum.slice(5,7)+'.';
-            const dlMonth=parseInt(tz._effDatum.slice(5,7),10);
-            const showMonthBadge=dlMonth!==jetzt.getMonth()+1;
-            const monthBadge=showMonthBadge?'<span style="font-size:8px;font-weight:700;color:#fff;background:'+f.tc+';padding:1px 5px;border-radius:99px;margin-left:auto">🗓 '+monNamen[dlMonth-1].slice(0,3)+'</span>':'';
-            const dueColor=d2d<0?'var(--red)':d2d<=3?'var(--amber)':f.tc;
-            const dueLbl=d2d<0?'⚠ '+Math.abs(d2d)+'d über':d2d===0?'heute':d2d===1?'morgen':'in '+d2d+'d';
-            const autoFlag=!tz.datum?'<span style="font-size:8px;color:var(--t3);font-style:italic;margin-left:4px" title="Auto-Deadline = Monatsende">auto</span>':'';
-            // Footer-Marker: margin-top:auto pinnt nach unten; Top-Border in Ziel-Farbe als „Ziellinie"
-            out+='<div data-mzp-src="mz|'+tz.id+'" draggable="true" ondragstart="_mzpDragStart(event,this)" ondragend="_mzpDragEnd(this)" onclick="event.stopPropagation();openMonatszielDetail(\''+tz.id+'\')" style="margin-top:auto;background:var(--sf);border:1.5px solid '+f.bd+';border-top:3px solid '+f.tc+';border-radius:6px;padding:6px 8px;cursor:grab" title="Drag in andere KW → Deadline ändern · Klick → Bearbeiten">';
-            out+='<div style="display:flex;align-items:center;gap:4px;margin-bottom:2px"><span style="font-size:10px">🏁</span><span style="font-size:9px;font-weight:700;color:'+dueColor+';text-transform:uppercase;letter-spacing:.3px">ZIEL · '+dlLbl+' · '+dueLbl+'</span>'+autoFlag+monthBadge+'</div>';
-            out+='<div style="font-size:11px;font-weight:700;color:var(--text);line-height:1.25;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">'+esc(tz.name)+'</div>';
-            if(isAlarm)out+='<div style="font-size:9px;font-weight:700;color:var(--amber);margin-top:3px">leer — plan ⬆</div>';
-            else if(isFell)out+='<div style="font-size:9px;font-weight:700;color:var(--red);margin-top:3px">Review fällig</div>';
-            out+='</div>';
-          }
+          if(!any)out+='<div style="font-size:10px;color:var(--t3);text-align:center;padding:18px 0;font-style:italic;flex:1">—</div>';
           out+='</div>';
         });
+
+        // ── v189: MZ-Karte als eigene Spalte ganz RECHTS (Endpunkt der Zeile) ──
+        const dlLbl=tz._effDatum.slice(8,10)+'.'+tz._effDatum.slice(5,7)+'.';
+        const dlMonth=parseInt(tz._effDatum.slice(5,7),10);
+        const showMonthBadge=dlMonth!==jetzt.getMonth()+1;
+        const monthBadge=showMonthBadge?'<span style="font-size:8px;font-weight:700;color:#fff;background:'+f.tc+';padding:1px 5px;border-radius:99px">🗓 '+monNamen[dlMonth-1].slice(0,3)+'</span>':'';
+        const dueColor=d2d<0?'var(--red)':d2d<=3?'var(--amber)':f.tc;
+        const dueLbl=d2d<0?'⚠ '+Math.abs(d2d)+'d über':d2d===0?'heute':d2d===1?'morgen':'in '+d2d+'d';
+        const autoFlag=!tz.datum?'<span style="font-size:8px;color:var(--t3);font-style:italic" title="Auto-Deadline = Monatsende">auto</span>':'';
+        const mzBorderC=isAlarm?'var(--amber-bd)':(isFell?'var(--red-bd)':f.bd);
+        out+='<div data-mzp-src="mz|'+tz.id+'" draggable="true" ondragstart="_mzpDragStart(event,this)" ondragend="_mzpDragEnd(this)" onclick="event.stopPropagation();openMonatszielDetail(\''+tz.id+'\')" style="width:'+COL_MZ+'px;flex-shrink:0;background:'+(f.bg||'var(--sf)')+';border:1.5px solid '+mzBorderC+';border-left:4px solid '+f.tc+';border-radius:8px;padding:10px 12px;cursor:grab;display:flex;flex-direction:column;gap:4px" title="Drag in andere KW → Deadline ändern · Klick → Bearbeiten">';
+        out+='<div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap"><span style="font-size:11px">🏁</span><span style="font-size:9px;font-weight:700;color:'+dueColor+';text-transform:uppercase;letter-spacing:.3px">ZIEL · '+dlLbl+' · '+dueLbl+'</span>'+autoFlag+monthBadge+'</div>';
+        out+='<div style="font-size:12px;font-weight:700;color:var(--text);line-height:1.3;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical">'+esc(tz.name)+'</div>';
+        if(isAlarm)out+='<div style="font-size:9px;font-weight:700;color:var(--amber);margin-top:auto">leer — plan ⬅</div>';
+        else if(isFell)out+='<div style="font-size:9px;font-weight:700;color:var(--red);margin-top:auto">Review fällig</div>';
+        out+='</div>';
 
         out+='</div>'; // row close
       });
@@ -9223,6 +9222,7 @@ function rMonat(){
       const col=used>=3?'var(--red)':used===2?'var(--amber)':used===1?'var(--blue)':'var(--t3)';
       out+='<div style="width:'+COL_KW+'px;flex-shrink:0;text-align:center;font-size:11px;font-weight:700;color:'+col+'">'+used+'/3</div>';
     });
+    out+='<div style="width:'+COL_MZ+'px;flex-shrink:0"></div>';
     out+='</div>';
 
     out+='</div>'; // matrix-inner
