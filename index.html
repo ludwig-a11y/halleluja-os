@@ -9192,7 +9192,7 @@ function rMonat(){
         const effKwKey=tz._effKwKey;
         const sameMonth=tz._effDatum.slice(0,7)===monthEndISO.slice(0,7);
 
-        out+='<div style="display:flex;gap:'+GAP+'px;align-items:stretch;margin-bottom:'+GAP+'px">';
+        out+='<div style="display:flex;gap:'+GAP+'px;align-items:flex-start;margin-bottom:'+GAP+'px">';
 
         // ── Pool-Zelle (LINKS) ──
         const poolBorder=isAlarm?'var(--amber-bd)':'var(--bd)';
@@ -10274,7 +10274,7 @@ function rZiele(){
       const visTZ=(z.teilziele||[]).filter(tz=>(!tz.vertraulich||isGF()||tz.verantwortlichId===aP)&&(tz.status||'aktiv')==='aktiv'&&!tz.erledigt);
       const poolTZ=visTZ.filter(tz=>!tz.datum);
 
-      out+='<div style="display:flex;gap:'+GAP+'px;align-items:stretch;margin-bottom:'+GAP+'px">';
+      out+='<div style="display:flex;gap:'+GAP+'px;align-items:flex-start;margin-bottom:'+GAP+'px">';
 
       // Pool-Zelle (links)
       out+='<div data-mzp-zone="zielpool|'+z.id+'" style="width:'+COL_POOL+'px;flex-shrink:0;background:var(--gray-bg);border:1.5px dashed var(--bd);border-radius:8px;padding:5px;min-height:64px;display:flex;flex-direction:column;gap:3px" ondragover="_mzpDragOver(event,this)" ondragleave="_mzpDragLeave(this)" ondrop="_mzpDrop(event,this)">';
