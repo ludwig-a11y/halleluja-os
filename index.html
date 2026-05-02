@@ -9146,8 +9146,9 @@ function rMonat(){
       kwLoad.set(k.jahr*100+k.kw,wr?[1,2,3].filter(n=>wr['big3_'+n]).length:0);
     });
 
-    const COL_POOL=150,COL_KW=130,COL_MZ=200,GAP=6;
-    const totalW=COL_POOL+(COL_KW+GAP)*kws.length+COL_MZ+GAP*2;
+    // v196: KW-Spalten flex (füllen verfügbare Breite); Pool/Ziel-Card fix
+    const COL_POOL=150,COL_KW_MIN=120,COL_MZ=200,GAP=6;
+    const totalW=COL_POOL+(COL_KW_MIN+GAP)*kws.length+COL_MZ+GAP*2;
 
     out+='<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -4px;padding:0 4px 4px">';
     out+='<div style="min-width:'+totalW+'px">';
@@ -9162,7 +9163,7 @@ function rMonat(){
       const monLbl=monStr.slice(8,10)+'.'+monStr.slice(5,7)+'.';
       const lblColor=isToday?'var(--blue)':(isPast?'var(--t3)':'var(--t2)');
       const tag=isToday?' · jetzt':(isPast?' · vorbei':'');
-      out+='<div style="width:'+COL_KW+'px;flex-shrink:0;text-align:center;padding:2px 0">';
+      out+='<div style="flex:1 1 '+COL_KW_MIN+'px;min-width:'+COL_KW_MIN+'px;text-align:center;padding:2px 0">';
       out+='<div style="font-size:11px;font-weight:700;color:'+lblColor+'">KW '+k.kw+tag+'</div>';
       out+='<div style="font-size:9px;color:var(--t3);margin-top:1px">ab '+monLbl+'</div>';
       out+='</div>';
@@ -9196,7 +9197,7 @@ function rMonat(){
 
         // ── Pool-Zelle (LINKS) ──
         const poolBorder=isAlarm?'var(--amber-bd)':'var(--bd)';
-        out+='<div data-mzp-zone="pool" data-mzp-poolfor="'+tz.id+'" style="width:'+COL_POOL+'px;flex-shrink:0;background:var(--gray-bg);border:1.5px dashed '+poolBorder+';border-radius:8px;padding:5px;min-height:64px;display:flex;flex-direction:column;gap:3px" ondragover="_mzpDragOver(event,this)" ondragleave="_mzpDragLeave(this)" ondrop="_mzpDrop(event,this)">';
+        out+='<div data-mzp-zone="pool" data-mzp-poolfor="'+tz.id+'" style="width:'+COL_POOL+'px;flex-shrink:0;background:var(--gray-bg);border:1.5px solid '+poolBorder+';border-radius:8px;padding:5px;min-height:64px;display:flex;flex-direction:column;gap:3px" ondragover="_mzpDragOver(event,this)" ondragleave="_mzpDragLeave(this)" ondrop="_mzpDrop(event,this)">';
         tzPool.forEach(p=>{
           out+='<div data-mzp-src="pool|'+p.id+'" draggable="true" ondragstart="_mzpDragStart(event,this)" ondragend="_mzpDragEnd(this)" style="display:flex;align-items:center;gap:4px;padding:5px 7px;background:var(--sf);border:1px solid var(--bd);border-radius:6px;cursor:grab">';
           out+='<span style="flex:1;font-size:11px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(p.titel)+'</span>';
@@ -9217,17 +9218,17 @@ function rMonat(){
           const isPast=kwKey<(todayK.jahr*100+todayK.kw);
           // KWs nach Deadline: Auto-Extend-Zonen (gepunktet, gedimmt)
           if(isAfter){
-            out+='<div data-mzp-zone="kw|'+(wr?wr.id:'')+'|'+k.kw+'|'+k.jahr+'" data-mzp-extends="'+tz.id+'" style="width:'+COL_KW+'px;flex-shrink:0;background:transparent;border:1px dotted var(--bd);border-radius:8px;padding:5px;min-height:64px;display:flex;align-items:center;justify-content:center;opacity:.45" ondragover="_mzpDragOver(event,this)" ondragleave="_mzpDragLeave(this)" ondrop="_mzpDrop(event,this)" title="Hier ablegen → Deadline auf KW '+k.kw+' verlängern">';
+            out+='<div data-mzp-zone="kw|'+(wr?wr.id:'')+'|'+k.kw+'|'+k.jahr+'" data-mzp-extends="'+tz.id+'" style="flex:1 1 '+COL_KW_MIN+'px;min-width:'+COL_KW_MIN+'px;background:transparent;border:1px dotted var(--bd);border-radius:8px;padding:5px;min-height:64px;display:flex;align-items:center;justify-content:center;opacity:.45" ondragover="_mzpDragOver(event,this)" ondragleave="_mzpDragLeave(this)" ondrop="_mzpDrop(event,this)" title="Hier ablegen → Deadline auf KW '+k.kw+' verlängern">';
             out+='<div style="font-size:9px;color:var(--t3);text-align:center;line-height:1.3">↶<br>Deadline<br>verlängern</div>';
             out+='</div>';
             return;
           }
-          // Hintergrund/Border: Deadline-KW = subtiler Akzent in Ziel-Farbe; sonst normal
+          // v196: leere Cells klarer sichtbar — solide Border statt dashed
           const cellBg=isToday?'var(--blue-bg)':(isPast?'var(--gray-bg)':'var(--sf)');
-          const cellBorder=isToday?'1.5px solid var(--blue-bd)':(isPast?'1px solid var(--bd)':'1px dashed var(--bd)');
+          const cellBorder=isToday?'1.5px solid var(--blue-bd)':'1px solid var(--bd)';
           // Deadline-KW: zusätzlicher rechter Border in Ziel-Farbe (zeigt visuell auf die MZ-Karte rechts)
           const cellBorderR=isDeadline?';border-right:3px solid '+f.tc:'';
-          out+='<div data-mzp-zone="kw|'+(wr?wr.id:'')+'|'+k.kw+'|'+k.jahr+'" style="width:'+COL_KW+'px;flex-shrink:0;background:'+cellBg+';border:'+cellBorder+cellBorderR+';border-radius:8px;padding:5px;min-height:64px;display:flex;flex-direction:column" ondragover="_mzpDragOver(event,this)" ondragleave="_mzpDragLeave(this)" ondrop="_mzpDrop(event,this)">';
+          out+='<div data-mzp-zone="kw|'+(wr?wr.id:'')+'|'+k.kw+'|'+k.jahr+'" style="flex:1 1 '+COL_KW_MIN+'px;min-width:'+COL_KW_MIN+'px;background:'+cellBg+';border:'+cellBorder+cellBorderR+';border-radius:8px;padding:5px;min-height:64px;display:flex;flex-direction:column" ondragover="_mzpDragOver(event,this)" ondragleave="_mzpDragLeave(this)" ondrop="_mzpDrop(event,this)">';
           // Big3-Slots dieses MZ in dieser KW
           let any=false;
           if(wr){
@@ -9276,7 +9277,7 @@ function rMonat(){
     kws.forEach(k=>{
       const used=kwLoad.get(k.jahr*100+k.kw)||0;
       const col=used>=3?'var(--red)':used===2?'var(--amber)':used===1?'var(--blue)':'var(--t3)';
-      out+='<div style="width:'+COL_KW+'px;flex-shrink:0;text-align:center;font-size:11px;font-weight:700;color:'+col+'">'+used+'/3</div>';
+      out+='<div style="flex:1 1 '+COL_KW_MIN+'px;min-width:'+COL_KW_MIN+'px;text-align:center;font-size:11px;font-weight:700;color:'+col+'">'+used+'/3</div>';
     });
     out+='<div style="width:'+COL_MZ+'px;flex-shrink:0"></div>';
     out+='</div>';
@@ -10244,8 +10245,9 @@ function rZiele(){
     return m;
   })();
 
-  const COL_POOL=150,COL_MONTH=120,COL_ZIEL=210,GAP=6;
-  const totalW=COL_POOL+(COL_MONTH+GAP)*_scopeMonths.length+COL_ZIEL+GAP*2;
+  // v196: Month-Spalten flex (füllen verfügbare Breite); Pool/Ziel fix
+  const COL_POOL=150,COL_MONTH_MIN=110,COL_ZIEL=210,GAP=6;
+  const totalW=COL_POOL+(COL_MONTH_MIN+GAP)*_scopeMonths.length+COL_ZIEL+GAP*2;
 
   if(meineZiele.length){
     out+='<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -4px;padding:0 4px 4px">';
@@ -10260,7 +10262,7 @@ function rZiele(){
       const _isPast=ym<_curMonStr;
       const _lblColor=_isCurr?'var(--blue)':(_isPast?'var(--t3)':'var(--t2)');
       const _tag=_isCurr?' · jetzt':(_isPast?' · vorbei':'');
-      out+='<div style="width:'+COL_MONTH+'px;flex-shrink:0;text-align:center;padding:2px 0">';
+      out+='<div style="flex:1 1 '+COL_MONTH_MIN+'px;min-width:'+COL_MONTH_MIN+'px;text-align:center;padding:2px 0">';
       out+='<div style="font-size:11px;font-weight:700;color:'+_lblColor+'">'+_moNames[_mn-1]+_tag+'</div>';
       out+='<div style="font-size:9px;color:var(--t3);margin-top:1px">'+ym.slice(0,4)+'</div>';
       out+='</div>';
@@ -10277,7 +10279,7 @@ function rZiele(){
       out+='<div style="display:flex;gap:'+GAP+'px;align-items:flex-start;margin-bottom:'+GAP+'px">';
 
       // Pool-Zelle (links)
-      out+='<div data-mzp-zone="zielpool|'+z.id+'" style="width:'+COL_POOL+'px;flex-shrink:0;background:var(--gray-bg);border:1.5px dashed var(--bd);border-radius:8px;padding:5px;min-height:64px;display:flex;flex-direction:column;gap:3px" ondragover="_mzpDragOver(event,this)" ondragleave="_mzpDragLeave(this)" ondrop="_mzpDrop(event,this)">';
+      out+='<div data-mzp-zone="zielpool|'+z.id+'" style="width:'+COL_POOL+'px;flex-shrink:0;background:var(--gray-bg);border:1.5px solid var(--bd);border-radius:8px;padding:5px;min-height:64px;display:flex;flex-direction:column;gap:3px" ondragover="_mzpDragOver(event,this)" ondragleave="_mzpDragLeave(this)" ondrop="_mzpDrop(event,this)">';
       poolTZ.forEach(tz=>{
         out+='<div data-mzp-src="mz|'+tz.id+'" draggable="true" ondragstart="_mzpDragStart(event,this)" ondragend="_mzpDragEnd(this)" onclick="event.stopPropagation();openMonatszielDetail(\''+tz.id+'\')" style="display:flex;align-items:center;gap:4px;padding:5px 7px;background:var(--sf);border:1px solid var(--bd);border-radius:6px;cursor:grab">';
         out+='<span style="flex:1;font-size:11px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(tz.name)+'</span>';
@@ -10296,11 +10298,11 @@ function rZiele(){
         const _isPast=ym<_curMonStr;
         const _monTZ=visTZ.filter(tz=>tz.datum&&tz.datum.slice(0,7)===ym);
         const _cellEmpty=!_monTZ.length;
-        // v194: leere Past-Cells fast unsichtbar (kein Lärm), leere Zukunft-Cells dezent
-        const _cellBg=_isCurr?'var(--blue-bg)':'transparent';
-        const _cellBorder=_isCurr?'1.5px solid var(--blue-bd)':(_isPast?'1px dotted var(--bd)':'1px dashed var(--bd)');
-        const _cellOpacity=_cellEmpty&&_isPast?'0.4':'1';
-        out+='<div data-mzp-zone="month|'+z.id+'|'+ym+'" style="width:'+COL_MONTH+'px;flex-shrink:0;background:'+_cellBg+';border:'+_cellBorder+';border-radius:8px;padding:5px;min-height:64px;display:flex;flex-direction:column;gap:3px;opacity:'+_cellOpacity+'" ondragover="_mzpDragOver(event,this)" ondragleave="_mzpDragLeave(this)" ondrop="_mzpDrop(event,this)">';
+        // v196: leere Cells klarer sichtbar — solide Border + leichter Hintergrund-Tint
+        const _cellBg=_isCurr?'var(--blue-bg)':(_isPast?'transparent':'var(--gray-bg)');
+        const _cellBorder=_isCurr?'1.5px solid var(--blue-bd)':(_isPast?'1px dotted var(--bd)':'1px solid var(--bd)');
+        const _cellOpacity=_cellEmpty&&_isPast?'0.35':'1';
+        out+='<div data-mzp-zone="month|'+z.id+'|'+ym+'" style="flex:1 1 '+COL_MONTH_MIN+'px;min-width:'+COL_MONTH_MIN+'px;background:'+_cellBg+';border:'+_cellBorder+';border-radius:8px;padding:5px;min-height:64px;display:flex;flex-direction:column;gap:3px;opacity:'+_cellOpacity+'" ondragover="_mzpDragOver(event,this)" ondragleave="_mzpDragLeave(this)" ondrop="_mzpDrop(event,this)">';
         _monTZ.forEach(tz=>{
           const _d2d=Math.ceil((new Date(tz.datum+'T00:00:00').getTime()-new Date(TODAY+'T00:00:00').getTime())/86400000);
           const _color=_d2d<0?'var(--red)':(_d2d<=7?'var(--amber)':f.tc);
