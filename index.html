@@ -10628,7 +10628,7 @@ function openAddTZ(zid){
   document.getElementById('mb').innerHTML='<div class="mt">'+_lbl+' hinzufügen</div>'
     +_diagnoseHint
     +'<div class="fl"><label>Name</label><input id="tzn" placeholder="'+_ph+'" autofocus></div>'
-    +'<div class="f2"><div class="fl"><label>Verantwortlich</label><select id="tzv">'+S.personen.map(p=>'<option value="'+p.id+'">'+esc(p.name)+'</option>').join('')+'</select></div>'
+    +'<div class="f2"><div class="fl"><label>Verantwortlich</label><select id="tzv">'+S.personen.map(p=>'<option value="'+p.id+'"'+(String(p.id)===String(aP)?' selected':'')+'>'+esc(p.name)+'</option>').join('')+'</select></div>'
     +'<div class="fl"><label>Bis wann <span style="font-weight:400;color:var(--t2)">(optional)</span></label><input type="date" id="tzd"></div></div>'
     +'<div class="mf"><button class="btn btn-gr" onclick="cm()">Abbrechen</button><button class="btn btn-dk" onclick="saveTZ(\''+zid+'\',null)">Speichern</button></div>';
   document.getElementById('ovl').classList.add('open');
@@ -10690,8 +10690,10 @@ function editTZ(zid,tzid){
 }
 async function saveTZ(zid,tzid){
   const z=zielObj(zid);if(!z)return;
+  // v205: Force-Blur damit native date-picker pending commits noch landen
+  const _datEl=document.getElementById('tzd');if(_datEl)_datEl.blur();
   const name=document.getElementById('tzn').value.trim();if(!name)return;
-  const vid=document.getElementById('tzv').value,datum=document.getElementById('tzd').value;
+  const vid=document.getElementById('tzv').value,datum=_datEl?_datEl.value:'';
   const tzVertEl=document.getElementById('tzvert');
   const vertraulich=tzVertEl?tzVertEl.checked:((z.teilziele||[]).find(t=>t.id===tzid)?.vertraulich||false);
   const newZid=document.getElementById('tzz')?.value||zid;
@@ -10726,8 +10728,12 @@ async function saveTZ(zid,tzid){
     const id=nid('tz'),rec={id,ziel_id:zid,name,verantwortlich_id:vid,datum:datum||null,erledigt:false,vertraulich:false,status:'aktiv',metrik,zielwert:zwFinal,leading_freq:leadingFreq,leading_count:leadingCount};
     z.teilziele=z.teilziele||[];z.teilziele.push({...rec,zielId:zid,verantwortlichId:vid,datum:datum||'',vertraulich:false,status:'aktiv',metrik,zielWert:zwFinal,leadingFreq,leadingCount});
     await dbInsert('teilziele',rec);
+    // v205: Bestätigung was wirklich gespeichert wurde — Datum + Verantwortlich sichtbar
+    const _vName=(S.personen.find(p=>String(p.id)===String(vid))||{}).name||'?';
+    const _datLbl=datum?datum.slice(8)+'.'+datum.slice(5,7)+'.':'Pool (kein Datum)';
+    toast('+ '+name+' · '+_vName+' · '+_datLbl);
   }
-  cm();rZiele();
+  cm();render();
 }
 async function delTZ(zid,tzid){
   if(!confirm(istBereich(zid)?'Themengebiet löschen?':'Monatsziel löschen?'))return;
