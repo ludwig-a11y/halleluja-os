@@ -3067,7 +3067,8 @@ function zielLeadingAggregat(z){
   if(!z||!z.metrik||!String(z.metrik).trim())return null;
   const freq=z.leadingFreq||'daily';
   // Alle aktiven, nicht-erledigten MZ des Ziels — auch die mit eigenem Override (Phase) zählen mit
-  const tzs=(z.teilziele||[]).filter(t=>(t.status||'aktiv')==='aktiv'&&!t.erledigt);
+  // v214: Manager-MZ excluded — sie tragen nicht zum Leading-Aggregat bei
+  const tzs=(z.teilziele||[]).filter(t=>(t.status||'aktiv')==='aktiv'&&!t.erledigt&&!t.leadingDisabled);
   const sumLen=fn=>tzs.reduce((s,t)=>s+fn(t.id).length,0);
   let ist=0;
   if(freq==='daily')ist=sumLen(msInputsToday);
@@ -3090,6 +3091,8 @@ async function msPushInput(tzId,quelle){
   if(!tzId)return;
   const tz=_tzById(tzId);
   if(!tz||!effectiveLeading(tz))return; // v191: Non-Leading-MS (auch ohne geerbten Ziel-Leading) bekommen keine Inputs
+  // v214: Manager-MZ erzeugt keine Inputs (Begleit-Arbeit, kein Counter)
+  if(tz.leadingDisabled)return;
   // v175: Pausierte/archivierte MS zählen keine neuen Inputs. Historische Inputs bleiben.
   if(tzIsPaused(tz)||tzIsArchived(tz))return;
   const id=nid('mi');
@@ -3152,6 +3155,7 @@ function aufgabeHatLeading(a){
   if(!a||!a.teilzielId)return false;
   const z=zielObj(a.zielId);if(!z)return false;
   const tz=(z.teilziele||[]).find(t=>t.id===a.teilzielId);if(!tz)return false;
+  if(tz.leadingDisabled)return false; // v214: Manager-MZ → kein Stepper, keine Hits
   return !!effectiveLeading(tz);
 }
 async function setLeadingHits(aid,n){
@@ -3207,6 +3211,7 @@ function leadBlockSet(b){
 function leadBlockStart(tzId){
   if(leadBlockGet()){toast('Block läuft schon · erst beenden');return;}
   const tz=findTzById(tzId);if(!tz)return;
+  if(tz.leadingDisabled)return; // v214: Manager-MZ kann keinen Block starten
   const eff=effectiveLeading(tz);if(!eff)return;
   leadBlockSet({tzId,startTs:Date.now(),durMin:LEAD_BLOCK_MIN,verb:eff.metrik||'Hit'});
   leadBlockRenderBar();
@@ -5643,14 +5648,16 @@ function openMonatszielDetail(tzId){
   h+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);margin-bottom:3px">Monatsziel'+(tz.datum?' · bis '+_tzDatumStr:'')+(isFäll?' · <span style="color:var(--orange)">überfällig</span>':'')+'</div>';
   h+='<div style="font-size:17px;font-weight:700;line-height:1.3;'+(tz.erledigt?'color:var(--t2);text-decoration:line-through':'color:var(--text)')+'">'+esc(tz.name)+'</div>';
   h+='</div></div>';
-  // v211: Verantwortlich + Doer-Info (falls abweichend)
+  // v211/v214: Verantwortlich + Doer/Manager-Badge + Datum
   {
     const _own=person(tz.verantwortlichId);
+    const _isMgr=!!tz.leadingDisabled;
     const _doerId=effectiveDoerId(tz);
-    const _doer=String(_doerId)!==String(tz.verantwortlichId)?person(_doerId):null;
+    const _doer=(!_isMgr&&String(_doerId)!==String(tz.verantwortlichId))?person(_doerId):null;
     h+='<div style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 12px">';
     if(_own)h+='<span style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;background:var(--gray-bg);border:1px solid var(--bd);border-radius:99px;font-size:11px"><span style="color:var(--t3);font-weight:600">Verantw.</span> <span style="font-weight:600">'+esc(_own.name)+'</span></span>';
-    if(_doer)h+='<span style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;background:var(--purple-bg);border:1px solid var(--purple-bd);border-radius:99px;font-size:11px"><span style="color:var(--purple);font-weight:700">🎯 Doer</span> <span style="font-weight:600">'+esc(_doer.name)+'</span></span>';
+    if(_isMgr)h+='<span title="Manager-MZ — kein Leading-Counter" style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;background:var(--gray-bg);border:1px dashed var(--bd);border-radius:99px;font-size:11px;color:var(--t2)"><span style="font-weight:700">🚫 Manager-MZ</span> <span style="font-weight:400">· kein Counter</span></span>';
+    else if(_doer)h+='<span style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;background:var(--purple-bg);border:1px solid var(--purple-bd);border-radius:99px;font-size:11px"><span style="color:var(--purple);font-weight:700">🎯 Doer</span> <span style="font-weight:600">'+esc(_doer.name)+'</span></span>';
     if(tz.datum){const _m=['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];h+='<span style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;background:var(--gray-bg);border:1px solid var(--bd);border-radius:99px;font-size:11px;color:var(--t2)">📅 bis '+tz.datum.slice(8)+'.'+_m[parseInt(tz.datum.slice(5,7),10)-1]+'</span>';}
     h+='</div>';
   }
@@ -10628,16 +10635,21 @@ function rZiele(){
           const _color=_d2d<0?'var(--red)':(_d2d<=7?'var(--amber)':f.tc);
           const _eff=effectiveLeading(tz);
           const _msC=_eff?msCount(tz.id):0;
-          out+='<div data-mzp-src="mz|'+tz.id+'" draggable="true" ondragstart="_mzpDragStart(event,this)" ondragend="_mzpDragEnd(this)" onclick="event.stopPropagation();openMonatszielDetail(\''+tz.id+'\')" style="background:var(--sf);border:1px solid var(--bd);border-left:3px solid '+_color+';border-radius:0 6px 6px 0;padding:5px 7px;cursor:grab">';
+          // v214: Manager-MZ visuell ausgegraut + 🚫-Badge statt Counter/Doer-Chip
+          const _mzMgr=!!tz.leadingDisabled;
+          out+='<div data-mzp-src="mz|'+tz.id+'" draggable="true" ondragstart="_mzpDragStart(event,this)" ondragend="_mzpDragEnd(this)" onclick="event.stopPropagation();openMonatszielDetail(\''+tz.id+'\')" style="background:var(--sf);border:1px solid var(--bd);border-left:3px solid '+_color+';border-radius:0 6px 6px 0;padding:5px 7px;cursor:grab'+(_mzMgr?';opacity:.75':'')+'">';
           out+='<div style="font-size:11px;font-weight:600;color:var(--text);line-height:1.25;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">'+esc(tz.name)+'</div>';
-          // v211: Verantwortlich + Doer als Initials-Chips in der Matrix-Zelle
+          // v211/v214: Owner-Chip + (Doer-Chip ODER Manager-Badge) + Datum/Counter
           const _mxOwn=person(tz.verantwortlichId);
           const _mxDoerId=effectiveDoerId(tz);
-          const _mxDoer=String(_mxDoerId)!==String(tz.verantwortlichId)?person(_mxDoerId):null;
+          const _mxDoer=(!_mzMgr&&String(_mxDoerId)!==String(tz.verantwortlichId))?person(_mxDoerId):null;
           let _mxMeta='';
           if(_mxOwn)_mxMeta+='<span title="Verantwortlich: '+esc(_mxOwn.name)+'" style="font-size:9px;font-weight:700;color:var(--t2);background:var(--gray-bg);padding:1px 5px;border-radius:99px">'+esc(_mxOwn.name.split(' ')[0])+'</span>';
-          if(_mxDoer)_mxMeta+='<span title="Doer: '+esc(_mxDoer.name)+'" style="font-size:9px;font-weight:700;color:var(--purple);background:var(--purple-bg);padding:1px 5px;border-radius:99px">🎯 '+esc(_mxDoer.name.split(' ')[0])+'</span>';
-          out+='<div style="display:flex;align-items:center;gap:4px;margin-top:3px;flex-wrap:wrap">'+_mxMeta+'<span style="font-size:9px;color:var(--t3);margin-left:auto">'+tz.datum.slice(8)+'.'+tz.datum.slice(5,7)+'.'+(_eff&&_eff.zielWert?' · '+_msC+'/'+_eff.zielWert:'')+'</span></div>';
+          if(_mzMgr)_mxMeta+='<span title="Manager-MZ — kein Leading-Counter" style="font-size:9px;font-weight:700;color:var(--t3);background:var(--gray-bg);padding:1px 5px;border-radius:99px">🚫 Manager</span>';
+          else if(_mxDoer)_mxMeta+='<span title="Doer: '+esc(_mxDoer.name)+'" style="font-size:9px;font-weight:700;color:var(--purple);background:var(--purple-bg);padding:1px 5px;border-radius:99px">🎯 '+esc(_mxDoer.name.split(' ')[0])+'</span>';
+          const _mxDate=tz.datum.slice(8)+'.'+tz.datum.slice(5,7)+'.';
+          const _mxCount=(!_mzMgr&&_eff&&_eff.zielWert)?(' · '+_msC+'/'+_eff.zielWert):'';
+          out+='<div style="display:flex;align-items:center;gap:4px;margin-top:3px;flex-wrap:wrap">'+_mxMeta+'<span style="font-size:9px;color:var(--t3);margin-left:auto">'+_mxDate+_mxCount+'</span></div>';
           out+='</div>';
         });
         // v194: leere Cell = einfach leer (kein "—" mehr — visuelle Ruhe)
