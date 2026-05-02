@@ -10893,6 +10893,20 @@ function editZiel(zid){
     +'<div class="fl"><label>Bis (Monat)</label><input type="month" id="zme" value="'+(z.monat_ende||'')+'"></div></div>'
     // v191: Strategischer Leading-Indicator auf Ziel-Ebene (Sam-Ovens-Way: ONE Leading per Strategie).
     +'<div style="background:var(--blue-bg);border:1px solid var(--blue-bd);border-radius:8px;padding:10px 12px;margin:14px 0 10px;font-size:11px;color:var(--text);line-height:1.5">🎯 <b>Strategischer Leading-Indicator</b> (optional) — die <i>tägliche Aktion</i>, die dieses Ziel treibt. Alle Monatsziele darunter <b>erben</b> diesen Indicator standardmäßig.<br><span style="color:var(--t3)">Nur wenn ein einzelnes MZ in einer Build-/Test-Phase einen anderen braucht, kann es einen Override setzen.</span></div>'
+    // v208: Repair-Hint — wenn Ziel keinen Leading hat aber ein MZ einen Override, anbieten hochzuheben.
+    +(function(){
+      if(z.metrik&&String(z.metrik).trim())return''; // Ziel hat schon einen Leading — kein Hint nötig
+      const overrideTZ=(z.teilziele||[]).filter(t=>t.metrik&&String(t.metrik).trim()&&!t.erledigt&&(t.status||'aktiv')==='aktiv');
+      if(!overrideTZ.length)return'';
+      let h='<div style="background:var(--amber-bg);border:1.5px solid var(--amber-bd);border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:11px;color:var(--text);line-height:1.5">';
+      h+='<div style="font-weight:700;color:var(--amber);margin-bottom:6px">⚠ Override gefunden — andere Mitarbeiter sehen keinen Counter</div>';
+      h+='<div style="margin-bottom:8px">Dieses Ziel hat keinen Leading — aber '+overrideTZ.length+' MZ hat'+(overrideTZ.length===1?'':'en')+' einen eigenen Override. Mitarbeiter mit anderen MZ unter diesem Ziel <b>erben nichts</b> und sehen keinen Counter.</div>';
+      overrideTZ.forEach(t=>{
+        h+='<button onclick="_zielPromoteOverride(\''+z.id+'\',\''+t.id+'\')" class="btn btn-sm" style="margin:3px 4px 0 0;background:var(--sf);color:var(--text);border:1px solid var(--bd)">↑ "'+esc(t.metrik)+'" aufs Ziel heben (von MZ "'+esc(t.name)+'")</button>';
+      });
+      h+='</div>';
+      return h;
+    })()
     +'<div class="fl"><label>Leading-Aktion (Verb) · optional</label><input id="zmetrik" value="'+esc(z.metrik||'')+'" placeholder="z.B. Call gemacht, Outreach-Mail verschickt"></div>'
     +'<div class="f2"><div class="fl"><label>Frequenz</label><select id="zfreq">'
       +'<option value="daily"'+((z.leadingFreq||'daily')==='daily'?' selected':'')+'>Täglich</option>'
@@ -10925,10 +10939,35 @@ async function saveZiel(zid){
   const leadingCount=Number.isFinite(lcParsed)&&lcParsed>0?lcParsed:null;
   const zwParsed=parseInt(document.getElementById('zzw')?.value||'',10);
   const zielWert=Number.isFinite(zwParsed)&&zwParsed>0?zwParsed:null;
+  // v208: Validierung — Zielzahl/Anker ohne Verb ergibt keinen funktionierenden Leading.
+  // Der ganze Inheritance-Pfad (effectiveLeading) braucht metrik !== null. Sonst sehen
+  // Mitarbeiter mit eigenem MZ unter diesem Ziel keinen Counter (genau Christophs Bug).
+  if(!metrik&&(leadingCount||zielWert)){
+    toast('⚠ Leading braucht ein Verb — sonst sehen Team-Mitglieder keinen Counter');
+    document.getElementById('zmetrik')?.focus();
+    return;
+  }
   z.name=name;z.verantwortlichId=verantwortlichId;z.farbe=farbe;z.vertraulich=vertraulich;z.monat_start=monat_start;z.monat_ende=monat_ende;
   z.metrik=metrik;z.leadingFreq=leadingFreq;z.leadingCount=leadingCount;z.zielWert=zielWert;
   await dbPatch('ziele',zid,{name,verantwortlich_id:verantwortlichId,farbe,vertraulich,monat_start,monat_ende,metrik,leading_freq:leadingFreq,leading_count:leadingCount,zielwert:zielWert});
-  cm();rZiele();
+  cm();render();
+}
+// v208: Phase-Override eines MZ aufs Ziel hochheben + vom MZ entfernen.
+// Stellt Sam-Ovens-Way (one Leading per Strategie) wieder her.
+async function _zielPromoteOverride(zid,tzid){
+  const z=zielObj(zid);if(!z)return;
+  const tz=(z.teilziele||[]).find(t=>t.id===tzid);if(!tz)return;
+  if(!confirm('Leading-Override von "'+tz.name+'" aufs Ziel "'+z.name+'" hochheben?\n\n• Alle MZ unter diesem Ziel erben dann automatisch den Indicator.\n• Der Override am MZ wird entfernt.'))return;
+  // Aufs Ziel kopieren
+  z.metrik=tz.metrik;z.leadingFreq=tz.leadingFreq||'daily';z.leadingCount=tz.leadingCount;z.zielWert=tz.zielWert;
+  // Vom MZ entfernen
+  tz.metrik=null;tz.leadingFreq='daily';tz.leadingCount=null;tz.zielWert=null;
+  await Promise.all([
+    dbPatch('ziele',zid,{metrik:z.metrik,leading_freq:z.leadingFreq,leading_count:z.leadingCount,zielwert:z.zielWert}).catch(()=>{}),
+    dbPatch('teilziele',tzid,{metrik:null,leading_freq:'daily',leading_count:null,zielwert:null}).catch(()=>{})
+  ]);
+  toast('🎯 Leading hochgehoben — alle MZ unter "'+z.name+'" erben jetzt');
+  cm();editZiel(zid); // Modal mit aktualisierten Werten neu öffnen
 }
 async function delZiel(zid){
   if(!confirm('Ziel wirklich löschen?'))return;
