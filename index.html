@@ -10278,8 +10278,8 @@ function rZiele(){
 
       out+='<div style="display:flex;gap:'+GAP+'px;align-items:flex-start;margin-bottom:'+GAP+'px">';
 
-      // Pool-Zelle (links)
-      out+='<div data-mzp-zone="zielpool|'+z.id+'" style="width:'+COL_POOL+'px;flex-shrink:0;background:var(--gray-bg);border:1.5px solid var(--bd);border-radius:8px;padding:5px;min-height:64px;display:flex;flex-direction:column;gap:3px" ondragover="_mzpDragOver(event,this)" ondragleave="_mzpDragLeave(this)" ondrop="_mzpDrop(event,this)">';
+      // Pool-Zelle (links) — v197: in Ziel-Farbe getintet, visuell mit End-Card verbunden
+      out+='<div data-mzp-zone="zielpool|'+z.id+'" style="width:'+COL_POOL+'px;flex-shrink:0;background:'+f.bg+';border:1.5px solid '+f.bd+';border-right:4px solid '+f.tc+';border-radius:8px 0 0 8px;padding:5px;min-height:64px;display:flex;flex-direction:column;gap:3px" ondragover="_mzpDragOver(event,this)" ondragleave="_mzpDragLeave(this)" ondrop="_mzpDrop(event,this)">';
       poolTZ.forEach(tz=>{
         out+='<div data-mzp-src="mz|'+tz.id+'" draggable="true" ondragstart="_mzpDragStart(event,this)" ondragend="_mzpDragEnd(this)" onclick="event.stopPropagation();openMonatszielDetail(\''+tz.id+'\')" style="display:flex;align-items:center;gap:4px;padding:5px 7px;background:var(--sf);border:1px solid var(--bd);border-radius:6px;cursor:grab">';
         out+='<span style="flex:1;font-size:11px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(tz.name)+'</span>';
@@ -10298,11 +10298,14 @@ function rZiele(){
         const _isPast=ym<_curMonStr;
         const _monTZ=visTZ.filter(tz=>tz.datum&&tz.datum.slice(0,7)===ym);
         const _cellEmpty=!_monTZ.length;
-        // v196: leere Cells klarer sichtbar — solide Border + leichter Hintergrund-Tint
-        const _cellBg=_isCurr?'var(--blue-bg)':(_isPast?'transparent':'var(--gray-bg)');
-        const _cellBorder=_isCurr?'1.5px solid var(--blue-bd)':(_isPast?'1px dotted var(--bd)':'1px solid var(--bd)');
-        const _cellOpacity=_cellEmpty&&_isPast?'0.35':'1';
-        out+='<div data-mzp-zone="month|'+z.id+'|'+ym+'" style="flex:1 1 '+COL_MONTH_MIN+'px;min-width:'+COL_MONTH_MIN+'px;background:'+_cellBg+';border:'+_cellBorder+';border-radius:8px;padding:5px;min-height:64px;display:flex;flex-direction:column;gap:3px;opacity:'+_cellOpacity+'" ondragover="_mzpDragOver(event,this)" ondragleave="_mzpDragLeave(this)" ondrop="_mzpDrop(event,this)">';
+        // v197: leere Past-Cells komplett unsichtbar (Grid-Alignment bleibt via visibility:hidden)
+        if(_cellEmpty&&_isPast){
+          out+='<div style="flex:1 1 '+COL_MONTH_MIN+'px;min-width:'+COL_MONTH_MIN+'px;visibility:hidden"></div>';
+          return;
+        }
+        const _cellBg=_isCurr?'var(--blue-bg)':'var(--gray-bg)';
+        const _cellBorder=_isCurr?'1.5px solid var(--blue-bd)':'1px solid var(--bd)';
+        out+='<div data-mzp-zone="month|'+z.id+'|'+ym+'" style="flex:1 1 '+COL_MONTH_MIN+'px;min-width:'+COL_MONTH_MIN+'px;background:'+_cellBg+';border:'+_cellBorder+';border-radius:8px;padding:5px;min-height:64px;display:flex;flex-direction:column;gap:3px" ondragover="_mzpDragOver(event,this)" ondragleave="_mzpDragLeave(this)" ondrop="_mzpDrop(event,this)">';
         _monTZ.forEach(tz=>{
           const _d2d=Math.ceil((new Date(tz.datum+'T00:00:00').getTime()-new Date(TODAY+'T00:00:00').getTime())/86400000);
           const _color=_d2d<0?'var(--red)':(_d2d<=7?'var(--amber)':f.tc);
@@ -10328,7 +10331,7 @@ function rZiele(){
         _zEndDateLbl=_ddPart+(_daysLeft<0?' · ⚠ '+Math.abs(_daysLeft)+'d über':_daysLeft===0?' · heute':' · in '+_daysLeft+'d');
         _zEndCol=_daysLeft<0?'var(--red)':(_daysLeft<=14?'var(--amber)':f.tc);
       }
-      out+='<div onclick="event.stopPropagation();editZiel(\''+z.id+'\')" style="width:'+COL_ZIEL+'px;flex-shrink:0;background:'+f.bg+';border:1.5px solid '+f.bd+';border-left:4px solid '+f.tc+';border-radius:8px;padding:10px 12px;cursor:pointer;display:flex;flex-direction:column;gap:3px">';
+      out+='<div onclick="event.stopPropagation();editZiel(\''+z.id+'\')" style="width:'+COL_ZIEL+'px;flex-shrink:0;background:'+f.bg+';border:1.5px solid '+f.bd+';border-left:4px solid '+f.tc+';border-radius:0 8px 8px 0;padding:10px 12px;cursor:pointer;display:flex;flex-direction:column;gap:3px">';
       if(_zEndDateLbl){
         out+='<div style="display:flex;align-items:center;gap:5px"><span style="font-size:11px">🏁</span><span style="font-size:9px;font-weight:700;color:'+_zEndCol+';text-transform:uppercase;letter-spacing:.3px">ZIEL · '+_zEndDateLbl+'</span></div>';
       } else {
