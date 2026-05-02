@@ -3117,6 +3117,23 @@ async function msPushInput(tzId,quelle){
 }
 // Für Manual-Button-Tap im Hero: gleiche Funktion, dünner Wrapper zum HTML-Binden.
 function msTapManual(tzId){msPushInput(tzId,'manual');}
+// v209: Letzten Input für tzId (heute, manuell) zurückziehen — bei aus Versehen geklickt.
+async function msUndoLast(tzId){
+  if(!tzId)return;
+  // Nur eigene, manuelle, heute angelegte Inputs sind undoable. Per Convention der jüngste.
+  const candidates=(S.monatszielInputs||[]).filter(i=>
+    String(i.teilzielId)===String(tzId)&&
+    i.datum===TODAY&&
+    String(i.createdBy||'')===String(aP||'')
+  ).sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||''));
+  if(!candidates.length){toast('Keine Inputs heute zum Zurückziehen');return;}
+  const target=candidates[0];
+  if(!confirm('Letzten Input zurückziehen? (heute · '+(target.quelle||'manual')+')'))return;
+  S.monatszielInputs=(S.monatszielInputs||[]).filter(i=>i.id!==target.id);
+  render();
+  await dbDelete('monatsziel_inputs',target.id).catch(()=>{});
+  toast('↶ Input zurückgezogen');
+}
 // Task-Completion-Hook. Pusht nur wenn Aufgabe einem Leading-MS zugeordnet ist.
 function msOnTaskDone(a,quelle){
   try{
@@ -6813,7 +6830,10 @@ function rWoche(){
       const _btnBg=_hitWeek?'var(--green-bg)':(_weekN?'var(--bg)':'var(--text)');
       const _btnCol=_hitWeek?'var(--green)':(_weekN?'var(--t2)':'var(--bg)');
       const _btnBd=(_hitWeek||_weekN)?'1px solid var(--bd)':'none';
-      out+='<button onclick="msTapManual(\''+t.id+'\')" style="width:100%;padding:13px;border-radius:11px;background:'+_btnBg+';color:'+_btnCol+';border:'+_btnBd+';font-family:inherit;font-size:14px;font-weight:700;cursor:pointer">'+_btnLbl+'</button>';
+      out+='<div style="display:flex;gap:8px;align-items:stretch">';
+      out+='<button onclick="msTapManual(\''+t.id+'\')" style="flex:1;padding:13px;border-radius:11px;background:'+_btnBg+';color:'+_btnCol+';border:'+_btnBd+';font-family:inherit;font-size:14px;font-weight:700;cursor:pointer">'+_btnLbl+'</button>';
+      if(_weekN>0)out+='<button onclick="msUndoLast(\''+t.id+'\')" title="Letzten Input zurückziehen" style="padding:13px 14px;border-radius:11px;background:transparent;color:var(--t2);border:1px solid var(--bd);font-family:inherit;font-size:14px;cursor:pointer">↶</button>';
+      out+='</div>';
       if(_hitWeek)out+='<div style="font-size:10px;color:var(--green);text-align:center;margin-top:6px;font-weight:600">Wochenziel erreicht ✓</div>';
       out+='</div>';
     });
@@ -7558,7 +7578,10 @@ function rTag(){
       const _btnBg=_hitToday?'var(--green-bg)':(_todayN?'var(--bg)':'var(--text)');
       const _btnCol=_hitToday?'var(--green)':(_todayN?'var(--t2)':'var(--bg)');
       const _btnBd=(_hitToday||_todayN)?'1px solid var(--bd)':'none';
-      out+='<button onclick="msTapManual(\''+t.id+'\')" style="width:100%;padding:13px;border-radius:11px;background:'+_btnBg+';color:'+_btnCol+';border:'+_btnBd+';font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;transition:transform .1s,background .15s" onmousedown="this.style.transform=\'scale(.98)\'" onmouseup="this.style.transform=\'scale(1)\'">'+_btnLbl+'</button>';
+      out+='<div style="display:flex;gap:8px;align-items:stretch">';
+      out+='<button onclick="msTapManual(\''+t.id+'\')" style="flex:1;padding:13px;border-radius:11px;background:'+_btnBg+';color:'+_btnCol+';border:'+_btnBd+';font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;transition:transform .1s,background .15s" onmousedown="this.style.transform=\'scale(.98)\'" onmouseup="this.style.transform=\'scale(1)\'">'+_btnLbl+'</button>';
+      if(_todayN>0)out+='<button onclick="msUndoLast(\''+t.id+'\')" title="Letzten Input zurückziehen" style="padding:13px 14px;border-radius:11px;background:transparent;color:var(--t2);border:1px solid var(--bd);font-family:inherit;font-size:14px;cursor:pointer">↶</button>';
+      out+='</div>';
       if(_hitToday)out+='<div style="font-size:10px;color:var(--green);text-align:center;margin-top:6px;font-weight:600">Tagesziel erreicht · Streak sicher</div>';
       else if(_todayN>=1)out+='<div style="font-size:10px;color:var(--t3);text-align:center;margin-top:6px">heute bereits '+_todayN+'× · weitermachen</div>';
       out+='</div>';
