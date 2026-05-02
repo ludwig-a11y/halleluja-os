@@ -9238,7 +9238,7 @@ function rMonat(){
               const verfehlt=wochenzielIstVerfehlt(wr,slot);
               const done=!!wr['big3_'+slot+'_done'];
               const borderL=done?'3px solid var(--green)':(verfehlt?'3px solid var(--red)':'3px solid var(--orange)');
-              out+='<div data-mzp-src="kw|'+wr.id+'|'+slot+'" draggable="true" ondragstart="_mzpDragStart(event,this)" ondragend="_mzpDragEnd(this)" style="display:flex;align-items:center;gap:5px;padding:5px 7px;background:var(--sf);border:1px solid var(--bd);border-left:'+borderL+';border-radius:0 6px 6px 0;margin-bottom:3px;cursor:grab">';
+              out+='<div data-mzp-src="kw|'+wr.id+'|'+slot+'" draggable="true" ondragstart="_mzpDragStart(event,this)" ondragend="_mzpDragEnd(this)" onclick="event.stopPropagation();openBig3Detail(\''+wr.id+'\','+slot+')" style="display:flex;align-items:center;gap:5px;padding:5px 7px;background:var(--sf);border:1px solid var(--bd);border-left:'+borderL+';border-radius:0 6px 6px 0;margin-bottom:3px;cursor:pointer" title="Klick → Detail · Drag → verschieben">';
               out+='<span style="font-size:9px;font-weight:800;color:var(--orange);min-width:9px">'+slot+'</span>';
               out+='<span style="flex:1;font-size:11px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap'+(done?';text-decoration:line-through;opacity:.6':'')+'">'+esc(t)+'</span>';
               if(verfehlt)out+='<span style="font-size:9px;color:var(--red);font-weight:700">⚠</span>';
