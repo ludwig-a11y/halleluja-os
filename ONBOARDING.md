@@ -404,28 +404,47 @@ Aufgabe automatisch zurück mit Toast.
 
 Bei dir spiegelnd: *„🕒 Ich warte auf andere"*-Block.
 
-### 📅 MZ-Wochenplaner (seit v184)
+### 📅 Monats-Matrix (seit v185)
 
-Pro Monatsziel ein eigener Wochenplaner: Pool oben (ungeplante
-Wochenziele) + KW-Streifen unten (verplante Wochen).
+Die **Monatsseite** ist jetzt **dein Plan-Canvas, nicht ein Check-in**.
+Eine Tabelle: **Zeilen = deine Monatsziele**, **Spalten = KWs**, plus
+**Pool-Spalte ganz rechts pro MZ**. Alles auf einer Seite, ein Blick.
 
-**Öffnen:** Klick auf 📅 in der Zielkarte oder „📅 Wochenplaner
-öffnen" im Monats-Check-in.
+**Was du siehst:**
+- Alle aktiven MZ untereinander, gruppiert nach **Strategie-Ziel**
+  (Header in Ziel-Farbe).
+- Pro KW-Zelle: die Wochenziel-Slots dieses MZ in dieser Woche
+  (orange = aktiv, grün ✓ = done, rot ⚠ = verfehlt).
+- Heute-KW blau hinterlegt, vergangene KW gegraut.
+- Pool rechts: alle ungeplanten Wochenziele für dieses MZ +
+  Eingabefeld zum schnellen Anlegen.
+- **Footer Slots/KW**: zeigt Auslastung (grau/blau/amber/rot ab 3/3).
+- **Alarm-Outline (amber)** auf MZ-Zeilen ohne Pool & ohne KW-Slots —
+  „leer — plan!". Macht unversorgte MZ sichtbar.
 
-**Pool:** Wochenziel-Vorschläge unter dem MZ sammeln, ohne KW-Bindung.
-„Was muss alles passieren, damit dieses MZ erreicht wird?"
+**Drag&Drop überall:**
+- **Pool → KW**: ins erste freie Big3-Slot. Pool-Eintrag verschwindet.
+- **KW → Pool**: Slot leer, Aufgaben lösen sich vom Slot, bleiben am MZ.
+- **KW → andere KW**: Slot wandert mit Aufgaben (Wochenziel-Move).
+- **Aus vergangener KW ziehen** = implizites *„Neu formulieren"*
+  (Verfehlt-Review-Geste). Confirm-Dialog erinnert: *„Aufgaben ziehen
+  mit."*
+- **Limit pro KW**: drei Big3-Slots. Vierter Drop wird abgelehnt.
 
-**Drag&Drop bidirektional:**
-- Pool → KW: erstes freies Big3-Slot wird gefüllt, Pool-Eintrag
-  verschwindet.
-- KW → Pool: Slot leer, Aufgaben lösen sich vom Slot, bleiben am MZ.
-- KW → andere KW: Slot wandert mit Aufgaben (Wochenziel-Move).
+**Klick auf MZ-Name** öffnet das Detail/Edit-Modal (Datum, Titel,
+Verantwortlich etc.).
 
-**Aus vergangener KW ziehen** = implizites *„Neu formulieren"* (=
-Verfehlt-Review-Geste). Confirm-Dialog erinnert: *„Aufgaben ziehen
-mit."*
+**Mental Model:** Pool = Vorrat, KW-Zelle = Commitment, Drag = Bewegung
+zwischen Zuständen. Eine Geste, drei Bedeutungen je nach Richtung
+(committen / parken / verschieben).
 
-**Limit pro KW:** drei Big3-Slots. Vierter Drop wird abgelehnt.
+> Der frühere „Monats-Check-in" mit *Liegst du richtig?* ist
+> entfallen — die Matrix beantwortet die Frage **visuell**: leere
+> MZ-Zeilen schreien, volle KWs schreien.
+
+**Fallback:** der `openMZWochenplaner`-Modal aus v184 bleibt verfügbar
+(z.B. via 📅-Icon in der Ziele-Übersicht), falls du den Single-MZ-Fokus
+brauchst.
 
 ### ⚠ Verfehlt-Review (Outcome-Monatsziele)
 

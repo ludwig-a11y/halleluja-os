@@ -8930,48 +8930,35 @@ async function delAufgabe(id){
 
 // ─── MONAT-TAB ───────────────────────────────────────────────────
 // ─── Monat-Tab: Ovens-Mittelweg — ein Monatsziel im Fokus, Liegst du richtig? ───
+// v185: Monats-Matrix — Übersicht aller eigenen MZ als Zeilen, KW-Spalten, Pool-Spalte rechts.
+// Drag&Drop überall: Pool↔KW, KW↔KW. Klick auf MZ-Name → Detail-Edit-Modal.
+// setMonatFokus bleibt als Stub für externe Aufrufer (z.B. nav-Befehle), tut aber nichts mehr.
 function setMonatFokus(tzId){window._monatFokusTzId=tzId||null;rMonat();}
 function rMonat(){
   const jetzt=new Date();
   const monatName=['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'][jetzt.getMonth()];
   const monate=['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
-  const wr=dieseWocheReset(aP);
-  const currKW=getKW();
+  const todayK=getKwFromDate(new Date(TODAY+'T12:00:00'));
 
-  // Alle eigenen Monatsziele
+  // Alle eigenen aktiven MZ (nicht erledigt, nicht reviewed)
   const alleTZ=S.ziele.flatMap(z=>{
     const f=FARBEN[z.farbe||0];
     return(z.teilziele||[])
-      .filter(t=>String(t.verantwortlichId)===String(aP)&&(!t.vertraulich||isGF()))
+      .filter(t=>String(t.verantwortlichId)===String(aP)&&(!t.vertraulich||isGF())&&!t.erledigt&&!t.review_done)
       .map(t=>({...t,ziel:z,f}));
   });
-
-  // Fokus-Monatsziel wählen: User-Override → WR-big3 → überfällig → nächste Deadline → erstes aktives
-  const wrTzIds=wr?[wr.big3_1_tz_id,wr.big3_2_tz_id,wr.big3_3_tz_id].filter(Boolean):[];
-  const overrideId=window._monatFokusTzId;
-  const fokusTZ=
-    (overrideId&&alleTZ.find(t=>t.id===overrideId))
-    ||alleTZ.find(t=>wrTzIds.includes(t.id)&&!t.erledigt&&!t.review_done)
-    ||alleTZ.filter(t=>!t.erledigt&&!t.review_done&&t.datum&&t.datum<=TODAY).sort((a,b)=>a.datum.localeCompare(b.datum))[0]
-    ||alleTZ.filter(t=>!t.erledigt&&!t.review_done&&t.datum).sort((a,b)=>a.datum.localeCompare(b.datum))[0]
-    ||alleTZ.filter(t=>!t.erledigt).sort((a,b)=>(a.datum||'9').localeCompare(b.datum||'9'))[0];
+  alleTZ.sort((a,b)=>(a.datum||'9999').localeCompare(b.datum||'9999'));
 
   const tzDatum=tz=>tz.datum?(monate[parseInt(tz.datum.slice(5,7),10)-1]+' '+tz.datum.slice(2,4)):'';
-  const daysUntil=(d)=>{if(!d)return null;const diff=Math.ceil((new Date(d+'T00:00:00').getTime()-new Date(TODAY+'T00:00:00').getTime())/86400000);return diff;};
+  const daysUntil=(d)=>{if(!d)return null;return Math.ceil((new Date(d+'T00:00:00').getTime()-new Date(TODAY+'T00:00:00').getTime())/86400000);};
   const fellig=tz=>tz.datum&&tz.datum<=TODAY&&!tz.review_done;
-
-  // Wochenresets dieses Users, die min. einen Slot an das Fokus-MS gebunden haben
-  const wrsForTZ=(tzId)=>S.wochenresets
-    .filter(r=>String(r.pid)===String(aP))
-    .filter(r=>[r.big3_1_tz_id,r.big3_2_tz_id,r.big3_3_tz_id].some(id=>id===tzId))
-    .sort((a,b)=>(b.jahr*100+b.kw)-(a.jahr*100+a.kw));
 
   let out='';
 
-  // ── Header (minimal) ──
-  out+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">'
-    +'<div><div style="font-size:16px;font-weight:700">Monats-Check-in</div>'
-    +'<div style="font-size:11px;color:var(--t3)">'+monatName+' '+jetzt.getFullYear()+'</div></div>'
+  // ── Header ──
+  out+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">'
+    +'<div><div style="font-size:16px;font-weight:700">Monatsziele</div>'
+    +'<div style="font-size:11px;color:var(--t3)">'+monatName+' '+jetzt.getFullYear()+' · Pool, Wochen, alles auf einer Seite</div></div>'
     +'<button onclick="openAddMonatszielFromMonat()" class="btn btn-dk" style="font-size:12px">+ Monatsziel</button>'
     +'</div>';
 
@@ -9007,113 +8994,168 @@ function rMonat(){
     out+='<div style="text-align:center;padding:40px 20px">'
       +'<div style="font-size:32px;margin-bottom:12px">🗓</div>'
       +'<div style="font-size:15px;font-weight:700;margin-bottom:8px">Noch keine Monatsziele</div>'
-      +'<div style="font-size:13px;color:var(--t2);margin-bottom:20px;line-height:1.5">Monatsziele verbinden deine wöchentliche Arbeit mit einem Quartalsziel.</div>'
+      +'<div style="font-size:13px;color:var(--t2);margin-bottom:20px;line-height:1.5">Monatsziele sind die Brücke zwischen Strategie (Ziel) und Woche.</div>'
       +'<button onclick="nav(\'ziele\')" class="btn btn-dk">→ Ziel anlegen</button>'
       +'</div>';
-    document.getElementById('main').innerHTML=out;return;
-  }
-
-  if(!fokusTZ){
-    out+='<div style="background:var(--gray-bg);border:1.5px dashed var(--bd);border-radius:12px;padding:24px;text-align:center">'
-      +'<div style="font-size:14px;font-weight:600;margin-bottom:6px">Alle Monatsziele reviewed 🎉</div>'
-      +'<div style="font-size:12px;color:var(--t2)">Leg ein neues an oder fokussiere auf ein Quartal.</div></div>';
-    document.getElementById('main').innerHTML=out;return;
-  }
-
-  // ── Fokus-Card ──
-  const tz=fokusTZ;
-  const isFellig=fellig(tz);
-  const d2d=daysUntil(tz.datum);
-  const deadLbl=tz.datum?(d2d<0?'überfällig · '+Math.abs(d2d)+'d':d2d===0?'heute fällig':d2d===1?'morgen':'in '+d2d+' Tagen'):'kein Datum';
-  const deadCol=d2d==null?'var(--t3)':(d2d<0?'var(--red)':d2d<=3?'var(--amber)':'var(--t3)');
-
-  out+='<div style="background:var(--sf);border:1.5px solid '+(isFellig?'var(--amber-bd)':tz.f.bd)+';border-left:4px solid '+(isFellig?'var(--amber)':tz.f.tc)+';border-radius:0 14px 14px 0;padding:18px 20px;margin-bottom:16px">';
-  out+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--t3);margin-bottom:4px">↳ '+esc(tz.ziel.name.length>60?tz.ziel.name.slice(0,60)+'…':tz.ziel.name)+'</div>';
-  out+='<div style="font-size:18px;font-weight:800;line-height:1.3;color:var(--text);margin-bottom:4px">'+esc(tz.name)+'</div>';
-  out+='<div style="font-size:12px;color:'+deadCol+';margin-bottom:16px">'+(tz.datum?(tzDatum(tz)+' · '):'')+deadLbl+'</div>';
-
-  if(isFellig){
-    // Review-Zustand: direkt zum Review
-    out+='<div style="background:var(--amber-bg);border:1px solid var(--amber-bd);border-radius:10px;padding:14px 16px;margin-bottom:14px">';
-    out+='<div style="font-size:13px;font-weight:700;color:var(--amber);margin-bottom:6px">⏰ Review fällig</div>';
-    out+='<div style="font-size:12px;color:var(--t2);line-height:1.5;margin-bottom:10px">Deadline erreicht. War der Monatsziel erreicht? War der Plan zu steil, oder hat die Ausführung gefehlt?</div>';
-    out+='<button onclick="openMonatszielReview(\''+tz.id+'\')" style="padding:9px 18px;border-radius:9px;background:var(--amber);color:#fff;border:none;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer">Review abschließen →</button>';
-    out+='</div>';
+    // Review-Chronik trotzdem rendern (siehe unten)
   } else {
-    // Aktiv-Zustand: Frage + Wochenziel-Status
-    out+='<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:10px">Liegst du richtig?</div>';
-
-    // Diese Woche
-    const thisWeekWr=wrsForTZ(tz.id).find(r=>r.kw===currKW.kw&&r.jahr===currKW.jahr);
-    out+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);margin-bottom:6px">Diese Woche · KW '+currKW.kw+'</div>';
-    if(thisWeekWr){
-      [1,2,3].forEach(n=>{
-        if(thisWeekWr['big3_'+n+'_tz_id']!==tz.id)return;
-        const title=thisWeekWr['big3_'+n]||'—';
-        const done=!!thisWeekWr['big3_'+n+'_done'];
-        // Task-Zählung im Slot (für Kontext)
-        const slotTasks=S.aufgaben.filter(a=>String(a.pid)===String(aP)&&a.wochenresetId===thisWeekWr.id&&a.big3Slot===n);
-        const slotDone=slotTasks.filter(a=>a.status==='erledigt').length;
-        out+='<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-top:1px dashed var(--bd)">';
-        out+='<div style="width:14px;height:14px;border-radius:4px;flex-shrink:0;'+(done?'background:var(--green);border:1.5px solid var(--green);display:flex;align-items:center;justify-content:center':'border:1.5px solid var(--bd)')+'">'+(done?'<span style="color:#fff;font-size:9px;font-weight:800">✓</span>':'')+'</div>';
-        out+='<div style="flex:1;min-width:0;font-size:13px;'+(done?'color:var(--t3);text-decoration:line-through':'color:var(--text)')+'">'+esc(title)+'</div>';
-        if(slotTasks.length)out+='<span style="font-size:10px;color:var(--t3);flex-shrink:0">'+slotDone+'/'+slotTasks.length+'</span>';
-        out+='</div>';
+    // ── MATRIX ──
+    // Globales KW-Fenster: Union aller kwListeFurMZ → eindeutig sortierte KWs.
+    const kwMap=new Map();
+    alleTZ.forEach(tz=>{
+      kwListeFurMZ(tz).forEach(k=>{
+        const key=k.jahr*100+k.kw;
+        if(!kwMap.has(key))kwMap.set(key,k);
       });
-    } else {
-      out+='<div style="font-size:12px;color:var(--t3);padding:10px 0;font-style:italic">Diese Woche kein Wochenziel gesetzt, das auf dieses Monatsziel einzahlt. <span onclick="nav(\'woche\')" style="color:var(--blue);cursor:pointer;text-decoration:underline">Wochenplan →</span></div>';
-    }
+    });
+    const kws=Array.from(kwMap.values()).sort((a,b)=>(a.jahr*100+a.kw)-(b.jahr*100+b.kw));
 
-    // Vergangene Wochen (4)
-    const past=wrsForTZ(tz.id).filter(r=>r.jahr*100+r.kw<currKW.jahr*100+currKW.kw).slice(0,4);
-    if(past.length){
-      out+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);margin:14px 0 4px">Vergangene Wochen</div>';
-      past.forEach(r=>{
-        const slots=[1,2,3].filter(n=>r['big3_'+n+'_tz_id']===tz.id);
-        const delivered=slots.filter(n=>r['big3_'+n+'_done']).length;
-        const total=slots.length;
-        const col=total===0?'var(--t3)':delivered===total?'var(--green)':delivered>0?'var(--amber)':'var(--red)';
-        const icon=total===0?'○':delivered===total?'✓':delivered>0?'〜':'✗';
-        out+='<div style="display:flex;align-items:center;gap:10px;padding:5px 0;font-size:12px">';
-        out+='<span style="font-family:monospace;color:var(--t3);width:52px;flex-shrink:0">KW '+r.kw+'</span>';
-        out+='<span style="color:'+col+';font-weight:700;flex-shrink:0">'+icon+'</span>';
-        out+='<span style="flex:1;color:var(--t2)">'+delivered+'/'+total+' geliefert</span>';
-        out+='</div>';
-      });
-    }
+    // Gruppierung nach Ziel (Strategie-Header — Variante A, ohne Quartal-Layer da nicht im Datenmodell)
+    const byZiel=new Map();
+    alleTZ.forEach(tz=>{
+      if(!byZiel.has(tz.ziel.id))byZiel.set(tz.ziel.id,{ziel:tz.ziel,f:tz.f,mzs:[]});
+      byZiel.get(tz.ziel.id).mzs.push(tz);
+    });
 
-    // Actions
-    out+='<div style="display:flex;gap:8px;margin-top:18px;flex-wrap:wrap">';
-    // v184: Wochenplaner als primäre Aktion
-    out+='<button onclick="openMZWochenplaner(\''+tz.id+'\')" style="flex:1;min-width:180px;padding:10px;border-radius:10px;background:var(--inv);color:var(--inv-t);border:none;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer">📅 Wochenplaner öffnen</button>';
-    out+='<button onclick="openMonatszielDetail(\''+tz.id+'\')" style="padding:10px 16px;border-radius:10px;background:var(--gray-bg);color:var(--t2);border:1px solid var(--bd);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer">Bearbeiten</button>';
-    out+='<button onclick="nav(\'woche\')" style="padding:10px 16px;border-radius:10px;background:var(--gray-bg);color:var(--t2);border:1px solid var(--bd);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer">→ Woche</button>';
-    out+='</div>';
-  }
+    // Slot-Auslastung pro KW (alle Slots, nicht nur dieses MZ)
+    const kwLoad=new Map();
+    kws.forEach(k=>{
+      const wr=findOrCreateWrFor(aP,k.kw,k.jahr);
+      kwLoad.set(k.jahr*100+k.kw,wr?[1,2,3].filter(n=>wr['big3_'+n]).length:0);
+    });
 
-  out+='</div>'; // fokus-card close
+    const COL_MZ=220,COL_KW=140,COL_POOL=170,GAP=6;
+    const totalW=COL_MZ+(COL_KW+GAP)*kws.length+COL_POOL+GAP;
 
-  // ── Andere Monatsziele (Switcher, kollabiert) ──
-  const andere=alleTZ.filter(t=>t.id!==tz.id&&!t.erledigt);
-  if(andere.length){
-    out+='<details style="margin-top:8px"><summary style="list-style:none;cursor:pointer;padding:8px 0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3)">▸ Andere Monatsziele ('+andere.length+')</summary>';
-    out+='<div style="margin-top:4px;display:flex;flex-direction:column;gap:4px">';
-    andere.sort((a,b)=>(a.datum||'9999').localeCompare(b.datum||'9999')).forEach(t=>{
-      const inBig3=wrTzIds.includes(t.id);
-      const faell=fellig(t);
-      out+='<div onclick="setMonatFokus(\''+t.id+'\')" style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:var(--sf);border:1px solid var(--bd);cursor:pointer" onmouseenter="this.style.background=\'var(--gray-bg)\'" onmouseleave="this.style.background=\'var(--sf)\'">';
-      out+='<span style="width:6px;height:6px;border-radius:50%;background:'+t.f.tc+';flex-shrink:0"></span>';
-      out+='<div style="flex:1;min-width:0;font-size:12px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(t.name)+'</div>';
-      if(faell)out+='<span style="font-size:9px;font-weight:700;color:var(--amber);background:var(--amber-bg);padding:1px 7px;border-radius:99px;flex-shrink:0">Review</span>';
-      else if(inBig3)out+='<span style="font-size:9px;font-weight:700;background:var(--inv);color:var(--inv-t);padding:1px 7px;border-radius:99px;flex-shrink:0">Woche</span>';
-      if(t.datum)out+='<span style="font-size:10px;color:var(--t3);flex-shrink:0">'+tzDatum(t)+'</span>';
+    out+='<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -4px;padding:0 4px 4px">';
+    out+='<div style="min-width:'+totalW+'px">';
+
+    // Header-Zeile
+    out+='<div style="display:flex;gap:'+GAP+'px;align-items:flex-end;padding:0 0 8px 0">';
+    out+='<div style="width:'+COL_MZ+'px;flex-shrink:0;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);padding:4px 8px">Monatsziel</div>';
+    kws.forEach(k=>{
+      const isToday=(k.jahr===todayK.jahr&&k.kw===todayK.kw);
+      const isPast=(k.jahr*100+k.kw)<(todayK.jahr*100+todayK.kw);
+      const monStr=k.monday.toISOString().slice(0,10);
+      const monLbl=monStr.slice(8,10)+'.'+monStr.slice(5,7)+'.';
+      const lblColor=isToday?'var(--blue)':(isPast?'var(--t3)':'var(--t2)');
+      const tag=isToday?' · jetzt':(isPast?' · vorbei':'');
+      out+='<div style="width:'+COL_KW+'px;flex-shrink:0;text-align:center;padding:2px 0">';
+      out+='<div style="font-size:11px;font-weight:700;color:'+lblColor+'">KW '+k.kw+tag+'</div>';
+      out+='<div style="font-size:9px;color:var(--t3);margin-top:1px">ab '+monLbl+'</div>';
       out+='</div>';
     });
-    out+='</div></details>';
+    out+='<div style="width:'+COL_POOL+'px;flex-shrink:0;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);padding:4px 8px;text-align:center">📥 Pool</div>';
+    out+='</div>';
+
+    // Body — pro Ziel-Gruppe
+    byZiel.forEach(group=>{
+      const z=group.ziel,f=group.f;
+      // Strategie-Header (Ziel-Name)
+      out+='<div style="display:flex;align-items:center;gap:8px;padding:10px 4px 6px 4px;margin-top:4px">';
+      out+='<span style="width:8px;height:8px;border-radius:50%;background:'+f.tc+';flex-shrink:0"></span>';
+      out+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:'+f.tc+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:600px">'+esc(z.name)+'</div>';
+      out+='<div style="flex:1;height:1px;background:'+f.bd+';opacity:.5"></div>';
+      out+='</div>';
+
+      // MZ-Zeilen
+      group.mzs.forEach(tz=>{
+        const tzPool=poolFor(tz.id);
+        const isFell=fellig(tz);
+        const noPool=tzPool.length===0;
+        const noKW=!kws.some(k=>{
+          const wr=findOrCreateWrFor(aP,k.kw,k.jahr);
+          return wr&&[1,2,3].some(n=>String(wr['big3_'+n+'_tz_id'])===String(tz.id));
+        });
+        const isAlarm=noPool&&noKW;
+        const rowBorder=isFell?'var(--red-bd)':(isAlarm?'var(--amber-bd)':'var(--bd)');
+        const d2d=daysUntil(tz.datum);
+
+        out+='<div style="display:flex;gap:'+GAP+'px;align-items:stretch;margin-bottom:'+GAP+'px">';
+
+        // MZ-Name-Zelle (klickbar → Edit/Detail)
+        out+='<div onclick="openMonatszielDetail(\''+tz.id+'\')" style="width:'+COL_MZ+'px;flex-shrink:0;background:var(--sf);border:1.5px solid '+rowBorder+';border-left:4px solid '+f.tc+';border-radius:8px;padding:10px 12px;cursor:pointer" onmouseenter="this.style.opacity=\'.85\'" onmouseleave="this.style.opacity=\'1\'">';
+        out+='<div style="font-size:13px;font-weight:700;color:var(--text);line-height:1.3;margin-bottom:5px">'+esc(tz.name)+'</div>';
+        const badges=[];
+        if(tz.datum){
+          const lbl=d2d<0?'⚠ '+Math.abs(d2d)+'d über':d2d===0?'heute fällig':d2d===1?'morgen':'in '+d2d+'d';
+          const col=d2d<0?'var(--red)':d2d<=3?'var(--amber)':'var(--t3)';
+          badges.push('<span style="font-size:10px;color:'+col+';font-weight:600">'+tzDatum(tz)+' · '+lbl+'</span>');
+        }
+        if(isAlarm)badges.push('<span style="font-size:9px;font-weight:700;color:var(--amber);background:var(--amber-bg);padding:1px 7px;border-radius:99px;border:1px solid var(--amber-bd)">leer — plan!</span>');
+        if(isFell)badges.push('<span style="font-size:9px;font-weight:700;color:var(--red);background:var(--red-bg);padding:1px 7px;border-radius:99px;border:1px solid var(--red-bd)">Review fällig</span>');
+        if(badges.length)out+='<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">'+badges.join('')+'</div>';
+        out+='</div>';
+
+        // KW-Zellen
+        kws.forEach(k=>{
+          const wr=findOrCreateWrFor(aP,k.kw,k.jahr);
+          const isToday=(k.jahr===todayK.jahr&&k.kw===todayK.kw);
+          const isPast=(k.jahr*100+k.kw)<(todayK.jahr*100+todayK.kw);
+          const cellBg=isToday?'var(--blue-bg)':(isPast?'var(--gray-bg)':'var(--sf)');
+          const cellBorder=isToday?'1.5px solid var(--blue-bd)':(isPast?'1px solid var(--bd)':'1px dashed var(--bd)');
+          out+='<div data-mzp-zone="kw|'+(wr?wr.id:'')+'|'+k.kw+'|'+k.jahr+'" style="width:'+COL_KW+'px;flex-shrink:0;background:'+cellBg+';border:'+cellBorder+';border-radius:8px;padding:5px;min-height:64px" ondragover="_mzpDragOver(event,this)" ondragleave="_mzpDragLeave(this)" ondrop="_mzpDrop(event,this)">';
+          let any=false;
+          if(wr){
+            [1,2,3].forEach(slot=>{
+              const t=wr['big3_'+slot];if(!t)return;
+              if(String(wr['big3_'+slot+'_tz_id'])!==String(tz.id))return; // nur Slots die zu DIESEM MZ gehören
+              any=true;
+              const verfehlt=wochenzielIstVerfehlt(wr,slot);
+              const done=!!wr['big3_'+slot+'_done'];
+              const borderL=done?'3px solid var(--green)':(verfehlt?'3px solid var(--red)':'3px solid var(--orange)');
+              out+='<div data-mzp-src="kw|'+wr.id+'|'+slot+'" draggable="true" ondragstart="_mzpDragStart(event,this)" ondragend="_mzpDragEnd(this)" style="display:flex;align-items:center;gap:5px;padding:5px 7px;background:var(--sf);border:1px solid var(--bd);border-left:'+borderL+';border-radius:0 6px 6px 0;margin-bottom:3px;cursor:grab">';
+              out+='<span style="font-size:9px;font-weight:800;color:var(--orange);min-width:9px">'+slot+'</span>';
+              out+='<span style="flex:1;font-size:11px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap'+(done?';text-decoration:line-through;opacity:.6':'')+'">'+esc(t)+'</span>';
+              if(verfehlt)out+='<span style="font-size:9px;color:var(--red);font-weight:700">⚠</span>';
+              else if(done)out+='<span style="font-size:9px;color:var(--green);font-weight:700">✓</span>';
+              out+='</div>';
+            });
+          }
+          if(!any)out+='<div style="font-size:10px;color:var(--t3);text-align:center;padding:18px 0;font-style:italic">—</div>';
+          out+='</div>';
+        });
+
+        // Pool-Zelle (rechts pro MZ-Zeile)
+        out+='<div data-mzp-zone="pool" data-mzp-poolfor="'+tz.id+'" style="width:'+COL_POOL+'px;flex-shrink:0;background:var(--gray-bg);border:1.5px dashed '+(isAlarm?'var(--amber-bd)':'var(--bd)')+';border-radius:8px;padding:5px;min-height:64px;display:flex;flex-direction:column;gap:3px" ondragover="_mzpDragOver(event,this)" ondragleave="_mzpDragLeave(this)" ondrop="_mzpDrop(event,this)">';
+        tzPool.forEach(p=>{
+          out+='<div data-mzp-src="pool|'+p.id+'" draggable="true" ondragstart="_mzpDragStart(event,this)" ondragend="_mzpDragEnd(this)" style="display:flex;align-items:center;gap:4px;padding:5px 7px;background:var(--sf);border:1px solid var(--bd);border-radius:6px;cursor:grab">';
+          out+='<span style="flex:1;font-size:11px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(p.titel)+'</span>';
+          out+='<button onclick="event.stopPropagation();_mmPoolDelete(\''+p.id+'\')" title="Löschen" style="background:transparent;border:none;color:var(--t3);cursor:pointer;font-size:12px;padding:0 3px;line-height:1">×</button>';
+          out+='</div>';
+        });
+        const inpId='mmpool-'+tz.id;
+        out+='<input id="'+inpId+'" placeholder="+ Wochenziel" style="width:100%;font-size:11px;padding:5px 7px;border:1px solid var(--bd);border-radius:6px;background:var(--sf);color:var(--text);font-family:inherit;margin-top:auto" onkeydown="if(event.key===\'Enter\'){event.preventDefault();_mmAddPool(\''+tz.id+'\',\''+inpId+'\')}">';
+        out+='</div>';
+
+        out+='</div>'; // row close
+      });
+    });
+
+    // Footer: Slots/KW
+    out+='<div style="display:flex;gap:'+GAP+'px;align-items:center;padding:10px 0 4px 0;margin-top:4px;border-top:1px solid var(--bd)">';
+    out+='<div style="width:'+COL_MZ+'px;flex-shrink:0;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);padding:0 8px">Slots/KW</div>';
+    kws.forEach(k=>{
+      const used=kwLoad.get(k.jahr*100+k.kw)||0;
+      const col=used>=3?'var(--red)':used===2?'var(--amber)':used===1?'var(--blue)':'var(--t3)';
+      out+='<div style="width:'+COL_KW+'px;flex-shrink:0;text-align:center;font-size:11px;font-weight:700;color:'+col+'">'+used+'/3</div>';
+    });
+    out+='<div style="width:'+COL_POOL+'px;flex-shrink:0"></div>';
+    out+='</div>';
+
+    out+='</div>'; // matrix-inner
+    out+='</div>'; // scroll-outer
   }
 
   // ── Review-Historie (kollabiert) ──
-  const reviewed=alleTZ.filter(t=>t.review_done).sort((a,b)=>(b.review_at||'').localeCompare(a.review_at||''));
+  const alleTZinclReviewed=S.ziele.flatMap(z=>{
+    const f=FARBEN[z.farbe||0];
+    return(z.teilziele||[])
+      .filter(t=>String(t.verantwortlichId)===String(aP)&&(!t.vertraulich||isGF()))
+      .map(t=>({...t,ziel:z,f}));
+  });
+  // (Verfehlt-Block + Review-Chronik nutzen weiter alleTZinclReviewed)
+  const reviewed=alleTZinclReviewed.filter(t=>t.review_done).sort((a,b)=>(b.review_at||'').localeCompare(a.review_at||''));
   if(reviewed.length){
     out+='<details style="margin-top:10px"><summary style="list-style:none;cursor:pointer;padding:8px 0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3)">📚 Review-Chronik ('+reviewed.length+')</summary>';
     out+='<div style="margin-top:4px;display:flex;flex-direction:column;gap:6px">';
@@ -9133,6 +9175,19 @@ function rMonat(){
   }
 
   document.getElementById('main').innerHTML=out;
+}
+// v185: Matrix-Pool-Helper — Eingabe & Delete in der Matrix.
+async function _mmAddPool(tzId,inpId){
+  const inp=document.getElementById(inpId);
+  const v=(inp?.value||'').trim();if(!v)return;
+  await poolAdd(tzId,v);
+  render();
+  // Re-focus auf das (neu gerenderte) Input für schnelles Mehrfach-Anlegen
+  setTimeout(()=>document.getElementById(inpId)?.focus(),30);
+}
+async function _mmPoolDelete(id){
+  await poolDelete(id);
+  render();
 }
 function openAddMonatszielFromMonat(){
   const meineZ=S.ziele.filter(z=>z.status!=='vorschlag'&&z.status!=='bereich'&&(isGF()||z.verantwortlichId===aP||(z.teilziele||[]).some(t=>String(t.verantwortlichId)===String(aP))));
