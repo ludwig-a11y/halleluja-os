@@ -109,6 +109,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;font-size:1
 .card[onclick]:hover,.card[style*="cursor:pointer"]:hover{border-color:var(--t3);box-shadow:0 1px 4px rgba(0,0,0,.04)}
 .tag{font-size:10px;padding:2px 8px;border-radius:var(--r-full);font-weight:500;white-space:nowrap;display:inline-block;transition:opacity .15s}
 .btn{font-size:11px;padding:5px 12px;border-radius:8px;border:none;cursor:pointer;font-family:inherit;font-weight:500;transition:all .15s ease}
+/* v183: Drag&Drop sortable lists */
+.drag-row{position:relative;transition:opacity .12s,box-shadow .12s}
+.drag-handle{display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;width:18px;height:24px;color:var(--t3);cursor:grab;font-size:14px;line-height:1;letter-spacing:-1.5px;opacity:0;transition:opacity .12s;user-select:none;touch-action:none}
+.drag-row:hover .drag-handle,.drag-handle:hover,.drag-handle.touched{opacity:.55}
+.drag-handle:active,.drag-handle.dragging{cursor:grabbing;opacity:.9}
+.drag-row.dragging-now{opacity:.35}
+.drag-row.drop-above{box-shadow:inset 0 2px 0 var(--blue)}
+.drag-row.drop-below{box-shadow:inset 0 -2px 0 var(--blue)}
 .btn:hover{opacity:.85;transform:translateY(-0.5px)}
 .btn:active{transform:translateY(0);opacity:1}
 .btn-dk{background:var(--inv);color:var(--inv-t)}
@@ -759,6 +767,147 @@ async function moveBig3(wrId,slot,dir){
     const fk='big3_'+slot+s,gk='big3_'+nSlot+s;
     const tmp=wr[fk];wr[fk]=wr[gk]??null;wr[gk]=tmp??null;
     patch[fk]=wr[fk];patch[gk]=wr[gk];
+  });
+  await dbPatch('wochenresets',wrId,patch).catch(()=>{});
+  render();
+}
+// ── v183: Drag & Drop für sortierbare Listen ─────────────────────
+// Pattern: Container hat data-drag-container="<type>:<param1>:<param2>", Items haben data-drag-item="<id>".
+// Nach jedem render() ruft die App dragSortAttach() auf — idempotent via _dragSetup-Flag.
+let _dragState=null;
+function dragSortAttach(){
+  document.querySelectorAll('[data-drag-item]').forEach(el=>{
+    if(el._dragSetup)return;
+    el._dragSetup=true;
+    el.draggable=true;
+    el.addEventListener('dragstart',_dsStart);
+    el.addEventListener('dragend',_dsEnd);
+    el.addEventListener('dragover',_dsOver);
+    el.addEventListener('dragleave',_dsLeave);
+    el.addEventListener('drop',_dsDrop);
+  });
+  // Touch-Support: long-press startet Drag-Mode (für mobile)
+  document.querySelectorAll('.drag-handle').forEach(h=>{
+    if(h._touchSetup)return;
+    h._touchSetup=true;
+    h.addEventListener('touchstart',_dhTouchStart,{passive:true});
+  });
+}
+function _dsStart(e){
+  const container=this.closest('[data-drag-container]');
+  if(!container){e.preventDefault();return;}
+  _dragState={fromEl:this,fromId:this.dataset.dragItem,container};
+  this.classList.add('dragging-now');
+  try{e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',this.dataset.dragItem||'');}catch(_){}
+}
+function _dsOver(e){
+  if(!_dragState||this===_dragState.fromEl)return;
+  if(this.closest('[data-drag-container]')!==_dragState.container)return;
+  e.preventDefault();
+  try{e.dataTransfer.dropEffect='move';}catch(_){}
+  // Visual feedback: zeige Drop-Position (above/below je nach Mauspos)
+  const rect=this.getBoundingClientRect();
+  const above=(e.clientY-rect.top)<rect.height/2;
+  this.classList.remove(above?'drop-below':'drop-above');
+  this.classList.add(above?'drop-above':'drop-below');
+}
+function _dsLeave(){this.classList.remove('drop-above','drop-below');}
+function _dsDrop(e){
+  if(!_dragState)return;
+  e.preventDefault();
+  const above=this.classList.contains('drop-above');
+  this.classList.remove('drop-above','drop-below');
+  if(this===_dragState.fromEl)return;
+  const fromId=_dragState.fromId,toId=this.dataset.dragItem;
+  const containerType=_dragState.container.dataset.dragContainer;
+  _dragDispatch(containerType,fromId,toId,above);
+}
+function _dsEnd(){
+  this.classList.remove('dragging-now');
+  document.querySelectorAll('.drop-above,.drop-below').forEach(el=>el.classList.remove('drop-above','drop-below'));
+  _dragState=null;
+}
+function _dhTouchStart(e){
+  // Auf Mobile: long-press am Handle aktiviert sichtbares Feedback (echtes Drag läuft via HTML5 Touch-Polyfill nur eingeschränkt — wir markieren mind. den Handle als "touched" für Sichtbarkeit)
+  this.classList.add('touched');
+  setTimeout(()=>this.classList.remove('touched'),1500);
+}
+async function _dragDispatch(containerType,fromId,toId,above){
+  const parts=String(containerType||'').split(':');
+  const type=parts[0];
+  try{
+    if(type==='aufgabenSlot'){
+      await dragReorderAufgabe(parts[1],parseInt(parts[2],10),fromId,toId,above);
+    } else if(type==='teilziele'){
+      await dragReorderTeilziele(parts[1],fromId,toId,above);
+    } else if(type==='wochenziele'){
+      await dragReorderWochenziele(parts[1],parseInt(fromId,10),parseInt(toId,10),above);
+    }
+  }catch(e){console.error('drag dispatch',e);toast('⚠ Reihenfolge-Update fehlgeschlagen');}
+}
+// Renumbering-Helfer: schreibt sortIndex 10/20/30/... auf alle items, batched dbPatches.
+async function _renumberSortIndex(table,items){
+  const patches=[];
+  items.forEach((it,i)=>{
+    const newIdx=(i+1)*10;
+    if(it.sortIndex!==newIdx){
+      it.sortIndex=newIdx;
+      patches.push(dbPatch(table,it.id,{sort_index:newIdx}).catch(()=>{}));
+    }
+  });
+  if(patches.length)await Promise.all(patches);
+  render();
+}
+async function dragReorderAufgabe(wrId,slot,fromId,toId,above){
+  const wr=(S.wochenresets||[]).find(w=>w.id===wrId);if(!wr)return;
+  const _belongs=slotMembership(wr,slot).belongs;
+  // Sichtbare Reihenfolge in der Liste — aktive Aufgaben + geparkte am Ende (so wie weitere im rTag).
+  const _slotAll=S.aufgaben.filter(a=>a.pid===aP&&_belongs(a)&&a.status!=='erledigt'&&a.status!=='archiviert');
+  const _aktiv=_slotAll.filter(a=>!taskDirektPausiert(a)&&!taskWartet(a)).sort(cmpAufgabeSlot);
+  const _geparkt=_slotAll.filter(a=>taskDirektPausiert(a)||taskWartet(a));
+  const items=[..._aktiv,..._geparkt];
+  const fromIdx=items.findIndex(x=>String(x.id)===String(fromId));
+  let toIdx=items.findIndex(x=>String(x.id)===String(toId));
+  if(fromIdx<0||toIdx<0||fromIdx===toIdx)return;
+  if(!above)toIdx++;
+  const [moved]=items.splice(fromIdx,1);
+  if(toIdx>fromIdx)toIdx--;
+  items.splice(toIdx,0,moved);
+  await _renumberSortIndex('aufgaben',items);
+}
+async function dragReorderTeilziele(zielId,fromId,toId,above){
+  const z=S.ziele.find(x=>x.id===zielId);if(!z)return;
+  const items=(z.teilziele||[]).filter(tz=>(!tz.vertraulich||isGF()||tz.verantwortlichId===aP)&&(tz.status||'aktiv')==='aktiv').sort((a,b)=>{
+    const aM=String(a.verantwortlichId)===String(aP)?0:1;
+    const bM=String(b.verantwortlichId)===String(aP)?0:1;
+    if(aM!==bM)return aM-bM;
+    return cmpSortIdx(a,b,'datum');
+  });
+  const fromIdx=items.findIndex(x=>String(x.id)===String(fromId));
+  let toIdx=items.findIndex(x=>String(x.id)===String(toId));
+  if(fromIdx<0||toIdx<0||fromIdx===toIdx)return;
+  if(!above)toIdx++;
+  const [moved]=items.splice(fromIdx,1);
+  if(toIdx>fromIdx)toIdx--;
+  items.splice(toIdx,0,moved);
+  await _renumberSortIndex('teilziele',items);
+}
+async function dragReorderWochenziele(wrId,fromSlot,toSlot,above){
+  const wr=(S.wochenresets||[]).find(w=>w.id===wrId);if(!wr)return;
+  if(fromSlot===toSlot)return;
+  const slots=[1,2,3].map(n=>({n,text:wr['big3_'+n]||null,done:!!wr['big3_'+n+'_done'],tzId:wr['big3_'+n+'_tz_id']||null}));
+  let toIdx=toSlot-1;
+  if(!above)toIdx++;
+  const fromIdx=fromSlot-1;
+  const [moved]=slots.splice(fromIdx,1);
+  if(toIdx>fromIdx)toIdx--;
+  slots.splice(toIdx,0,moved);
+  // Schreibe zurück in die drei Slots 1/2/3
+  const patch={};
+  slots.forEach((s,i)=>{
+    const t=i+1;
+    wr['big3_'+t]=s.text;wr['big3_'+t+'_done']=s.done;wr['big3_'+t+'_tz_id']=s.tzId;
+    patch['big3_'+t]=s.text;patch['big3_'+t+'_done']=s.done;patch['big3_'+t+'_tz_id']=s.tzId;
   });
   await dbPatch('wochenresets',wrId,patch).catch(()=>{});
   render();
@@ -5799,6 +5948,8 @@ function nav(v,btn){
 function render(){
   // v178: Auto-Resume pausierter Aufgaben (einmalig pro Render-Zyklus, idempotent).
   try{if(!window._resumeChecked){window._resumeChecked=true;autoResumePausedTasks().then(()=>showResumeToastIfAny());}}catch(e){console.error('render:autoResume',e);}
+  // v183: Drag&Drop nach jedem Render reattachen (idempotent via _dragSetup-Flag pro Element).
+  try{setTimeout(dragSortAttach,0);}catch(e){console.error('render:dragAttach',e);}
   // v180: Verfehlt-Review-Modal Auto-Trigger (einmalig, snooze-bar pro Tag).
   try{if(!window._verfehltChecked){window._verfehltChecked=true;_checkVerfehltReview();}}catch(e){console.error('render:checkVerfehlt',e);}
   // Jede rView ist ein eigener Sandbox-Block: eine einzelne kaputte Aufgabe/KPI darf nicht die
@@ -7151,6 +7302,8 @@ function rTag(){
     out+='<span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:'+(allDone?'var(--green)':'var(--t3)')+'">'+(allDone?'🎉':'🎯')+' Wochenziele · KW '+kwAkt+'</span>';
     out+='<span style="margin-left:auto;font-size:11px;font-weight:700;color:'+(allDone?'var(--green)':'var(--t3)')+'">'+doneCount+'/'+totalCount+'</span>';
     out+='</div>';
+    // v183: Drag-Container für Wochenziele
+    out+='<div data-drag-container="wochenziele:'+wrAktuell.id+'">';
     [[1,'big3_1_done'],[2,'big3_2_done'],[3,'big3_3_done']].forEach(([n,doneF])=>{
       const txt=wrItemName(wrAktuell,n);if(!txt)return;
       const done=wrAktuell[doneF];
@@ -7194,9 +7347,11 @@ function rTag(){
       }
       const _nA=prefillTzId?'{prio:\'P1\',teilzielId:\''+prefillTzId+'\',wochenresetId:\''+wrAktuell.id+'\',big3Slot:'+n+'}':'{prio:\'P1\',wochenresetId:\''+wrAktuell.id+'\',big3Slot:'+n+'}';
 
-      out+='<div'+cardClick+' style="background:var(--sf);border:1.5px solid '+(done?'var(--green-bd)':'var(--bd)')+';border-left:4px solid '+(done?'var(--green)':_wzAccent)+';border-radius:0 12px 12px 0;padding:12px 14px;margin-bottom:7px;'+cardCursor+'">';
-      // ── Ziel-Header (kompakt: Checkbox + Titel + Monatsziel) ──
-      out+='<div style="display:flex;align-items:flex-start;gap:10px">';
+      // v183: drag-row + data-drag-item für Drag&Drop. cardClick bleibt — der Click-Handler greift nur bei Klicks außerhalb der Drag-Geste.
+      out+='<div class="drag-row" data-drag-item="'+n+'"'+cardClick+' style="background:var(--sf);border:1.5px solid '+(done?'var(--green-bd)':'var(--bd)')+';border-left:4px solid '+(done?'var(--green)':_wzAccent)+';border-radius:0 12px 12px 0;padding:12px 14px;margin-bottom:7px;'+cardCursor+'">';
+      // ── Ziel-Header (kompakt: Drag-Handle + Checkbox + Titel + Monatsziel) ──
+      out+='<div style="display:flex;align-items:flex-start;gap:8px">';
+      out+='<span class="drag-handle" title="Ziehen zum Sortieren" onclick="event.stopPropagation()" onmousedown="event.stopPropagation()">⋮⋮</span>';
       out+='<div onclick="event.stopPropagation();toggleBig3(\''+wrAktuell.id+'\',\''+doneF+'\')" title="Wochenziel erledigt markieren" style="width:20px;height:20px;border-radius:5px;flex-shrink:0;cursor:pointer;margin-top:1px;'+(done?'background:var(--green);border:1.5px solid var(--green);display:flex;align-items:center;justify-content:center':'border:1.5px solid var(--bd)')+'">'+(done?'<span style="color:#fff;font-size:11px;font-weight:800">✓</span>':'')+'</div>';
       out+='<div style="flex:1;min-width:0">';
       // v181: Slot-Nummer als Badge vor dem Titel — 1/2/3 immer sichtbar
@@ -7218,10 +7373,7 @@ function rTag(){
         out+='<div style="margin-top:4px"><span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px;background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-bd);white-space:nowrap">🎯 Du bist dran</span></div>';
       }
       out+='</div>';
-      // v177: Pfeile ↑↓ — Wochenziel-Reihenfolge tauschen (big3-Slot-Swap)
-      const _wzPrev=n>1&&!!wrAktuell['big3_'+(n-1)];
-      const _wzNext=n<3&&!!wrAktuell['big3_'+(n+1)];
-      out+=arrowsHTML('moveBig3(\''+wrAktuell.id+'\','+n+',\'up\')','moveBig3(\''+wrAktuell.id+'\','+n+',\'down\')',_wzPrev,_wzNext);
+      // v183: Pfeile durch Drag&Drop ersetzt (Drag-Handle oben links)
       out+='</div>';
 
       if(!done){
@@ -7251,24 +7403,22 @@ function rTag(){
         if(weitere.length){
           out+='<details onclick="event.stopPropagation()" style="margin-top:8px;margin-left:30px" ontoggle="event.stopPropagation()">';
           out+='<summary style="font-size:11px;color:var(--t3);cursor:pointer;padding:4px 0;list-style:none;user-select:none;font-weight:600">▸ Weitere Aufgaben ('+weitere.length+')</summary>';
-          out+='<div style="padding:4px 0 2px 0">';
+          // v183: Drag-Container für Aufgaben dieses Slots
+          out+='<div data-drag-container="aufgabenSlot:'+wrAktuell.id+':'+n+'" style="padding:4px 0 2px 0">';
           weitere.forEach(a=>{
             const isAk=a.status==='aktiv';
             // v180: Geparkte (pausiert/wartend) bleiben sichtbar, aber gegraut — kein Klapper mehr.
             const _isParked=taskDirektPausiert(a)||taskWartet(a);
-            // v177: Index in slotTasks (inkl. Hero), damit Pfeil ↑ den ersten "weitere" mit dem Hero tauschen kann
-            const _aIdx=slotTasks.findIndex(x=>x.id===a.id);
             const _rowOpacity=_isParked?'opacity:.55;':'';
-            out+='<div onclick="event.stopPropagation();openDetail(\''+a.id+'\')" style="display:flex;align-items:center;gap:7px;padding:5px 6px;cursor:pointer;border-radius:6px;'+_rowOpacity+'" onmouseenter="this.style.background=\'var(--gray-bg)\'" onmouseleave="this.style.background=\'transparent\'">';
+            out+='<div class="drag-row" data-drag-item="'+a.id+'" onclick="event.stopPropagation();openDetail(\''+a.id+'\')" style="display:flex;align-items:center;gap:6px;padding:5px 6px;cursor:pointer;border-radius:6px;'+_rowOpacity+'" onmouseenter="this.style.background=\'var(--gray-bg)\'" onmouseleave="this.style.background=\'transparent\'">';
+            // v183: Drag-Handle (hover-only)
+            if(!_isParked)out+='<span class="drag-handle" title="Ziehen zum Sortieren" onclick="event.stopPropagation()" onmousedown="event.stopPropagation()" style="font-size:11px">⋮⋮</span>';
+            else out+='<span style="width:18px;flex-shrink:0"></span>';
             out+='<div onclick="event.stopPropagation();setStatusModal(\''+a.id+'\',\'erledigt\')" style="width:12px;height:12px;border-radius:3px;flex-shrink:0;cursor:pointer;border:1.5px solid '+(isAk?'var(--blue)':'var(--bd)')+'"></div>';
             out+='<span style="font-size:12px;color:'+(isAk?'var(--blue)':'var(--text)')+';flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(a.titel)+'</span>';
             // v178: Status-Badge (pausiert / wartet)
             const _stB=statusBadge(a);if(_stB)out+=_stB;
             if(a.prio)out+='<span style="font-size:9px;font-weight:700;color:'+(a.prio==='P1'?'var(--red)':'var(--t3)')+';flex-shrink:0">'+a.prio+'</span>';
-            // v177: Pfeile ↑↓ — nur für aktive (nicht-geparkte), Sort-Reihenfolge basiert auf slotTasks (ohne geparkte)
-            if(!_isParked&&slotTasks.length>1){
-              out+=arrowsHTML('moveAufgabeInSlot(\''+wrAktuell.id+'\','+n+',\''+a.id+'\',\'up\')','moveAufgabeInSlot(\''+wrAktuell.id+'\','+n+',\''+a.id+'\',\'down\')',_aIdx>0,_aIdx<slotTasks.length-1);
-            }
             out+='<span style="font-size:11px;color:var(--t3);flex-shrink:0">▶</span>';
             out+='</div>';
           });
@@ -7312,6 +7462,7 @@ function rTag(){
       }
       out+='</div>'; // card close
     });
+    out+='</div>'; // v183: drag-container close
     // Blocker & Aktionen
     if(wrAktuell.blockiert){
       out+='<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--red-bg);border:1px solid var(--red-bd);border-radius:8px;margin-top:2px;margin-bottom:4px">';
@@ -9567,7 +9718,8 @@ function rZiele(){
       out+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3)">🗓 '+_zLblPlural+(myTZ.length?' · '+myTZ.length:'')+(tzErledigtAll?' · '+tzErledigtAll+' erledigt':'')+'</div>';
       out+='</div>';
       if(myTZ.length){
-        out+='<div style="display:flex;flex-direction:column;gap:5px">';
+        // v183: Drag-Container für Monatsziele/Themengebiete
+        out+='<div data-drag-container="teilziele:'+z.id+'" style="display:flex;flex-direction:column;gap:5px">';
         showTZ.forEach(tz=>{
           const datum=tz.datum?tz.datum.slice(8)+'.'+tz.datum.slice(5,7)+'.':'';
           // Days-left Berechnung für laute Deadline
@@ -9592,13 +9744,11 @@ function rZiele(){
           const _rowBorder=_overdue?'1.5px solid var(--red)':'1px solid '+f.bd;
           const _expanded=localStorage.getItem('ms_exp_'+tz.id)==='1';
           const _rowRadius=_expanded?'8px 8px 0 0':'8px';
-          out+='<div style="display:flex;align-items:center;gap:10px;padding:8px 11px;border:'+_rowBorder+';border-radius:'+_rowRadius+';background:var(--sf);transition:background .12s'+(_expanded?';border-bottom:none':'')+'" onmouseenter="if(!this.dataset.exp)this.style.background=\''+f.bg+'\'" onmouseleave="if(!this.dataset.exp)this.style.background=\'var(--sf)\'"'+(_expanded?' data-exp="1"':'')+'>';
+          // v183: drag-row + Drag-Handle (sichtbar nur bei canManageTZ + mehr als 1 Item)
+          const _canDragTZ=canManageTZ(z.id)&&myTZ.length>1;
+          out+='<div class="drag-row"'+(_canDragTZ?' data-drag-item="'+tz.id+'"':'')+' style="display:flex;align-items:center;gap:8px;padding:8px 11px;border:'+_rowBorder+';border-radius:'+_rowRadius+';background:var(--sf);transition:background .12s'+(_expanded?';border-bottom:none':'')+'" onmouseenter="if(!this.dataset.exp)this.style.background=\''+f.bg+'\'" onmouseleave="if(!this.dataset.exp)this.style.background=\'var(--sf)\'"'+(_expanded?' data-exp="1"':'')+'>';
+          if(_canDragTZ)out+='<span class="drag-handle" title="Ziehen zum Sortieren" onclick="event.stopPropagation()" onmousedown="event.stopPropagation()" style="font-size:11px">⋮⋮</span>';
           if(canManageTZ(z.id))out+='<input type="checkbox" '+(tz.erledigt?'checked':'')+' onclick="event.stopPropagation();toggleTZ(\''+z.id+'\',\''+tz.id+'\')" style="flex-shrink:0;margin:0;width:14px;height:14px;accent-color:'+f.tc+';cursor:pointer">';
-          // v177: Pfeile ↑↓ — Monatsziel-Reihenfolge in Zielkarte
-          if(canManageTZ(z.id)&&myTZ.length>1){
-            const _idx=myTZ.findIndex(x=>x.id===tz.id);
-            out+=arrowsHTML('moveTzInZielkarte(\''+z.id+'\',\''+tz.id+'\',\'up\')','moveTzInZielkarte(\''+z.id+'\',\''+tz.id+'\',\'down\')',_idx>0,_idx<myTZ.length-1);
-          }
           // Verantwortlicher — eigene gedimmt, fremde hervorgehoben
           const _tzVer=person(tz.verantwortlichId);
           const _isMine=String(tz.verantwortlichId)===String(aP);
