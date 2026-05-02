@@ -955,7 +955,20 @@ async function dragReorderWochenziele(wrId,fromSlot,toSlot,above){
   render();
 }
 // ── v184: Wochenziel-Pool + MZ-Wochenplaner ─────────────────────
-function poolFor(tzId){return(S.wochenzielPool||[]).filter(p=>String(p.teilzielId)===String(tzId)).sort((a,b)=>(a.sortIndex??9999)-(b.sortIndex??9999));}
+function poolFor(tzId){
+  // Vertraulich-Check: wenn TZ oder Parent-Ziel vertraulich → nur GF oder Verantwortlicher sehen Pool-Items
+  let allowed=true;
+  for(const z of S.ziele){
+    const tz=(z.teilziele||[]).find(t=>String(t.id)===String(tzId));
+    if(!tz)continue;
+    const tzVer=tz.vertraulich&&!isGF()&&String(tz.verantwortlichId)!==String(aP);
+    const zVer=z.vertraulich&&!isGF()&&String(z.verantwortlichId)!==String(aP);
+    if(tzVer||zVer)allowed=false;
+    break;
+  }
+  if(!allowed)return[];
+  return(S.wochenzielPool||[]).filter(p=>String(p.teilzielId)===String(tzId)).sort((a,b)=>(a.sortIndex??9999)-(b.sortIndex??9999));
+}
 function getKwFromDate(d){
   // ISO-Wochenkalender — KW-Nummer + Jahr aus Date
   const dt=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));
@@ -1072,6 +1085,10 @@ async function kwToPool(wrId,slot){
   const titel=wr['big3_'+slot];if(!titel)return;
   const tzId=wr['big3_'+slot+'_tz_id']||null;
   if(!tzId){toast('⚠ Wochenziel ohne Monatsziel-Bezug — Pool nicht möglich');return;}
+  // v202: Wenn Slot bereits als erledigt markiert ist, Confirm — sonst geht "✓ done" verloren
+  if(wr['big3_'+slot+'_done']){
+    if(!confirm('Wochenziel "'+titel+'" ist als erledigt markiert. In den Pool zurückziehen verwirft den ✓-Status. Trotzdem fortfahren?'))return;
+  }
   // Aufgaben loslösen (wochenresetId+big3Slot=null), bleiben am MZ
   const aufgabenPatches=[];
   (S.aufgaben||[]).forEach(a=>{
@@ -1304,10 +1321,16 @@ async function _mzReschedule(tzId,kw,jahr){
     const neuMonName=monNamen[parseInt(neuMonat.slice(5,7),10)-1];
     if(!confirm('Monatsziel "'+tz.name+'" in '+neuMonName+' verschieben (neue Deadline: '+newDatum.slice(8)+'.'+newDatum.slice(5,7)+'.)?'))return;
   }
+  // v202: Existierende Big3-Slots für dieses MZ in anderen KWs erkennen + im Toast erwähnen
+  let existingSlots=0;
+  (S.wochenresets||[]).forEach(w=>{
+    [1,2,3].forEach(n=>{ if(String(w['big3_'+n+'_tz_id'])===String(tzId))existingSlots++; });
+  });
   // Update in-memory + DB
   tz.datum=newDatum;
   await dbPatch('teilziele',tzId,{datum:newDatum}).catch(()=>{});
-  toast('🏁 Deadline → '+newDatum.slice(8)+'.'+newDatum.slice(5,7)+'.');
+  const tail=existingSlots>0?' · '+existingSlots+' bestehende Wochenziel-Slots bleiben':'';
+  toast('🏁 Deadline → '+newDatum.slice(8)+'.'+newDatum.slice(5,7)+'.'+tail);
   render();
 }
 // Reihenfolge der Monatsziele in einer Zielkarte tauschen (Pfeile ↑↓).
@@ -1338,6 +1361,10 @@ function taskDirektPausiert(a){return !!(a&&a.pausiertBis&&a.pausiertBis>=TODAY)
 function taskWartet(a){return !!(a&&a.wartetAufPid);}
 async function setPausiert(aId,bis){
   const a=S.aufgaben.find(x=>x.id===aId);if(!a)return;
+  // v202: Erledigte/archivierte Aufgaben können nicht geparkt werden (Toast war irreführend)
+  if(bis&&(a.status==='erledigt'||a.status==='archiviert')){
+    toast('⚠ Aufgabe ist '+a.status+' — kein Parkplatz');return;
+  }
   a.pausiertBis=bis||null;
   await dbPatch('aufgaben',aId,{pausiert_bis:bis||null}).catch(()=>{});
   toast(bis?('🅿️ Geparkt bis '+bis.slice(8)+'.'+bis.slice(5,7)+'.'):'▶ Vom Parkplatz geholt');
@@ -9248,7 +9275,9 @@ function rMonat(){
           out+='</div>';
         });
         const inpId='mmpool-'+tz.id;
-        out+='<input id="'+inpId+'" placeholder="+ Wochenziel" style="width:100%;margin-top:auto;font-size:11px;padding:5px 7px;border:1px solid var(--bd);border-radius:6px;background:var(--sf);color:var(--text);font-family:inherit" onkeydown="if(event.key===\'Enter\'){event.preventDefault();_mmAddPool(\''+tz.id+'\',\''+inpId+'\')}">';
+        if(canManageTZ(z.id)){
+          out+='<input id="'+inpId+'" placeholder="+ Wochenziel" style="width:100%;margin-top:auto;font-size:11px;padding:5px 7px;border:1px solid var(--bd);border-radius:6px;background:var(--sf);color:var(--text);font-family:inherit" onkeydown="if(event.key===\'Enter\'){event.preventDefault();_mmAddPool(\''+tz.id+'\',\''+inpId+'\')}">';
+        }
         out+='</div>';
 
         // ── v189: MZ-Karte als eigene Spalte ganz RECHTS (Endpunkt der Zeile) ──
@@ -14442,6 +14471,87 @@ window.addEventListener('keydown',e=>{
       }
     }catch(e){console.error('gcalRefresh',e);}
   },5*60*1000);
+})();
+</script>
+<script>
+// v202: Touch-Drag-Polyfill — übersetzt Touch-Events in synthetische DragEvents
+// damit ondragstart/ondragover/ondrop auf iOS/iPad funktionieren.
+(function(){
+  if(!('ontouchstart' in window))return;
+  let src=null,srcRect=null,ghost=null,lastZone=null,startX=0,startY=0,activated=false;
+  const HOLD_MS=180,MOVE_THRESH=8;
+  let holdTimer=null;
+  const dt={_data:{},setData(t,v){this._data[t]=v;},getData(t){return this._data[t]||'';},setDragImage(){},effectAllowed:'move',dropEffect:'move'};
+  function dispatch(el,type,clientX,clientY){
+    if(!el)return;
+    const ev=new Event(type,{bubbles:true,cancelable:true});
+    ev.dataTransfer=dt;ev.clientX=clientX;ev.clientY=clientY;
+    el.dispatchEvent(ev);
+    return ev;
+  }
+  function findDraggable(el){while(el&&el!==document){if(el.getAttribute&&el.getAttribute('draggable')==='true')return el;el=el.parentNode;}return null;}
+  function findDropZone(el){while(el&&el!==document){if(el.getAttribute&&(el.getAttribute('ondrop')||el.hasAttribute('data-mzp-zone')))return el;el=el.parentNode;}return null;}
+  function makeGhost(el){
+    const r=el.getBoundingClientRect();
+    const g=el.cloneNode(true);
+    g.style.cssText='position:fixed;left:'+r.left+'px;top:'+r.top+'px;width:'+r.width+'px;height:'+r.height+'px;pointer-events:none;opacity:.7;z-index:9999;transform:scale(1.04);box-shadow:0 8px 24px rgba(0,0,0,.25);transition:none';
+    document.body.appendChild(g);
+    return g;
+  }
+  document.addEventListener('touchstart',function(e){
+    if(e.touches.length!==1)return;
+    const t=e.touches[0];
+    const el=findDraggable(document.elementFromPoint(t.clientX,t.clientY));
+    if(!el)return;
+    src=el;srcRect=el.getBoundingClientRect();
+    startX=t.clientX;startY=t.clientY;activated=false;dt._data={};
+    clearTimeout(holdTimer);
+    holdTimer=setTimeout(()=>{
+      if(!src)return;
+      activated=true;
+      ghost=makeGhost(src);
+      dispatch(src,'dragstart',startX,startY);
+      if(navigator.vibrate)navigator.vibrate(10);
+    },HOLD_MS);
+  },{passive:true});
+  document.addEventListener('touchmove',function(e){
+    if(!src)return;
+    const t=e.touches[0];
+    const dx=t.clientX-startX,dy=t.clientY-startY;
+    if(!activated){
+      // Wenn vor Hold-Timer schon stark bewegt → Scroll erlauben, kein Drag
+      if(Math.abs(dx)>MOVE_THRESH||Math.abs(dy)>MOVE_THRESH){clearTimeout(holdTimer);src=null;}
+      return;
+    }
+    e.preventDefault();
+    if(ghost){ghost.style.left=(srcRect.left+dx)+'px';ghost.style.top=(srcRect.top+dy)+'px';}
+    const under=document.elementFromPoint(t.clientX,t.clientY);
+    const zone=findDropZone(under);
+    if(zone!==lastZone){
+      if(lastZone)dispatch(lastZone,'dragleave',t.clientX,t.clientY);
+      if(zone)dispatch(zone,'dragenter',t.clientX,t.clientY);
+      lastZone=zone;
+    }
+    if(zone)dispatch(zone,'dragover',t.clientX,t.clientY);
+  },{passive:false});
+  document.addEventListener('touchend',function(e){
+    clearTimeout(holdTimer);
+    if(!src||!activated){src=null;activated=false;return;}
+    const t=(e.changedTouches&&e.changedTouches[0])||{clientX:0,clientY:0};
+    const under=document.elementFromPoint(t.clientX,t.clientY);
+    const zone=findDropZone(under);
+    if(zone)dispatch(zone,'drop',t.clientX,t.clientY);
+    if(lastZone&&lastZone!==zone)dispatch(lastZone,'dragleave',t.clientX,t.clientY);
+    dispatch(src,'dragend',t.clientX,t.clientY);
+    if(ghost){ghost.remove();ghost=null;}
+    src=null;srcRect=null;lastZone=null;activated=false;
+  });
+  document.addEventListener('touchcancel',function(){
+    clearTimeout(holdTimer);
+    if(ghost){ghost.remove();ghost=null;}
+    if(src&&activated)dispatch(src,'dragend',0,0);
+    src=null;srcRect=null;lastZone=null;activated=false;
+  });
 })();
 </script>
 <script>
