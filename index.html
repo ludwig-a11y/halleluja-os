@@ -9193,7 +9193,7 @@ function rMonat(){
         const effKwKey=tz._effKwKey;
         const sameMonth=tz._effDatum.slice(0,7)===monthEndISO.slice(0,7);
 
-        out+='<div style="display:flex;gap:'+GAP+'px;align-items:flex-start;padding-bottom:'+GAP+'px;border-bottom:1px solid var(--bd);margin-bottom:'+GAP+'px">';
+        out+='<div style="display:flex;gap:'+GAP+'px;align-items:stretch;padding-bottom:'+GAP+'px;border-bottom:1px solid var(--bd);margin-bottom:'+GAP+'px">';
 
         // ── Pool-Zelle (LINKS) ──
         const poolBorder=isAlarm?'var(--amber-bd)':'var(--bd)';
@@ -9205,7 +9205,7 @@ function rMonat(){
           out+='</div>';
         });
         const inpId='mmpool-'+tz.id;
-        out+='<input id="'+inpId+'" placeholder="+ Wochenziel" style="width:100%;font-size:11px;padding:5px 7px;border:1px solid var(--bd);border-radius:6px;background:var(--sf);color:var(--text);font-family:inherit" onkeydown="if(event.key===\'Enter\'){event.preventDefault();_mmAddPool(\''+tz.id+'\',\''+inpId+'\')}">';
+        out+='<input id="'+inpId+'" placeholder="+ Wochenziel" style="width:100%;margin-top:auto;font-size:11px;padding:5px 7px;border:1px solid var(--bd);border-radius:6px;background:var(--sf);color:var(--text);font-family:inherit" onkeydown="if(event.key===\'Enter\'){event.preventDefault();_mmAddPool(\''+tz.id+'\',\''+inpId+'\')}">';
         out+='</div>';
 
         // ── KW-Zellen (alle gleichberechtigte Drop-Zonen für Wochenziele) ──
@@ -10276,7 +10276,7 @@ function rZiele(){
       const visTZ=(z.teilziele||[]).filter(tz=>(!tz.vertraulich||isGF()||tz.verantwortlichId===aP)&&(tz.status||'aktiv')==='aktiv'&&!tz.erledigt);
       const poolTZ=visTZ.filter(tz=>!tz.datum);
 
-      out+='<div style="display:flex;gap:'+GAP+'px;align-items:flex-start;padding-bottom:'+GAP+'px;border-bottom:1px solid var(--bd);margin-bottom:'+GAP+'px">';
+      out+='<div style="display:flex;gap:'+GAP+'px;align-items:stretch;padding-bottom:'+GAP+'px;border-bottom:1px solid var(--bd);margin-bottom:'+GAP+'px">';
 
       // v199: Reihenfolge: Months (Zeit) → Pool (Vorrat) → Ziel-Card (Anker rechts)
       // Month-Cells zuerst
@@ -10317,7 +10317,7 @@ function rZiele(){
       });
       const _inpId='zgpool-'+z.id;
       if(canManageTZ(z.id)){
-        out+='<input id="'+_inpId+'" placeholder="+ Monatsziel" style="width:100%;font-size:11px;padding:5px 7px;border:1px solid var(--bd);border-radius:6px;background:var(--sf);color:var(--text);font-family:inherit" onkeydown="if(event.key===\'Enter\'){event.preventDefault();_zgAddPool(\''+z.id+'\',\''+_inpId+'\')}">';
+        out+='<input id="'+_inpId+'" placeholder="+ Monatsziel" style="width:100%;margin-top:auto;font-size:11px;padding:5px 7px;border:1px solid var(--bd);border-radius:6px;background:var(--sf);color:var(--text);font-family:inherit" onkeydown="if(event.key===\'Enter\'){event.preventDefault();_zgAddPool(\''+z.id+'\',\''+_inpId+'\')}">';
       }
       out+='</div>';
 
