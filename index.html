@@ -3045,35 +3045,34 @@ function msInputsThisMonth(tzId){
   const ym=TODAY.slice(0,7);
   return msInputs(tzId).filter(i=>(i.datum||'').startsWith(ym));
 }
-// v202: Aggregations-Helper — bei Ziel-Vererbung über alle MZ des Ziels summieren.
-// Liefert die tzId-Liste, deren Inputs in den Count einfließen.
-function _leadingScopeIds(tz,eff){
-  if(!eff||eff.source==='mz')return[tz.id];
-  // Ziel-Inheritance: alle aktiven, nicht-erledigten, nicht-archivierten MZ desselben Ziels.
-  // (Eigene MZ-Override-Indikatoren werden ausgeschlossen — die haben einen eigenen Phase-Indicator.)
-  const z=tz.zielId?(S.ziele||[]).find(x=>x.id===tz.zielId):null;
-  if(!z)return[tz.id];
-  const ids=(z.teilziele||[])
-    .filter(t=>!(t.metrik&&String(t.metrik).trim())) // MZ mit eigenem Override haben separaten Indicator
-    .filter(t=>(t.status||'aktiv')==='aktiv'&&!t.erledigt)
-    .map(t=>t.id);
-  return ids.length?ids:[tz.id];
-}
-// Leading-Aggregation je nach Frequenz: liefert {ist, ziel, label, source}
-// v191: nutzt effectiveLeading() — geerbter Ziel-Indicator zählt automatisch mit.
-// v202: bei Ziel-Inheritance werden Inputs aller MZ des Ziels aggregiert.
+// v206: Pro Sam-Ovens + Mental Model: MZ-Counter ist PERSÖNLICH.
+// Aggregation über alle MZ eines Ziels (Team-Total) lebt separat in zielLeadingAggregat() —
+// wird auf der Ziel-Karte angezeigt, nicht auf der MZ-Karte.
 function msLeadingFor(tz){
   const eff=effectiveLeading(tz);
   if(!eff)return null;
   const freq=eff.leadingFreq;
   const ziel=eff.leadingCount;
-  const ids=_leadingScopeIds(tz,eff);
-  const sumLen=fn=>ids.reduce((s,id)=>s+fn(id).length,0);
   let ist=0,scopeLbl='';
-  if(freq==='daily'){ist=sumLen(msInputsToday);scopeLbl='heute';}
-  else if(freq==='weekly'){ist=sumLen(msInputsThisWeek);scopeLbl='diese Woche';}
-  else{ist=sumLen(msInputsThisMonth);scopeLbl='dieser Monat';}
+  if(freq==='daily'){ist=msInputsToday(tz.id).length;scopeLbl='heute';}
+  else if(freq==='weekly'){ist=msInputsThisWeek(tz.id).length;scopeLbl='diese Woche';}
+  else{ist=msInputsThisMonth(tz.id).length;scopeLbl='dieser Monat';}
   return{ist,ziel,scopeLbl,freq,source:eff.source};
+}
+// v206: Team-Aggregat am Ziel — Summe aller MZ-Inputs des Ziels (für Ziel-Karte).
+// Liefert {ist, anker, freq, metrik, mzCount} oder null wenn kein Leading definiert.
+function zielLeadingAggregat(z){
+  if(!z||!z.metrik||!String(z.metrik).trim())return null;
+  const freq=z.leadingFreq||'daily';
+  // Alle aktiven, nicht-erledigten MZ des Ziels — auch die mit eigenem Override (Phase) zählen mit
+  const tzs=(z.teilziele||[]).filter(t=>(t.status||'aktiv')==='aktiv'&&!t.erledigt);
+  const sumLen=fn=>tzs.reduce((s,t)=>s+fn(t.id).length,0);
+  let ist=0;
+  if(freq==='daily')ist=sumLen(msInputsToday);
+  else if(freq==='weekly')ist=sumLen(msInputsThisWeek);
+  else ist=sumLen(msInputsThisMonth);
+  // Anker = z.zielWert (Quartals-/Monats-Total über alle MZ-Slices)
+  return{ist,anker:z.zielWert||null,freq,metrik:z.metrik,mzCount:tzs.length};
 }
 function msStreak(tzId){
   const set={};
@@ -10374,8 +10373,7 @@ function rZiele(){
           const _d2d=Math.ceil((new Date(tz.datum+'T00:00:00').getTime()-new Date(TODAY+'T00:00:00').getTime())/86400000);
           const _color=_d2d<0?'var(--red)':(_d2d<=7?'var(--amber)':f.tc);
           const _eff=effectiveLeading(tz);
-          // v202: bei Ziel-Inheritance über alle MZ des Ziels aggregieren — sonst nur tz.id
-          const _msC=_eff?_leadingScopeIds(tz,_eff).reduce((s,id)=>s+msCount(id),0):0;
+          const _msC=_eff?msCount(tz.id):0;
           out+='<div data-mzp-src="mz|'+tz.id+'" draggable="true" ondragstart="_mzpDragStart(event,this)" ondragend="_mzpDragEnd(this)" onclick="event.stopPropagation();openMonatszielDetail(\''+tz.id+'\')" style="background:var(--sf);border:1px solid var(--bd);border-left:3px solid '+_color+';border-radius:0 6px 6px 0;padding:5px 7px;cursor:grab">';
           out+='<div style="font-size:11px;font-weight:600;color:var(--text);line-height:1.25;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">'+esc(tz.name)+'</div>';
           out+='<div style="font-size:9px;color:var(--t3);margin-top:2px">'+tz.datum.slice(8)+'.'+tz.datum.slice(5,7)+'.'+(_eff&&_eff.zielWert?' · '+_msC+'/'+_eff.zielWert:'')+'</div>';
@@ -10416,7 +10414,16 @@ function rZiele(){
         out+='<div style="display:flex;align-items:center;gap:5px"><span style="font-size:11px">🏁</span><span style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.3px">Ziel</span></div>';
       }
       out+='<div style="font-size:13px;font-weight:700;color:var(--text);line-height:1.25;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">'+esc(z.name)+'</div>';
-      if(z.metrik){
+      // v206: Team-Aggregat-Counter — Summe aller MZ-Inputs (read-only Pulse für GF)
+      const _zAgg=zielLeadingAggregat(z);
+      if(_zAgg){
+        const _freqLbl=_zAgg.freq==='weekly'?'wöch':_zAgg.freq==='monthly'?'mtl':'Tag';
+        const _ankerLbl=_zAgg.anker?_zAgg.ist+' / '+_zAgg.anker:''+_zAgg.ist;
+        out+='<div style="margin-top:auto;padding-top:6px;border-top:1px dashed '+f.bd+'">';
+        out+='<div style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:1px">Team · '+_zAgg.mzCount+' Slice'+(_zAgg.mzCount===1?'':'s')+'</div>';
+        out+='<div style="display:flex;align-items:baseline;gap:6px"><span style="font-size:18px;font-weight:800;color:'+f.tc+';line-height:1;font-variant-numeric:tabular-nums">'+_ankerLbl+'</span><span style="font-size:10px;color:var(--t3)">'+esc(z.metrik)+(_zAgg.anker?'':' · '+(z.leadingCount||'?')+'/'+_freqLbl)+'</span></div>';
+        out+='</div>';
+      } else if(z.metrik){
         out+='<div style="font-size:10px;color:var(--t2);margin-top:auto">📋 '+esc(z.metrik)+(z.leadingCount?' · '+z.leadingCount+'/'+(z.leadingFreq==='weekly'?'wöch':z.leadingFreq==='monthly'?'mtl':'tag'):'')+(z.zielWert?' · Anker '+z.zielWert:'')+'</div>';
       }
       out+='</div>';
