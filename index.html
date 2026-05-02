@@ -9303,7 +9303,9 @@ function rMonat(){
           out+='<button onclick="event.stopPropagation();_mmPoolDelete(\''+p.id+'\')" title="Löschen" style="background:transparent;border:none;color:var(--t3);cursor:pointer;font-size:12px;padding:0 3px;line-height:1">×</button>';
           out+='</div>';
         });
-        if(canManageTZ(z.id)){
+        // v207: Wochenziel-Pool gehört zum MZ — wer das MZ verantwortet (oder GF) darf adden,
+        // unabhängig vom Parent-Ziel-Owner.
+        if(isGF()||String(tz.verantwortlichId)===String(aP)){
           out+='<button onclick="openAddWochenziel(\''+tz.id+'\')" style="width:100%;margin-top:auto;font-size:11px;padding:6px 7px;border:1px dashed var(--bd);border-radius:6px;background:transparent;color:var(--t2);font-family:inherit;cursor:pointer" onmouseenter="this.style.background=\'var(--sf)\';this.style.color=\'var(--text)\'" onmouseleave="this.style.background=\'transparent\';this.style.color=\'var(--t2)\'">+ Wochenziel</button>';
         }
         out+='</div>';
