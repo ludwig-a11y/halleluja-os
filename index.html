@@ -1063,7 +1063,8 @@ async function poolDelete(id){
 }
 // Drop: Pool-Eintrag in eine konkrete KW (in den ersten freien Slot oder vor toSlot)
 async function poolToKW(poolId,kw,jahr){
-  const p=(S.wochenzielPool||[]).find(x=>x.id===poolId);if(!p)return;
+  const p=(S.wochenzielPool||[]).find(x=>x.id===poolId);
+  if(!p){toast('⚠ Pool-Eintrag nicht mehr verfügbar (parallel verschoben?)');return;}
   const wr=await ensureWr(aP,kw,jahr);
   // Ersten freien Slot finden
   let slot=null;
@@ -1298,6 +1299,15 @@ async function _mzpDrop(e,zone){
   // Re-Open Modal NUR wenn der Wochenplaner-Modal aktiv ist (in der Matrix-View kein Re-Open).
   const modalOpen=document.getElementById('ovl')?.classList.contains('open');
   if(tzId&&modalOpen)setTimeout(()=>openMZWochenplaner(tzId),50);
+}
+// v202: Klick auf Extend-Zone → Confirm + Reschedule (alternativ zu Drag&Drop)
+async function _mzpExtendClick(tzId,kw,jahr){
+  const tz=_tzById(tzId);if(!tz)return;
+  const monday=dateOfKwMonday(jahr,kw);
+  const sunday=new Date(monday);sunday.setUTCDate(sunday.getUTCDate()+6);
+  const newDatum=sunday.toISOString().slice(0,10);
+  if(!confirm('Deadline von "'+tz.name+'" auf KW '+kw+' ('+newDatum.slice(8)+'.'+newDatum.slice(5,7)+'.) verlängern?'))return;
+  await _mzReschedule(tzId,kw,jahr);
 }
 // v186: MZ-Marker in andere KW droppen → Deadline updaten (Sonntag der Ziel-KW).
 // Confirm-Dialog bei Monats-Sprung. Ziel-KW = neue Deadline-KW.
@@ -3034,17 +3044,34 @@ function msInputsThisMonth(tzId){
   const ym=TODAY.slice(0,7);
   return msInputs(tzId).filter(i=>(i.datum||'').startsWith(ym));
 }
+// v202: Aggregations-Helper — bei Ziel-Vererbung über alle MZ des Ziels summieren.
+// Liefert die tzId-Liste, deren Inputs in den Count einfließen.
+function _leadingScopeIds(tz,eff){
+  if(!eff||eff.source==='mz')return[tz.id];
+  // Ziel-Inheritance: alle aktiven, nicht-erledigten, nicht-archivierten MZ desselben Ziels.
+  // (Eigene MZ-Override-Indikatoren werden ausgeschlossen — die haben einen eigenen Phase-Indicator.)
+  const z=tz.zielId?(S.ziele||[]).find(x=>x.id===tz.zielId):null;
+  if(!z)return[tz.id];
+  const ids=(z.teilziele||[])
+    .filter(t=>!(t.metrik&&String(t.metrik).trim())) // MZ mit eigenem Override haben separaten Indicator
+    .filter(t=>(t.status||'aktiv')==='aktiv'&&!t.erledigt)
+    .map(t=>t.id);
+  return ids.length?ids:[tz.id];
+}
 // Leading-Aggregation je nach Frequenz: liefert {ist, ziel, label, source}
 // v191: nutzt effectiveLeading() — geerbter Ziel-Indicator zählt automatisch mit.
+// v202: bei Ziel-Inheritance werden Inputs aller MZ des Ziels aggregiert.
 function msLeadingFor(tz){
   const eff=effectiveLeading(tz);
   if(!eff)return null;
   const freq=eff.leadingFreq;
   const ziel=eff.leadingCount;
+  const ids=_leadingScopeIds(tz,eff);
+  const sumLen=fn=>ids.reduce((s,id)=>s+fn(id).length,0);
   let ist=0,scopeLbl='';
-  if(freq==='daily'){ist=msInputsToday(tz.id).length;scopeLbl='heute';}
-  else if(freq==='weekly'){ist=msInputsThisWeek(tz.id).length;scopeLbl='diese Woche';}
-  else{ist=msInputsThisMonth(tz.id).length;scopeLbl='dieser Monat';}
+  if(freq==='daily'){ist=sumLen(msInputsToday);scopeLbl='heute';}
+  else if(freq==='weekly'){ist=sumLen(msInputsThisWeek);scopeLbl='diese Woche';}
+  else{ist=sumLen(msInputsThisMonth);scopeLbl='dieser Monat';}
   return{ist,ziel,scopeLbl,freq,source:eff.source};
 }
 function msStreak(tzId){
@@ -9230,10 +9257,12 @@ function rMonat(){
           const wr=findOrCreateWrFor(aP,k.kw,k.jahr);
           const isToday=(k.jahr===todayK.jahr&&k.kw===todayK.kw);
           const isPast=kwKey<(todayK.jahr*100+todayK.kw);
-          // KWs nach Deadline: Auto-Extend-Zonen (gepunktet, gedimmt)
+          // KWs nach Deadline: Auto-Extend-Zonen (gepunktet, gedimmt) — Click ODER Drop
           if(isAfter){
-            out+='<div data-mzp-zone="kw|'+(wr?wr.id:'')+'|'+k.kw+'|'+k.jahr+'" data-mzp-extends="'+tz.id+'" style="flex:1 1 '+COL_KW_MIN+'px;min-width:'+COL_KW_MIN+'px;background:transparent;border:1px dotted var(--bd);border-radius:8px;padding:5px;min-height:64px;display:flex;align-items:center;justify-content:center;opacity:.45" ondragover="_mzpDragOver(event,this)" ondragleave="_mzpDragLeave(this)" ondrop="_mzpDrop(event,this)" title="Hier ablegen → Deadline auf KW '+k.kw+' verlängern">';
-            out+='<div style="font-size:9px;color:var(--t3);text-align:center;line-height:1.3">↶<br>Deadline<br>verlängern</div>';
+            const canExt=canManageTZ(z.id);
+            const clickAttr=canExt?' onclick="_mzpExtendClick(\''+tz.id+'\','+k.kw+','+k.jahr+')" style="cursor:pointer;':' style="';
+            out+='<div data-mzp-zone="kw|'+(wr?wr.id:'')+'|'+k.kw+'|'+k.jahr+'" data-mzp-extends="'+tz.id+'"'+clickAttr+'flex:1 1 '+COL_KW_MIN+'px;min-width:'+COL_KW_MIN+'px;background:transparent;border:1px dotted var(--bd);border-radius:8px;padding:5px;min-height:64px;display:flex;align-items:center;justify-content:center;opacity:.45" ondragover="_mzpDragOver(event,this)" ondragleave="_mzpDragLeave(this)" ondrop="_mzpDrop(event,this)" title="Klick oder Drop → Deadline auf KW '+k.kw+' verlängern">';
+            out+='<div style="font-size:9px;color:var(--t3);text-align:center;line-height:1.3;pointer-events:none">↶<br>Deadline<br>verlängern</div>';
             out+='</div>';
             return;
           }
@@ -9267,7 +9296,7 @@ function rMonat(){
 
         // ── Pool-Zelle (zwischen KWs und MZ-Karte — Pool & Ziel als Anker-Paar rechts) ──
         const poolBorder=isAlarm?'var(--amber-bd)':'var(--bd)';
-        out+='<div data-mzp-zone="pool" data-mzp-poolfor="'+tz.id+'" style="width:'+COL_POOL+'px;flex-shrink:0;background:var(--gray-bg);border:1.5px solid '+poolBorder+';border-radius:8px;padding:5px;min-height:64px;display:flex;flex-direction:column;gap:3px" ondragover="_mzpDragOver(event,this)" ondragleave="_mzpDragLeave(this)" ondrop="_mzpDrop(event,this)">';
+        out+='<div data-mzp-zone="pool" data-mzp-poolfor="'+tz.id+'" style="width:'+COL_POOL+'px;flex-shrink:0;background:var(--gray-bg);border:1.5px solid '+poolBorder+';border-radius:8px;padding:5px;min-height:64px;max-height:220px;overflow-y:auto;display:flex;flex-direction:column;gap:3px" ondragover="_mzpDragOver(event,this)" ondragleave="_mzpDragLeave(this)" ondrop="_mzpDrop(event,this)">';
         tzPool.forEach(p=>{
           out+='<div data-mzp-src="pool|'+p.id+'" draggable="true" ondragstart="_mzpDragStart(event,this)" ondragend="_mzpDragEnd(this)" style="display:flex;align-items:center;gap:4px;padding:5px 7px;background:var(--sf);border:1px solid var(--bd);border-radius:6px;cursor:grab">';
           out+='<span style="flex:1;font-size:11px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(p.titel)+'</span>';
@@ -10327,7 +10356,8 @@ function rZiele(){
           const _d2d=Math.ceil((new Date(tz.datum+'T00:00:00').getTime()-new Date(TODAY+'T00:00:00').getTime())/86400000);
           const _color=_d2d<0?'var(--red)':(_d2d<=7?'var(--amber)':f.tc);
           const _eff=effectiveLeading(tz);
-          const _msC=_eff?msCount(tz.id):0;
+          // v202: bei Ziel-Inheritance über alle MZ des Ziels aggregieren — sonst nur tz.id
+          const _msC=_eff?_leadingScopeIds(tz,_eff).reduce((s,id)=>s+msCount(id),0):0;
           out+='<div data-mzp-src="mz|'+tz.id+'" draggable="true" ondragstart="_mzpDragStart(event,this)" ondragend="_mzpDragEnd(this)" onclick="event.stopPropagation();openMonatszielDetail(\''+tz.id+'\')" style="background:var(--sf);border:1px solid var(--bd);border-left:3px solid '+_color+';border-radius:0 6px 6px 0;padding:5px 7px;cursor:grab">';
           out+='<div style="font-size:11px;font-weight:600;color:var(--text);line-height:1.25;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">'+esc(tz.name)+'</div>';
           out+='<div style="font-size:9px;color:var(--t3);margin-top:2px">'+tz.datum.slice(8)+'.'+tz.datum.slice(5,7)+'.'+(_eff&&_eff.zielWert?' · '+_msC+'/'+_eff.zielWert:'')+'</div>';
@@ -10338,7 +10368,7 @@ function rZiele(){
       });
 
       // v199: Pool zwischen Months und Ziel-Card — Pool & Ziel bilden Anker-Paar rechts
-      out+='<div data-mzp-zone="zielpool|'+z.id+'" style="width:'+COL_POOL+'px;flex-shrink:0;background:'+f.bg+';border:1.5px solid '+f.bd+';border-radius:8px;padding:5px;min-height:64px;display:flex;flex-direction:column;gap:3px" ondragover="_mzpDragOver(event,this)" ondragleave="_mzpDragLeave(this)" ondrop="_mzpDrop(event,this)">';
+      out+='<div data-mzp-zone="zielpool|'+z.id+'" style="width:'+COL_POOL+'px;flex-shrink:0;background:'+f.bg+';border:1.5px solid '+f.bd+';border-radius:8px;padding:5px;min-height:64px;max-height:220px;overflow-y:auto;display:flex;flex-direction:column;gap:3px" ondragover="_mzpDragOver(event,this)" ondragleave="_mzpDragLeave(this)" ondrop="_mzpDrop(event,this)">';
       poolTZ.forEach(tz=>{
         out+='<div data-mzp-src="mz|'+tz.id+'" draggable="true" ondragstart="_mzpDragStart(event,this)" ondragend="_mzpDragEnd(this)" onclick="event.stopPropagation();openMonatszielDetail(\''+tz.id+'\')" style="display:flex;align-items:center;gap:4px;padding:5px 7px;background:var(--sf);border:1px solid var(--bd);border-radius:6px;cursor:grab">';
         out+='<span style="flex:1;font-size:11px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(tz.name)+'</span>';
