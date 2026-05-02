@@ -9154,24 +9154,7 @@ function rMonat(){
           const cellBorder=isDeadline?('1.5px solid '+(isAlarm?'var(--amber-bd)':isFell?'var(--red-bd)':f.bd)):(isToday?'1.5px solid var(--blue-bd)':(isPast?'1px solid var(--bd)':'1px dashed var(--bd)'));
           out+='<div data-mzp-zone="kw|'+(wr?wr.id:'')+'|'+k.kw+'|'+k.jahr+'" style="width:'+COL_KW+'px;flex-shrink:0;background:'+cellBg+';border:'+cellBorder+';border-radius:8px;padding:5px;min-height:64px;display:flex;flex-direction:column" ondragover="_mzpDragOver(event,this)" ondragleave="_mzpDragLeave(this)" ondrop="_mzpDrop(event,this)">';
 
-          // MZ-Marker oben in Deadline-KW
-          if(isDeadline){
-            const dlLbl=tz._effDatum.slice(8,10)+'.'+tz._effDatum.slice(5,7)+'.';
-            const dlMonth=parseInt(tz._effDatum.slice(5,7),10);
-            const showMonthBadge=dlMonth!==jetzt.getMonth()+1;
-            const monthBadge=showMonthBadge?'<span style="font-size:8px;font-weight:700;color:#fff;background:'+f.tc+';padding:1px 5px;border-radius:99px;margin-left:auto">🗓 '+monNamen[dlMonth-1].slice(0,3)+'</span>':'';
-            const dueColor=d2d<0?'var(--red)':d2d<=3?'var(--amber)':f.tc;
-            const dueLbl=d2d<0?'⚠ '+Math.abs(d2d)+'d über':d2d===0?'heute':d2d===1?'morgen':'in '+d2d+'d';
-            const autoFlag=!tz.datum?'<span style="font-size:8px;color:var(--t3);font-style:italic" title="Auto-Deadline = Monatsende">auto</span>':'';
-            out+='<div data-mzp-src="mz|'+tz.id+'" draggable="true" ondragstart="_mzpDragStart(event,this)" ondragend="_mzpDragEnd(this)" onclick="event.stopPropagation();openMonatszielDetail(\''+tz.id+'\')" style="background:var(--sf);border:1.5px solid '+f.bd+';border-left:3px solid '+f.tc+';border-radius:6px;padding:6px 8px;margin-bottom:5px;cursor:grab" title="Drag in andere KW → Deadline ändern · Klick → Bearbeiten">';
-            out+='<div style="display:flex;align-items:center;gap:4px;margin-bottom:2px"><span style="font-size:10px">🏁</span><span style="font-size:9px;font-weight:700;color:'+dueColor+';text-transform:uppercase;letter-spacing:.3px">'+dlLbl+' · '+dueLbl+'</span>'+autoFlag+monthBadge+'</div>';
-            out+='<div style="font-size:11px;font-weight:700;color:var(--text);line-height:1.25;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">'+esc(tz.name)+'</div>';
-            if(isAlarm)out+='<div style="font-size:9px;font-weight:700;color:var(--amber);margin-top:3px">leer — plan ⬅</div>';
-            else if(isFell)out+='<div style="font-size:9px;font-weight:700;color:var(--red);margin-top:3px">Review fällig</div>';
-            out+='</div>';
-          }
-
-          // Big3-Slots dieses MZ in dieser KW
+          // Big3-Slots dieses MZ in dieser KW (Slots = der Weg)
           let any=false;
           if(wr){
             [1,2,3].forEach(slot=>{
@@ -9190,6 +9173,24 @@ function rMonat(){
             });
           }
           if(!any&&!isDeadline)out+='<div style="font-size:10px;color:var(--t3);text-align:center;padding:18px 0;font-style:italic;flex:1">—</div>';
+
+          // v187: MZ-Marker als FOOTER unten in Deadline-KW (Slots = der Weg, 🏁 = Ankunft)
+          if(isDeadline){
+            const dlLbl=tz._effDatum.slice(8,10)+'.'+tz._effDatum.slice(5,7)+'.';
+            const dlMonth=parseInt(tz._effDatum.slice(5,7),10);
+            const showMonthBadge=dlMonth!==jetzt.getMonth()+1;
+            const monthBadge=showMonthBadge?'<span style="font-size:8px;font-weight:700;color:#fff;background:'+f.tc+';padding:1px 5px;border-radius:99px;margin-left:auto">🗓 '+monNamen[dlMonth-1].slice(0,3)+'</span>':'';
+            const dueColor=d2d<0?'var(--red)':d2d<=3?'var(--amber)':f.tc;
+            const dueLbl=d2d<0?'⚠ '+Math.abs(d2d)+'d über':d2d===0?'heute':d2d===1?'morgen':'in '+d2d+'d';
+            const autoFlag=!tz.datum?'<span style="font-size:8px;color:var(--t3);font-style:italic;margin-left:4px" title="Auto-Deadline = Monatsende">auto</span>':'';
+            // Footer-Marker: margin-top:auto pinnt nach unten; Top-Border in Ziel-Farbe als „Ziellinie"
+            out+='<div data-mzp-src="mz|'+tz.id+'" draggable="true" ondragstart="_mzpDragStart(event,this)" ondragend="_mzpDragEnd(this)" onclick="event.stopPropagation();openMonatszielDetail(\''+tz.id+'\')" style="margin-top:auto;background:var(--sf);border:1.5px solid '+f.bd+';border-top:3px solid '+f.tc+';border-radius:6px;padding:6px 8px;cursor:grab" title="Drag in andere KW → Deadline ändern · Klick → Bearbeiten">';
+            out+='<div style="display:flex;align-items:center;gap:4px;margin-bottom:2px"><span style="font-size:10px">🏁</span><span style="font-size:9px;font-weight:700;color:'+dueColor+';text-transform:uppercase;letter-spacing:.3px">ZIEL · '+dlLbl+' · '+dueLbl+'</span>'+autoFlag+monthBadge+'</div>';
+            out+='<div style="font-size:11px;font-weight:700;color:var(--text);line-height:1.25;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">'+esc(tz.name)+'</div>';
+            if(isAlarm)out+='<div style="font-size:9px;font-weight:700;color:var(--amber);margin-top:3px">leer — plan ⬆</div>';
+            else if(isFell)out+='<div style="font-size:9px;font-weight:700;color:var(--red);margin-top:3px">Review fällig</div>';
+            out+='</div>';
+          }
           out+='</div>';
         });
 
