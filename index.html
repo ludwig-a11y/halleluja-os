@@ -5415,10 +5415,10 @@ function openMonatszielDetail(tzId){
   h+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);margin-bottom:2px">zahlt ein auf</div>';
   h+='<div style="font-size:12px;color:'+msCol+';font-weight:600">→ '+esc(ziel.name)+'</div>';
   h+='</div>';
-  // Verknüpfte Wochenziele
+  // Verknüpfte Wochenziele (verplant in KWs)
   h+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t2);margin:14px 0 8px">Wochenziele'+(wzLinks.length?' ('+wzLinks.length+')':'')+'</div>';
   if(!wzLinks.length){
-    h+='<div style="padding:12px;background:var(--gray-bg);border:1px dashed var(--bd);border-radius:10px;text-align:center;font-size:11px;color:var(--t3);margin-bottom:12px">Noch kein Wochenziel zahlt darauf ein.<br><span style="font-size:10px">Im Wochenreset planen →</span></div>';
+    h+='<div style="padding:12px;background:var(--gray-bg);border:1px dashed var(--bd);border-radius:10px;text-align:center;font-size:11px;color:var(--t3);margin-bottom:8px">Noch kein Wochenziel zahlt darauf ein.<br><span style="font-size:10px">Pool unten füllen oder im Monat planen →</span></div>';
   }else{
     wzLinks.forEach(wz=>{
       h+='<div onclick="cm();setTimeout(()=>openBig3Detail(\''+wz.wrId+'\','+wz.slot+'),60)" style="display:flex;align-items:center;gap:9px;padding:9px 11px;margin-bottom:5px;background:var(--gray-bg);border:1px solid '+msBd+';border-left:3px solid '+msCol+';border-radius:0 9px 9px 0;cursor:pointer">';
@@ -5428,6 +5428,19 @@ function openMonatszielDetail(tzId){
       h+='</div>';
     });
   }
+  // v190: Pool-Sektion (ungeplante Wochenziele für dieses MZ) — Inline-Anlegen + Delete
+  const _pool=poolFor(tzId);
+  h+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t2);margin:12px 0 6px;display:flex;align-items:center;gap:6px"><span>📥 Pool</span><span style="font-size:10px;color:var(--t3);font-weight:600">'+_pool.length+' ungeplant</span></div>';
+  if(_pool.length){
+    _pool.forEach(p=>{
+      h+='<div style="display:flex;align-items:center;gap:6px;padding:7px 10px;margin-bottom:4px;background:var(--gray-bg);border:1px solid var(--bd);border-radius:8px">';
+      h+='<span style="flex:1;font-size:12px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(p.titel)+'</span>';
+      h+='<button onclick="_mzdPoolDelete(\''+p.id+'\',\''+tzId+'\')" title="Löschen" style="background:transparent;border:none;color:var(--t3);cursor:pointer;font-size:13px;padding:0 4px;line-height:1">×</button>';
+      h+='</div>';
+    });
+  }
+  const _mzdInpId='mzd-pool-'+tzId;
+  h+='<div style="display:flex;gap:5px;margin-bottom:6px"><input id="'+_mzdInpId+'" placeholder="+ Wochenziel-Idee in den Pool" style="flex:1;font-size:12px;padding:7px 10px;border:1px solid var(--bd);border-radius:8px;background:var(--sf);color:var(--text);font-family:inherit" onkeydown="if(event.key===\'Enter\'){event.preventDefault();_mzdAddPool(\''+tzId+'\',\''+_mzdInpId+'\')}"><button onclick="_mzdAddPool(\''+tzId+'\',\''+_mzdInpId+'\')" style="font-size:11px;padding:7px 14px;border-radius:8px;border:none;background:var(--inv);color:var(--inv-t);cursor:pointer;font-family:inherit;font-weight:700">Anlegen</button></div>';
   // Aufgaben
   h+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t2);margin:14px 0 8px">Zugeordnete Aufgaben'+(offen.length?' ('+offen.length+')':'')+'</div>';
   if(!offen.length&&!erledigt.length){
@@ -9257,6 +9270,18 @@ function rMonat(){
   }
 
   document.getElementById('main').innerHTML=out;
+}
+// v190: Detail-Modal-Pool-Helper — Pool-Eingabe direkt im Monatsziel-Detail.
+async function _mzdAddPool(tzId,inpId){
+  const inp=document.getElementById(inpId);
+  const v=(inp?.value||'').trim();if(!v)return;
+  await poolAdd(tzId,v);
+  openMonatszielDetail(tzId);
+  setTimeout(()=>document.getElementById(inpId)?.focus(),30);
+}
+async function _mzdPoolDelete(id,tzId){
+  await poolDelete(id);
+  openMonatszielDetail(tzId);
 }
 // v185: Matrix-Pool-Helper — Eingabe & Delete in der Matrix.
 async function _mmAddPool(tzId,inpId){
