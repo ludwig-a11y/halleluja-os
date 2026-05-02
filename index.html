@@ -719,7 +719,9 @@ function normalizeAufgabe(a){
     wochenresetId:a.wochenreset_id||null,big3Slot:a.big3_slot||null,
     sortIndex:a.sort_index??null,
     pausiertBis:a.pausiert_bis||null,wartetAufPid:a.wartet_auf_pid||null,wartetGrund:a.wartet_grund||null,
-    wartetAufAufgabeId:a.wartet_auf_aufgabe_id||null};
+    wartetAufAufgabeId:a.wartet_auf_aufgabe_id||null,
+    // v210: Quantity-Feld — wie viele Leading-Inputs entstehen bei Completion (default 1)
+    leadingHits:(a.leading_hits!=null?a.leading_hits:1)};
 }
 // ── v177: Manuelle Reihenfolge — Pfeile ↑↓ + Sort-Helfer ─────────
 // Doktrin: manuell zuerst (sortIndex), dann Deadline-Fallback, dann createdAt.
@@ -1607,7 +1609,7 @@ async function loadData(){
     // v191: Leading-Indicator auf Ziel-Ebene (strategischer Default, MZ erbt)
     metrik:z.metrik||null,leadingFreq:z.leading_freq||'daily',leadingCount:z.leading_count??null,zielWert:z.zielwert??null,
     kpis:(kpis||[]).filter(k=>k.ziel_id===z.id).map(k=>({...k,zielId:k.ziel_id,teilzielId:k.teilziel_id||null,prio:k.prio||null})),
-    teilziele:(teilziele||[]).filter(t=>t.ziel_id===z.id).map(t=>({...t,zielId:t.ziel_id,verantwortlichId:t.verantwortlich_id,datum:t.datum||'',status:t.status||'aktiv',metrik:t.metrik||null,zielWert:t.zielwert||null,sortIndex:t.sort_index??null,leadingFreq:t.leading_freq||'daily',leadingCount:t.leading_count??null}))
+    teilziele:(teilziele||[]).filter(t=>t.ziel_id===z.id).map(t=>({...t,zielId:t.ziel_id,verantwortlichId:t.verantwortlich_id,datum:t.datum||'',status:t.status||'aktiv',metrik:t.metrik||null,zielWert:t.zielwert||null,sortIndex:t.sort_index??null,leadingFreq:t.leading_freq||'daily',leadingCount:t.leading_count??null,leadingDoerId:t.leading_doer_id||null}))
   }));
   S.aufgaben=(aufgaben||[]).map(normalizeAufgabe);
   // Auto-reassign: @mention in Titel → Person zuweisen
@@ -3135,12 +3137,116 @@ async function msUndoLast(tzId){
   toast('↶ Input zurückgezogen');
 }
 // Task-Completion-Hook. Pusht nur wenn Aufgabe einem Leading-MS zugeordnet ist.
+// v210: respektiert a.leadingHits — eine Aufgabe kann N Inputs erzeugen (z.B. 1 Akquise-Block = 8 Termine).
 function msOnTaskDone(a,quelle){
   try{
     if(!a||!a.teilzielId)return;
-    msPushInput(a.teilzielId,quelle||('task:'+a.id));
+    // v210/v211: 0 zulassen — Manager-Aufgaben unterm Ziel erzeugen 0 Inputs.
+    const raw=a.leadingHits;
+    const n=Math.max(0,Math.floor(Number(raw==null?1:raw)));
+    for(let i=0;i<n;i++)msPushInput(a.teilzielId,quelle||('task:'+a.id));
   }catch(e){console.error('msOnTaskDone',e);}
 }
+// v210: Stepper für leadingHits an einer Aufgabe.
+function aufgabeHatLeading(a){
+  if(!a||!a.teilzielId)return false;
+  const z=zielObj(a.zielId);if(!z)return false;
+  const tz=(z.teilziele||[]).find(t=>t.id===a.teilzielId);if(!tz)return false;
+  return !!effectiveLeading(tz);
+}
+async function setLeadingHits(aid,n){
+  const a=S.aufgaben.find(x=>x.id===aid);if(!a)return;
+  n=Math.max(0,Math.floor(Number(n)||0));
+  if(a.leadingHits===n)return;
+  const prev=a.leadingHits;a.leadingHits=n;
+  try{render();}catch(_){}
+  const ok=await dbPatch('aufgaben',aid,{leading_hits:n});
+  if(!ok){a.leadingHits=prev;try{toast('⚠ Hits konnte nicht gespeichert werden — läuft Migration v210?','var(--red)');}catch(_){}try{render();}catch(_){}}
+}
+function leadingHitsStepperHTML(a){
+  if(!aufgabeHatLeading(a))return '';
+  const n=a.leadingHits==null?1:a.leadingHits;
+  const dimmed=n===0?'opacity:.5;':'';
+  return '<div title="Wie viele Leading-Inputs erzeugt diese Aufgabe beim Erledigen (0 = nichts)" style="display:inline-flex;align-items:center;gap:0;border:1px solid var(--bd);border-radius:99px;background:var(--sf);padding:2px;font-size:11px;line-height:1;'+dimmed+'">'
+    +'<button onclick="event.stopPropagation();setLeadingHits(\''+a.id+'\','+(n-1)+')" '+(n<=0?'disabled ':'')+'style="width:22px;height:22px;border:none;background:transparent;color:var(--t2);cursor:'+(n<=0?'not-allowed':'pointer')+';font:600 13px inherit;border-radius:99px;'+(n<=0?'opacity:.3;':'')+'">−</button>'
+    +'<span style="min-width:28px;text-align:center;font-weight:700;color:var(--text);font-variant-numeric:tabular-nums">'+n+'×</span>'
+    +'<button onclick="event.stopPropagation();setLeadingHits(\''+a.id+'\','+(n+1)+')" style="width:22px;height:22px;border:none;background:transparent;color:var(--t2);cursor:pointer;font:600 13px inherit;border-radius:99px">+</button>'
+    +'</div>';
+}
+// v211: Effective Doer — wer die tägliche Leading-Aktion macht.
+// Default: verantwortlichId (Outcome-Owner doer-by-default), Override: leadingDoerId
+function effectiveDoerId(tz){return tz?.leadingDoerId||tz?.verantwortlichId||null;}
+
+// ── v210: Leading-Block ─────────────────────────────────────────────
+// "▶ Block" auf der Leading-Karte → impliziter 25-min-Block ohne Aufgabe.
+// State persistiert in localStorage (überlebt Reload).
+// Am Ende: prompt "Wie viele [Verb]?" → N Inputs werden gepusht.
+const LEAD_BLOCK_MIN=25;
+function leadBlockGet(){
+  try{return JSON.parse(localStorage.getItem('lead_block_'+aP)||'null');}catch(_){return null;}
+}
+function leadBlockSet(b){
+  if(b)localStorage.setItem('lead_block_'+aP,JSON.stringify(b));
+  else localStorage.removeItem('lead_block_'+aP);
+}
+function leadBlockStart(tzId){
+  if(leadBlockGet()){toast('Block läuft schon · erst beenden');return;}
+  const tz=findTzById(tzId);if(!tz)return;
+  const eff=effectiveLeading(tz);if(!eff)return;
+  leadBlockSet({tzId,startTs:Date.now(),durMin:LEAD_BLOCK_MIN,verb:eff.metrik||'Hit'});
+  leadBlockRenderBar();
+  try{render();}catch(_){}
+}
+function leadBlockCancel(){
+  if(!confirm('Block abbrechen? (keine Inputs werden gebucht)'))return;
+  leadBlockSet(null);
+  const bar=document.getElementById('lead-block-bar');if(bar)bar.remove();
+  try{render();}catch(_){}
+}
+async function leadBlockFinish(){
+  const b=leadBlockGet();if(!b)return;
+  const def=Math.max(1,Math.round((Date.now()-b.startTs)/60000/3))||1; // grobe Heuristik: 1 Hit pro ~3 min
+  const ans=prompt('Block beendet · wie viele '+(b.verb||'Hits')+'?',String(def));
+  if(ans===null)return; // Cancel = nicht beenden, Block läuft weiter
+  const n=Math.max(0,Math.floor(Number(ans)||0));
+  leadBlockSet(null);
+  const bar=document.getElementById('lead-block-bar');if(bar)bar.remove();
+  for(let i=0;i<n;i++)await msPushInput(b.tzId,'lead-block');
+  if(n>0)toast('✓ +'+n+' '+(b.verb||'Hits')+' verbucht');
+  else toast('Block ohne Hits beendet');
+  try{render();}catch(_){}
+}
+function leadBlockRenderBar(){
+  const b=leadBlockGet();
+  let bar=document.getElementById('lead-block-bar');
+  if(!b){if(bar)bar.remove();return;}
+  if(!bar){
+    bar=document.createElement('div');
+    bar.id='lead-block-bar';
+    bar.style.cssText='position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:9998;background:var(--text);color:var(--bg);padding:10px 14px 10px 16px;border-radius:999px;box-shadow:0 8px 24px rgba(0,0,0,.18);display:flex;align-items:center;gap:10px;font-family:inherit;font-size:13px;font-weight:600;max-width:92vw';
+    document.body.appendChild(bar);
+  }
+  const _tick=()=>{
+    const cur=leadBlockGet();if(!cur){bar.remove();return;}
+    const elapsedSec=Math.floor((Date.now()-cur.startTs)/1000);
+    const remainSec=cur.durMin*60-elapsedSec;
+    const m=Math.floor(Math.abs(remainSec)/60),s=Math.abs(remainSec)%60;
+    const overdue=remainSec<0;
+    const lbl=overdue?'⏰ +'+m+':'+(''+s).padStart(2,'0'):m+':'+(''+s).padStart(2,'0');
+    bar.innerHTML='<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">🎯 '+esc(cur.verb||'Block')+' · <span style="font-variant-numeric:tabular-nums'+(overdue?';color:var(--orange)':'')+'">'+lbl+'</span></span>'
+      +'<button onclick="leadBlockFinish()" style="background:rgba(255,255,255,.22);color:inherit;border:none;border-radius:99px;padding:5px 12px;font:600 12px inherit;cursor:pointer;flex-shrink:0">✓ Fertig</button>'
+      +'<button onclick="leadBlockCancel()" title="Abbrechen" style="background:transparent;color:inherit;border:none;border-radius:99px;padding:5px 8px;font:600 12px inherit;cursor:pointer;flex-shrink:0;opacity:.6">✕</button>';
+  };
+  _tick();
+  if(bar._iv)clearInterval(bar._iv);
+  bar._iv=setInterval(_tick,1000);
+}
+function findTzById(tzId){
+  for(const z of (S.ziele||[]))for(const t of (z.teilziele||[]))if(String(t.id)===String(tzId))return t;
+  return null;
+}
+// Bar nach Reload wieder einblenden
+window.addEventListener('DOMContentLoaded',()=>{try{leadBlockRenderBar();}catch(_){}});
 
 // ── v176 WIN-Modus — Was Ist jetzt wichtig ────────────────────────────────
 // Doktrin: Mental Model §13 (Dopamin am Input), §14 (Leading), Sam Ovens (one-thing).
@@ -6806,7 +6912,7 @@ function rWoche(){
       for(const _t of (_z.teilziele||[])){
         if(_t.erledigt)continue;
         if((_t.status||'aktiv')!=='aktiv')continue;
-        if(String(_t.verantwortlichId)!==String(aP))continue;
+        if(String(effectiveDoerId(_t))!==String(aP))continue; // v211: Doer ≠ Owner
         const _eff=effectiveLeading(_t);
         if(!_eff)continue;
         if(_eff.leadingFreq!=='weekly')continue;
@@ -6832,6 +6938,11 @@ function rWoche(){
       const _btnBd=(_hitWeek||_weekN)?'1px solid var(--bd)':'none';
       out+='<div style="display:flex;gap:8px;align-items:stretch">';
       out+='<button onclick="msTapManual(\''+t.id+'\')" style="flex:1;padding:13px;border-radius:11px;background:'+_btnBg+';color:'+_btnCol+';border:'+_btnBd+';font-family:inherit;font-size:14px;font-weight:700;cursor:pointer">'+_btnLbl+'</button>';
+      // v210: ▶ Block für Wochen-Karte
+      const _lbRunW=leadBlockGet();
+      const _lbActiveW=_lbRunW&&String(_lbRunW.tzId)===String(t.id);
+      if(_lbActiveW)out+='<button onclick="leadBlockFinish()" title="Block beenden" style="padding:13px 14px;border-radius:11px;background:var(--blue);color:#fff;border:none;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer">⏱ Beenden</button>';
+      else if(!_lbRunW)out+='<button onclick="leadBlockStart(\''+t.id+'\')" title="25-min-Block starten" style="padding:13px 14px;border-radius:11px;background:transparent;color:var(--t2);border:1px solid var(--bd);font-family:inherit;font-size:14px;cursor:pointer">▶ Block</button>';
       if(_weekN>0)out+='<button onclick="msUndoLast(\''+t.id+'\')" title="Letzten Input zurückziehen" style="padding:13px 14px;border-radius:11px;background:transparent;color:var(--t2);border:1px solid var(--bd);font-family:inherit;font-size:14px;cursor:pointer">↶</button>';
       out+='</div>';
       if(_hitWeek)out+='<div style="font-size:10px;color:var(--green);text-align:center;margin-top:6px;font-weight:600">Wochenziel erreicht ✓</div>';
@@ -7534,6 +7645,79 @@ function rTag(){
     }
   }
 
+  // ── v211: Health-Cards für Outcome-Owner ──
+  // Zeigt MZ wo ich Verantwortlich bin, aber jemand anders Doer (Sam-Way: Manager-Dashboard).
+  // Lampe: 🟢 Tagesziel hit · 🟡 unter Ziel aber heute aktiv · 🔴 0 heute / Lücke
+  {
+    const _healthCards=[];
+    for(const _z of (S.ziele||[])){
+      if(['bereich','vorschlag','archiviert'].includes(_z.status))continue;
+      for(const _t of (_z.teilziele||[])){
+        if(_t.erledigt)continue;
+        if((_t.status||'aktiv')!=='aktiv')continue;
+        // Outcome-Owner aber NICHT Doer → Health-Card
+        if(String(_t.verantwortlichId)!==String(aP))continue;
+        const _doerId=effectiveDoerId(_t);
+        if(String(_doerId)===String(aP))continue; // ich bin selber Doer → Daily-Card statt Health-Card
+        const _eff=effectiveLeading(_t);
+        if(!_eff)continue;
+        _healthCards.push({z:_z,t:_t,eff:_eff,doerId:_doerId});
+      }
+    }
+    if(_healthCards.length){
+      // Gruppieren nach parent Ziel für Roll-Up
+      const _byZ={};
+      _healthCards.forEach(c=>{(_byZ[c.z.id]=_byZ[c.z.id]||{z:c.z,cards:[]}).cards.push(c);});
+      Object.values(_byZ).forEach(({z,cards})=>{
+        // Roll-Up Header
+        let _sumToday=0,_sumTarget=0;
+        cards.forEach(c=>{_sumToday+=msInputsToday(c.t.id).length;if(c.eff.leadingCount)_sumTarget+=c.eff.leadingCount;});
+        out+='<div class="fm-hide" style="background:var(--sf);border:1px solid var(--bd);border-radius:14px;padding:12px 14px;margin-bottom:10px">';
+        out+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">';
+        out+='<span style="font-size:10px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--blue)">📊 Manager-View</span>';
+        out+='<span style="font-size:11px;color:var(--t2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">· '+esc(z.name)+'</span>';
+        out+='<span style="margin-left:auto;font-size:13px;font-weight:700;font-variant-numeric:tabular-nums">'+_sumToday+(_sumTarget?' / '+_sumTarget:'')+'</span>';
+        out+='</div>';
+        cards.forEach(({t,eff,doerId})=>{
+          const _doer=person(doerId)||{name:'?'};
+          const _todayN=msInputsToday(t.id).length;
+          const _streak=msStreak(t.id);
+          const _target=eff.leadingCount||null;
+          const _verb=esc(eff.metrik||'Hit');
+          // Last-Tap (für Lücken-Erkennung)
+          const _all=msInputs(t.id).slice().sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||''));
+          const _lastInput=_all[0];
+          const _lastDate=_lastInput?_lastInput.datum:null;
+          let _gapDays=0;
+          if(_lastDate&&_lastDate<TODAY){
+            const _ld=new Date(_lastDate),_td=new Date(TODAY);
+            _gapDays=Math.round((_td-_ld)/(1000*60*60*24));
+          }
+          // Lampe
+          let _lamp='🔴',_lampCol='var(--red)';
+          if(_target?(_todayN>=_target):(_todayN>0)){_lamp='🟢';_lampCol='var(--green)';}
+          else if(_todayN>0){_lamp='🟡';_lampCol='var(--orange)';}
+          // Subtext
+          let _sub='';
+          if(_todayN===0&&_gapDays>=2)_sub='⚠ seit '+_gapDays+'d kein Input';
+          else if(_todayN===0&&_lastDate===TODAY)_sub='heute schon getappt — moment, das passt nicht'; // edge case
+          else if(_todayN===0)_sub='heute noch 0';
+          else if(_target&&_todayN<_target)_sub='unter Tagesziel · noch '+(_target-_todayN);
+          else _sub='Tagesziel ✓';
+          out+='<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg);border:1px solid var(--bd);border-radius:10px;margin-top:6px">';
+          out+='<span style="font-size:18px;line-height:1">'+_lamp+'</span>';
+          out+='<div style="flex:1;min-width:0">';
+          out+='<div style="font-size:13px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(_doer.name)+' · '+_verb+'</div>';
+          out+='<div style="font-size:11px;color:'+_lampCol+';margin-top:2px">'+esc(_sub)+(_streak>=2?' · 🔥 '+_streak+'d':'')+'</div>';
+          out+='</div>';
+          out+='<div style="font-size:16px;font-weight:800;color:var(--text);font-variant-numeric:tabular-nums;flex-shrink:0">'+_todayN+(_target?'<span style="font-size:11px;font-weight:600;color:var(--t3)"> / '+_target+'</span>':'')+'</div>';
+          out+='</div>';
+        });
+        out+='</div>';
+      });
+    }
+  }
+
   // ── v182 (Ovens): Daily-Leading-Block ──
   // Zeigt ALLE eigenen aktiven Daily-Leadings. Belohnung am Input, nicht am Outcome.
   {
@@ -7543,7 +7727,7 @@ function rTag(){
       for(const _t of (_z.teilziele||[])){
         if(_t.erledigt)continue;
         if((_t.status||'aktiv')!=='aktiv')continue;
-        if(String(_t.verantwortlichId)!==String(aP))continue;
+        if(String(effectiveDoerId(_t))!==String(aP))continue; // v211: Doer ≠ Owner
         const _eff=effectiveLeading(_t);
         if(!_eff)continue;
         if(_eff.leadingFreq!=='daily')continue;
@@ -7580,6 +7764,11 @@ function rTag(){
       const _btnBd=(_hitToday||_todayN)?'1px solid var(--bd)':'none';
       out+='<div style="display:flex;gap:8px;align-items:stretch">';
       out+='<button onclick="msTapManual(\''+t.id+'\')" style="flex:1;padding:13px;border-radius:11px;background:'+_btnBg+';color:'+_btnCol+';border:'+_btnBd+';font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;transition:transform .1s,background .15s" onmousedown="this.style.transform=\'scale(.98)\'" onmouseup="this.style.transform=\'scale(1)\'">'+_btnLbl+'</button>';
+      // v210: ▶ Block — startet einen 25-min-Block, am Ende prompt für Hit-Anzahl
+      const _lbRun=leadBlockGet();
+      const _lbActive=_lbRun&&String(_lbRun.tzId)===String(t.id);
+      if(_lbActive)out+='<button onclick="leadBlockFinish()" title="Block beenden" style="padding:13px 14px;border-radius:11px;background:var(--blue);color:#fff;border:none;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer">⏱ Beenden</button>';
+      else if(!_lbRun)out+='<button onclick="leadBlockStart(\''+t.id+'\')" title="25-min-Block starten" style="padding:13px 14px;border-radius:11px;background:transparent;color:var(--t2);border:1px solid var(--bd);font-family:inherit;font-size:14px;cursor:pointer">▶ Block</button>';
       if(_todayN>0)out+='<button onclick="msUndoLast(\''+t.id+'\')" title="Letzten Input zurückziehen" style="padding:13px 14px;border-radius:11px;background:transparent;color:var(--t2);border:1px solid var(--bd);font-family:inherit;font-size:14px;cursor:pointer">↶</button>';
       out+='</div>';
       if(_hitToday)out+='<div style="font-size:10px;color:var(--green);text-align:center;margin-top:6px;font-weight:600">Tagesziel erreicht · Streak sicher</div>';
@@ -8894,6 +9083,15 @@ function openDetail(id){
   h+='<div style="display:flex;align-items:flex-start;gap:8px"><div class="mt" style="flex:1">'+esc(a.titel)+'</div><button onclick="copyTaskLink(\''+id+'\',this)" style="flex-shrink:0;margin-top:2px;font-size:13px;padding:6px 12px;border-radius:8px;border:1px solid var(--bd);background:var(--gray-bg);color:var(--t2);cursor:pointer;font-family:inherit;transition:all .15s" title="Link kopieren">🔗</button></div>';
   h+='<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px">'+typTag(a)+prioTag(a.prio,a.id,canChangePrio(a))+(zN?'<span class="tag" style="background:var(--gray-bg);color:var(--t2)">'+esc(zN)+'</span>':'')+(tzN?'<span class="tag" style="background:var(--purple-bg);color:var(--purple)">'+esc(tzN)+'</span>':'')+(d?'<span class="tag" style="background:'+d.bg+';color:'+d.c+'">'+d.l+'</span>':'')+(a.vertraulich?'<span class="lock">vertraulich</span>':'')+(from?'<span class="tag" style="background:var(--gray-bg);color:var(--t2)">von '+esc(from.name)+'</span>':'')+'</div>';
   if(zust)h+='<div style="font-size:12px;color:var(--t2);margin-bottom:10px">'+esc(zust.name)+'</div>';
+  // v210: Leading-Hits-Stepper — nur wenn Aufgabe an Leading-MZ hängt
+  if(aufgabeHatLeading(a)){
+    const _eff=effectiveLeading(zielObj(a.zielId).teilziele.find(t=>t.id===a.teilzielId));
+    h+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;padding:8px 12px;background:var(--purple-bg);border:1px solid var(--purple-bd);border-radius:8px">'
+      +'<span style="font-size:11px;color:var(--purple);font-weight:700">🎯 Leading-Hits</span>'
+      +'<span style="font-size:11px;color:var(--t2);flex:1">Diese Aufgabe erzeugt beim Erledigen N × '+esc(_eff?.metrik||'Hit')+'</span>'
+      +leadingHitsStepperHTML(a)
+      +'</div>';
+  }
   if(a.notiz)h+='<div style="font-size:13px;color:var(--text);margin-bottom:12px;padding:10px 12px;background:var(--gray-bg);border-radius:8px;white-space:pre-wrap;line-height:1.5">'+esc(a.notiz)+'</div>';
   if(a.ua&&a.ua.length)h+='<div style="margin-bottom:12px"><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);margin-bottom:6px">Unteraufgaben</div>'+stepsHtml(a,false)+'</div>';
   // ── Unteraufgaben ──
@@ -10673,8 +10871,15 @@ function editTZ(zid,tzid){
   document.getElementById('mb').innerHTML='<div class="mt">'+_lbl+' bearbeiten</div>'
     +'<div class="fl"><label>Name</label><input id="tzn" value="'+esc(tz.name)+'" autofocus></div>'
     +'<div class="fl"><label>Gehört zu</label><select id="tzz">'+zielOpts+'</select></div>'
-    +'<div class="f2"><div class="fl"><label>Verantwortlich</label><select id="tzv">'+S.personen.map(p=>'<option value="'+p.id+'"'+(tz.verantwortlichId===p.id?' selected':'')+'>'+esc(p.name)+'</option>').join('')+'</select></div>'
+    +'<div class="f2"><div class="fl"><label>Verantwortlich <span style="font-weight:400;color:var(--t3);font-size:10px">(Outcome-Owner)</span></label><select id="tzv">'+S.personen.map(p=>'<option value="'+p.id+'"'+(tz.verantwortlichId===p.id?' selected':'')+'>'+esc(p.name)+'</option>').join('')+'</select></div>'
     +'<div class="fl"><label>Bis wann</label><input type="date" id="tzd" value="'+(tz.datum||'')+'"></div></div>'
+    // v211: Doer-Feld — wer macht die tägliche Leading-Aktion (sieht +1-Karte)
+    +'<div class="fl"><label>Doer <span style="font-weight:400;color:var(--t3);font-size:10px">(macht die Leading-Aktion · sieht +1-Karte)</span></label>'
+    +'<select id="tzdoer"><option value="">— wie Verantwortlich —</option>'
+    +S.personen.map(p=>'<option value="'+p.id+'"'+(String(tz.leadingDoerId||'')===String(p.id)?' selected':'')+'>'+esc(p.name)+'</option>').join('')
+    +'</select>'
+    +'<div style="font-size:10px;color:var(--t3);margin-top:3px;line-height:1.4">Wenn Outcome-Owner ≠ Doer: Owner kriegt Health-Karte, Doer kriegt +1-Tap.</div>'
+    +'</div>'
     // v191 (Sam-Ovens-Hybrid): Leading lebt primär auf Ziel. MZ-Override = explizite Phase-Ausnahme.
     +(function(){
       const _zielHasLeading=z&&z.metrik&&String(z.metrik).trim();
@@ -10743,22 +10948,25 @@ async function saveTZ(zid,tzid){
   const lcRaw=lcountEl?(lcountEl.value||'').trim():'';
   const lcParsed=lcRaw?parseInt(lcRaw,10):null;
   const leadingCount=Number.isFinite(lcParsed)?lcParsed:null;
+  // v211: Doer-Feld (Sam-Way: Outcome-Owner ≠ Doer möglich)
+  const doerEl=document.getElementById('tzdoer');
+  const leadingDoerId=doerEl?(doerEl.value||null):null;
   // v175: Status aus Selector (nur übernehmen wenn Feld existiert, sonst Bestand lassen)
   const statusEl=document.getElementById('tzstatus');
   const newStatus=statusEl?(statusEl.value||'aktiv'):null;
   if(tzid){
     const tz=(z.teilziele||[]).find(t=>t.id===tzid);
-    if(tz){tz.name=name;tz.verantwortlichId=vid;tz.datum=datum;tz.vertraulich=vertraulich;tz.zielId=newZid;tz.metrik=metrik;tz.zielWert=zwFinal;tz.leadingFreq=leadingFreq;tz.leadingCount=leadingCount;if(newStatus)tz.status=newStatus;}
+    if(tz){tz.name=name;tz.verantwortlichId=vid;tz.datum=datum;tz.vertraulich=vertraulich;tz.zielId=newZid;tz.metrik=metrik;tz.zielWert=zwFinal;tz.leadingFreq=leadingFreq;tz.leadingCount=leadingCount;tz.leadingDoerId=leadingDoerId;if(newStatus)tz.status=newStatus;}
     if(newZid!==zid){
       z.teilziele=(z.teilziele||[]).filter(t=>t.id!==tzid);
       const nz=zielObj(newZid);if(nz){nz.teilziele=nz.teilziele||[];nz.teilziele.push(tz);}
     }
-    const _patch={name,verantwortlich_id:vid,datum:datum||null,ziel_id:newZid,vertraulich,metrik,zielwert:zwFinal,leading_freq:leadingFreq,leading_count:leadingCount};
+    const _patch={name,verantwortlich_id:vid,datum:datum||null,ziel_id:newZid,vertraulich,metrik,zielwert:zwFinal,leading_freq:leadingFreq,leading_count:leadingCount,leading_doer_id:leadingDoerId};
     if(newStatus)_patch.status=newStatus;
     await dbPatch('teilziele',tzid,_patch);
   } else {
-    const id=nid('tz'),rec={id,ziel_id:zid,name,verantwortlich_id:vid,datum:datum||null,erledigt:false,vertraulich:false,status:'aktiv',metrik,zielwert:zwFinal,leading_freq:leadingFreq,leading_count:leadingCount};
-    z.teilziele=z.teilziele||[];z.teilziele.push({...rec,zielId:zid,verantwortlichId:vid,datum:datum||'',vertraulich:false,status:'aktiv',metrik,zielWert:zwFinal,leadingFreq,leadingCount});
+    const id=nid('tz'),rec={id,ziel_id:zid,name,verantwortlich_id:vid,datum:datum||null,erledigt:false,vertraulich:false,status:'aktiv',metrik,zielwert:zwFinal,leading_freq:leadingFreq,leading_count:leadingCount,leading_doer_id:leadingDoerId};
+    z.teilziele=z.teilziele||[];z.teilziele.push({...rec,zielId:zid,verantwortlichId:vid,datum:datum||'',vertraulich:false,status:'aktiv',metrik,zielWert:zwFinal,leadingFreq,leadingCount,leadingDoerId});
     await dbInsert('teilziele',rec);
     // v205: Bestätigung was wirklich gespeichert wurde — Datum + Verantwortlich sichtbar
     const _vName=(S.personen.find(p=>String(p.id)===String(vid))||{}).name||'?';
@@ -10767,12 +10975,76 @@ async function saveTZ(zid,tzid){
   }
   cm();render();
 }
+// v210: Undo für Ziel-/Monatsziel-Löschung. Snapshot vor Delete, Toast 30s, voller Restore.
+let _delUndo=null;
+function _delShowUndo(label){
+  let bar=document.getElementById('del-undo-bar');
+  if(bar)bar.remove();
+  bar=document.createElement('div');
+  bar.id='del-undo-bar';
+  bar.style.cssText='position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:9999;background:var(--text);color:var(--bg);padding:10px 14px 10px 16px;border-radius:999px;box-shadow:0 8px 24px rgba(0,0,0,.18);display:flex;align-items:center;gap:10px;font-family:inherit;font-size:13px;font-weight:600;max-width:90vw';
+  bar.innerHTML='<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:60vw">🗑 '+esc(label)+' gelöscht</span><button onclick="_delDoUndo()" style="background:rgba(255,255,255,.18);color:inherit;border:none;border-radius:99px;padding:5px 12px;font:600 12px inherit;cursor:pointer;flex-shrink:0">↶ Rückgängig</button>';
+  document.body.appendChild(bar);
+  setTimeout(()=>{try{const b=document.getElementById('del-undo-bar');if(b)b.remove();_delUndo=null;}catch(_){}},30000);
+}
+function _zielFromDb(r){return {...r,verantwortlichId:r.verantwortlich_id,zielWert:r.zielwert,leadingFreq:r.leading_freq||'daily',leadingCount:r.leading_count,vorgeschlagenVon:r.vorgeschlagen_von};}
+function _tzFromDb(r){return {...r,zielId:r.ziel_id,verantwortlichId:r.verantwortlich_id,zielWert:r.zielwert,leadingFreq:r.leading_freq||'daily',leadingCount:r.leading_count,leadingDoerId:r.leading_doer_id||null};}
+async function _delDoUndo(){
+  const u=_delUndo;_delUndo=null;
+  const bar=document.getElementById('del-undo-bar');if(bar)bar.remove();
+  if(!u)return;
+  try{toast('↶ Wiederherstellen…');}catch(_){}
+  try{
+    if(u.type==='ziel'){
+      if(u.ziel)await dbInsert('ziele',u.ziel);
+      for(const k of (u.kpis||[]))await dbInsert('kpis',k);
+      for(const t of (u.teilziele||[]))await dbInsert('teilziele',t);
+      for(const a of (u.aufgaben||[])){
+        await dbPatch('aufgaben',a.id,{ziel_id:a.ziel_id,teilziel_id:a.teilziel_id,typ:a.typ});
+        const sa=S.aufgaben.find(x=>x.id===a.id);
+        if(sa){sa.zielId=a.ziel_id;sa.teilzielId=a.teilziel_id;sa.typ=a.typ;}
+      }
+      if(u.ziel){
+        const zR=_zielFromDb(u.ziel);
+        zR.kpis=(u.kpis||[]).map(k=>({...k}));
+        zR.teilziele=(u.teilziele||[]).map(_tzFromDb);
+        S.ziele.push(zR);
+      }
+    }else if(u.type==='tz'){
+      if(u.teilziel){
+        await dbInsert('teilziele',u.teilziel);
+        const z=zielObj(u.teilziel.ziel_id);
+        if(z){z.teilziele=z.teilziele||[];z.teilziele.push(_tzFromDb(u.teilziel));}
+      }
+      for(const a of (u.aufgaben||[])){
+        const sa=S.aufgaben.find(x=>x.id===a.id);
+        if(sa)sa.teilzielId=a.teilziel_id;
+      }
+    }else if(u.type==='vorschlag'){
+      if(u.ziel){
+        await dbInsert('ziele',u.ziel);
+        const zR=_zielFromDb(u.ziel);zR.kpis=[];zR.teilziele=[];
+        S.ziele.push(zR);
+      }
+    }
+    try{toast('✓ Wiederhergestellt');}catch(_){}
+    rZiele();
+  }catch(e){
+    console.error('undo failed',e);
+    try{toast('⚠ Wiederherstellen fehlgeschlagen','var(--red)');}catch(_){}
+  }
+}
 async function delTZ(zid,tzid){
   if(!confirm(istBereich(zid)?'Themengebiet löschen?':'Monatsziel löschen?'))return;
   const z=zielObj(zid);if(!z)return;
+  // v210: Snapshot vor Delete für Undo
+  const tzDb=(await supa('teilziele?id=eq.'+tzid))?.[0];
+  const snap={type:'tz',teilziel:tzDb,aufgaben:S.aufgaben.filter(a=>a.teilzielId===tzid).map(a=>({id:a.id,teilziel_id:a.teilzielId}))};
   z.teilziele=(z.teilziele||[]).filter(t=>t.id!==tzid);
   S.aufgaben.forEach(a=>{if(a.teilzielId===tzid)a.teilzielId=null;});
-  await dbDelete('teilziele',tzid);cm();rZiele();
+  await dbDelete('teilziele',tzid);
+  _delUndo=snap;_delShowUndo(tzDb?.name||(istBereich(zid)?'Themengebiet':'Monatsziel'));
+  cm();rZiele();
 }
 // v175 §14+: Rekalibrierungs-Aktionen. Pause = reversibel, Archiv = raus aus Standard-Views.
 // Kaskade ist derived: Aufgaben-Sicht zieht tz.status, kein Schreiben auf aufgaben nötig.
@@ -10994,6 +11266,11 @@ async function _zielPromoteOverride(zid,tzid){
 }
 async function delZiel(zid){
   if(!confirm('Ziel wirklich löschen?'))return;
+  // v210: Snapshot vor Delete für Undo (inkl. KPIs, Teilziele, Aufgaben-Verknüpfungen)
+  const zDb=(await supa('ziele?id=eq.'+zid))?.[0];
+  const kpisDb=(await supa('kpis?ziel_id=eq.'+zid))||[];
+  const tzDb=(await supa('teilziele?ziel_id=eq.'+zid))||[];
+  const snap={type:'ziel',ziel:zDb,kpis:kpisDb,teilziele:tzDb,aufgaben:S.aufgaben.filter(a=>a.zielId===zid).map(a=>({id:a.id,ziel_id:a.zielId,teilziel_id:a.teilzielId,typ:a.typ}))};
   S.aufgaben.forEach(a=>{if(a.zielId===zid){a.zielId=null;a.teilzielId=null;a.typ='operativ';}});
   await supa('aufgaben?ziel_id=eq.'+zid,{method:'PATCH',body:{ziel_id:null,teilziel_id:null,typ:'operativ'},prefer:'return=minimal'});
   const z=zielObj(zid);
@@ -11002,7 +11279,9 @@ async function delZiel(zid){
     await Promise.all((z.teilziele||[]).map(t=>dbDelete('teilziele',t.id)));
   }
   S.ziele=S.ziele.filter(x=>x.id!==zid);
-  await dbDelete('ziele',zid);cm();rZiele();
+  await dbDelete('ziele',zid);
+  _delUndo=snap;_delShowUndo(zDb?.name||'Ziel');
+  cm();rZiele();
 }
 
 // Info-Modal mit Vollerklärung Ziel vs Bereich
@@ -11056,8 +11335,11 @@ async function freigebenZiel(id){
 }
 async function ablehnZiel(id){
   if(!confirm('Ziel-Vorschlag ablehnen und löschen?'))return;
+  // v210: Snapshot für Undo
+  const zDb=(await supa('ziele?id=eq.'+id))?.[0];
   S.ziele=S.ziele.filter(x=>x.id!==id);
   await dbDelete('ziele',id);
+  _delUndo={type:'vorschlag',ziel:zDb};_delShowUndo(zDb?.name||'Vorschlag');
   rZiele();
 }
 async function addKpi(zid){
