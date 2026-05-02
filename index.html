@@ -1556,6 +1556,8 @@ async function loadData(){
   S.teams=(teams||[]).map(t=>({...t,members:t.members||[]}));
   S.ziele=(ziele||[]).map(z=>({
     ...z,verantwortlichId:z.verantwortlich_id,
+    // v191: Leading-Indicator auf Ziel-Ebene (strategischer Default, MZ erbt)
+    metrik:z.metrik||null,leadingFreq:z.leading_freq||'daily',leadingCount:z.leading_count??null,zielWert:z.zielwert??null,
     kpis:(kpis||[]).filter(k=>k.ziel_id===z.id).map(k=>({...k,zielId:k.ziel_id,teilzielId:k.teilziel_id||null,prio:k.prio||null})),
     teilziele:(teilziele||[]).filter(t=>t.ziel_id===z.id).map(t=>({...t,zielId:t.ziel_id,verantwortlichId:t.verantwortlich_id,datum:t.datum||'',status:t.status||'aktiv',metrik:t.metrik||null,zielWert:t.zielwert||null,sortIndex:t.sort_index??null,leadingFreq:t.leading_freq||'daily',leadingCount:t.leading_count??null}))
   }));
@@ -2959,6 +2961,33 @@ function taskIsArchived(a){return taskMsStatus(a)==='archiviert';}
 function msInputs(tzId){return(S.monatszielInputs||[]).filter(i=>String(i.teilzielId)===String(tzId));}
 function msCount(tzId){return msInputs(tzId).length;}
 function msInputsToday(tzId){return msInputs(tzId).filter(i=>i.datum===TODAY);}
+// v191: effectiveLeading(tz) — Sam-Ovens-Hybrid mit Inheritance.
+// Wenn MZ.metrik gesetzt → MZ-Override (Phase-Indicator).
+// Sonst → erbt vom übergeordneten Ziel (strategischer Indicator).
+// Returns null wenn beide leer.
+function effectiveLeading(tz){
+  if(!tz)return null;
+  if(tz.metrik&&String(tz.metrik).trim()){
+    return{
+      metrik:tz.metrik,
+      leadingFreq:tz.leadingFreq||'daily',
+      leadingCount:tz.leadingCount??null,
+      zielWert:tz.zielWert??null,
+      source:'mz'
+    };
+  }
+  const z=tz.zielId?(S.ziele||[]).find(x=>x.id===tz.zielId):null;
+  if(z&&z.metrik&&String(z.metrik).trim()){
+    return{
+      metrik:z.metrik,
+      leadingFreq:z.leadingFreq||'daily',
+      leadingCount:z.leadingCount??null,
+      zielWert:z.zielWert??null,
+      source:'ziel'
+    };
+  }
+  return null;
+}
 // v182: Frequenz-bezogene Counts für Leading-Indicators (Ovens-Way).
 function msInputsThisWeek(tzId){
   const{monday,sunday}=getWeekRange();
@@ -2968,16 +2997,18 @@ function msInputsThisMonth(tzId){
   const ym=TODAY.slice(0,7);
   return msInputs(tzId).filter(i=>(i.datum||'').startsWith(ym));
 }
-// Leading-Aggregation je nach Frequenz: liefert {ist, ziel, label}
+// Leading-Aggregation je nach Frequenz: liefert {ist, ziel, label, source}
+// v191: nutzt effectiveLeading() — geerbter Ziel-Indicator zählt automatisch mit.
 function msLeadingFor(tz){
-  if(!tz||!tz.metrik)return null;
-  const freq=tz.leadingFreq||'daily';
-  const ziel=tz.leadingCount??null;
+  const eff=effectiveLeading(tz);
+  if(!eff)return null;
+  const freq=eff.leadingFreq;
+  const ziel=eff.leadingCount;
   let ist=0,scopeLbl='';
   if(freq==='daily'){ist=msInputsToday(tz.id).length;scopeLbl='heute';}
   else if(freq==='weekly'){ist=msInputsThisWeek(tz.id).length;scopeLbl='diese Woche';}
   else{ist=msInputsThisMonth(tz.id).length;scopeLbl='dieser Monat';}
-  return{ist,ziel,scopeLbl,freq};
+  return{ist,ziel,scopeLbl,freq,source:eff.source};
 }
 function msStreak(tzId){
   const set={};
@@ -2992,7 +3023,7 @@ function msStreak(tzId){
 async function msPushInput(tzId,quelle){
   if(!tzId)return;
   const tz=_tzById(tzId);
-  if(!tz||!tz.metrik)return; // Non-Leading-MS bekommen keine Inputs
+  if(!tz||!effectiveLeading(tz))return; // v191: Non-Leading-MS (auch ohne geerbten Ziel-Leading) bekommen keine Inputs
   // v175: Pausierte/archivierte MS zählen keine neuen Inputs. Historische Inputs bleiben.
   if(tzIsPaused(tz)||tzIsArchived(tz))return;
   const id=nid('mi');
@@ -6692,18 +6723,19 @@ function rWoche(){
     for(const _z of (S.ziele||[])){
       if(['bereich','vorschlag','archiviert'].includes(_z.status))continue;
       for(const _t of (_z.teilziele||[])){
-        if(!_t.metrik)continue;
         if(_t.erledigt)continue;
         if((_t.status||'aktiv')!=='aktiv')continue;
         if(String(_t.verantwortlichId)!==String(aP))continue;
-        if(_t.leadingFreq!=='weekly')continue;
-        _weeklyLeads.push({z:_z,t:_t});
+        const _eff=effectiveLeading(_t);
+        if(!_eff)continue;
+        if(_eff.leadingFreq!=='weekly')continue;
+        _weeklyLeads.push({z:_z,t:_t,eff:_eff});
       }
     }
-    _weeklyLeads.forEach(({z,t})=>{
+    _weeklyLeads.forEach(({z,t,eff})=>{
       const _weekN=msInputsThisWeek(t.id).length;
-      const _verb=esc(t.metrik);
-      const _weekTarget=t.leadingCount||null;
+      const _verb=esc(eff.metrik);
+      const _weekTarget=eff.leadingCount||null;
       const _hitWeek=_weekTarget?_weekN>=_weekTarget:_weekN>0;
       out+='<div style="background:var(--sf);border:1px solid '+(_hitWeek?'var(--green-bd)':'var(--bd)')+';border-radius:14px;padding:14px 16px;margin-bottom:10px">';
       out+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">';
@@ -7425,25 +7457,26 @@ function rTag(){
     for(const _z of (S.ziele||[])){
       if(['bereich','vorschlag','archiviert'].includes(_z.status))continue;
       for(const _t of (_z.teilziele||[])){
-        if(!_t.metrik)continue;
         if(_t.erledigt)continue;
         if((_t.status||'aktiv')!=='aktiv')continue;
         if(String(_t.verantwortlichId)!==String(aP))continue;
-        if((_t.leadingFreq||'daily')!=='daily')continue;
-        _dailyLeads.push({z:_z,t:_t,focus:!!_z.focus});
+        const _eff=effectiveLeading(_t);
+        if(!_eff)continue;
+        if(_eff.leadingFreq!=='daily')continue;
+        _dailyLeads.push({z:_z,t:_t,eff:_eff,focus:!!_z.focus});
       }
     }
     _dailyLeads.sort((a,b)=>{
       if(a.focus!==b.focus)return a.focus?-1:1;
       return (a.t.datum||'9999-12-31').localeCompare(b.t.datum||'9999-12-31');
     });
-    _dailyLeads.forEach(({z,t})=>{
+    _dailyLeads.forEach(({z,t,eff})=>{
       const _todayN=msInputsToday(t.id).length;
       const _monthN=msInputsThisMonth(t.id).length;
       const _streak=msStreak(t.id);
-      const _verb=esc(t.metrik);
-      const _dailyTarget=t.leadingCount||null;
-      const _monthTarget=t.zielWert||null;
+      const _verb=esc(eff.metrik);
+      const _dailyTarget=eff.leadingCount||null;
+      const _monthTarget=eff.zielWert||null;
       const _hitToday=_dailyTarget?_todayN>=_dailyTarget:_todayN>0;
       out+='<div class="fm-hide" style="background:var(--sf);border:1px solid '+(_hitToday?'var(--green-bd)':'var(--bd)')+';border-radius:14px;padding:14px 16px;margin-bottom:10px">';
       out+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">';
@@ -10272,9 +10305,14 @@ function rZiele(){
           out+='<span style="flex-shrink:0;font-size:10px;color:var(--t3);transition:transform .15s;display:inline-block;transform:rotate('+(_expanded?'90':'0')+'deg)">▶</span>';
           out+='<div style="font-size:13px;font-weight:600;color:var(--text)'+(tz.erledigt?';text-decoration:line-through;opacity:.5':'')+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0">'+esc(tz.name)+'</div>';
           // v174 §14: Leading-Count/Streak als dezenter Chip — Haupt-Action lebt im Hero, hier nur Referenz.
-          if(tz.metrik&&!tz.erledigt){
-            const _msC=msCount(tz.id),_msS=msStreak(tz.id);
-            out+='<span title="Leading-Metrik: '+esc(tz.metrik)+'" style="flex-shrink:0;font-size:10px;font-weight:700;color:var(--t2);background:var(--bg);border:1px solid var(--bd);padding:2px 7px;border-radius:99px;font-variant-numeric:tabular-nums">'+_msC+(tz.zielWert?'/'+tz.zielWert:'')+(_msS>=2?' · 🔥'+_msS:'')+'</span>';
+          // v191: nutzt effectiveLeading() — geerbter Ziel-Indicator wird auch angezeigt.
+          {
+            const _eff=effectiveLeading(tz);
+            if(_eff&&!tz.erledigt){
+              const _msC=msCount(tz.id),_msS=msStreak(tz.id);
+              const _src=_eff.source==='ziel'?' (vom Ziel)':'';
+              out+='<span title="Leading-Metrik: '+esc(_eff.metrik)+_src+'" style="flex-shrink:0;font-size:10px;font-weight:700;color:var(--t2);background:var(--bg);border:1px solid var(--bd);padding:2px 7px;border-radius:99px;font-variant-numeric:tabular-nums">'+_msC+(_eff.zielWert?'/'+_eff.zielWert:'')+(_msS>=2?' · 🔥'+_msS:'')+'</span>';
+            }
           }
           out+='<span style="flex-shrink:0;font-size:10px;font-weight:700;color:'+_verCol+';background:'+_verBg+';border:1px solid '+(_isMine?'var(--bd)':f.bd)+';padding:2px 7px;border-radius:99px;text-transform:uppercase;letter-spacing:.3px">'+esc(_verName)+'</span>';
           out+='</div>';
@@ -10655,16 +10693,41 @@ function editTZ(zid,tzid){
     +'<div class="fl"><label>Gehört zu</label><select id="tzz">'+zielOpts+'</select></div>'
     +'<div class="f2"><div class="fl"><label>Verantwortlich</label><select id="tzv">'+S.personen.map(p=>'<option value="'+p.id+'"'+(tz.verantwortlichId===p.id?' selected':'')+'>'+esc(p.name)+'</option>').join('')+'</select></div>'
     +'<div class="fl"><label>Bis wann</label><input type="date" id="tzd" value="'+(tz.datum||'')+'"></div></div>'
-    // v182 (Ovens): Leading-Indicator mit Frequenz. Daily ist Default.
-    +'<div style="background:var(--blue-bg);border:1px solid var(--blue-bd);border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:11px;color:var(--text);line-height:1.5">🎯 <b>Leading-Indicator</b> = die <i>tägliche Aktion</i>, die das Ergebnis erzwingt. Eine Zahl, kontrollierbar, täglich klickbar.<br><span style="color:var(--t3)">Faustregel: <i>„Würde ich es heute nicht tun, müsste es aber diese Woche?"</i> — dann weekly. Sonst daily.</span></div>'
-    +'<div class="fl"><label>Leading-Aktion (Verb) · optional</label><input id="tzmetrik" value="'+esc(tz.metrik||'')+'" placeholder="z.B. Call gemacht, Outreach-Mail verschickt"></div>'
-    +'<div class="f2"><div class="fl"><label>Frequenz</label><select id="tzfreq">'
-      +'<option value="daily"'+((tz.leadingFreq||'daily')==='daily'?' selected':'')+'>Täglich</option>'
-      +'<option value="weekly"'+(tz.leadingFreq==='weekly'?' selected':'')+'>Wöchentlich</option>'
-      +'<option value="monthly"'+(tz.leadingFreq==='monthly'?' selected':'')+'>Monatlich</option>'
-      +'</select></div>'
-    +'<div class="fl"><label>Zielzahl pro Frequenz</label><input id="tzlcount" type="number" min="1" value="'+(tz.leadingCount||'')+'" placeholder="z.B. 30 (täglich)"></div></div>'
-    +'<div class="fl"><label>Monats-Anker (Aggregat, optional)</label><input id="tzzw" type="number" min="1" value="'+(tz.zielWert||'')+'" placeholder="z.B. 600 = 30 × 20 Arbeitstage"></div>'
+    // v191 (Sam-Ovens-Hybrid): Leading lebt primär auf Ziel. MZ-Override = explizite Phase-Ausnahme.
+    +(function(){
+      const _zielHasLeading=z&&z.metrik&&String(z.metrik).trim();
+      const _hasOverride=tz.metrik&&String(tz.metrik).trim();
+      // Inheritance-Hint wenn Ziel einen Leading hat
+      let _h='';
+      if(_zielHasLeading){
+        const _freqLbl={daily:'täglich',weekly:'wöchentlich',monthly:'monatlich'}[z.leadingFreq||'daily'];
+        _h+='<div style="background:var(--green-bg);border:1px solid var(--green-bd);border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:11px;color:var(--text);line-height:1.5">'
+          +'📋 <b>Erbt vom Ziel:</b> '+esc(z.metrik)+(z.leadingCount?' · '+z.leadingCount+'/'+_freqLbl:' · '+_freqLbl)
+          +(z.zielWert?' · Anker '+z.zielWert:'')+'<br>'
+          +'<span style="color:var(--t3)">Sam-Ovens-Way: <i>ein</i> Leading pro Strategie. Override unten nur, wenn dieses MZ in einer Build-/Test-Phase wirklich einen <i>anderen</i> braucht.</span></div>';
+      }
+      // Override-Section: in Phase-Mode öffnen wenn schon gesetzt, sonst kollabiert
+      const _open=_hasOverride||!_zielHasLeading;
+      _h+='<details '+(_open?'open':'')+' style="background:var(--blue-bg);border:1px solid var(--blue-bd);border-radius:8px;padding:8px 12px;margin-bottom:10px">'
+        +'<summary style="cursor:pointer;font-size:11px;font-weight:700;color:var(--text);list-style:none">'
+        +(_zielHasLeading?'⚙ Phase-Override (optional, ersetzt geerbten Leading)':'🎯 Leading-Indicator (optional)')
+        +'</summary>'
+        +'<div style="margin-top:8px;font-size:11px;color:var(--t3);line-height:1.5">'
+        +(_zielHasLeading
+          ?'Eigener Leading nur für diesen Monat. Faustregel: <i>„Würde ich es heute nicht tun, müsste es aber diese Woche?"</i> — dann weekly.'
+          :'Die <i>tägliche Aktion</i>, die dieses MZ erzwingt. Wenn du den gleichen Leading für mehrere MZ brauchst, leg ihn besser direkt am übergeordneten Ziel an.')
+        +'</div>'
+        +'<div class="fl" style="margin-top:8px"><label>Leading-Aktion (Verb)</label><input id="tzmetrik" value="'+esc(tz.metrik||'')+'" placeholder="z.B. Call gemacht, Outreach-Mail verschickt"></div>'
+        +'<div class="f2"><div class="fl"><label>Frequenz</label><select id="tzfreq">'
+          +'<option value="daily"'+((tz.leadingFreq||'daily')==='daily'?' selected':'')+'>Täglich</option>'
+          +'<option value="weekly"'+(tz.leadingFreq==='weekly'?' selected':'')+'>Wöchentlich</option>'
+          +'<option value="monthly"'+(tz.leadingFreq==='monthly'?' selected':'')+'>Monatlich</option>'
+        +'</select></div>'
+        +'<div class="fl"><label>Zielzahl pro Frequenz</label><input id="tzlcount" type="number" min="1" value="'+(tz.leadingCount||'')+'" placeholder="z.B. 30 (täglich)"></div></div>'
+        +'<div class="fl"><label>Monats-Anker (Aggregat, optional)</label><input id="tzzw" type="number" min="1" value="'+(tz.zielWert||'')+'" placeholder="z.B. 600 = 30 × 20 Arbeitstage"></div>'
+        +'</details>';
+      return _h;
+    })()
     // v175 §14+: Status (Rekalibrierung). Pause = reversibel, Archiv = raus aus Views.
     +(canManageTZ(zid)?('<div class="fl"><label>Status</label><select id="tzstatus">'
       +'<option value="aktiv"'+((tz.status||'aktiv')==='aktiv'?' selected':'')+'>▶ Aktiv</option>'
@@ -10863,7 +10926,17 @@ function editZiel(zid){
     +'<div class="fl"><label style="display:flex;align-items:center;gap:8px;text-transform:none;font-size:13px;font-weight:400"><input type="checkbox" id="zvert" '+(z.vertraulich?'checked':'')+' style="width:auto"> 🔒 Vertraulich</label><div style="font-size:10px;color:var(--t3);margin-top:2px">Sichtbar für: nur Geschäftsführung</div></div>'
     +'<div class="f2"><div class="fl"><label>Von (Monat)</label><input type="month" id="zms" value="'+(z.monat_start||'')+'"></div>'
     +'<div class="fl"><label>Bis (Monat)</label><input type="month" id="zme" value="'+(z.monat_ende||'')+'"></div></div>'
-    +'<div class="fl"><label>Farbe</label><div style="display:flex;gap:8px;margin-top:4px">'+FARBEN.map((f,i)=>'<div onclick="selZF('+i+')" id="zfc'+i+'" style="width:24px;height:24px;border-radius:50%;background:'+f.tc+';cursor:pointer;border:'+((z.farbe||0)===i?'3px':'2px')+' solid '+((z.farbe||0)===i?'var(--text)':'transparent')+'"></div>').join('')+'</div></div>'
+    // v191: Strategischer Leading-Indicator auf Ziel-Ebene (Sam-Ovens-Way: ONE Leading per Strategie).
+    +'<div style="background:var(--blue-bg);border:1px solid var(--blue-bd);border-radius:8px;padding:10px 12px;margin:14px 0 10px;font-size:11px;color:var(--text);line-height:1.5">🎯 <b>Strategischer Leading-Indicator</b> (optional) — die <i>tägliche Aktion</i>, die dieses Ziel treibt. Alle Monatsziele darunter <b>erben</b> diesen Indicator standardmäßig.<br><span style="color:var(--t3)">Nur wenn ein einzelnes MZ in einer Build-/Test-Phase einen anderen braucht, kann es einen Override setzen.</span></div>'
+    +'<div class="fl"><label>Leading-Aktion (Verb) · optional</label><input id="zmetrik" value="'+esc(z.metrik||'')+'" placeholder="z.B. Call gemacht, Outreach-Mail verschickt"></div>'
+    +'<div class="f2"><div class="fl"><label>Frequenz</label><select id="zfreq">'
+      +'<option value="daily"'+((z.leadingFreq||'daily')==='daily'?' selected':'')+'>Täglich</option>'
+      +'<option value="weekly"'+(z.leadingFreq==='weekly'?' selected':'')+'>Wöchentlich</option>'
+      +'<option value="monthly"'+(z.leadingFreq==='monthly'?' selected':'')+'>Monatlich</option>'
+    +'</select></div>'
+    +'<div class="fl"><label>Zielzahl pro Frequenz</label><input id="zlcount" type="number" min="1" value="'+(z.leadingCount||'')+'" placeholder="z.B. 16 (täglich)"></div></div>'
+    +'<div class="fl"><label>Anker-Wert (Aggregat, optional)</label><input id="zzw" type="number" min="1" value="'+(z.zielWert||'')+'" placeholder="z.B. 1500 (Quartals-Total)"></div>'
+    +'<div class="fl" style="margin-top:14px"><label>Farbe</label><div style="display:flex;gap:8px;margin-top:4px">'+FARBEN.map((f,i)=>'<div onclick="selZF('+i+')" id="zfc'+i+'" style="width:24px;height:24px;border-radius:50%;background:'+f.tc+';cursor:pointer;border:'+((z.farbe||0)===i?'3px':'2px')+' solid '+((z.farbe||0)===i?'var(--text)':'transparent')+'"></div>').join('')+'</div></div>'
     +'<input type="hidden" id="zfarbe" value="'+(z.farbe||0)+'">'
     +'<div class="mf"><button class="btn btn-red" onclick="delZiel(\''+zid+'\')">Löschen</button><button class="btn btn-gr" onclick="cm()">Abbrechen</button><button class="btn btn-dk" onclick="saveZiel(\''+zid+'\')">Speichern</button></div>';
   document.getElementById('ovl').classList.add('open');
@@ -10880,8 +10953,16 @@ async function saveZiel(zid){
   const vertraulich=document.getElementById('zvert')?.checked||false;
   const monat_start=document.getElementById('zms').value||null;
   const monat_ende=document.getElementById('zme').value||null;
+  // v191: Strategischer Leading-Indicator auf Ziel-Ebene
+  const metrik=(document.getElementById('zmetrik')?.value||'').trim()||null;
+  const leadingFreq=document.getElementById('zfreq')?.value||'daily';
+  const lcParsed=parseInt(document.getElementById('zlcount')?.value||'',10);
+  const leadingCount=Number.isFinite(lcParsed)&&lcParsed>0?lcParsed:null;
+  const zwParsed=parseInt(document.getElementById('zzw')?.value||'',10);
+  const zielWert=Number.isFinite(zwParsed)&&zwParsed>0?zwParsed:null;
   z.name=name;z.verantwortlichId=verantwortlichId;z.farbe=farbe;z.vertraulich=vertraulich;z.monat_start=monat_start;z.monat_ende=monat_ende;
-  await dbPatch('ziele',zid,{name,verantwortlich_id:verantwortlichId,farbe,vertraulich,monat_start,monat_ende});
+  z.metrik=metrik;z.leadingFreq=leadingFreq;z.leadingCount=leadingCount;z.zielWert=zielWert;
+  await dbPatch('ziele',zid,{name,verantwortlich_id:verantwortlichId,farbe,vertraulich,monat_start,monat_ende,metrik,leading_freq:leadingFreq,leading_count:leadingCount,zielwert:zielWert});
   cm();rZiele();
 }
 async function delZiel(zid){
