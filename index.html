@@ -3277,7 +3277,13 @@ function spangeRender(pid,opts){
     // Linke Kante an Track-Anfang ausrichten (22px Margin) — Chips fühlen sich
     // dadurch als Fortsetzung des Tracks an, nicht als separater Block.
     if(!collapsed&&isToday&&chips.length){
-      h+='<div class="spange-agenda" style="display:flex;flex-wrap:wrap;gap:3px;margin:1px 22px 0;padding:0" data-pid="'+pid+'">';
+      // v183-4: Pillen rücken mit der Tageszeit nach links (visueller "Tag rinnt durch"-Effekt).
+      // padding-left = Tagesfortschritt im sichtbaren Fenster, max 40% damit Pillen lesbar bleiben.
+      const _nowDate=new Date();
+      const _nowMin=_nowDate.getHours()*60+_nowDate.getMinutes();
+      const _prog=Math.max(0,Math.min(1,(_nowMin-vonMin)/Math.max(1,span)));
+      const _shiftPct=(_prog*40).toFixed(1);
+      h+='<div class="spange-agenda" style="display:flex;flex-wrap:wrap;gap:3px;margin:1px 22px 0;padding-left:'+_shiftPct+'%;transition:padding-left .8s ease" data-pid="'+pid+'">';
       chips.forEach(a=>{
         const pc=a.prio==='P1'?'var(--red)':a.prio==='P2'?'var(--blue)':'var(--t3)';
         const pbg=a.prio==='P1'?'var(--red-bg,rgba(239,68,68,0.08))':a.prio==='P2'?'var(--blue-bg,rgba(59,130,246,0.08))':'var(--gray-bg)';
