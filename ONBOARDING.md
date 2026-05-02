@@ -404,46 +404,69 @@ Aufgabe automatisch zurück mit Toast.
 
 Bei dir spiegelnd: *„🕒 Ich warte auf andere"*-Block.
 
-### 📅 Monats-Matrix (seit v185)
+### 📅 Monats-Matrix (seit v185, Time-Flows-Right seit v186)
 
-Die **Monatsseite** ist jetzt **dein Plan-Canvas, nicht ein Check-in**.
-Eine Tabelle: **Zeilen = deine Monatsziele**, **Spalten = KWs**, plus
-**Pool-Spalte ganz rechts pro MZ**. Alles auf einer Seite, ein Blick.
+Die **Monatsseite** ist dein Plan-Canvas. Eine Tabelle, **Zeit fließt
+von links nach rechts**:
 
-**Was du siehst:**
-- Alle aktiven MZ untereinander, gruppiert nach **Strategie-Ziel**
-  (Header in Ziel-Farbe).
-- Pro KW-Zelle: die Wochenziel-Slots dieses MZ in dieser Woche
-  (orange = aktiv, grün ✓ = done, rot ⚠ = verfehlt).
-- Heute-KW blau hinterlegt, vergangene KW gegraut.
-- Pool rechts: alle ungeplanten Wochenziele für dieses MZ +
-  Eingabefeld zum schnellen Anlegen.
-- **Footer Slots/KW**: zeigt Auslastung (grau/blau/amber/rot ab 3/3).
-- **Alarm-Outline (amber)** auf MZ-Zeilen ohne Pool & ohne KW-Slots —
-  „leer — plan!". Macht unversorgte MZ sichtbar.
+```
+[Pool] · [KW17] [KW18] [KW19] [KW20] [🏁 KW21 = MZ-Deadline]
+   ↑       ↑      ↑      ↑      ↑          ↑
+Vorrat  vorbei  jetzt   plan   plan      Ziel sichtbar
+```
+
+**Spalten:** Pool ganz links, dann KW-Spalten ab Anfang des aktuellen
+Monats bis zur spätesten MZ-Deadline (mind. Monatsende-KW).
+
+**Zeilen:** alle aktiven MZ für die du verantwortlich bist, gruppiert
+nach **Strategie-Ziel** (farbiger Header). Sortierung nach Deadline-KW
+(kürzeste Horizonte oben).
+
+**Der MZ-Marker ist der rechte Endpunkt der Zeile** — eine 🏁-Karte in
+der Deadline-KW mit Datum, Titel und Ziel-Farbe. Zellen *nach* der
+Deadline sind unsichtbare Platzhalter — die Zeile endet visuell beim
+Ziel.
+
+**Auto-Deadline:** MZ ohne Datum → automatisch Monatsende des
+aktuellen Monats (Marker zeigt „auto" als Hinweis). Das Datum wird
+fest gespeichert, sobald du den Marker zum ersten Mal in eine andere
+KW ziehst.
+
+**Spätere Monate sichtbar:** MZ mit Deadline in Juni erscheint trotzdem
+auf der Mai-Seite — Marker hat dann ein Monats-Badge („🗓 Jun"), Zeile
+ist entsprechend länger.
 
 **Drag&Drop überall:**
 - **Pool → KW**: ins erste freie Big3-Slot. Pool-Eintrag verschwindet.
 - **KW → Pool**: Slot leer, Aufgaben lösen sich vom Slot, bleiben am MZ.
 - **KW → andere KW**: Slot wandert mit Aufgaben (Wochenziel-Move).
-- **Aus vergangener KW ziehen** = implizites *„Neu formulieren"*
-  (Verfehlt-Review-Geste). Confirm-Dialog erinnert: *„Aufgaben ziehen
-  mit."*
+- **MZ-Marker → andere KW**: Deadline ändern. Bei Monats-Sprung
+  (z.B. Mai → Juni) Confirm-Dialog.
+- **Aus vergangener KW ziehen** (Wochenziel) = implizites *„Neu
+  formulieren"* (Verfehlt-Review-Geste). Confirm: „Aufgaben ziehen mit."
 - **Limit pro KW**: drei Big3-Slots. Vierter Drop wird abgelehnt.
 
-**Klick auf MZ-Name** öffnet das Detail/Edit-Modal (Datum, Titel,
-Verantwortlich etc.).
+**Visuelle Signale:**
+- Heute-KW blau hinterlegt, vergangene KW gegraut.
+- Deadline-KW eines MZ in Ziel-Farbe gedimmt (siehst sofort: hier ist
+  der Endpunkt).
+- **Alarm-Outline (amber)** auf MZ-Marker ohne Pool & ohne KW-Slots
+  („leer — plan ⬅"). Macht unversorgte MZ visuell unausweichlich.
+- **Footer Slots/KW**: Auslastung (grau/blau/amber/rot ab 3/3).
 
-**Mental Model:** Pool = Vorrat, KW-Zelle = Commitment, Drag = Bewegung
-zwischen Zuständen. Eine Geste, drei Bedeutungen je nach Richtung
-(committen / parken / verschieben).
+**Klick auf MZ-Marker** öffnet das Detail/Edit-Modal (Titel, Datum,
+Verantwortlich, Vertraulich etc.).
 
-> Der frühere „Monats-Check-in" mit *Liegst du richtig?* ist
-> entfallen — die Matrix beantwortet die Frage **visuell**: leere
-> MZ-Zeilen schreien, volle KWs schreien.
+**Mental Model:** Pool = Vorrat, KW-Zelle = Commitment, MZ-Marker =
+Ziel-Endpunkt. Drag von links nach rechts = brainstormen → committen →
+ans Ziel. Drag des MZ-Markers = Reschedule.
+
+> Der frühere „Monats-Check-in" mit *Liegst du richtig?* ist entfallen
+> — die Matrix beantwortet die Frage **visuell**: leere MZ-Marker
+> schreien, volle KWs schreien.
 
 **Fallback:** der `openMZWochenplaner`-Modal aus v184 bleibt verfügbar
-(z.B. via 📅-Icon in der Ziele-Übersicht), falls du den Single-MZ-Fokus
+(via 📅-Icon in der Ziele-Übersicht), falls du den Single-MZ-Fokus
 brauchst.
 
 ### ⚠ Verfehlt-Review (Outcome-Monatsziele)

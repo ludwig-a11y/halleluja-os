@@ -1236,8 +1236,14 @@ async function _mzpDrop(e,zone){
   // Parse src + dst
   const sp=src.split('|');
   const dp=dst.split('|');
-  // Track active MZ to re-open modal after drop
-  // Wir lesen tzId aus dem ersten Pool-Eintrag oder aus einem KW-Slot via wrId/slot
+  // v186: MZ-Marker-Reschedule (Drag des MZ-Markers in eine andere KW)
+  if(sp[0]==='mz'&&dp[0]==='kw'){
+    await _mzReschedule(sp[1],parseInt(dp[2],10),parseInt(dp[3],10));
+    return;
+  }
+  // v186: MZ-Marker → Pool: ignorieren (kein semantisches Pendant)
+  if(sp[0]==='mz')return;
+  // Track active MZ to re-open Wochenplaner-Modal after drop (nur wenn Modal offen war)
   let tzId=null;
   if(sp[0]==='pool'){const p=(S.wochenzielPool||[]).find(x=>x.id===sp[1]);if(p)tzId=p.teilzielId;}
   else if(sp[0]==='kw'){const w=(S.wochenresets||[]).find(x=>x.id===sp[1]);if(w)tzId=w['big3_'+sp[2]+'_tz_id'];}
@@ -1248,8 +1254,37 @@ async function _mzpDrop(e,zone){
   } else if(sp[0]==='kw'&&dp[0]==='pool'){
     await _mzPlanerDrop('kw',{wrId:sp[1],slot:parseInt(sp[2],10)},'pool',{});
   }
-  // Re-Open Modal mit gleichem tzId
-  if(tzId)setTimeout(()=>openMZWochenplaner(tzId),50);
+  // Re-Open Modal NUR wenn der Wochenplaner-Modal aktiv ist (in der Matrix-View kein Re-Open).
+  const modalOpen=document.getElementById('ovl')?.classList.contains('open');
+  if(tzId&&modalOpen)setTimeout(()=>openMZWochenplaner(tzId),50);
+}
+// v186: MZ-Marker in andere KW droppen → Deadline updaten (Sonntag der Ziel-KW).
+// Confirm-Dialog bei Monats-Sprung. Ziel-KW = neue Deadline-KW.
+async function _mzReschedule(tzId,kw,jahr){
+  const tz=_tzById(tzId);if(!tz)return;
+  // Sonntag der Ziel-KW als neues Datum (= "bis Ende dieser Woche")
+  const monday=dateOfKwMonday(jahr,kw);
+  const sunday=new Date(monday);sunday.setUTCDate(sunday.getUTCDate()+6);
+  const newDatum=sunday.toISOString().slice(0,10);
+  // Aktuelles effektives Datum (für Vergleich)
+  const altDatum=tz.datum||(function(){
+    const j=new Date();const last=new Date(j.getFullYear(),j.getMonth()+1,0);
+    return last.toISOString().slice(0,10);
+  })();
+  if(newDatum===altDatum)return; // nichts zu tun
+  // Monats-Sprung-Confirm
+  const altMonat=altDatum.slice(0,7);
+  const neuMonat=newDatum.slice(0,7);
+  if(altMonat!==neuMonat){
+    const monNamen=['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
+    const neuMonName=monNamen[parseInt(neuMonat.slice(5,7),10)-1];
+    if(!confirm('Monatsziel "'+tz.name+'" in '+neuMonName+' verschieben (neue Deadline: '+newDatum.slice(8)+'.'+newDatum.slice(5,7)+'.)?'))return;
+  }
+  // Update in-memory + DB
+  tz.datum=newDatum;
+  await dbPatch('teilziele',tzId,{datum:newDatum}).catch(()=>{});
+  toast('🏁 Deadline → '+newDatum.slice(8)+'.'+newDatum.slice(5,7)+'.');
+  render();
 }
 // Reihenfolge der Monatsziele in einer Zielkarte tauschen (Pfeile ↑↓).
 async function moveTzInZielkarte(zielId,tzId,dir){
@@ -8999,40 +9034,57 @@ function rMonat(){
       +'</div>';
     // Review-Chronik trotzdem rendern (siehe unten)
   } else {
-    // ── MATRIX ──
-    // Globales KW-Fenster: Union aller kwListeFurMZ → eindeutig sortierte KWs.
-    const kwMap=new Map();
-    alleTZ.forEach(tz=>{
-      kwListeFurMZ(tz).forEach(k=>{
-        const key=k.jahr*100+k.kw;
-        if(!kwMap.has(key))kwMap.set(key,k);
-      });
-    });
-    const kws=Array.from(kwMap.values()).sort((a,b)=>(a.jahr*100+a.kw)-(b.jahr*100+b.kw));
+    // ── v186: TIME-FLOWS-RIGHT MATRIX ──
+    // Pool ganz links · KW-Spalten · MZ-Marker als Endpunkt in Deadline-KW.
+    // Zeilen unterschiedlich lang: enden in Deadline-KW (Spalten danach = unsichtbarer Platzhalter).
+    const monNamen=['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
 
-    // Gruppierung nach Ziel (Strategie-Header — Variante A, ohne Quartal-Layer da nicht im Datenmodell)
+    // Effektive Deadline pro MZ (datum oder Monatsende des aktuellen Monats wenn null)
+    const monthEnd=new Date(jetzt.getFullYear(),jetzt.getMonth()+1,0);
+    const monthEndISO=monthEnd.toISOString().slice(0,10);
+    alleTZ.forEach(tz=>{
+      tz._effDatum=tz.datum||monthEndISO;
+      tz._effKw=kwAusDatum(tz._effDatum);
+      tz._effKwKey=tz._effKw.jahr*100+tz._effKw.kw;
+    });
+
+    // Globales KW-Fenster: vom Anfang des aktuellen Monats bis zur spätesten MZ-Deadline-KW (mind. Monatsende-KW)
+    const monthStart=new Date(jetzt.getFullYear(),jetzt.getMonth(),1);
+    const monthStartKw=getKwFromDate(monthStart);
+    const monthEndKw=getKwFromDate(monthEnd);
+    let endKwKey=monthEndKw.jahr*100+monthEndKw.kw;
+    alleTZ.forEach(tz=>{if(tz._effKwKey>endKwKey)endKwKey=tz._effKwKey;});
+    const startMonday=dateOfKwMonday(monthStartKw.jahr,monthStartKw.kw);
+    const endYear=Math.floor(endKwKey/100),endNum=endKwKey%100;
+    const endSunday=new Date(dateOfKwMonday(endYear,endNum));endSunday.setUTCDate(endSunday.getUTCDate()+6);
+    const kws=kwListe(startMonday,endSunday);
+
+    // Sortierung der MZ: nach Deadline-KW aufsteigend (kürzeste Horizonte zuerst — fühlt sich „dringlich oben" an)
+    alleTZ.sort((a,b)=>a._effKwKey-b._effKwKey);
+
+    // Gruppierung nach Ziel
     const byZiel=new Map();
     alleTZ.forEach(tz=>{
       if(!byZiel.has(tz.ziel.id))byZiel.set(tz.ziel.id,{ziel:tz.ziel,f:tz.f,mzs:[]});
       byZiel.get(tz.ziel.id).mzs.push(tz);
     });
 
-    // Slot-Auslastung pro KW (alle Slots, nicht nur dieses MZ)
+    // Slot-Auslastung pro KW (alle MZs)
     const kwLoad=new Map();
     kws.forEach(k=>{
       const wr=findOrCreateWrFor(aP,k.kw,k.jahr);
       kwLoad.set(k.jahr*100+k.kw,wr?[1,2,3].filter(n=>wr['big3_'+n]).length:0);
     });
 
-    const COL_MZ=220,COL_KW=140,COL_POOL=170,GAP=6;
-    const totalW=COL_MZ+(COL_KW+GAP)*kws.length+COL_POOL+GAP;
+    const COL_POOL=160,COL_KW=140,GAP=6;
+    const totalW=COL_POOL+(COL_KW+GAP)*kws.length+GAP;
 
     out+='<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -4px;padding:0 4px 4px">';
     out+='<div style="min-width:'+totalW+'px">';
 
-    // Header-Zeile
+    // ── Header-Zeile (Pool · KWs) ──
     out+='<div style="display:flex;gap:'+GAP+'px;align-items:flex-end;padding:0 0 8px 0">';
-    out+='<div style="width:'+COL_MZ+'px;flex-shrink:0;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);padding:4px 8px">Monatsziel</div>';
+    out+='<div style="width:'+COL_POOL+'px;flex-shrink:0;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);padding:4px 8px;text-align:center">📥 Pool</div>';
     kws.forEach(k=>{
       const isToday=(k.jahr===todayK.jahr&&k.kw===todayK.kw);
       const isPast=(k.jahr*100+k.kw)<(todayK.jahr*100+todayK.kw);
@@ -9045,61 +9097,86 @@ function rMonat(){
       out+='<div style="font-size:9px;color:var(--t3);margin-top:1px">ab '+monLbl+'</div>';
       out+='</div>';
     });
-    out+='<div style="width:'+COL_POOL+'px;flex-shrink:0;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);padding:4px 8px;text-align:center">📥 Pool</div>';
     out+='</div>';
 
-    // Body — pro Ziel-Gruppe
+    // ── Body pro Ziel-Gruppe ──
     byZiel.forEach(group=>{
       const z=group.ziel,f=group.f;
-      // Strategie-Header (Ziel-Name)
+      // Strategie-Header
       out+='<div style="display:flex;align-items:center;gap:8px;padding:10px 4px 6px 4px;margin-top:4px">';
       out+='<span style="width:8px;height:8px;border-radius:50%;background:'+f.tc+';flex-shrink:0"></span>';
       out+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:'+f.tc+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:600px">'+esc(z.name)+'</div>';
       out+='<div style="flex:1;height:1px;background:'+f.bd+';opacity:.5"></div>';
       out+='</div>';
 
-      // MZ-Zeilen
       group.mzs.forEach(tz=>{
         const tzPool=poolFor(tz.id);
         const isFell=fellig(tz);
-        const noPool=tzPool.length===0;
-        const noKW=!kws.some(k=>{
+        const hasAnyKWSlot=kws.some(k=>{
           const wr=findOrCreateWrFor(aP,k.kw,k.jahr);
           return wr&&[1,2,3].some(n=>String(wr['big3_'+n+'_tz_id'])===String(tz.id));
         });
-        const isAlarm=noPool&&noKW;
-        const rowBorder=isFell?'var(--red-bd)':(isAlarm?'var(--amber-bd)':'var(--bd)');
-        const d2d=daysUntil(tz.datum);
+        const isAlarm=tzPool.length===0&&!hasAnyKWSlot;
+        const d2d=daysUntil(tz._effDatum);
+        const effKwKey=tz._effKwKey;
+        const sameMonth=tz._effDatum.slice(0,7)===monthEndISO.slice(0,7);
 
         out+='<div style="display:flex;gap:'+GAP+'px;align-items:stretch;margin-bottom:'+GAP+'px">';
 
-        // MZ-Name-Zelle (klickbar → Edit/Detail)
-        out+='<div onclick="openMonatszielDetail(\''+tz.id+'\')" style="width:'+COL_MZ+'px;flex-shrink:0;background:var(--sf);border:1.5px solid '+rowBorder+';border-left:4px solid '+f.tc+';border-radius:8px;padding:10px 12px;cursor:pointer" onmouseenter="this.style.opacity=\'.85\'" onmouseleave="this.style.opacity=\'1\'">';
-        out+='<div style="font-size:13px;font-weight:700;color:var(--text);line-height:1.3;margin-bottom:5px">'+esc(tz.name)+'</div>';
-        const badges=[];
-        if(tz.datum){
-          const lbl=d2d<0?'⚠ '+Math.abs(d2d)+'d über':d2d===0?'heute fällig':d2d===1?'morgen':'in '+d2d+'d';
-          const col=d2d<0?'var(--red)':d2d<=3?'var(--amber)':'var(--t3)';
-          badges.push('<span style="font-size:10px;color:'+col+';font-weight:600">'+tzDatum(tz)+' · '+lbl+'</span>');
-        }
-        if(isAlarm)badges.push('<span style="font-size:9px;font-weight:700;color:var(--amber);background:var(--amber-bg);padding:1px 7px;border-radius:99px;border:1px solid var(--amber-bd)">leer — plan!</span>');
-        if(isFell)badges.push('<span style="font-size:9px;font-weight:700;color:var(--red);background:var(--red-bg);padding:1px 7px;border-radius:99px;border:1px solid var(--red-bd)">Review fällig</span>');
-        if(badges.length)out+='<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">'+badges.join('')+'</div>';
+        // ── Pool-Zelle (LINKS) ──
+        const poolBorder=isAlarm?'var(--amber-bd)':'var(--bd)';
+        out+='<div data-mzp-zone="pool" data-mzp-poolfor="'+tz.id+'" style="width:'+COL_POOL+'px;flex-shrink:0;background:var(--gray-bg);border:1.5px dashed '+poolBorder+';border-radius:8px;padding:5px;min-height:64px;display:flex;flex-direction:column;gap:3px" ondragover="_mzpDragOver(event,this)" ondragleave="_mzpDragLeave(this)" ondrop="_mzpDrop(event,this)">';
+        tzPool.forEach(p=>{
+          out+='<div data-mzp-src="pool|'+p.id+'" draggable="true" ondragstart="_mzpDragStart(event,this)" ondragend="_mzpDragEnd(this)" style="display:flex;align-items:center;gap:4px;padding:5px 7px;background:var(--sf);border:1px solid var(--bd);border-radius:6px;cursor:grab">';
+          out+='<span style="flex:1;font-size:11px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(p.titel)+'</span>';
+          out+='<button onclick="event.stopPropagation();_mmPoolDelete(\''+p.id+'\')" title="Löschen" style="background:transparent;border:none;color:var(--t3);cursor:pointer;font-size:12px;padding:0 3px;line-height:1">×</button>';
+          out+='</div>';
+        });
+        const inpId='mmpool-'+tz.id;
+        out+='<input id="'+inpId+'" placeholder="+ Wochenziel" style="width:100%;font-size:11px;padding:5px 7px;border:1px solid var(--bd);border-radius:6px;background:var(--sf);color:var(--text);font-family:inherit;margin-top:auto" onkeydown="if(event.key===\'Enter\'){event.preventDefault();_mmAddPool(\''+tz.id+'\',\''+inpId+'\')}">';
         out+='</div>';
 
-        // KW-Zellen
+        // ── KW-Zellen (bis Deadline) + MZ-Marker in Deadline-KW + leere Platzhalter danach ──
         kws.forEach(k=>{
+          const kwKey=k.jahr*100+k.kw;
+          const isAfter=kwKey>effKwKey;
+          if(isAfter){
+            // Unsichtbarer Platzhalter — hält das Grid aligned, ohne visuell Lärm zu machen
+            out+='<div style="width:'+COL_KW+'px;flex-shrink:0;visibility:hidden"></div>';
+            return;
+          }
+          const isDeadline=kwKey===effKwKey;
           const wr=findOrCreateWrFor(aP,k.kw,k.jahr);
           const isToday=(k.jahr===todayK.jahr&&k.kw===todayK.kw);
-          const isPast=(k.jahr*100+k.kw)<(todayK.jahr*100+todayK.kw);
-          const cellBg=isToday?'var(--blue-bg)':(isPast?'var(--gray-bg)':'var(--sf)');
-          const cellBorder=isToday?'1.5px solid var(--blue-bd)':(isPast?'1px solid var(--bd)':'1px dashed var(--bd)');
-          out+='<div data-mzp-zone="kw|'+(wr?wr.id:'')+'|'+k.kw+'|'+k.jahr+'" style="width:'+COL_KW+'px;flex-shrink:0;background:'+cellBg+';border:'+cellBorder+';border-radius:8px;padding:5px;min-height:64px" ondragover="_mzpDragOver(event,this)" ondragleave="_mzpDragLeave(this)" ondrop="_mzpDrop(event,this)">';
+          const isPast=kwKey<(todayK.jahr*100+todayK.kw);
+          // Hintergrund: Deadline-KW = MZ-Farbe gedimmt; sonst normal
+          const cellBg=isDeadline?(f.bg||'var(--sf)'):(isToday?'var(--blue-bg)':(isPast?'var(--gray-bg)':'var(--sf)'));
+          const cellBorder=isDeadline?('1.5px solid '+(isAlarm?'var(--amber-bd)':isFell?'var(--red-bd)':f.bd)):(isToday?'1.5px solid var(--blue-bd)':(isPast?'1px solid var(--bd)':'1px dashed var(--bd)'));
+          out+='<div data-mzp-zone="kw|'+(wr?wr.id:'')+'|'+k.kw+'|'+k.jahr+'" style="width:'+COL_KW+'px;flex-shrink:0;background:'+cellBg+';border:'+cellBorder+';border-radius:8px;padding:5px;min-height:64px;display:flex;flex-direction:column" ondragover="_mzpDragOver(event,this)" ondragleave="_mzpDragLeave(this)" ondrop="_mzpDrop(event,this)">';
+
+          // MZ-Marker oben in Deadline-KW
+          if(isDeadline){
+            const dlLbl=tz._effDatum.slice(8,10)+'.'+tz._effDatum.slice(5,7)+'.';
+            const dlMonth=parseInt(tz._effDatum.slice(5,7),10);
+            const showMonthBadge=dlMonth!==jetzt.getMonth()+1;
+            const monthBadge=showMonthBadge?'<span style="font-size:8px;font-weight:700;color:#fff;background:'+f.tc+';padding:1px 5px;border-radius:99px;margin-left:auto">🗓 '+monNamen[dlMonth-1].slice(0,3)+'</span>':'';
+            const dueColor=d2d<0?'var(--red)':d2d<=3?'var(--amber)':f.tc;
+            const dueLbl=d2d<0?'⚠ '+Math.abs(d2d)+'d über':d2d===0?'heute':d2d===1?'morgen':'in '+d2d+'d';
+            const autoFlag=!tz.datum?'<span style="font-size:8px;color:var(--t3);font-style:italic" title="Auto-Deadline = Monatsende">auto</span>':'';
+            out+='<div data-mzp-src="mz|'+tz.id+'" draggable="true" ondragstart="_mzpDragStart(event,this)" ondragend="_mzpDragEnd(this)" onclick="event.stopPropagation();openMonatszielDetail(\''+tz.id+'\')" style="background:var(--sf);border:1.5px solid '+f.bd+';border-left:3px solid '+f.tc+';border-radius:6px;padding:6px 8px;margin-bottom:5px;cursor:grab" title="Drag in andere KW → Deadline ändern · Klick → Bearbeiten">';
+            out+='<div style="display:flex;align-items:center;gap:4px;margin-bottom:2px"><span style="font-size:10px">🏁</span><span style="font-size:9px;font-weight:700;color:'+dueColor+';text-transform:uppercase;letter-spacing:.3px">'+dlLbl+' · '+dueLbl+'</span>'+autoFlag+monthBadge+'</div>';
+            out+='<div style="font-size:11px;font-weight:700;color:var(--text);line-height:1.25;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">'+esc(tz.name)+'</div>';
+            if(isAlarm)out+='<div style="font-size:9px;font-weight:700;color:var(--amber);margin-top:3px">leer — plan ⬅</div>';
+            else if(isFell)out+='<div style="font-size:9px;font-weight:700;color:var(--red);margin-top:3px">Review fällig</div>';
+            out+='</div>';
+          }
+
+          // Big3-Slots dieses MZ in dieser KW
           let any=false;
           if(wr){
             [1,2,3].forEach(slot=>{
               const t=wr['big3_'+slot];if(!t)return;
-              if(String(wr['big3_'+slot+'_tz_id'])!==String(tz.id))return; // nur Slots die zu DIESEM MZ gehören
+              if(String(wr['big3_'+slot+'_tz_id'])!==String(tz.id))return;
               any=true;
               const verfehlt=wochenzielIstVerfehlt(wr,slot);
               const done=!!wr['big3_'+slot+'_done'];
@@ -9112,35 +9189,22 @@ function rMonat(){
               out+='</div>';
             });
           }
-          if(!any)out+='<div style="font-size:10px;color:var(--t3);text-align:center;padding:18px 0;font-style:italic">—</div>';
+          if(!any&&!isDeadline)out+='<div style="font-size:10px;color:var(--t3);text-align:center;padding:18px 0;font-style:italic;flex:1">—</div>';
           out+='</div>';
         });
-
-        // Pool-Zelle (rechts pro MZ-Zeile)
-        out+='<div data-mzp-zone="pool" data-mzp-poolfor="'+tz.id+'" style="width:'+COL_POOL+'px;flex-shrink:0;background:var(--gray-bg);border:1.5px dashed '+(isAlarm?'var(--amber-bd)':'var(--bd)')+';border-radius:8px;padding:5px;min-height:64px;display:flex;flex-direction:column;gap:3px" ondragover="_mzpDragOver(event,this)" ondragleave="_mzpDragLeave(this)" ondrop="_mzpDrop(event,this)">';
-        tzPool.forEach(p=>{
-          out+='<div data-mzp-src="pool|'+p.id+'" draggable="true" ondragstart="_mzpDragStart(event,this)" ondragend="_mzpDragEnd(this)" style="display:flex;align-items:center;gap:4px;padding:5px 7px;background:var(--sf);border:1px solid var(--bd);border-radius:6px;cursor:grab">';
-          out+='<span style="flex:1;font-size:11px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(p.titel)+'</span>';
-          out+='<button onclick="event.stopPropagation();_mmPoolDelete(\''+p.id+'\')" title="Löschen" style="background:transparent;border:none;color:var(--t3);cursor:pointer;font-size:12px;padding:0 3px;line-height:1">×</button>';
-          out+='</div>';
-        });
-        const inpId='mmpool-'+tz.id;
-        out+='<input id="'+inpId+'" placeholder="+ Wochenziel" style="width:100%;font-size:11px;padding:5px 7px;border:1px solid var(--bd);border-radius:6px;background:var(--sf);color:var(--text);font-family:inherit;margin-top:auto" onkeydown="if(event.key===\'Enter\'){event.preventDefault();_mmAddPool(\''+tz.id+'\',\''+inpId+'\')}">';
-        out+='</div>';
 
         out+='</div>'; // row close
       });
     });
 
-    // Footer: Slots/KW
+    // ── Footer: Slots/KW ──
     out+='<div style="display:flex;gap:'+GAP+'px;align-items:center;padding:10px 0 4px 0;margin-top:4px;border-top:1px solid var(--bd)">';
-    out+='<div style="width:'+COL_MZ+'px;flex-shrink:0;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);padding:0 8px">Slots/KW</div>';
+    out+='<div style="width:'+COL_POOL+'px;flex-shrink:0;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);padding:0 8px;text-align:center">Slots/KW</div>';
     kws.forEach(k=>{
       const used=kwLoad.get(k.jahr*100+k.kw)||0;
       const col=used>=3?'var(--red)':used===2?'var(--amber)':used===1?'var(--blue)':'var(--t3)';
       out+='<div style="width:'+COL_KW+'px;flex-shrink:0;text-align:center;font-size:11px;font-weight:700;color:'+col+'">'+used+'/3</div>';
     });
-    out+='<div style="width:'+COL_POOL+'px;flex-shrink:0"></div>';
     out+='</div>';
 
     out+='</div>'; // matrix-inner
