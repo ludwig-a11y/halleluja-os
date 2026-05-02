@@ -1018,7 +1018,7 @@ async function loadData(){
   S.ziele=(ziele||[]).map(z=>({
     ...z,verantwortlichId:z.verantwortlich_id,
     kpis:(kpis||[]).filter(k=>k.ziel_id===z.id).map(k=>({...k,zielId:k.ziel_id,teilzielId:k.teilziel_id||null,prio:k.prio||null})),
-    teilziele:(teilziele||[]).filter(t=>t.ziel_id===z.id).map(t=>({...t,zielId:t.ziel_id,verantwortlichId:t.verantwortlich_id,datum:t.datum||'',status:t.status||'aktiv',metrik:t.metrik||null,zielWert:t.zielwert||null,sortIndex:t.sort_index??null}))
+    teilziele:(teilziele||[]).filter(t=>t.ziel_id===z.id).map(t=>({...t,zielId:t.ziel_id,verantwortlichId:t.verantwortlich_id,datum:t.datum||'',status:t.status||'aktiv',metrik:t.metrik||null,zielWert:t.zielwert||null,sortIndex:t.sort_index??null,leadingFreq:t.leading_freq||'daily',leadingCount:t.leading_count??null}))
   }));
   S.aufgaben=(aufgaben||[]).map(normalizeAufgabe);
   // Auto-reassign: @mention in Titel → Person zuweisen
@@ -2418,6 +2418,26 @@ function taskIsArchived(a){return taskMsStatus(a)==='archiviert';}
 function msInputs(tzId){return(S.monatszielInputs||[]).filter(i=>String(i.teilzielId)===String(tzId));}
 function msCount(tzId){return msInputs(tzId).length;}
 function msInputsToday(tzId){return msInputs(tzId).filter(i=>i.datum===TODAY);}
+// v182: Frequenz-bezogene Counts für Leading-Indicators (Ovens-Way).
+function msInputsThisWeek(tzId){
+  const{monday,sunday}=getWeekRange();
+  return msInputs(tzId).filter(i=>i.datum>=monday&&i.datum<=sunday);
+}
+function msInputsThisMonth(tzId){
+  const ym=TODAY.slice(0,7);
+  return msInputs(tzId).filter(i=>(i.datum||'').startsWith(ym));
+}
+// Leading-Aggregation je nach Frequenz: liefert {ist, ziel, label}
+function msLeadingFor(tz){
+  if(!tz||!tz.metrik)return null;
+  const freq=tz.leadingFreq||'daily';
+  const ziel=tz.leadingCount??null;
+  let ist=0,scopeLbl='';
+  if(freq==='daily'){ist=msInputsToday(tz.id).length;scopeLbl='heute';}
+  else if(freq==='weekly'){ist=msInputsThisWeek(tz.id).length;scopeLbl='diese Woche';}
+  else{ist=msInputsThisMonth(tz.id).length;scopeLbl='dieser Monat';}
+  return{ist,ziel,scopeLbl,freq};
+}
 function msStreak(tzId){
   const set={};
   msInputs(tzId).forEach(i=>{if(i.datum)set[i.datum]=true;});
@@ -6103,6 +6123,44 @@ function rWoche(){
   const myA=S.aufgaben.filter(a=>String(a.pid)===String(aP)&&canSee(a));
   let out='<div style="display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:20px"><div style="font-size:16px;font-weight:700">Meine Woche · KW '+kw+'</div><div style="display:flex;align-items:center;gap:8px"><button onclick="openFokusCoach(\'woche\')" class="btn" style="font-size:12px;border:1px solid var(--bd);background:var(--sf);color:var(--t2)">🎯 Fokus</button>'+momentumRingHtml(aP)+'</div></div>';
 
+  // ── v182 (Ovens): Weekly-Leading-Block ──
+  // Zeigt eigene aktive Weekly-Leadings mit Wochen-Count + Klick-Button.
+  {
+    const _weeklyLeads=[];
+    for(const _z of (S.ziele||[])){
+      if(['bereich','vorschlag','archiviert'].includes(_z.status))continue;
+      for(const _t of (_z.teilziele||[])){
+        if(!_t.metrik)continue;
+        if(_t.erledigt)continue;
+        if((_t.status||'aktiv')!=='aktiv')continue;
+        if(String(_t.verantwortlichId)!==String(aP))continue;
+        if(_t.leadingFreq!=='weekly')continue;
+        _weeklyLeads.push({z:_z,t:_t});
+      }
+    }
+    _weeklyLeads.forEach(({z,t})=>{
+      const _weekN=msInputsThisWeek(t.id).length;
+      const _verb=esc(t.metrik);
+      const _weekTarget=t.leadingCount||null;
+      const _hitWeek=_weekTarget?_weekN>=_weekTarget:_weekN>0;
+      out+='<div style="background:var(--sf);border:1px solid '+(_hitWeek?'var(--green-bd)':'var(--bd)')+';border-radius:14px;padding:14px 16px;margin-bottom:10px">';
+      out+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">';
+      out+='<div style="font-size:10px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:'+(_hitWeek?'var(--green)':'var(--t3)')+'">🎯 Weekly-Leading'+(_hitWeek?' · ✓':'')+'</div>';
+      out+='<div style="font-size:10px;color:var(--t3);opacity:.7;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">· '+esc(z.name)+' › '+esc(t.name)+'</div>';
+      out+='</div>';
+      out+='<div style="display:flex;align-items:baseline;gap:20px;margin-bottom:12px;flex-wrap:wrap">';
+      out+='<div><div style="font-size:32px;font-weight:800;color:var(--text);line-height:1;font-variant-numeric:tabular-nums">'+_weekN+(_weekTarget?'<span style=\"font-size:16px;font-weight:600;color:var(--t3)\"> / '+_weekTarget+'</span>':'')+'</div><div style="font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.4px;margin-top:3px">'+_verb+' · KW '+kw+'</div></div>';
+      out+='</div>';
+      const _btnLbl=_weekN?'✓ '+_verb+' · nochmal':'▶ '+_verb;
+      const _btnBg=_hitWeek?'var(--green-bg)':(_weekN?'var(--bg)':'var(--text)');
+      const _btnCol=_hitWeek?'var(--green)':(_weekN?'var(--t2)':'var(--bg)');
+      const _btnBd=(_hitWeek||_weekN)?'1px solid var(--bd)':'none';
+      out+='<button onclick="msTapManual(\''+t.id+'\')" style="width:100%;padding:13px;border-radius:11px;background:'+_btnBg+';color:'+_btnCol+';border:'+_btnBd+';font-family:inherit;font-size:14px;font-weight:700;cursor:pointer">'+_btnLbl+'</button>';
+      if(_hitWeek)out+='<div style="font-size:10px;color:var(--green);text-align:center;margin-top:6px;font-weight:600">Wochenziel erreicht ✓</div>';
+      out+='</div>';
+    });
+  }
+
   // ── Rückblick-Ankündigung (Freitag ab 12:00 · Sa · So) ──
   if(isResetAnkuendigung()&&!dieseWocheReset(aP)){
     const n=new Date();
@@ -6798,12 +6856,10 @@ function rTag(){
     }
   }
 
-  // ── v174 §14: Leading-Indicator-Hero ──
-  // Eigenes, aktives Monatsziel mit Leading-Metrik. Fokus-Ziel hat Vorrang, sonst nach Deadline.
-  // Die Belohnung sitzt am Input, nicht am Outcome. Button ist die zentrale Handlung.
+  // ── v182 (Ovens): Daily-Leading-Block ──
+  // Zeigt ALLE eigenen aktiven Daily-Leadings. Belohnung am Input, nicht am Outcome.
   {
-    let _leadMS=null;
-    const _cands=[];
+    const _dailyLeads=[];
     for(const _z of (S.ziele||[])){
       if(['bereich','vorschlag','archiviert'].includes(_z.status))continue;
       for(const _t of (_z.teilziele||[])){
@@ -6811,40 +6867,43 @@ function rTag(){
         if(_t.erledigt)continue;
         if((_t.status||'aktiv')!=='aktiv')continue;
         if(String(_t.verantwortlichId)!==String(aP))continue;
-        _cands.push({z:_z,t:_t,focus:!!_z.focus});
+        if((_t.leadingFreq||'daily')!=='daily')continue;
+        _dailyLeads.push({z:_z,t:_t,focus:!!_z.focus});
       }
     }
-    _cands.sort((a,b)=>{
+    _dailyLeads.sort((a,b)=>{
       if(a.focus!==b.focus)return a.focus?-1:1;
       return (a.t.datum||'9999-12-31').localeCompare(b.t.datum||'9999-12-31');
     });
-    _leadMS=_cands[0]||null;
-    if(_leadMS){
-      const _tz=_leadMS.t;
-      const _count=msCount(_tz.id);
-      const _streak=msStreak(_tz.id);
-      const _todayN=msInputsToday(_tz.id).length;
-      const _verb=esc(_tz.metrik);
-      out+='<div class="fm-hide" style="background:var(--sf);border:1px solid var(--bd);border-radius:14px;padding:14px 16px;margin-bottom:14px">';
+    _dailyLeads.forEach(({z,t})=>{
+      const _todayN=msInputsToday(t.id).length;
+      const _monthN=msInputsThisMonth(t.id).length;
+      const _streak=msStreak(t.id);
+      const _verb=esc(t.metrik);
+      const _dailyTarget=t.leadingCount||null;
+      const _monthTarget=t.zielWert||null;
+      const _hitToday=_dailyTarget?_todayN>=_dailyTarget:_todayN>0;
+      out+='<div class="fm-hide" style="background:var(--sf);border:1px solid '+(_hitToday?'var(--green-bd)':'var(--bd)')+';border-radius:14px;padding:14px 16px;margin-bottom:10px">';
       out+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">';
-      out+='<div style="font-size:10px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--t3)">🎯 Leading</div>';
-      out+='<div style="font-size:10px;color:var(--t3);opacity:.7;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">· '+esc(_leadMS.z.name)+' › '+esc(_tz.name)+'</div>';
+      out+='<div style="font-size:10px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:'+(_hitToday?'var(--green)':'var(--t3)')+'">🎯 Leading'+(_hitToday?' · ✓':'')+'</div>';
+      out+='<div style="font-size:10px;color:var(--t3);opacity:.7;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">· '+esc(z.name)+' › '+esc(t.name)+'</div>';
       out+='</div>';
       out+='<div style="display:flex;align-items:baseline;gap:20px;margin-bottom:12px;flex-wrap:wrap">';
-      out+='<div><div style="font-size:32px;font-weight:800;color:var(--text);line-height:1;font-variant-numeric:tabular-nums">'+_count+(_tz.zielWert?'<span style=\"font-size:16px;font-weight:600;color:var(--t3)\"> / '+_tz.zielWert+'</span>':'')+'</div><div style="font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.4px;margin-top:3px">'+_verb+'</div></div>';
-      if(_streak>=2){
-        out+='<div><div style="font-size:22px;font-weight:700;color:var(--orange);line-height:1;font-variant-numeric:tabular-nums">🔥 '+_streak+'</div><div style="font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.4px;margin-top:3px">Tage in Folge</div></div>';
-      }
+      // Big-Number: heute (gegen Tagesziel)
+      out+='<div><div style="font-size:32px;font-weight:800;color:var(--text);line-height:1;font-variant-numeric:tabular-nums">'+_todayN+(_dailyTarget?'<span style=\"font-size:16px;font-weight:600;color:var(--t3)\"> / '+_dailyTarget+'</span>':'')+'</div><div style="font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.4px;margin-top:3px">'+_verb+' · heute</div></div>';
+      // Monats-Aggregation als Sekundär-Stat
+      if(_monthTarget)out+='<div><div style="font-size:18px;font-weight:700;color:var(--t2);line-height:1;font-variant-numeric:tabular-nums">'+_monthN+' / '+_monthTarget+'</div><div style="font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.4px;margin-top:3px">Monats-Anker</div></div>';
+      if(_streak>=2)out+='<div><div style="font-size:18px;font-weight:700;color:var(--orange);line-height:1;font-variant-numeric:tabular-nums">🔥 '+_streak+'</div><div style="font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.4px;margin-top:3px">Tage in Folge</div></div>';
       out+='</div>';
-      // Button: primary wenn heute noch kein Input, dezent wenn schon ≥1
       const _btnLbl=_todayN?'✓ '+_verb+' · nochmal':'▶ '+_verb;
-      const _btnBg=_todayN?'var(--bg)':'var(--text)';
-      const _btnCol=_todayN?'var(--t2)':'var(--bg)';
-      const _btnBd=_todayN?'1px solid var(--bd)':'none';
-      out+='<button onclick="msTapManual(\''+_tz.id+'\')" style="width:100%;padding:13px;border-radius:11px;background:'+_btnBg+';color:'+_btnCol+';border:'+_btnBd+';font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;transition:transform .1s,background .15s" onmousedown="this.style.transform=\'scale(.98)\'" onmouseup="this.style.transform=\'scale(1)\'">'+_btnLbl+'</button>';
-      if(_todayN>=1)out+='<div style="font-size:10px;color:var(--t3);text-align:center;margin-top:6px">heute bereits '+_todayN+'× · Streak sicher</div>';
+      const _btnBg=_hitToday?'var(--green-bg)':(_todayN?'var(--bg)':'var(--text)');
+      const _btnCol=_hitToday?'var(--green)':(_todayN?'var(--t2)':'var(--bg)');
+      const _btnBd=(_hitToday||_todayN)?'1px solid var(--bd)':'none';
+      out+='<button onclick="msTapManual(\''+t.id+'\')" style="width:100%;padding:13px;border-radius:11px;background:'+_btnBg+';color:'+_btnCol+';border:'+_btnBd+';font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;transition:transform .1s,background .15s" onmousedown="this.style.transform=\'scale(.98)\'" onmouseup="this.style.transform=\'scale(1)\'">'+_btnLbl+'</button>';
+      if(_hitToday)out+='<div style="font-size:10px;color:var(--green);text-align:center;margin-top:6px;font-weight:600">Tagesziel erreicht · Streak sicher</div>';
+      else if(_todayN>=1)out+='<div style="font-size:10px;color:var(--t3);text-align:center;margin-top:6px">heute bereits '+_todayN+'× · weitermachen</div>';
       out+='</div>';
-    }
+    });
   }
 
   // ── Freitags-Paddel-Banner (ab 15 Uhr) ──
@@ -9932,9 +9991,16 @@ function editTZ(zid,tzid){
     +'<div class="fl"><label>Gehört zu</label><select id="tzz">'+zielOpts+'</select></div>'
     +'<div class="f2"><div class="fl"><label>Verantwortlich</label><select id="tzv">'+S.personen.map(p=>'<option value="'+p.id+'"'+(tz.verantwortlichId===p.id?' selected':'')+'>'+esc(p.name)+'</option>').join('')+'</select></div>'
     +'<div class="fl"><label>Bis wann</label><input type="date" id="tzd" value="'+(tz.datum||'')+'"></div></div>'
-    // v174.2 §14: Leading-Metrik + Anker am Edit-Modal (auch für Bestandsziele nachrüstbar).
-    +'<div class="fl"><label>Leading-Metrik (Verb) · optional</label><input id="tzmetrik" value="'+esc(tz.metrik||'')+'" placeholder="z.B. Call gemacht, Reinigung erledigt"></div>'
-    +'<div class="fl"><label>Anker (Anzahl, optional)</label><input id="tzzw" type="number" min="1" value="'+(tz.zielWert||'')+'" placeholder="z.B. 200"></div>'
+    // v182 (Ovens): Leading-Indicator mit Frequenz. Daily ist Default.
+    +'<div style="background:var(--blue-bg);border:1px solid var(--blue-bd);border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:11px;color:var(--text);line-height:1.5">🎯 <b>Leading-Indicator</b> = die <i>tägliche Aktion</i>, die das Ergebnis erzwingt. Eine Zahl, kontrollierbar, täglich klickbar.<br><span style="color:var(--t3)">Faustregel: <i>„Würde ich es heute nicht tun, müsste es aber diese Woche?"</i> — dann weekly. Sonst daily.</span></div>'
+    +'<div class="fl"><label>Leading-Aktion (Verb) · optional</label><input id="tzmetrik" value="'+esc(tz.metrik||'')+'" placeholder="z.B. Call gemacht, Outreach-Mail verschickt"></div>'
+    +'<div class="f2"><div class="fl"><label>Frequenz</label><select id="tzfreq">'
+      +'<option value="daily"'+((tz.leadingFreq||'daily')==='daily'?' selected':'')+'>Täglich</option>'
+      +'<option value="weekly"'+(tz.leadingFreq==='weekly'?' selected':'')+'>Wöchentlich</option>'
+      +'<option value="monthly"'+(tz.leadingFreq==='monthly'?' selected':'')+'>Monatlich</option>'
+      +'</select></div>'
+    +'<div class="fl"><label>Zielzahl pro Frequenz</label><input id="tzlcount" type="number" min="1" value="'+(tz.leadingCount||'')+'" placeholder="z.B. 30 (täglich)"></div></div>'
+    +'<div class="fl"><label>Monats-Anker (Aggregat, optional)</label><input id="tzzw" type="number" min="1" value="'+(tz.zielWert||'')+'" placeholder="z.B. 600 = 30 × 20 Arbeitstage"></div>'
     // v175 §14+: Status (Rekalibrierung). Pause = reversibel, Archiv = raus aus Views.
     +(canManageTZ(zid)?('<div class="fl"><label>Status</label><select id="tzstatus">'
       +'<option value="aktiv"'+((tz.status||'aktiv')==='aktiv'?' selected':'')+'>▶ Aktiv</option>'
@@ -9959,22 +10025,29 @@ async function saveTZ(zid,tzid){
   const zwRaw=zwEl?(zwEl.value||'').trim():'';
   const zielwert=zwRaw?parseInt(zwRaw,10):null;
   const zwFinal=Number.isFinite(zielwert)?zielwert:null;
+  // v182 (Ovens): Frequenz + Zielzahl pro Frequenz
+  const freqEl=document.getElementById('tzfreq');
+  const lcountEl=document.getElementById('tzlcount');
+  const leadingFreq=freqEl?freqEl.value:'daily';
+  const lcRaw=lcountEl?(lcountEl.value||'').trim():'';
+  const lcParsed=lcRaw?parseInt(lcRaw,10):null;
+  const leadingCount=Number.isFinite(lcParsed)?lcParsed:null;
   // v175: Status aus Selector (nur übernehmen wenn Feld existiert, sonst Bestand lassen)
   const statusEl=document.getElementById('tzstatus');
   const newStatus=statusEl?(statusEl.value||'aktiv'):null;
   if(tzid){
     const tz=(z.teilziele||[]).find(t=>t.id===tzid);
-    if(tz){tz.name=name;tz.verantwortlichId=vid;tz.datum=datum;tz.vertraulich=vertraulich;tz.zielId=newZid;tz.metrik=metrik;tz.zielWert=zwFinal;if(newStatus)tz.status=newStatus;}
+    if(tz){tz.name=name;tz.verantwortlichId=vid;tz.datum=datum;tz.vertraulich=vertraulich;tz.zielId=newZid;tz.metrik=metrik;tz.zielWert=zwFinal;tz.leadingFreq=leadingFreq;tz.leadingCount=leadingCount;if(newStatus)tz.status=newStatus;}
     if(newZid!==zid){
       z.teilziele=(z.teilziele||[]).filter(t=>t.id!==tzid);
       const nz=zielObj(newZid);if(nz){nz.teilziele=nz.teilziele||[];nz.teilziele.push(tz);}
     }
-    const _patch={name,verantwortlich_id:vid,datum:datum||null,ziel_id:newZid,vertraulich,metrik,zielwert:zwFinal};
+    const _patch={name,verantwortlich_id:vid,datum:datum||null,ziel_id:newZid,vertraulich,metrik,zielwert:zwFinal,leading_freq:leadingFreq,leading_count:leadingCount};
     if(newStatus)_patch.status=newStatus;
     await dbPatch('teilziele',tzid,_patch);
   } else {
-    const id=nid('tz'),rec={id,ziel_id:zid,name,verantwortlich_id:vid,datum:datum||null,erledigt:false,vertraulich:false,status:'aktiv',metrik,zielwert:zwFinal};
-    z.teilziele=z.teilziele||[];z.teilziele.push({...rec,zielId:zid,verantwortlichId:vid,datum:datum||'',vertraulich:false,status:'aktiv',metrik,zielWert:zwFinal});
+    const id=nid('tz'),rec={id,ziel_id:zid,name,verantwortlich_id:vid,datum:datum||null,erledigt:false,vertraulich:false,status:'aktiv',metrik,zielwert:zwFinal,leading_freq:leadingFreq,leading_count:leadingCount};
+    z.teilziele=z.teilziele||[];z.teilziele.push({...rec,zielId:zid,verantwortlichId:vid,datum:datum||'',vertraulich:false,status:'aktiv',metrik,zielWert:zwFinal,leadingFreq,leadingCount});
     await dbInsert('teilziele',rec);
   }
   cm();rZiele();

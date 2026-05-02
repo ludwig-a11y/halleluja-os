@@ -26,27 +26,45 @@ einzahlt**. Alles andere ist Busywork und wird bewusst nicht belohnt.
 
 ---
 
-## 2. Die zentrale Idee: Leading vs. Lagging
+## 2. Die zentrale Idee: Leading vs. Lagging (Ovens-Way)
 
 Die wichtigste Unterscheidung in diesem System.
 
 **Lagging Indicator** = Ergebnis. "Hast du den Meilenstein erreicht?"
 Antwort kommt erst, wenn es zu spät ist, den Kurs zu korrigieren.
 
-**Leading Indicator** = Verhalten. "Hast du diese Woche die richtigen
-Sachen getan?" Antwort kommt sofort — und du kannst reagieren.
+**Leading Indicator** = die *tägliche Aktion*, die das Ergebnis erzwingt.
+Eine Zahl, kontrollierbar, klickbar.
 
 Beispiel:
-- Lagging: "Wir wollten 50 Saunen im April verkaufen. Wir haben 32 verkauft."
-- Leading: "Wir wollten diese Woche 10 qualifizierte Leads generieren
-  und 5 Closing-Gespräche führen. Wir haben 4 Leads und 2 Gespräche."
+- Lagging: *„30 verkaufte Saunen im Mai"*
+- Leading: *„30 qualifizierte Calls/Tag"* — wenn du das hältst, kommen
+  die 30 Saunen automatisch.
 
-Der Lagging-Wert ist am 30.04. da — zu spät. Der Leading-Wert ist am
-Freitag da — noch 3 Wochen Zeit zum Gegensteuern.
+**Wie es im System lebt** (seit v182):
 
-**Die App misst Leading, nicht Lagging.** Der **Paddel-Score** (siehe §5)
-bewertet deine Taktik-Qualität pro Woche. Er sagt nicht: "hast du das
-Ziel erreicht", sondern: "hast du konsequent auf das Ziel gespielt".
+Jedes Monatsziel kriegt **genau einen Leading-Indicator** mit drei
+Eigenschaften:
+- **Aktion (Verb):** *„Call gemacht"*, *„Outreach-Mail verschickt"*,
+  *„Webinar gemacht"*
+- **Frequenz:** `daily` (Default), `weekly`, `monthly`
+- **Zielzahl pro Frequenz:** *30 Calls/Tag*, *1 Webinar/Woche*
+
+**Frequenz-Faustregel:**
+> *„Würde ich es heute nicht tun, müsste es aber diese Woche?"* — dann
+> weekly. Sonst daily. Monatlich nur für echte Monats-Aktionen
+> (Bilanz-Review etc.).
+
+**Klick = +1.** Daily-Leadings werden in „Mein Tag" gezählt
+(*12/30 heute*), Weekly in „Woche" (*0/1 KW 18*), Monthly in „Monat".
+Streak-Mechanik macht den Dopamin-Hit (*Tag 12 von 30, 4× am Stück*).
+
+**KPI-Konzept ist abgeleitet** (nicht mehr Eingabe). KPIs auf
+Quartalsziel-Ebene sind aggregierte Sichten der darunter hängenden
+Leadings — Read-Only, keine Doppel-Eingabe mehr.
+
+Der **Paddel-Score** (siehe §5) bewertet weiter deine Taktik-Qualität
+pro Woche.
 
 Damit kann die App die zentrale Management-Frage beantworten:
 > Wenn ein Meilenstein verfehlt wurde — war der Plan zu steil
@@ -57,21 +75,61 @@ Damit kann die App die zentrale Management-Frage beantworten:
 
 ## 3. Die Kaskade — wie alles zusammenhängt
 
-Vier Ebenen, jede zahlt auf die nächst-höhere ein:
+Zwei parallele Strukturen, jeweils vier Ebenen:
 
 ```
-Quartalsziel        (≈ 3 Monate, strategisch)
-    └── Monatsziel  (≈ 4 Wochen, Meilenstein)
-         └── Wochenziel  (= Big-3-Slot im aktuellen Wochenreset)
-              └── Aufgabe  (= konkrete Tat, P1/P2/P3)
+🎯 Ziel              (Outcome mit harter Frist)
+    └── Monatsziel   (harter Zwischen-Outcome)
+         └── Wochenziel  (Big-3-Slot)
+              └── Aufgabe (P1/P2/P3)
+
+📁 Bereich           (laufendes Thema, weiche Frist)
+    └── Themengebiet (laufender Schwerpunkt)
+         └── Wochenziel  (Big-3-Slot)
+              └── Aufgabe (P1/P2/P3)
 ```
 
-**Die Regel:** Eine Aufgabe, die nicht an ein Monatsziel hängt, zählt
-nicht fürs Paddel und taucht nicht prominent im Heute-Tab auf. Sie
-existiert, aber landet im "Cleanup-Bucket".
+### 🎯 Ziel vs. 📁 Bereich (seit v180)
 
-**Warum so streng?** Weil sonst jede Mail-Antwort und jedes "kurz
-kopieren" zum "erledigt" wird und dein Gefühl von Produktivität von der
+**Ziel** = *„Was muss bis wann erreicht sein?"* — messbarer Wert + Datum.
+Verfehlt = das System zwingt am Monatsende ein **Review** (siehe §X).
+> Beispiele: *„1500 Termine bis 30.06."*, *„30k MRR bis Q2"*
+
+**Bereich** = *„Welches Thema betreuen wir kontinuierlich?"* — Name +
+Verantwortlicher. Datum auf Themengebieten ist eine Zielmarke, kein Cut
+— **verlängerbar**, kein Review-Zwang.
+> Beispiele: *„Entwicklung Halleluja Sauna"*, *„Finanz"*, *„Operations"*
+
+**Faustregel:** Wenn der 1. Mai dein April-Ergebnis zerstören würde →
+**Ziel**. Wenn nicht → **Bereich**.
+
+### Reihenfolge statt Priorität (seit v177)
+
+Wochenziele sind nummeriert (1/2/3). Die Nummer **ist** die Strategie-
+Reihenfolge — nicht die Priorität. Du arbeitest erst an 1, dann 2, dann
+3. Pfeile ↑↓ überall (Wochenziele, Aufgaben, Monatsziele) lassen dich
+manuell sortieren.
+
+P1/P2/P3 bleibt für Aufgaben, die **nicht** an einem Wochenziel hängen
+(Ad-hoc, Ops-Notfälle).
+
+### Bottleneck-Logik (seit v178)
+
+„JETZT DRAN" zeigt automatisch den **obersten nicht-wartenden Schritt**
+aus der Wochenziel-Sequenz. Wartende und pausierte Aufgaben werden
+übersprungen. Das Wochenziel-Header-Badge zeigt:
+- 🎯 *Du bist dran* — diese Slot-Aufgabe ist gerade JETZT DRAN
+- ⏳ *Engpass: @Person* — alle Slot-Aufgaben warten auf jemanden
+- ⏸ *Alles geparkt* — alle Slot-Aufgaben sind pausiert
+
+### Die Regel (Aufgabe → Monatsziel)
+
+Eine Aufgabe, die nicht an ein Monatsziel/Themengebiet hängt, zählt
+nicht fürs Paddel und taucht nicht prominent in „Mein Tag" auf. Sie
+landet im **Parkplatz** (siehe §X).
+
+**Warum so streng?** Weil sonst jede Mail-Antwort und jedes „kurz
+kopieren" zum „erledigt" wird und dein Gefühl von Produktivität von der
 tatsächlichen Wertschöpfung entkoppelt.
 
 ### Was zählt als Ziel?
@@ -240,10 +298,10 @@ aktives Monatsziel (nearest deadline) vor, damit du nichts suchen musst.
 - **Grün** (Monatsziel gewählt): *"Zählt auf dein Paddel, sichtbar in
   deinem Heute-Tab."*
 - **Amber** (Monatsziel existiert, aber abgewählt): *"Landet im
-  Cleanup-Bucket, erscheint nicht als P1 im Heute-Tab, zählt nicht
+  Parkplatz, erscheint nicht als P1 im Heute-Tab, zählt nicht
   fürs Paddel."*
 - **Amber + CTA** (du hast noch kein Monatsziel): *"Aufgabe landet
-  im Cleanup-Bucket..."* + Button "Kaskade-Session starten".
+  im Parkplatz..."* + Button "Kaskade-Session starten".
 
 Du kannst jederzeit eine Aufgabe ohne Monatsziel anlegen. Die App
 blockiert nicht. Sie erklärt nur, was das bedeutet.
@@ -260,7 +318,7 @@ ausgeblendet. Monatsziele sind strategische Akte der Zielperson
 selbst — nicht etwas, das der Ersteller festlegt.
 
 Wenn X noch kein sichtbares Monatsziel hat: *"Aufgabe landet in X's
-Cleanup-Bucket. X kann nach Erhalt selbst zuordnen."*
+Parkplatz. X kann nach Erhalt selbst zuordnen."*
 
 ---
 
@@ -297,6 +355,72 @@ du direkt in den Fokus-Coach (Scope: Kaskade), bekommst einen Prompt mit
 deinem Rollen-Kontext, und Claude hilft dir, Quartalsziel +
 Meilenstein + 3 Ergebnisvorhaben **in einer einzigen Session** zu
 formulieren.
+
+---
+
+## 9.5. Vokabular: Parkplatz, Cleanup, Wartet, Verfehlt-Review (seit v180/181)
+
+Vier zentrale Begriffe, die zusammen das *„nichts versandet"*-Versprechen
+einlösen:
+
+### 🅿️ Parkplatz
+
+Eine Aufgabe „nicht jetzt" wegpacken. Optional mit Wiedervorlage-Datum.
+
+- **Mit Datum** *(Parken bis 8.5.)*: kommt automatisch zurück, sanfter
+  Toast bei Rückkehr. Im Wochenziel-Slot **gegraut sichtbar**, nicht
+  versteckt.
+- **Ohne Datum** *(Status = Parkplatz)*: liegt da, du holst es selbst
+  beim Cleanup-Termin.
+
+**Parkplatz ersetzt** die alten Begriffe „Backlog" und „Pause" — eine
+Achse, zwei Spielarten.
+
+### 🧹 Cleanup · Dein Parkplatz
+
+Tagestermin (Default 15:00, einstellbar). Zeigt **alle geparkten
+Aufgaben** + Pflege-Hinweise. Du gehst einmal täglich durch, ziehst
+hoch was du heute angehen willst.
+
+Pro Aufgabe Marker: *🅿️ bis X*, *🅿️ ohne Datum*, *⚠ kein Ziel*,
+*⏳ wartet auf Person*. Schlafende (Datum > heute) gegraut.
+
+**Doktrin:** keine Aufgabe ist je unsichtbar. Spätestens hier ist sie
+da — täglich klärbar in einem Klick.
+
+### ⏳ Wartet auf Person
+
+Status für Aufgaben, die einen externen Bottleneck haben — du wartest
+auf Lieferung von jemandem.
+
+Zweistufiger Picker:
+1. **Schritt 1:** Person wählen.
+2. **Schritt 2:** *Neue Aufgabe für sie erstellen* / *Bestehende
+   verknüpfen* / *Nur Marker setzen*.
+
+Ergebnis bei Person X: *„⏳ Andere warten auf dich"*-Block in ihrem
+Mein-Tag. Sie kann *„✓ Geliefert"* klicken → bei dir kommt deine
+Aufgabe automatisch zurück mit Toast.
+
+Bei dir spiegelnd: *„🕒 Ich warte auf andere"*-Block.
+
+### ⚠ Verfehlt-Review (Outcome-Monatsziele)
+
+Ein Outcome-Monatsziel (unter Quartalsziel) das überfällig + nicht
+erledigt ist gilt als **verfehlt**. Das System zwingt am Monatsanfang
+ein Review:
+
+- **🗄 Verfehlt — archivieren** — Aufgaben + Wochenziele können
+  mit-archiviert, umgehängt oder losgelöst werden.
+- **🔄 Neu formulieren** — neues Datum + ggf. Titel/Zahl. Aufgaben
+  und Wochenziele ziehen automatisch mit.
+- **✓ Doch erreicht** — erledigt setzen.
+
+Banner in Mein Tag und Block in Monatsübersicht (rote Box) machen die
+verfehlten sichtbar. Snooze pro Tag möglich.
+
+**Themengebiete (unter Bereich) kennen kein Verfehlt** — sie sind
+verlängerbar, zeigen nur *„⚠ Datum aktualisieren?"* in Gelb.
 
 ---
 
@@ -411,7 +535,7 @@ langsameres Trello. Für das wäre sie nicht gebaut worden.
 
 **"Warum kann ich Tasks nicht einfach ohne Ziel anlegen wie früher?"**
 Du kannst. Der Hint erklärt dir nur, dass die Aufgabe dann im
-Cleanup-Bucket landet und nicht im Heute-Tab erscheint. Die Entscheidung
+Parkplatz landet und nicht im Heute-Tab erscheint. Die Entscheidung
 ist bei dir. Die Konsequenz ist nur ehrlich.
 
 **"Warum ist der Fokus-Coach kein Chat? Ich muss immer copy/paste."**
