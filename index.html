@@ -9155,7 +9155,6 @@ function rMonat(){
 
     // ── Header-Zeile (📥 Pool · KWs · 🏁 Ziel) ──
     out+='<div style="display:flex;gap:'+GAP+'px;align-items:flex-end;padding:0 0 8px 0">';
-    out+='<div style="width:'+COL_POOL+'px;flex-shrink:0;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);padding:4px 8px;text-align:center">📥 Pool</div>';
     kws.forEach(k=>{
       const isToday=(k.jahr===todayK.jahr&&k.kw===todayK.kw);
       const isPast=(k.jahr*100+k.kw)<(todayK.jahr*100+todayK.kw);
@@ -9168,6 +9167,7 @@ function rMonat(){
       out+='<div style="font-size:9px;color:var(--t3);margin-top:1px">ab '+monLbl+'</div>';
       out+='</div>';
     });
+    out+='<div style="width:'+COL_POOL+'px;flex-shrink:0;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);padding:4px 8px;text-align:center">📥 Pool</div>';
     out+='<div style="width:'+COL_MZ+'px;flex-shrink:0;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);padding:4px 8px;text-align:center">🏁 Ziel</div>';
     out+='</div>';
 
@@ -9194,19 +9194,6 @@ function rMonat(){
         const sameMonth=tz._effDatum.slice(0,7)===monthEndISO.slice(0,7);
 
         out+='<div style="display:flex;gap:'+GAP+'px;align-items:stretch;padding-bottom:'+GAP+'px;border-bottom:1px solid var(--bd);margin-bottom:'+GAP+'px">';
-
-        // ── Pool-Zelle (LINKS) ──
-        const poolBorder=isAlarm?'var(--amber-bd)':'var(--bd)';
-        out+='<div data-mzp-zone="pool" data-mzp-poolfor="'+tz.id+'" style="width:'+COL_POOL+'px;flex-shrink:0;background:var(--gray-bg);border:1.5px solid '+poolBorder+';border-radius:8px;padding:5px;min-height:64px;display:flex;flex-direction:column;gap:3px" ondragover="_mzpDragOver(event,this)" ondragleave="_mzpDragLeave(this)" ondrop="_mzpDrop(event,this)">';
-        tzPool.forEach(p=>{
-          out+='<div data-mzp-src="pool|'+p.id+'" draggable="true" ondragstart="_mzpDragStart(event,this)" ondragend="_mzpDragEnd(this)" style="display:flex;align-items:center;gap:4px;padding:5px 7px;background:var(--sf);border:1px solid var(--bd);border-radius:6px;cursor:grab">';
-          out+='<span style="flex:1;font-size:11px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(p.titel)+'</span>';
-          out+='<button onclick="event.stopPropagation();_mmPoolDelete(\''+p.id+'\')" title="Löschen" style="background:transparent;border:none;color:var(--t3);cursor:pointer;font-size:12px;padding:0 3px;line-height:1">×</button>';
-          out+='</div>';
-        });
-        const inpId='mmpool-'+tz.id;
-        out+='<input id="'+inpId+'" placeholder="+ Wochenziel" style="width:100%;margin-top:auto;font-size:11px;padding:5px 7px;border:1px solid var(--bd);border-radius:6px;background:var(--sf);color:var(--text);font-family:inherit" onkeydown="if(event.key===\'Enter\'){event.preventDefault();_mmAddPool(\''+tz.id+'\',\''+inpId+'\')}">';
-        out+='</div>';
 
         // ── KW-Zellen (alle gleichberechtigte Drop-Zonen für Wochenziele) ──
         kws.forEach(k=>{
@@ -9251,6 +9238,19 @@ function rMonat(){
           out+='</div>';
         });
 
+        // ── Pool-Zelle (zwischen KWs und MZ-Karte — Pool & Ziel als Anker-Paar rechts) ──
+        const poolBorder=isAlarm?'var(--amber-bd)':'var(--bd)';
+        out+='<div data-mzp-zone="pool" data-mzp-poolfor="'+tz.id+'" style="width:'+COL_POOL+'px;flex-shrink:0;background:var(--gray-bg);border:1.5px solid '+poolBorder+';border-radius:8px;padding:5px;min-height:64px;display:flex;flex-direction:column;gap:3px" ondragover="_mzpDragOver(event,this)" ondragleave="_mzpDragLeave(this)" ondrop="_mzpDrop(event,this)">';
+        tzPool.forEach(p=>{
+          out+='<div data-mzp-src="pool|'+p.id+'" draggable="true" ondragstart="_mzpDragStart(event,this)" ondragend="_mzpDragEnd(this)" style="display:flex;align-items:center;gap:4px;padding:5px 7px;background:var(--sf);border:1px solid var(--bd);border-radius:6px;cursor:grab">';
+          out+='<span style="flex:1;font-size:11px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(p.titel)+'</span>';
+          out+='<button onclick="event.stopPropagation();_mmPoolDelete(\''+p.id+'\')" title="Löschen" style="background:transparent;border:none;color:var(--t3);cursor:pointer;font-size:12px;padding:0 3px;line-height:1">×</button>';
+          out+='</div>';
+        });
+        const inpId='mmpool-'+tz.id;
+        out+='<input id="'+inpId+'" placeholder="+ Wochenziel" style="width:100%;margin-top:auto;font-size:11px;padding:5px 7px;border:1px solid var(--bd);border-radius:6px;background:var(--sf);color:var(--text);font-family:inherit" onkeydown="if(event.key===\'Enter\'){event.preventDefault();_mmAddPool(\''+tz.id+'\',\''+inpId+'\')}">';
+        out+='</div>';
+
         // ── v189: MZ-Karte als eigene Spalte ganz RECHTS (Endpunkt der Zeile) ──
         const dlLbl=tz._effDatum.slice(8,10)+'.'+tz._effDatum.slice(5,7)+'.';
         const dlMonth=parseInt(tz._effDatum.slice(5,7),10);
@@ -9273,12 +9273,13 @@ function rMonat(){
 
     // ── Footer: Slots/KW ──
     out+='<div style="display:flex;gap:'+GAP+'px;align-items:center;padding:10px 0 4px 0;margin-top:4px;border-top:1px solid var(--bd)">';
-    out+='<div style="width:'+COL_POOL+'px;flex-shrink:0;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);padding:0 8px;text-align:center">Slots/KW</div>';
+    out+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);padding:0 8px;text-align:left;flex-shrink:0">Slots/KW</div>';
     kws.forEach(k=>{
       const used=kwLoad.get(k.jahr*100+k.kw)||0;
       const col=used>=3?'var(--red)':used===2?'var(--amber)':used===1?'var(--blue)':'var(--t3)';
       out+='<div style="flex:1 1 '+COL_KW_MIN+'px;min-width:'+COL_KW_MIN+'px;text-align:center;font-size:11px;font-weight:700;color:'+col+'">'+used+'/3</div>';
     });
+    out+='<div style="width:'+COL_POOL+'px;flex-shrink:0"></div>';
     out+='<div style="width:'+COL_MZ+'px;flex-shrink:0"></div>';
     out+='</div>';
 
