@@ -1609,7 +1609,7 @@ async function loadData(){
     // v191: Leading-Indicator auf Ziel-Ebene (strategischer Default, MZ erbt)
     metrik:z.metrik||null,leadingFreq:z.leading_freq||'daily',leadingCount:z.leading_count??null,zielWert:z.zielwert??null,
     kpis:(kpis||[]).filter(k=>k.ziel_id===z.id).map(k=>({...k,zielId:k.ziel_id,teilzielId:k.teilziel_id||null,prio:k.prio||null})),
-    teilziele:(teilziele||[]).filter(t=>t.ziel_id===z.id).map(t=>({...t,zielId:t.ziel_id,verantwortlichId:t.verantwortlich_id,datum:t.datum||'',status:t.status||'aktiv',metrik:t.metrik||null,zielWert:t.zielwert||null,sortIndex:t.sort_index??null,leadingFreq:t.leading_freq||'daily',leadingCount:t.leading_count??null,leadingDoerId:t.leading_doer_id||null}))
+    teilziele:(teilziele||[]).filter(t=>t.ziel_id===z.id).map(t=>({...t,zielId:t.ziel_id,verantwortlichId:t.verantwortlich_id,datum:t.datum||'',status:t.status||'aktiv',metrik:t.metrik||null,zielWert:t.zielwert||null,sortIndex:t.sort_index??null,leadingFreq:t.leading_freq||'daily',leadingCount:t.leading_count??null,leadingDoerId:t.leading_doer_id||null,leadingDisabled:!!t.leading_disabled}))
   }));
   S.aufgaben=(aufgaben||[]).map(normalizeAufgabe);
   // Auto-reassign: @mention in Titel → Person zuweisen
@@ -3176,6 +3176,21 @@ function leadingHitsStepperHTML(a){
 // v211: Effective Doer — wer die tägliche Leading-Aktion macht.
 // Default: verantwortlichId (Outcome-Owner doer-by-default), Override: leadingDoerId
 function effectiveDoerId(tz){return tz?.leadingDoerId||tz?.verantwortlichId||null;}
+// v214: 3-Optionen-Doer-Dropdown — Owner-as-Self, andere Personen, oder "Niemand · Manager-MZ".
+// Sentinel "__NONE__" = leadingDisabled. Self = owner-id (kein separater Wert nötig — semantisch identisch).
+function leadingDoerSelectHTML(ownerId,currentDoerId,currentDisabled){
+  const _ownerName=(S.personen.find(p=>String(p.id)===String(ownerId))||{}).name||'';
+  const _selected=currentDisabled?'__NONE__':(currentDoerId||ownerId||'');
+  let h='<select id="tzdoer">';
+  if(ownerId)h+='<option value="'+ownerId+'"'+(_selected===ownerId?' selected':'')+'>✓ '+esc(_ownerName)+' · bin selbst Doer</option>';
+  S.personen.filter(p=>String(p.id)!==String(ownerId)).forEach(p=>{
+    h+='<option value="'+p.id+'"'+(String(_selected)===String(p.id)?' selected':'')+'>👤 '+esc(p.name)+'</option>';
+  });
+  h+='<option disabled>──────────</option>';
+  h+='<option value="__NONE__"'+(_selected==='__NONE__'?' selected':'')+'>🚫 Niemand · Manager-MZ ohne Counter</option>';
+  h+='</select>';
+  return h;
+}
 
 // ── v210: Leading-Block ─────────────────────────────────────────────
 // "▶ Block" auf der Leading-Karte → impliziter 25-min-Block ohne Aufgabe.
@@ -6925,6 +6940,7 @@ function rWoche(){
       for(const _t of (_z.teilziele||[])){
         if(_t.erledigt)continue;
         if((_t.status||'aktiv')!=='aktiv')continue;
+        if(_t.leadingDisabled)continue; // v214: Manager-MZ überspringen
         if(String(effectiveDoerId(_t))!==String(aP))continue; // v211: Doer ≠ Owner
         const _eff=effectiveLeading(_t);
         if(!_eff)continue;
@@ -7668,6 +7684,7 @@ function rTag(){
       for(const _t of (_z.teilziele||[])){
         if(_t.erledigt)continue;
         if((_t.status||'aktiv')!=='aktiv')continue;
+        if(_t.leadingDisabled)continue; // v214: Manager-MZ → keine Health-Card
         // Outcome-Owner aber NICHT Doer → Health-Card
         if(String(_t.verantwortlichId)!==String(aP))continue;
         const _doerId=effectiveDoerId(_t);
@@ -7740,6 +7757,7 @@ function rTag(){
       for(const _t of (_z.teilziele||[])){
         if(_t.erledigt)continue;
         if((_t.status||'aktiv')!=='aktiv')continue;
+        if(_t.leadingDisabled)continue; // v214: Manager-MZ überspringen
         if(String(effectiveDoerId(_t))!==String(aP))continue; // v211: Doer ≠ Owner
         const _eff=effectiveLeading(_t);
         if(!_eff)continue;
@@ -10875,13 +10893,10 @@ async function toggleTZ(zid,tzid){
 function openAddTZ(zid){
   const _isB=istBereich(zid),_lbl=_isB?'Themengebiet':'Monatsziel',_ph=_isB?'z.B. Wartung & TÜV, IT-Sicherheit…':'z.B. Messe München vorbereitet';
   const _diagnoseHint=_isB?'':getDiagnoseHint();
-  // v212: Doer-Feld nur für MZ (nicht Themengebiete) — verhindert dass GF unbeabsichtigt zum Doer wird
+  // v214: 3-Optionen-Doer (Self / Person / 🚫 Niemand). Default: Self (Verantwortlicher).
   const _doerField=_isB?'':(
-    '<div class="fl"><label>Doer <span style="font-weight:400;color:var(--t3);font-size:10px">(macht die Leading-Aktion · sieht +1-Karte)</span></label>'
-    +'<select id="tzdoer"><option value="">— wie Verantwortlich —</option>'
-    +S.personen.map(p=>'<option value="'+p.id+'">'+esc(p.name)+'</option>').join('')
-    +'</select>'
-    +'<div style="font-size:10px;color:var(--t3);margin-top:3px;line-height:1.4">Leer lassen = Verantwortlicher ist Doer. Anders setzen = Owner kriegt Health-Karte, Doer kriegt +1-Tap.</div>'
+    '<div class="fl"><label>Doer <span style="font-weight:400;color:var(--t3);font-size:10px">(macht die Leading-Aktion)</span></label>'
+    +leadingDoerSelectHTML(aP,null,false)
     +'</div>'
   );
   document.getElementById('mb').innerHTML='<div class="mt">'+_lbl+' hinzufügen</div>'
@@ -10903,12 +10918,9 @@ function editTZ(zid,tzid){
     +'<div class="fl"><label>Gehört zu</label><select id="tzz">'+zielOpts+'</select></div>'
     +'<div class="f2"><div class="fl"><label>Verantwortlich <span style="font-weight:400;color:var(--t3);font-size:10px">(Outcome-Owner)</span></label><select id="tzv">'+S.personen.map(p=>'<option value="'+p.id+'"'+(tz.verantwortlichId===p.id?' selected':'')+'>'+esc(p.name)+'</option>').join('')+'</select></div>'
     +'<div class="fl"><label>Bis wann</label><input type="date" id="tzd" value="'+(tz.datum||'')+'"></div></div>'
-    // v211: Doer-Feld — wer macht die tägliche Leading-Aktion (sieht +1-Karte)
-    +'<div class="fl"><label>Doer <span style="font-weight:400;color:var(--t3);font-size:10px">(macht die Leading-Aktion · sieht +1-Karte)</span></label>'
-    +'<select id="tzdoer"><option value="">— wie Verantwortlich —</option>'
-    +S.personen.map(p=>'<option value="'+p.id+'"'+(String(tz.leadingDoerId||'')===String(p.id)?' selected':'')+'>'+esc(p.name)+'</option>').join('')
-    +'</select>'
-    +'<div style="font-size:10px;color:var(--t3);margin-top:3px;line-height:1.4">Wenn Outcome-Owner ≠ Doer: Owner kriegt Health-Karte, Doer kriegt +1-Tap.</div>'
+    // v214: 3-Optionen-Doer (Self / Person / 🚫 Niemand) — pre-selected basierend auf existing data
+    +'<div class="fl"><label>Doer <span style="font-weight:400;color:var(--t3);font-size:10px">(macht die Leading-Aktion)</span></label>'
+    +leadingDoerSelectHTML(tz.verantwortlichId,tz.leadingDoerId,!!tz.leadingDisabled)
     +'</div>'
     // v191 (Sam-Ovens-Hybrid): Leading lebt primär auf Ziel. MZ-Override = explizite Phase-Ausnahme.
     +(function(){
@@ -10978,25 +10990,27 @@ async function saveTZ(zid,tzid){
   const lcRaw=lcountEl?(lcountEl.value||'').trim():'';
   const lcParsed=lcRaw?parseInt(lcRaw,10):null;
   const leadingCount=Number.isFinite(lcParsed)?lcParsed:null;
-  // v211: Doer-Feld (Sam-Way: Outcome-Owner ≠ Doer möglich)
+  // v214: 3-Optionen-Doer auflösen — "__NONE__" = Manager-MZ, sonst personId
   const doerEl=document.getElementById('tzdoer');
-  const leadingDoerId=doerEl?(doerEl.value||null):null;
+  const _doerVal=doerEl?(doerEl.value||''):'';
+  const leadingDisabled=_doerVal==='__NONE__';
+  const leadingDoerId=leadingDisabled?null:(_doerVal||null);
   // v175: Status aus Selector (nur übernehmen wenn Feld existiert, sonst Bestand lassen)
   const statusEl=document.getElementById('tzstatus');
   const newStatus=statusEl?(statusEl.value||'aktiv'):null;
   if(tzid){
     const tz=(z.teilziele||[]).find(t=>t.id===tzid);
-    if(tz){tz.name=name;tz.verantwortlichId=vid;tz.datum=datum;tz.vertraulich=vertraulich;tz.zielId=newZid;tz.metrik=metrik;tz.zielWert=zwFinal;tz.leadingFreq=leadingFreq;tz.leadingCount=leadingCount;tz.leadingDoerId=leadingDoerId;if(newStatus)tz.status=newStatus;}
+    if(tz){tz.name=name;tz.verantwortlichId=vid;tz.datum=datum;tz.vertraulich=vertraulich;tz.zielId=newZid;tz.metrik=metrik;tz.zielWert=zwFinal;tz.leadingFreq=leadingFreq;tz.leadingCount=leadingCount;tz.leadingDoerId=leadingDoerId;tz.leadingDisabled=leadingDisabled;if(newStatus)tz.status=newStatus;}
     if(newZid!==zid){
       z.teilziele=(z.teilziele||[]).filter(t=>t.id!==tzid);
       const nz=zielObj(newZid);if(nz){nz.teilziele=nz.teilziele||[];nz.teilziele.push(tz);}
     }
-    const _patch={name,verantwortlich_id:vid,datum:datum||null,ziel_id:newZid,vertraulich,metrik,zielwert:zwFinal,leading_freq:leadingFreq,leading_count:leadingCount,leading_doer_id:leadingDoerId};
+    const _patch={name,verantwortlich_id:vid,datum:datum||null,ziel_id:newZid,vertraulich,metrik,zielwert:zwFinal,leading_freq:leadingFreq,leading_count:leadingCount,leading_doer_id:leadingDoerId,leading_disabled:leadingDisabled};
     if(newStatus)_patch.status=newStatus;
     await dbPatch('teilziele',tzid,_patch);
   } else {
-    const id=nid('tz'),rec={id,ziel_id:zid,name,verantwortlich_id:vid,datum:datum||null,erledigt:false,vertraulich:false,status:'aktiv',metrik,zielwert:zwFinal,leading_freq:leadingFreq,leading_count:leadingCount,leading_doer_id:leadingDoerId};
-    z.teilziele=z.teilziele||[];z.teilziele.push({...rec,zielId:zid,verantwortlichId:vid,datum:datum||'',vertraulich:false,status:'aktiv',metrik,zielWert:zwFinal,leadingFreq,leadingCount,leadingDoerId});
+    const id=nid('tz'),rec={id,ziel_id:zid,name,verantwortlich_id:vid,datum:datum||null,erledigt:false,vertraulich:false,status:'aktiv',metrik,zielwert:zwFinal,leading_freq:leadingFreq,leading_count:leadingCount,leading_doer_id:leadingDoerId,leading_disabled:leadingDisabled};
+    z.teilziele=z.teilziele||[];z.teilziele.push({...rec,zielId:zid,verantwortlichId:vid,datum:datum||'',vertraulich:false,status:'aktiv',metrik,zielWert:zwFinal,leadingFreq,leadingCount,leadingDoerId,leadingDisabled});
     await dbInsert('teilziele',rec);
     // v205: Bestätigung was wirklich gespeichert wurde — Datum + Verantwortlich sichtbar
     const _vName=(S.personen.find(p=>String(p.id)===String(vid))||{}).name||'?';
@@ -11018,7 +11032,7 @@ function _delShowUndo(label){
   setTimeout(()=>{try{const b=document.getElementById('del-undo-bar');if(b)b.remove();_delUndo=null;}catch(_){}},30000);
 }
 function _zielFromDb(r){return {...r,verantwortlichId:r.verantwortlich_id,zielWert:r.zielwert,leadingFreq:r.leading_freq||'daily',leadingCount:r.leading_count,vorgeschlagenVon:r.vorgeschlagen_von};}
-function _tzFromDb(r){return {...r,zielId:r.ziel_id,verantwortlichId:r.verantwortlich_id,zielWert:r.zielwert,leadingFreq:r.leading_freq||'daily',leadingCount:r.leading_count,leadingDoerId:r.leading_doer_id||null};}
+function _tzFromDb(r){return {...r,zielId:r.ziel_id,verantwortlichId:r.verantwortlich_id,zielWert:r.zielwert,leadingFreq:r.leading_freq||'daily',leadingCount:r.leading_count,leadingDoerId:r.leading_doer_id||null,leadingDisabled:!!r.leading_disabled};}
 async function _delDoUndo(){
   const u=_delUndo;_delUndo=null;
   const bar=document.getElementById('del-undo-bar');if(bar)bar.remove();
