@@ -9177,7 +9177,7 @@ function rMonat(){
       out+='<div style="display:flex;align-items:center;gap:8px;padding:10px 4px 6px 4px;margin-top:4px">';
       out+='<span style="width:8px;height:8px;border-radius:50%;background:'+f.tc+';flex-shrink:0"></span>';
       out+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:'+f.tc+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:600px">'+esc(z.name)+'</div>';
-      out+='<div style="flex:1;height:1px;background:'+f.bd+';opacity:.5"></div>';
+      out+='<div style="flex:1;height:2px;background:'+f.tc+';opacity:.25;border-radius:1px"></div>';
       out+='</div>';
 
       group.mzs.forEach(tz=>{
@@ -9204,7 +9204,7 @@ function rMonat(){
           out+='</div>';
         });
         const inpId='mmpool-'+tz.id;
-        out+='<input id="'+inpId+'" placeholder="+ Wochenziel" style="width:100%;font-size:11px;padding:5px 7px;border:1px solid var(--bd);border-radius:6px;background:var(--sf);color:var(--text);font-family:inherit;margin-top:auto" onkeydown="if(event.key===\'Enter\'){event.preventDefault();_mmAddPool(\''+tz.id+'\',\''+inpId+'\')}">';
+        out+='<input id="'+inpId+'" placeholder="+ Wochenziel" style="width:100%;font-size:11px;padding:5px 7px;border:1px solid var(--bd);border-radius:6px;background:var(--sf);color:var(--text);font-family:inherit" onkeydown="if(event.key===\'Enter\'){event.preventDefault();_mmAddPool(\''+tz.id+'\',\''+inpId+'\')}">';
         out+='</div>';
 
         // ── KW-Zellen (alle gleichberechtigte Drop-Zonen für Wochenziele) ──
@@ -9246,7 +9246,7 @@ function rMonat(){
               out+='</div>';
             });
           }
-          if(!any)out+='<div style="font-size:10px;color:var(--t3);text-align:center;padding:18px 0;font-style:italic;flex:1">—</div>';
+          // v194: leere Cell = einfach leer (kein "—" mehr — visuelle Ruhe)
           out+='</div>';
         });
 
@@ -10286,7 +10286,7 @@ function rZiele(){
       });
       const _inpId='zgpool-'+z.id;
       if(canManageTZ(z.id)){
-        out+='<input id="'+_inpId+'" placeholder="+ Monatsziel" style="width:100%;font-size:11px;padding:5px 7px;border:1px solid var(--bd);border-radius:6px;background:var(--sf);color:var(--text);font-family:inherit;margin-top:auto" onkeydown="if(event.key===\'Enter\'){event.preventDefault();_zgAddPool(\''+z.id+'\',\''+_inpId+'\')}">';
+        out+='<input id="'+_inpId+'" placeholder="+ Monatsziel" style="width:100%;font-size:11px;padding:5px 7px;border:1px solid var(--bd);border-radius:6px;background:var(--sf);color:var(--text);font-family:inherit" onkeydown="if(event.key===\'Enter\'){event.preventDefault();_zgAddPool(\''+z.id+'\',\''+_inpId+'\')}">';
       }
       out+='</div>';
 
@@ -10294,10 +10294,13 @@ function rZiele(){
       _scopeMonths.forEach(ym=>{
         const _isCurr=ym===_curMonStr;
         const _isPast=ym<_curMonStr;
-        const _cellBg=_isCurr?'var(--blue-bg)':(_isPast?'var(--gray-bg)':'var(--sf)');
-        const _cellBorder=_isCurr?'1.5px solid var(--blue-bd)':(_isPast?'1px solid var(--bd)':'1px dashed var(--bd)');
         const _monTZ=visTZ.filter(tz=>tz.datum&&tz.datum.slice(0,7)===ym);
-        out+='<div data-mzp-zone="month|'+z.id+'|'+ym+'" style="width:'+COL_MONTH+'px;flex-shrink:0;background:'+_cellBg+';border:'+_cellBorder+';border-radius:8px;padding:5px;min-height:64px;display:flex;flex-direction:column;gap:3px" ondragover="_mzpDragOver(event,this)" ondragleave="_mzpDragLeave(this)" ondrop="_mzpDrop(event,this)">';
+        const _cellEmpty=!_monTZ.length;
+        // v194: leere Past-Cells fast unsichtbar (kein Lärm), leere Zukunft-Cells dezent
+        const _cellBg=_isCurr?'var(--blue-bg)':'transparent';
+        const _cellBorder=_isCurr?'1.5px solid var(--blue-bd)':(_isPast?'1px dotted var(--bd)':'1px dashed var(--bd)');
+        const _cellOpacity=_cellEmpty&&_isPast?'0.4':'1';
+        out+='<div data-mzp-zone="month|'+z.id+'|'+ym+'" style="width:'+COL_MONTH+'px;flex-shrink:0;background:'+_cellBg+';border:'+_cellBorder+';border-radius:8px;padding:5px;min-height:64px;display:flex;flex-direction:column;gap:3px;opacity:'+_cellOpacity+'" ondragover="_mzpDragOver(event,this)" ondragleave="_mzpDragLeave(this)" ondrop="_mzpDrop(event,this)">';
         _monTZ.forEach(tz=>{
           const _d2d=Math.ceil((new Date(tz.datum+'T00:00:00').getTime()-new Date(TODAY+'T00:00:00').getTime())/86400000);
           const _color=_d2d<0?'var(--red)':(_d2d<=7?'var(--amber)':f.tc);
@@ -10308,12 +10311,12 @@ function rZiele(){
           out+='<div style="font-size:9px;color:var(--t3);margin-top:2px">'+tz.datum.slice(8)+'.'+tz.datum.slice(5,7)+'.'+(_eff&&_eff.zielWert?' · '+_msC+'/'+_eff.zielWert:'')+'</div>';
           out+='</div>';
         });
-        if(!_monTZ.length)out+='<div style="font-size:10px;color:var(--t3);text-align:center;padding:18px 0;font-style:italic">—</div>';
+        // v194: leere Cell = einfach leer (kein "—" mehr — visuelle Ruhe)
         out+='</div>';
       });
 
-      // End-Card (rechts)
-      let _zEndDateLbl='kein Datum';
+      // End-Card (rechts) — v194: bei fehlendem Datum nur 🏁-Marker, kein "KEIN DATUM"-Wort
+      let _zEndDateLbl='';
       let _zEndCol='var(--t3)';
       if(z.monat_ende){
         const _y=parseInt(z.monat_ende.slice(0,4),10),_m=parseInt(z.monat_ende.slice(5,7),10);
@@ -10324,7 +10327,11 @@ function rZiele(){
         _zEndCol=_daysLeft<0?'var(--red)':(_daysLeft<=14?'var(--amber)':f.tc);
       }
       out+='<div onclick="event.stopPropagation();editZiel(\''+z.id+'\')" style="width:'+COL_ZIEL+'px;flex-shrink:0;background:'+f.bg+';border:1.5px solid '+f.bd+';border-left:4px solid '+f.tc+';border-radius:8px;padding:10px 12px;cursor:pointer;display:flex;flex-direction:column;gap:3px">';
-      out+='<div style="display:flex;align-items:center;gap:5px"><span style="font-size:11px">🏁</span><span style="font-size:9px;font-weight:700;color:'+_zEndCol+';text-transform:uppercase;letter-spacing:.3px">ZIEL · '+_zEndDateLbl+'</span></div>';
+      if(_zEndDateLbl){
+        out+='<div style="display:flex;align-items:center;gap:5px"><span style="font-size:11px">🏁</span><span style="font-size:9px;font-weight:700;color:'+_zEndCol+';text-transform:uppercase;letter-spacing:.3px">ZIEL · '+_zEndDateLbl+'</span></div>';
+      } else {
+        out+='<div style="display:flex;align-items:center;gap:5px"><span style="font-size:11px">🏁</span><span style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.3px">Ziel</span></div>';
+      }
       out+='<div style="font-size:13px;font-weight:700;color:var(--text);line-height:1.25;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">'+esc(z.name)+'</div>';
       if(z.metrik){
         out+='<div style="font-size:10px;color:var(--t2);margin-top:auto">📋 '+esc(z.metrik)+(z.leadingCount?' · '+z.leadingCount+'/'+(z.leadingFreq==='weekly'?'wöch':z.leadingFreq==='monthly'?'mtl':'tag'):'')+(z.zielWert?' · Anker '+z.zielWert:'')+'</div>';
