@@ -7339,12 +7339,14 @@ function rTag(){
       const cardAction='openBig3Detail(\''+wrAktuell.id+'\','+n+')';
       const cardCursor='cursor:pointer';
       const cardClick=' onclick="'+cardAction+'"';
-      // Monatsziel-Kontext (Farb-Dot + Name) für visuelle Hierarchie
-      let _msNameW=null,_msColorW='var(--t3)';
+      // Monatsziel-Kontext (nur Name für "→ Monatsziel: X"-Zeile, Farbe ist konstant)
+      let _msNameW=null;
       if(tzId){
-        for(const z of S.ziele){const _tz=(z.teilziele||[]).find(t=>t.id===tzId);if(_tz){_msNameW=_tz.name;_msColorW=FARBEN[z.farbe||0].tc;break;}}
+        for(const z of S.ziele){const _tz=(z.teilziele||[]).find(t=>t.id===tzId);if(_tz){_msNameW=_tz.name;break;}}
       }
-      const _wzAccent=_msNameW?_msColorW:'var(--bd)';
+      // v183-3: Wochenziel-Slots haben einheitliche Akzentfarbe (Action-Orange) — unabhängig vom Inhalt.
+      // Slot-Nummer und Border-Left konsistent, klar als "Wochenziel-Slot" erkennbar.
+      const _wzAccent='var(--orange)';
       // Hero-Task = erste offene Aufgabe im Slot (P1 zuerst, dann Rest). Rest = "Weitere".
       const hero=linkedTask;
       // v180: weitere = aktive (außer Hero) + geparkte (am Ende, gegraut)
