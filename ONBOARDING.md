@@ -404,6 +404,29 @@ Aufgabe automatisch zurück mit Toast.
 
 Bei dir spiegelnd: *„🕒 Ich warte auf andere"*-Block.
 
+### 📅 MZ-Wochenplaner (seit v184)
+
+Pro Monatsziel ein eigener Wochenplaner: Pool oben (ungeplante
+Wochenziele) + KW-Streifen unten (verplante Wochen).
+
+**Öffnen:** Klick auf 📅 in der Zielkarte oder „📅 Wochenplaner
+öffnen" im Monats-Check-in.
+
+**Pool:** Wochenziel-Vorschläge unter dem MZ sammeln, ohne KW-Bindung.
+„Was muss alles passieren, damit dieses MZ erreicht wird?"
+
+**Drag&Drop bidirektional:**
+- Pool → KW: erstes freies Big3-Slot wird gefüllt, Pool-Eintrag
+  verschwindet.
+- KW → Pool: Slot leer, Aufgaben lösen sich vom Slot, bleiben am MZ.
+- KW → andere KW: Slot wandert mit Aufgaben (Wochenziel-Move).
+
+**Aus vergangener KW ziehen** = implizites *„Neu formulieren"* (=
+Verfehlt-Review-Geste). Confirm-Dialog erinnert: *„Aufgaben ziehen
+mit."*
+
+**Limit pro KW:** drei Big3-Slots. Vierter Drop wird abgelehnt.
+
 ### ⚠ Verfehlt-Review (Outcome-Monatsziele)
 
 Ein Outcome-Monatsziel (unter Quartalsziel) das überfällig + nicht

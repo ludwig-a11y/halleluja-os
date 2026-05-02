@@ -842,7 +842,36 @@ async function _dragDispatch(containerType,fromId,toId,above){
     } else if(type==='wochenziele'){
       await dragReorderWochenziele(parts[1],parseInt(fromId,10),parseInt(toId,10),above);
     }
+    // v184: Cross-Container-Drag im MZ-Wochenplaner
+    else if(type==='mzPlaner'){
+      // fromId und toId enthalten Container-Info (kodiert): "pool:<pid>" oder "kw:<wrId>:<slot>"
+      // Dispatch erfolgt über _mzPlanerDrop (siehe Modal)
+    }
   }catch(e){console.error('drag dispatch',e);toast('⚠ Reihenfolge-Update fehlgeschlagen');}
+}
+// v184: Cross-Container-Drop für MZ-Wochenplaner.
+// Spezial: drag-items haben data-mz-source = "pool:<id>" oder "kw:<wrId>:<slot>", data-drag-item für ID.
+// Der Modal-eigene Handler ersetzt _dsDrop für diesen Container.
+async function _mzPlanerDrop(srcType,srcArgs,dstType,dstArgs){
+  if(srcType==='pool'&&dstType==='kw'){
+    // Pool → KW
+    await poolToKW(srcArgs.poolId,dstArgs.kw,dstArgs.jahr);
+  } else if(srcType==='kw'&&dstType==='pool'){
+    // KW → Pool (mit Verfehlt-Confirm wenn vergangene KW)
+    const wr=(S.wochenresets||[]).find(w=>w.id===srcArgs.wrId);
+    if(wr&&wochenzielIstVerfehlt(wr,srcArgs.slot)){
+      if(!confirm('Wochenziel aus vergangener KW '+wr.kw+' in den Pool zurückziehen? Aufgaben lösen sich vom Slot, bleiben am Monatsziel.'))return;
+    }
+    await kwToPool(srcArgs.wrId,srcArgs.slot);
+  } else if(srcType==='kw'&&dstType==='kw'){
+    // KW → andere KW
+    if(srcArgs.wrId===dstArgs.wrId)return; // gleiche KW: ignorieren (Reorder erst v2)
+    const wr=(S.wochenresets||[]).find(w=>w.id===srcArgs.wrId);
+    if(wr&&wochenzielIstVerfehlt(wr,srcArgs.slot)){
+      if(!confirm('Wochenziel aus vergangener KW '+wr.kw+' in KW '+dstArgs.kw+' verschieben? Aufgaben ziehen mit (Neu-Formulieren-Geste).'))return;
+    }
+    await kwToKw(srcArgs.wrId,srcArgs.slot,dstArgs.kw,dstArgs.jahr);
+  }
 }
 // Renumbering-Helfer: schreibt sortIndex 10/20/30/... auf alle items, batched dbPatches.
 async function _renumberSortIndex(table,items){
@@ -924,6 +953,303 @@ async function dragReorderWochenziele(wrId,fromSlot,toSlot,above){
   });
   await Promise.all([dbPatch('wochenresets',wrId,patch).catch(()=>{}),...aufgabenPatches]);
   render();
+}
+// ── v184: Wochenziel-Pool + MZ-Wochenplaner ─────────────────────
+function poolFor(tzId){return(S.wochenzielPool||[]).filter(p=>String(p.teilzielId)===String(tzId)).sort((a,b)=>(a.sortIndex??9999)-(b.sortIndex??9999));}
+function getKwFromDate(d){
+  // ISO-Wochenkalender — KW-Nummer + Jahr aus Date
+  const dt=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));
+  const day=dt.getUTCDay()||7;
+  dt.setUTCDate(dt.getUTCDate()+4-day);
+  const yearStart=new Date(Date.UTC(dt.getUTCFullYear(),0,1));
+  const kw=Math.ceil(((dt-yearStart)/86400000+1)/7);
+  return{kw,jahr:dt.getUTCFullYear()};
+}
+function dateOfKwMonday(jahr,kw){
+  const simple=new Date(Date.UTC(jahr,0,1+(kw-1)*7));
+  const dow=simple.getUTCDay();
+  const monday=new Date(simple);
+  if(dow<=4)monday.setUTCDate(simple.getUTCDate()-dow+1);
+  else monday.setUTCDate(simple.getUTCDate()+8-dow);
+  return monday;
+}
+function kwAusDatum(yyyymmdd){
+  if(!yyyymmdd||!/^\d{4}-\d{2}-\d{2}/.test(yyyymmdd))return null;
+  return getKwFromDate(new Date(yyyymmdd+'T12:00:00'));
+}
+// Liste der KWs zwischen zwei Datums (inklusive)
+function kwListe(startDate,endDate){
+  const list=[];
+  let cur=new Date(startDate);
+  // Auf Montag der Start-KW snappen
+  const sk=getKwFromDate(cur);
+  const startMon=dateOfKwMonday(sk.jahr,sk.kw);
+  cur=new Date(startMon);
+  let safety=0;
+  while(cur<=endDate&&safety<60){
+    const k=getKwFromDate(cur);
+    list.push({kw:k.kw,jahr:k.jahr,monday:new Date(cur)});
+    cur.setUTCDate(cur.getUTCDate()+7);
+    safety++;
+  }
+  return list;
+}
+// KWs für den Wochenplaner eines MZ: alle KWs die das MZ-Datum (Deadline) berührt + aktuelle + 1 Vor-Woche
+function kwListeFurMZ(tz){
+  const today=new Date(TODAY+'T12:00:00');
+  const heute=getKwFromDate(today);
+  const tzDl=tz.datum?new Date(tz.datum+'T12:00:00'):null;
+  // Start: 1 KW vor heute (für Carry-over)
+  const start=dateOfKwMonday(heute.jahr,heute.kw);
+  start.setUTCDate(start.getUTCDate()-7);
+  // Ende: KW der Deadline (oder +5 KWs ab heute wenn keine Deadline)
+  let ende;
+  if(tzDl){const e=getKwFromDate(tzDl);ende=dateOfKwMonday(e.jahr,e.kw);ende.setUTCDate(ende.getUTCDate()+6);}
+  else{ende=new Date(today);ende.setUTCDate(ende.getUTCDate()+35);}
+  return kwListe(start,ende);
+}
+// Wochenreset für eine KW finden — oder beim ersten Drop anlegen
+function findOrCreateWrFor(pid,kw,jahr){
+  let wr=(S.wochenresets||[]).find(w=>String(w.pid)===String(pid)&&w.kw===kw&&w.jahr===jahr);
+  return wr||null;
+}
+async function ensureWr(pid,kw,jahr){
+  let wr=findOrCreateWrFor(pid,kw,jahr);
+  if(wr)return wr;
+  const id=nid('wr');
+  const rec={id,pid:String(pid),kw,jahr,big3_1:null,big3_2:null,big3_3:null,big3_1_done:false,big3_2_done:false,big3_3_done:false,big3_1_tz_id:null,big3_2_tz_id:null,big3_3_tz_id:null};
+  S.wochenresets=S.wochenresets||[];S.wochenresets.push(rec);
+  await dbInsert('wochenresets',rec).catch(()=>{});
+  return rec;
+}
+// Wochenziel ist verfehlt: KW liegt vor aktuellem KW UND big3_done=false
+function wochenzielIstVerfehlt(wr,slot){
+  if(!wr)return false;
+  if(wr['big3_'+slot+'_done'])return false;
+  if(!wr['big3_'+slot])return false;
+  const heute=getKwFromDate(new Date(TODAY+'T12:00:00'));
+  const wrTime=wr.jahr*100+wr.kw;
+  const heuteTime=heute.jahr*100+heute.kw;
+  return wrTime<heuteTime;
+}
+// Pool: neuen Eintrag anlegen
+async function poolAdd(tzId,titel){
+  if(!titel||!titel.trim())return null;
+  const id=nid('wp');
+  const list=poolFor(tzId);
+  const sortIndex=(list.length+1)*10;
+  const rec={id,pid:String(aP),teilziel_id:tzId,titel:titel.trim(),sort_index:sortIndex,created_by:String(aP)};
+  S.wochenzielPool=S.wochenzielPool||[];
+  S.wochenzielPool.push({id,pid:rec.pid,teilzielId:tzId,titel:rec.titel,sortIndex,createdBy:rec.created_by,createdAt:new Date().toISOString()});
+  await dbInsert('wochenziel_pool',rec).catch(()=>{});
+  return id;
+}
+async function poolDelete(id){
+  S.wochenzielPool=(S.wochenzielPool||[]).filter(p=>p.id!==id);
+  await dbDelete('wochenziel_pool',id).catch(()=>{});
+}
+// Drop: Pool-Eintrag in eine konkrete KW (in den ersten freien Slot oder vor toSlot)
+async function poolToKW(poolId,kw,jahr){
+  const p=(S.wochenzielPool||[]).find(x=>x.id===poolId);if(!p)return;
+  const wr=await ensureWr(aP,kw,jahr);
+  // Ersten freien Slot finden
+  let slot=null;
+  for(const n of [1,2,3]){if(!wr['big3_'+n]){slot=n;break;}}
+  if(!slot){toast('⚠ Big3 voll — erst Slot leeren');return;}
+  const tzId=p.teilzielId||null;
+  const titel=p.titel;
+  wr['big3_'+slot]=titel;wr['big3_'+slot+'_tz_id']=tzId;wr['big3_'+slot+'_done']=false;
+  const patch={};patch['big3_'+slot]=titel;patch['big3_'+slot+'_tz_id']=tzId;patch['big3_'+slot+'_done']=false;
+  await Promise.all([
+    dbPatch('wochenresets',wr.id,patch).catch(()=>{}),
+    poolDelete(poolId)
+  ]);
+  render();
+}
+// KW → Pool zurück: Slot leeren, Aufgaben loslösen, Pool-Eintrag erstellen
+async function kwToPool(wrId,slot){
+  const wr=(S.wochenresets||[]).find(w=>w.id===wrId);if(!wr)return;
+  const titel=wr['big3_'+slot];if(!titel)return;
+  const tzId=wr['big3_'+slot+'_tz_id']||null;
+  if(!tzId){toast('⚠ Wochenziel ohne Monatsziel-Bezug — Pool nicht möglich');return;}
+  // Aufgaben loslösen (wochenresetId+big3Slot=null), bleiben am MZ
+  const aufgabenPatches=[];
+  (S.aufgaben||[]).forEach(a=>{
+    if(String(a.wochenresetId)===String(wrId)&&a.big3Slot===slot){
+      a.wochenresetId=null;a.big3Slot=null;
+      aufgabenPatches.push(dbPatch('aufgaben',a.id,{wochenreset_id:null,big3_slot:null}).catch(()=>{}));
+    }
+  });
+  // Slot leeren
+  wr['big3_'+slot]=null;wr['big3_'+slot+'_tz_id']=null;wr['big3_'+slot+'_done']=false;
+  const patch={};patch['big3_'+slot]=null;patch['big3_'+slot+'_tz_id']=null;patch['big3_'+slot+'_done']=false;
+  // Pool-Eintrag anlegen
+  await Promise.all([dbPatch('wochenresets',wrId,patch).catch(()=>{}),...aufgabenPatches]);
+  await poolAdd(tzId,titel);
+  render();
+}
+// KW → andere KW: Big3 + Aufgaben in andere KW verschieben
+async function kwToKw(fromWrId,fromSlot,toKw,toJahr){
+  const fromWr=(S.wochenresets||[]).find(w=>w.id===fromWrId);if(!fromWr)return;
+  const titel=fromWr['big3_'+fromSlot];if(!titel)return;
+  const toWr=await ensureWr(aP,toKw,toJahr);
+  // Ersten freien Slot in Ziel-WR finden
+  let toSlot=null;
+  for(const n of [1,2,3]){if(!toWr['big3_'+n]){toSlot=n;break;}}
+  if(!toSlot){toast('⚠ Big3 in KW '+toKw+' voll');return;}
+  const tzId=fromWr['big3_'+fromSlot+'_tz_id']||null;
+  const done=!!fromWr['big3_'+fromSlot+'_done'];
+  // Quelle leeren
+  fromWr['big3_'+fromSlot]=null;fromWr['big3_'+fromSlot+'_tz_id']=null;fromWr['big3_'+fromSlot+'_done']=false;
+  const fromPatch={};fromPatch['big3_'+fromSlot]=null;fromPatch['big3_'+fromSlot+'_tz_id']=null;fromPatch['big3_'+fromSlot+'_done']=false;
+  // Ziel füllen
+  toWr['big3_'+toSlot]=titel;toWr['big3_'+toSlot+'_tz_id']=tzId;toWr['big3_'+toSlot+'_done']=done;
+  const toPatch={};toPatch['big3_'+toSlot]=titel;toPatch['big3_'+toSlot+'_tz_id']=tzId;toPatch['big3_'+toSlot+'_done']=done;
+  // Aufgaben mitziehen
+  const aufgabenPatches=[];
+  (S.aufgaben||[]).forEach(a=>{
+    if(String(a.wochenresetId)===String(fromWrId)&&a.big3Slot===fromSlot){
+      a.wochenresetId=toWr.id;a.big3Slot=toSlot;
+      aufgabenPatches.push(dbPatch('aufgaben',a.id,{wochenreset_id:toWr.id,big3_slot:toSlot}).catch(()=>{}));
+    }
+  });
+  await Promise.all([
+    dbPatch('wochenresets',fromWrId,fromPatch).catch(()=>{}),
+    dbPatch('wochenresets',toWr.id,toPatch).catch(()=>{}),
+    ...aufgabenPatches
+  ]);
+  render();
+}
+// ── v184: MZ-Wochenplaner-Modal ──────────────────────────────────
+// Klick aufs MZ → Modal mit Pool oben + KW-Streifen unten. Drag&Drop bidirektional.
+let _mzpDragSrc=null;
+function openMZWochenplaner(tzId){
+  const tz=_tzById(tzId);if(!tz){toast('⚠ Monatsziel nicht gefunden');return;}
+  const z=zielObj(tz.zielId);if(!z)return;
+  const f=FARBEN[z.farbe||0];
+  const isB=istBereich(z.id);
+  const lbl=isB?'Themengebiet':'Monatsziel';
+  const pool=poolFor(tzId);
+  const kws=kwListeFurMZ(tz);
+  const todayK=getKwFromDate(new Date(TODAY+'T12:00:00'));
+  let h='<div class="mt" style="display:flex;align-items:center;gap:8px"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:'+f.tc+';flex-shrink:0"></span><span>'+esc(tz.name)+'</span></div>';
+  h+='<div style="font-size:11px;color:var(--t3);margin-bottom:14px">'+lbl+' · '+esc(z.name)+(tz.datum?' · bis '+tz.datum.slice(8)+'.'+tz.datum.slice(5,7)+'.':'')+'</div>';
+  // Pool-Block
+  h+='<div data-mzp-zone="pool" style="background:var(--gray-bg);border:1.5px dashed var(--bd);border-radius:10px;padding:10px 12px;margin-bottom:14px" ondragover="_mzpDragOver(event,this)" ondragleave="_mzpDragLeave(this)" ondrop="_mzpDrop(event,this)">';
+  h+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><span style="font-size:14px">📥</span><span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t2)">Pool · '+pool.length+'</span><span style="font-size:10px;color:var(--t3);flex:1">ungeplant</span></div>';
+  if(pool.length){
+    h+='<div style="display:flex;flex-direction:column;gap:5px;margin-bottom:8px">';
+    pool.forEach(p=>{
+      h+='<div class="mzp-row" data-mzp-src="pool|'+p.id+'" draggable="true" ondragstart="_mzpDragStart(event,this)" ondragend="_mzpDragEnd(this)" style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--sf);border:1px solid var(--bd);border-radius:7px;cursor:grab">';
+      h+='<span style="flex:1;font-size:12px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(p.titel)+'</span>';
+      h+='<button onclick="event.stopPropagation();_mzpPoolDelete(\''+p.id+'\')" title="Löschen" style="background:transparent;border:none;color:var(--t3);cursor:pointer;font-size:13px;padding:2px 5px">×</button>';
+      h+='</div>';
+    });
+    h+='</div>';
+  }
+  h+='<div style="display:flex;gap:6px"><input id="mzp-new" placeholder="+ Neues Wochenziel" style="flex:1;font-size:12px;padding:6px 9px;border:1px solid var(--bd);border-radius:7px;background:var(--sf);color:var(--text);font-family:inherit" onkeydown="if(event.key===\'Enter\')_mzpAddPool(\''+tzId+'\')"><button onclick="_mzpAddPool(\''+tzId+'\')" class="btn btn-dk" style="font-size:11px;padding:6px 12px">Anlegen</button></div>';
+  h+='</div>';
+  // KW-Streifen
+  h+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);margin-bottom:8px">Wochen</div>';
+  kws.forEach(k=>{
+    const wr=findOrCreateWrFor(aP,k.kw,k.jahr);
+    const isToday=(k.jahr===todayK.jahr&&k.kw===todayK.kw);
+    const isPast=(k.jahr*100+k.kw)<(todayK.jahr*100+todayK.kw);
+    const monStr=k.monday.toISOString().slice(0,10);
+    const monLbl=monStr.slice(8,10)+'.'+monStr.slice(5,7)+'.';
+    const kwBg=isToday?'var(--blue-bg)':(isPast?'var(--gray-bg)':'var(--sf)');
+    const kwBorder=isToday?'1.5px solid var(--blue-bd)':'1px solid var(--bd)';
+    const kwLblColor=isToday?'var(--blue)':(isPast?'var(--t3)':'var(--t2)');
+    const kwTitle='KW '+k.kw+(isToday?' · jetzt':'')+(isPast?' · vorbei':'');
+    h+='<div style="background:'+kwBg+';border:'+kwBorder+';border-radius:10px;padding:10px 12px;margin-bottom:8px">';
+    h+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><span style="font-size:11px;font-weight:700;color:'+kwLblColor+'">'+kwTitle+'</span><span style="font-size:10px;color:var(--t3);margin-left:auto">ab '+monLbl+'</span></div>';
+    h+='<div data-mzp-zone="kw|'+(wr?wr.id:'')+'|'+k.kw+'|'+k.jahr+'" style="min-height:26px" ondragover="_mzpDragOver(event,this)" ondragleave="_mzpDragLeave(this)" ondrop="_mzpDrop(event,this)">';
+    let any=false;
+    if(wr){
+      [1,2,3].forEach(slot=>{
+        const t=wr['big3_'+slot];if(!t)return;any=true;
+        // Nur Slots die zu diesem MZ gehören (über tz_id)
+        const slotTzId=wr['big3_'+slot+'_tz_id']||null;
+        const matchesMZ=String(slotTzId)===String(tzId);
+        const opacity=matchesMZ?'1':'.45';
+        const verfehlt=wochenzielIstVerfehlt(wr,slot);
+        const done=!!wr['big3_'+slot+'_done'];
+        const borderL=done?'3px solid var(--green)':(verfehlt?'3px solid var(--red)':'3px solid var(--orange)');
+        h+='<div class="mzp-row" '+(matchesMZ?'data-mzp-src="kw|'+wr.id+'|'+slot+'" draggable="true"':'')+' ondragstart="_mzpDragStart(event,this)" ondragend="_mzpDragEnd(this)" style="display:flex;align-items:center;gap:8px;padding:6px 9px;background:var(--sf);border:1px solid var(--bd);border-left:'+borderL+';border-radius:0 7px 7px 0;margin-bottom:4px;opacity:'+opacity+';'+(matchesMZ?'cursor:grab':'')+'">';
+        h+='<span style="font-size:10px;font-weight:800;color:var(--orange);min-width:14px">'+slot+'</span>';
+        h+='<span style="flex:1;font-size:12px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap'+(done?';text-decoration:line-through;opacity:.6':'')+'">'+esc(t)+'</span>';
+        if(verfehlt)h+='<span style="font-size:9px;font-weight:700;padding:1px 6px;border-radius:99px;background:var(--red-bg);color:var(--red);border:1px solid var(--red-bd)">⚠ verfehlt</span>';
+        else if(done)h+='<span style="font-size:9px;font-weight:700;color:var(--green)">✓</span>';
+        if(!matchesMZ&&slotTzId)h+='<span style="font-size:9px;color:var(--t3);font-style:italic">anderes MZ</span>';
+        h+='</div>';
+      });
+    }
+    if(!any)h+='<div style="font-size:11px;color:var(--t3);font-style:italic;padding:4px 2px">— hierher ziehen —</div>';
+    h+='</div>';
+    h+='</div>';
+  });
+  h+='<div class="mf"><button class="btn btn-gr" onclick="cm()">Schließen</button></div>';
+  document.getElementById('mb').innerHTML=h;
+  document.getElementById('ovl').classList.add('open');
+  setTimeout(()=>document.getElementById('mzp-new')?.focus(),60);
+}
+async function _mzpAddPool(tzId){
+  const inp=document.getElementById('mzp-new');
+  const v=(inp?.value||'').trim();if(!v)return;
+  await poolAdd(tzId,v);
+  openMZWochenplaner(tzId); // re-render
+}
+async function _mzpPoolDelete(id){
+  await poolDelete(id);
+  // Tab-Modal liefert die tzId aus dem aktuellen state nicht — einfach close+open via Header
+  // Wir versuchen aus dem Modal-Header das aktive MZ zu bekommen — Fallback: render() reicht.
+  render();
+  // Re-Open via setTimeout, weil cm() schließt
+  setTimeout(()=>{
+    const p=(S.wochenzielPool||[]).find(x=>x.id===id);
+    // Pool-Eintrag ist gelöscht — wir können aus Modal-Kontext nicht zurück. User schließt manuell.
+  },10);
+}
+function _mzpDragStart(e,el){
+  _mzpDragSrc=el.getAttribute('data-mzp-src');
+  el.style.opacity='.4';
+  try{e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',_mzpDragSrc||'');}catch(_){}
+}
+function _mzpDragEnd(el){
+  el.style.opacity='';
+  document.querySelectorAll('[data-mzp-zone]').forEach(z=>z.style.background='');
+  _mzpDragSrc=null;
+}
+function _mzpDragOver(e,zone){
+  if(!_mzpDragSrc)return;
+  e.preventDefault();
+  try{e.dataTransfer.dropEffect='move';}catch(_){}
+  zone.style.background='var(--blue-bg)';
+}
+function _mzpDragLeave(zone){zone.style.background='';}
+async function _mzpDrop(e,zone){
+  e.preventDefault();
+  zone.style.background='';
+  if(!_mzpDragSrc)return;
+  const src=_mzpDragSrc;_mzpDragSrc=null;
+  const dst=zone.getAttribute('data-mzp-zone');
+  // Parse src + dst
+  const sp=src.split('|');
+  const dp=dst.split('|');
+  // Track active MZ to re-open modal after drop
+  // Wir lesen tzId aus dem ersten Pool-Eintrag oder aus einem KW-Slot via wrId/slot
+  let tzId=null;
+  if(sp[0]==='pool'){const p=(S.wochenzielPool||[]).find(x=>x.id===sp[1]);if(p)tzId=p.teilzielId;}
+  else if(sp[0]==='kw'){const w=(S.wochenresets||[]).find(x=>x.id===sp[1]);if(w)tzId=w['big3_'+sp[2]+'_tz_id'];}
+  if(sp[0]==='pool'&&dp[0]==='kw'){
+    await _mzPlanerDrop('pool',{poolId:sp[1]},'kw',{wrId:dp[1],kw:parseInt(dp[2],10),jahr:parseInt(dp[3],10)});
+  } else if(sp[0]==='kw'&&dp[0]==='kw'){
+    await _mzPlanerDrop('kw',{wrId:sp[1],slot:parseInt(sp[2],10)},'kw',{wrId:dp[1],kw:parseInt(dp[2],10),jahr:parseInt(dp[3],10)});
+  } else if(sp[0]==='kw'&&dp[0]==='pool'){
+    await _mzPlanerDrop('kw',{wrId:sp[1],slot:parseInt(sp[2],10)},'pool',{});
+  }
+  // Re-Open Modal mit gleichem tzId
+  if(tzId)setTimeout(()=>openMZWochenplaner(tzId),50);
 }
 // Reihenfolge der Monatsziele in einer Zielkarte tauschen (Pfeile ↑↓).
 async function moveTzInZielkarte(zielId,tzId,dir){
@@ -1158,7 +1484,7 @@ function cmpAufgabeSlot(a,b){
   return ad.localeCompare(bd);
 }
 async function loadData(){
-  const [personen,teams,ziele,kpis,teilziele,aufgaben,kpiVals,checkins,signale,wochenresets,beobachtungen,kontextFeed,decisionRequests,meetings,paddelGewinner,monatszielInputs,winTage]=await Promise.all([
+  const [personen,teams,ziele,kpis,teilziele,aufgaben,kpiVals,checkins,signale,wochenresets,beobachtungen,kontextFeed,decisionRequests,meetings,paddelGewinner,monatszielInputs,winTage,wochenzielPool]=await Promise.all([
     dbGet('personen','select=*&order=ci'),dbGet('teams','select=*'),
     dbGet('ziele','select=*&order=created_at'),dbGet('kpis','select=*'),
     dbGet('teilziele','select=*&order=created_at'),dbGet('aufgaben','select=*&order=created_at'),
@@ -1174,6 +1500,8 @@ async function loadData(){
     dbGet('monatsziel_inputs','select=*&order=datum.desc').catch(()=>[]),
     // v176: WIN-Tage. Tolerant gegenüber fehlender Tabelle (Migration nötig).
     dbGet('win_tage','select=*&order=datum.desc&limit=200').catch(()=>[]),
+    // v184: Wochenziel-Pool (ungeplante Wochenziele). Tolerant.
+    dbGet('wochenziel_pool','select=*&order=sort_index').catch(()=>[]),
   ]);
   S.personen=personen||[];
   S.teams=(teams||[]).map(t=>({...t,members:t.members||[]}));
@@ -1206,6 +1534,8 @@ async function loadData(){
   S.paddelGewinner=(paddelGewinner||[]);
   // v174: Leading-Indicator-Inputs (camelCase-Mapping)
   S.monatszielInputs=(monatszielInputs||[]).map(i=>({id:i.id,teilzielId:i.teilziel_id,datum:i.datum,quelle:i.quelle||'manual',createdBy:i.created_by||null,createdAt:i.created_at||null}));
+  // v184: Wochenziel-Pool — ungeplante Wochenziele unter MZ
+  S.wochenzielPool=(wochenzielPool||[]).map(p=>({id:p.id,pid:p.pid,teilzielId:p.teilziel_id,titel:p.titel,sortIndex:p.sort_index??null,createdBy:p.created_by||null,createdAt:p.created_at||null}));
   // v176: WIN-Tage (camelCase-Mapping). blocks/kryptonit als Arrays defensiv defaulten.
   S.winTage=(winTage||[]).map(w=>({
     id:w.id, pid:w.pid, datum:w.datum,
@@ -8753,8 +9083,10 @@ function rMonat(){
     }
 
     // Actions
-    out+='<div style="display:flex;gap:8px;margin-top:18px">';
-    out+='<button onclick="openMonatszielDetail(\''+tz.id+'\')" style="flex:1;padding:10px;border-radius:10px;background:var(--inv);color:var(--inv-t);border:none;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer">Monatsziel bearbeiten</button>';
+    out+='<div style="display:flex;gap:8px;margin-top:18px;flex-wrap:wrap">';
+    // v184: Wochenplaner als primäre Aktion
+    out+='<button onclick="openMZWochenplaner(\''+tz.id+'\')" style="flex:1;min-width:180px;padding:10px;border-radius:10px;background:var(--inv);color:var(--inv-t);border:none;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer">📅 Wochenplaner öffnen</button>';
+    out+='<button onclick="openMonatszielDetail(\''+tz.id+'\')" style="padding:10px 16px;border-radius:10px;background:var(--gray-bg);color:var(--t2);border:1px solid var(--bd);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer">Bearbeiten</button>';
     out+='<button onclick="nav(\'woche\')" style="padding:10px 16px;border-radius:10px;background:var(--gray-bg);color:var(--t2);border:1px solid var(--bd);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer">→ Woche</button>';
     out+='</div>';
   }
@@ -9803,6 +10135,8 @@ function rZiele(){
             out+='<div style="font-size:11px;color:var(--t3)">✓ erledigt</div>';
           }
           out+='</div>';
+          // v184: Wochenplaner-Icon (primär, vor Edit)
+          if(canManageTZ(z.id)&&!istBereich(z.id))out+='<button title="Wochenplaner öffnen" onclick="event.stopPropagation();openMZWochenplaner(\''+tz.id+'\')" style="flex-shrink:0;width:24px;height:24px;border-radius:6px;border:1px solid '+f.bd+';background:transparent;color:var(--t3);cursor:pointer;font-family:inherit;font-size:12px;line-height:1;padding:0;display:flex;align-items:center;justify-content:center">📅</button>';
           // Edit-Icon (Monatsziel bearbeiten)
           if(canManageTZ(z.id))out+='<button title="Monatsziel bearbeiten" onclick="event.stopPropagation();editTZ(\''+z.id+'\',\''+tz.id+'\')" style="flex-shrink:0;width:24px;height:24px;border-radius:6px;border:1px solid '+f.bd+';background:transparent;color:var(--t3);cursor:pointer;font-family:inherit;font-size:12px;line-height:1;padding:0;display:flex;align-items:center;justify-content:center">✎</button>';
           // v175: Pause-Button (ruht reversibel, Aufgaben werden beim Verantwortlichen gedimmt)
