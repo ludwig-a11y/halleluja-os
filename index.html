@@ -10253,9 +10253,8 @@ function rZiele(){
     out+='<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -4px;padding:0 4px 4px">';
     out+='<div style="min-width:'+totalW+'px">';
 
-    // Header
+    // v199: Header — Reihenfolge: Monate (Zeit) | Pool (Vorrat) | Ziel (Anker rechts)
     out+='<div style="display:flex;gap:'+GAP+'px;align-items:flex-end;padding:0 0 8px 0">';
-    out+='<div style="width:'+COL_POOL+'px;flex-shrink:0;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);padding:4px 8px;text-align:center">📥 Pool</div>';
     _scopeMonths.forEach(ym=>{
       const _mn=parseInt(ym.slice(5,7),10);
       const _isCurr=ym===_curMonStr;
@@ -10267,6 +10266,7 @@ function rZiele(){
       out+='<div style="font-size:9px;color:var(--t3);margin-top:1px">'+ym.slice(0,4)+'</div>';
       out+='</div>';
     });
+    out+='<div style="width:'+COL_POOL+'px;flex-shrink:0;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);padding:4px 8px;text-align:center">📥 Pool</div>';
     out+='<div style="width:'+COL_ZIEL+'px;flex-shrink:0;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);padding:4px 8px;text-align:center">🏁 Ziel</div>';
     out+='</div>';
 
@@ -10278,21 +10278,8 @@ function rZiele(){
 
       out+='<div style="display:flex;gap:'+GAP+'px;align-items:flex-start;padding-bottom:'+GAP+'px;border-bottom:1px solid var(--bd);margin-bottom:'+GAP+'px">';
 
-      // Pool-Zelle (links) — v197: in Ziel-Farbe getintet, visuell mit End-Card verbunden
-      out+='<div data-mzp-zone="zielpool|'+z.id+'" style="width:'+COL_POOL+'px;flex-shrink:0;background:'+f.bg+';border:1.5px solid '+f.bd+';border-right:4px solid '+f.tc+';border-radius:8px 0 0 8px;padding:5px;min-height:64px;display:flex;flex-direction:column;gap:3px" ondragover="_mzpDragOver(event,this)" ondragleave="_mzpDragLeave(this)" ondrop="_mzpDrop(event,this)">';
-      poolTZ.forEach(tz=>{
-        out+='<div data-mzp-src="mz|'+tz.id+'" draggable="true" ondragstart="_mzpDragStart(event,this)" ondragend="_mzpDragEnd(this)" onclick="event.stopPropagation();openMonatszielDetail(\''+tz.id+'\')" style="display:flex;align-items:center;gap:4px;padding:5px 7px;background:var(--sf);border:1px solid var(--bd);border-radius:6px;cursor:grab">';
-        out+='<span style="flex:1;font-size:11px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(tz.name)+'</span>';
-        out+='<button onclick="event.stopPropagation();_zgPoolDelete(\''+tz.id+'\')" title="Löschen" style="background:transparent;border:none;color:var(--t3);cursor:pointer;font-size:12px;padding:0 3px;line-height:1">×</button>';
-        out+='</div>';
-      });
-      const _inpId='zgpool-'+z.id;
-      if(canManageTZ(z.id)){
-        out+='<input id="'+_inpId+'" placeholder="+ Monatsziel" style="width:100%;font-size:11px;padding:5px 7px;border:1px solid var(--bd);border-radius:6px;background:var(--sf);color:var(--text);font-family:inherit" onkeydown="if(event.key===\'Enter\'){event.preventDefault();_zgAddPool(\''+z.id+'\',\''+_inpId+'\')}">';
-      }
-      out+='</div>';
-
-      // Month-Cells
+      // v199: Reihenfolge: Months (Zeit) → Pool (Vorrat) → Ziel-Card (Anker rechts)
+      // Month-Cells zuerst
       _scopeMonths.forEach(ym=>{
         const _isCurr=ym===_curMonStr;
         const _isPast=ym<_curMonStr;
@@ -10319,6 +10306,20 @@ function rZiele(){
         // v194: leere Cell = einfach leer (kein "—" mehr — visuelle Ruhe)
         out+='</div>';
       });
+
+      // v199: Pool zwischen Months und Ziel-Card — Pool & Ziel bilden Anker-Paar rechts
+      out+='<div data-mzp-zone="zielpool|'+z.id+'" style="width:'+COL_POOL+'px;flex-shrink:0;background:'+f.bg+';border:1.5px solid '+f.bd+';border-radius:8px;padding:5px;min-height:64px;display:flex;flex-direction:column;gap:3px" ondragover="_mzpDragOver(event,this)" ondragleave="_mzpDragLeave(this)" ondrop="_mzpDrop(event,this)">';
+      poolTZ.forEach(tz=>{
+        out+='<div data-mzp-src="mz|'+tz.id+'" draggable="true" ondragstart="_mzpDragStart(event,this)" ondragend="_mzpDragEnd(this)" onclick="event.stopPropagation();openMonatszielDetail(\''+tz.id+'\')" style="display:flex;align-items:center;gap:4px;padding:5px 7px;background:var(--sf);border:1px solid var(--bd);border-radius:6px;cursor:grab">';
+        out+='<span style="flex:1;font-size:11px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(tz.name)+'</span>';
+        out+='<button onclick="event.stopPropagation();_zgPoolDelete(\''+tz.id+'\')" title="Löschen" style="background:transparent;border:none;color:var(--t3);cursor:pointer;font-size:12px;padding:0 3px;line-height:1">×</button>';
+        out+='</div>';
+      });
+      const _inpId='zgpool-'+z.id;
+      if(canManageTZ(z.id)){
+        out+='<input id="'+_inpId+'" placeholder="+ Monatsziel" style="width:100%;font-size:11px;padding:5px 7px;border:1px solid var(--bd);border-radius:6px;background:var(--sf);color:var(--text);font-family:inherit" onkeydown="if(event.key===\'Enter\'){event.preventDefault();_zgAddPool(\''+z.id+'\',\''+_inpId+'\')}">';
+      }
+      out+='</div>';
 
       // End-Card (rechts) — v194: bei fehlendem Datum nur 🏁-Marker, kein "KEIN DATUM"-Wort
       let _zEndDateLbl='';
