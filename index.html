@@ -7687,6 +7687,34 @@ function rTag(){
   // ── P1-KPIs ganz oben ("⚡ Heute zählt") — tägliche Pflicht-Felder sichtbar vor Wochenzielen ──
   out+=rKpiBlock(aP,'p1');
 
+  // ── Fokus-Block: Kontext-Strip Ziel → Monatsziel ──
+  {
+    const _fbZiele=(S.ziele||[]).filter(z=>!['bereich','vorschlag','archiviert'].includes(z.status)&&!z.erledigt);
+    const _fbMy=_fbZiele.filter(z=>String(z.verantwortlichId)===String(aP)||(z.teilziele||[]).some(t=>String(effectiveDoerId(t))===String(aP)&&!t.erledigt&&(t.status||'aktiv')==='aktiv'));
+    const _fbZ=_fbMy.find(z=>z.focus)||_fbMy[0]||null;
+    const _fbTZ=_fbZ?(_fbZ.teilziele||[]).filter(t=>!t.erledigt&&(t.status||'aktiv')==='aktiv'&&(String(effectiveDoerId(t))===String(aP)||String(t.verantwortlichId)===String(aP))).sort((a,b)=>(a.datum||'9999').localeCompare(b.datum||'9999'))[0]||null:null;
+    if(_fbZ){
+      out+='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:14px">';
+      const _zTotal=(_fbZ.teilziele||[]).length,_zDone=(_fbZ.teilziele||[]).filter(t=>t.erledigt).length;
+      out+='<div onclick="nav(\'ziele\')" style="padding:10px 12px;background:var(--sf);border:1px solid var(--bd);border-radius:10px;cursor:pointer;min-width:0">';
+      out+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);margin-bottom:3px">🌟 Ziel · 3 Monate</div>';
+      out+='<div style="font-size:12px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.3">'+esc(_fbZ.name)+'</div>';
+      if(_zTotal)out+='<div style="font-size:10px;color:var(--t2);margin-top:3px">'+_zDone+'/'+_zTotal+' Monatsziele</div>';
+      out+='</div>';
+      out+='<div onclick="nav(\'monat\')" style="padding:10px 12px;background:var(--sf);border:1px solid var(--bd);border-radius:10px;cursor:pointer;min-width:0">';
+      out+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);margin-bottom:3px">🎯 Monatsziel</div>';
+      if(_fbTZ){
+        const _d=_fbTZ.datum?'bis '+_fbTZ.datum.slice(8)+'.'+_fbTZ.datum.slice(5,7)+'.':'';
+        out+='<div style="font-size:12px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.3">'+esc(_fbTZ.name)+'</div>';
+        if(_d)out+='<div style="font-size:10px;color:var(--t2);margin-top:3px">'+_d+'</div>';
+      } else {
+        out+='<div style="font-size:11px;color:var(--t3);font-style:italic">Kein offenes Monatsziel</div>';
+      }
+      out+='</div>';
+      out+='</div>';
+    }
+  }
+
   // ── §2 Fokus: 3 Wochenziele (HART) ──
   const{kw:kwAkt}=getKW();
   const wrAktuell=dieseWocheReset(aP);
@@ -8887,16 +8915,19 @@ function rMonat(){
 
     // ── Body pro Ziel-Gruppe ──
     // v222: Reihenfolge per Drag speichern (localStorage pro User)
-    if(!window._mzOrder)window._mzOrder=JSON.parse(localStorage.getItem('mz_ziel_order_'+aP)||'[]');
-    const byZielArr=Array.from(byZiel.values()).sort((a,b)=>{const ai=window._mzOrder.indexOf(a.ziel.id),bi=window._mzOrder.indexOf(b.ziel.id);return(ai<0?9999:ai)-(bi<0?9999:bi);});
+    // IDs immer als String normalisieren — Supabase gibt Zahlen, Template-Literals Strings
+    if(!window._mzOrder)window._mzOrder=JSON.parse(localStorage.getItem('mz_ziel_order_'+aP)||'[]').map(String);
+    const byZielArr=Array.from(byZiel.values()).sort((a,b)=>{const ai=window._mzOrder.indexOf(String(a.ziel.id)),bi=window._mzOrder.indexOf(String(b.ziel.id));return(ai<0?9999:ai)-(bi<0?9999:bi);});
     window._monZielRenderOrder=byZielArr.map(g=>g.ziel.id);
     byZielArr.forEach(group=>{
       const z=group.ziel,f=group.f;
       // Strategie-Header (draggable für Ziel-Zeilen-Sortierung)
       out+='<div draggable="true" data-zielid="'+z.id+'" ondragstart="event.stopPropagation();window._monZielDragId=\''+z.id+'\';this.style.opacity=\'.5\'" ondragend="this.style.opacity=\'1\'" ondragover="event.preventDefault();event.stopPropagation();this.style.background=\'var(--gray-bg)\'" ondragleave="this.style.background=\'\'" ondrop="event.preventDefault();event.stopPropagation();this.style.background=\'\';_monZielDropOn(\''+z.id+'\')" style="display:flex;align-items:center;gap:8px;padding:10px 4px 6px 4px;margin-top:4px;cursor:grab;border-radius:6px;transition:background .1s">';
+      const _isActiveDoer=(z.teilziele||[]).some(t=>!t.erledigt&&(t.status||'aktiv')==='aktiv'&&String(effectiveDoerId(t))===String(aP));
       out+='<span style="color:var(--t3);font-size:11px;flex-shrink:0;opacity:.35;line-height:1;user-select:none">⠿</span>';
       out+='<span style="width:8px;height:8px;border-radius:50%;background:'+f.tc+';flex-shrink:0"></span>';
       out+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:'+f.tc+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:600px">'+esc(z.name)+'</div>';
+      if(!_isActiveDoer)out+='<span style="font-size:9px;padding:2px 7px;border-radius:99px;background:var(--gray-bg);color:var(--t3);border:1px solid var(--bd);flex-shrink:0;white-space:nowrap;user-select:none">koordiniere</span>';
       out+='<div style="flex:1;height:2px;background:'+f.tc+';opacity:.25;border-radius:1px"></div>';
       out+='</div>';
 
@@ -9044,11 +9075,11 @@ function rMonat(){
 window._monZielDragId=null;
 function _monZielDropOn(toId){
   const fromId=window._monZielDragId;window._monZielDragId=null;
-  if(!fromId||fromId===toId)return;
-  const order=[...(window._monZielRenderOrder||[])];
-  const fi=order.indexOf(fromId),ti=order.indexOf(toId);
+  if(!fromId||String(fromId)===String(toId))return;
+  const order=[...(window._monZielRenderOrder||[])].map(String);
+  const fi=order.indexOf(String(fromId)),ti=order.indexOf(String(toId));
   if(fi<0||ti<0)return;
-  order.splice(fi,1);order.splice(ti,0,fromId);
+  order.splice(fi,1);order.splice(ti,0,String(fromId));
   localStorage.setItem('mz_ziel_order_'+aP,JSON.stringify(order));
   window._mzOrder=order;
   rMonat();
