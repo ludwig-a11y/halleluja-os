@@ -7513,22 +7513,6 @@ function rTag(){
         out+='<div id="win-dim-wrap" style="opacity:.32;filter:saturate(.55);transition:opacity .25s ease, filter .25s ease" onmouseover="this.style.opacity=.8;this.style.filter=\'saturate(.85)\'" onmouseout="this.style.opacity=.32;this.style.filter=\'saturate(.55)\'">';
         _winDimOpen=true;
       }
-    } else if(!winIsOff()) {
-      // WIN nicht gesetzt → kompakter Hint zum Setzen (wenn nicht explizit aus)
-      const _yest=winYesterdayLast(aP);
-      const _hint=_yest?('Letzter WIN: '+esc(_yest.label||'…')+' · übernehmen?'):'Heute einen WIN setzen?';
-      out+='<div class="fm-hide" style="background:var(--sf);border:1px dashed var(--bd);border-radius:14px;padding:11px 14px;margin-bottom:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">';
-      out+='<div style="font-size:10px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:var(--t3)">⌖ WIN</div>';
-      out+='<div style="flex:1;font-size:12px;color:var(--t2);min-width:120px">'+_hint+'</div>';
-      if(_yest){out+='<button onclick="winTakeOverYesterday()" style="background:var(--text);color:var(--bg);border:none;border-radius:8px;padding:7px 11px;font:600 12px inherit;cursor:pointer">Übernehmen</button>';}
-      out+='<button onclick="winOff()" title="ausblenden" style="background:transparent;color:var(--t3);border:none;font-size:13px;cursor:pointer;padding:2px 4px">✕</button>';
-      out+='</div>';
-    } else {
-      // WIN explizit ausgeblendet → mini Recovery-Pille, damit man immer zurück kommt
-      const _hasW=!!winHeute(aP);
-      out+='<div class="fm-hide" style="margin-bottom:10px;display:flex;justify-content:flex-end">';
-      out+='<button onclick="winOn()" title="WIN-Modus einblenden" style="background:transparent;color:var(--t3);border:1px dashed var(--bd);border-radius:99px;padding:4px 10px;font:600 10px inherit;letter-spacing:.8px;text-transform:uppercase;cursor:pointer">⌖ WIN '+(_hasW?'einblenden':'setzen')+'</button>';
-      out+='</div>';
     }
   }
 
