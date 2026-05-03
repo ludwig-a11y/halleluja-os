@@ -4646,107 +4646,7 @@ function openZiel(zid){
   cm();nav('ziele');
   setTimeout(()=>{const el=document.getElementById('ziel-'+zid);if(el)el.scrollIntoView({behavior:'smooth',block:'center'});},100);
 }
-// ── §6 Phase A: Wochenrückblick — 3 Fragen ──────────────────────
-function openWrPhaseA(wr){
-  if(!window._wrPhaseA||window._wrPhaseA.wrId!==wr.id)
-    window._wrPhaseA={wrId:wr.id,step:1,geliefert:null,hauptthema:null,learning:''};
-  const st=window._wrPhaseA;
-  const{kw}=getKW();
-  const big3Items=[1,2,3].map(n=>({txt:wrItemName(wr,n),done:wr['big3_'+n+'_done']})).filter(x=>x.txt);
-  const big3Total=big3Items.length;
-  const big3Html=big3Total?'<div style="background:var(--gray-bg);border-radius:10px;padding:10px 12px;margin-bottom:16px">'
-    +big3Items.map(({txt,done})=>'<div style="display:flex;align-items:center;gap:8px;padding:2px 0">'
-      +'<span style="font-size:13px;color:'+(done?'var(--green)':'var(--t3)')+'">'+( done?'✓':'○')+'</span>'
-      +'<span style="font-size:12px;color:var(--t2);'+(done?'text-decoration:line-through':'')+'">'+esc(txt)+'</span>'
-      +'</div>').join('')+'</div>':'';
-  let h='<div class="mt">📋 Wochenrückblick KW '+kw+'</div>';
-  h+='<div style="font-size:12px;color:var(--t2);margin-bottom:16px">2 Minuten. Dann weiter zur Planung.</div>';
-  const stepInd='<div style="display:flex;gap:6px;margin-bottom:16px">'
-    +[1,2,3].filter(n=>n<=2||true).map(n=>{
-      if(n===2&&st.geliefert===big3Total&&big3Total>0)return'';
-      return'<div style="flex:1;height:4px;border-radius:99px;background:'+(n<=st.step?'var(--inv)':'var(--bd)')+'"></div>';
-    }).join('')+'</div>';
-  h+=stepInd;
-  if(st.step===1){
-    h+=big3Html;
-    h+='<div style="font-size:15px;font-weight:700;margin-bottom:16px">Wie viele Wochenziele hast du <em>geliefert</em>?</div>';
-    h+='<div style="display:flex;gap:10px;margin-bottom:24px">';
-    [0,1,2,3].filter(n=>n<=big3Total||(big3Total===0&&n===0)).forEach(n=>{
-      const sel=st.geliefert===n;
-      h+='<button onclick="wrPhaseASet(1,'+n+')" style="flex:1;padding:18px 0;border-radius:12px;font-size:24px;font-weight:800;border:2px solid '+(sel?'var(--inv)':'var(--bd)')+';background:'+(sel?'var(--inv)':'var(--sf)')+';color:'+(sel?'var(--inv-t)':'var(--text)')+';cursor:pointer;font-family:inherit">'+n+'</button>';
-    });
-    h+='</div>';
-    h+='<div class="mf"><button class="btn btn-dk" onclick="wrPhaseANext()" '+(st.geliefert!==null?'':'disabled style="opacity:.4"')+' style="min-width:180px">Weiter →</button></div>';
-  }else if(st.step===2){
-    h+='<div style="font-size:15px;font-weight:700;margin-bottom:8px">Was war das Hauptthema?</div>';
-    h+='<div style="font-size:12px;color:var(--t2);margin-bottom:16px">Nicht als Kritik — als Diagnose für nächste Woche.</div>';
-    h+='<div style="display:flex;gap:10px;margin-bottom:24px;flex-wrap:wrap">';
-    [{v:'ausfuehrung',e:'⚡',l:'Ausführung',s:'Nicht gemacht, abgelenkt, zu spät'},{v:'scoping',e:'📐',l:'Scoping',s:'Zu viel gewollt, falsch eingeschätzt'}].forEach(({v,e,l,s})=>{
-      const sel=st.hauptthema===v;
-      h+='<button onclick="wrPhaseASet(2,\''+v+'\')" style="flex:1 1 140px;padding:14px 12px;border-radius:12px;text-align:left;border:2px solid '+(sel?'var(--inv)':'var(--bd)')+';background:'+(sel?'var(--inv)':'var(--sf)')+';cursor:pointer;font-family:inherit">';
-      h+='<div style="font-size:15px;font-weight:700;color:'+(sel?'var(--inv-t)':'var(--text)')+'">'+e+' '+l+'</div>';
-      h+='<div style="font-size:11px;color:'+(sel?'var(--inv-t)':'var(--t2)')+';margin-top:3px">'+s+'</div></button>';
-    });
-    h+='</div>';
-    h+='<div class="mf"><button class="btn btn-gr" onclick="wrPhaseASet(\'back\',1)" style="margin-right:auto">← Zurück</button><button class="btn btn-dk" onclick="wrPhaseANext()" '+(st.hauptthema?'':'disabled style="opacity:.4"')+' style="min-width:180px">Weiter →</button></div>';
-  }else{
-    const len=(st.learning||'').length;
-    h+='<div style="font-size:15px;font-weight:700;margin-bottom:8px">Ein Satz Learning dieser Woche.</div>';
-    h+='<div style="font-size:12px;color:var(--t2);margin-bottom:12px">Max. 140 Zeichen. Für dich — nicht für andere.</div>';
-    h+='<textarea id="wra-ta" maxlength="140" rows="3" oninput="wrPhaseAInput()" style="width:100%;padding:10px 12px;border:1.5px solid var(--bd);border-radius:10px;font-family:inherit;font-size:14px;resize:none;box-sizing:border-box" placeholder="z.B. Ich habe unterschätzt wie lange X dauert…">'+esc(st.learning||'')+'</textarea>';
-    h+='<div id="wra-cnt" style="font-size:10px;color:var(--t3);text-align:right;margin:3px 0 16px">'+(140-len)+' Zeichen übrig</div>';
-    const backStep=st.geliefert<(big3Total||3)?2:1;
-    h+='<div class="mf"><button class="btn btn-gr" onclick="wrPhaseASet(\'back\','+backStep+')" style="margin-right:auto">← Zurück</button>';
-    h+='<button id="wra-save" class="btn btn-dk" onclick="saveWrPhaseA(\''+wr.id+'\')" style="min-width:180px;'+(len>=10?'':'opacity:.4')+'">✓ Speichern & zur Planung</button></div>';
-  }
-  document.getElementById('mb').innerHTML=h;
-  document.getElementById('ovl').classList.add('open');
-  if(st.step===3)setTimeout(()=>{const ta=document.getElementById('wra-ta');if(ta){ta.focus();ta.setSelectionRange(ta.value.length,ta.value.length);}},80);
-}
-function wrPhaseASet(field,val){
-  if(!window._wrPhaseA)return;
-  if(field==='back'){window._wrPhaseA.step=val;}
-  else if(field===1)window._wrPhaseA.geliefert=val;
-  else if(field===2)window._wrPhaseA.hauptthema=val;
-  const wr=S.wochenresets.find(r=>r.id===window._wrPhaseA.wrId);
-  if(wr)openWrPhaseA(wr);
-}
-function wrPhaseANext(){
-  const st=window._wrPhaseA;if(!st)return;
-  const wr=S.wochenresets.find(r=>r.id===st.wrId);if(!wr)return;
-  const big3Total=[1,2,3].filter(n=>wrItemName(wr,n)).length;
-  if(st.step===1){
-    if(st.geliefert===null)return;
-    st.step=(st.geliefert<big3Total)?2:3;
-  }else if(st.step===2){
-    if(!st.hauptthema)return;
-    st.step=3;
-  }
-  openWrPhaseA(wr);
-}
-function wrPhaseAInput(){
-  const ta=document.getElementById('wra-ta');if(!ta)return;
-  const len=ta.value.length;
-  const cnt=document.getElementById('wra-cnt');if(cnt)cnt.textContent=(140-len)+' Zeichen übrig';
-  const btn=document.getElementById('wra-save');if(btn)btn.style.opacity=len>=10?'1':'0.4';
-  if(window._wrPhaseA)window._wrPhaseA.learning=ta.value;
-}
-async function saveWrPhaseA(wrId){
-  const st=window._wrPhaseA;if(!st)return;
-  const ta=document.getElementById('wra-ta');
-  const learning=(ta?ta.value:st.learning||'').trim();
-  if(learning.length<10){toast('⚠ Mindestens 10 Zeichen für Learning');return;}
-  const wr=S.wochenresets.find(r=>r.id===wrId);if(!wr)return;
-  wr.learning=learning;wr.geliefert_count=st.geliefert;wr.haupt_thema=st.hauptthema||null;
-  window._wrPhaseA=null;
-  // DB — silent fail wenn Spalten noch nicht existieren (Migration nötig)
-  await dbPatch('wochenresets',wrId,{learning,geliefert_count:st.geliefert,haupt_thema:st.hauptthema||null});
-  // Phase B = Fokus-Coach (scope=woche). Ersetzt den alten manuellen Kandidaten-Picker.
-  // Rückblick-Daten sind in wrNow gespeichert und landen automatisch im Report-Kontext.
-  window._fkFromWochenreset=true;
-  openFokusCoach('woche');
-}
-// ─────────────────────────────────────────────────────────────────
+// ── §6 Phase A: Wochenrückblick — Bottleneck-Frage (v217) ──────────────────────
 function openWochenreset(){
   const{kw,jahr}=getKW();
   const nextKw=kw;
@@ -4879,18 +4779,8 @@ function openWochenreset(){
   }
 
   const modalTitel=wr?'Wochenziele bearbeiten — KW '+kw:(_resetZwang?'📅 KW '+(kw+1)+' planen':istRueckblick?'Wochenrückblick KW '+kw:'Wochenplanung KW '+nextKw);
-  // Im Zwang-Modus: Warum-Lücke kam aus Schritt 1, hier als hidden input
-  const zwangBlockiertInput=_resetZwang?'<input type="hidden" id="wr-blockiert" value="'+esc(window._wrBlockiertZwang||'')+'">':'';
-  // ── Primärer Planungs-Pfad: Fokus-Coach ──
-  // Das alte manuelle Picker-UI ist in einem Collapse als Notfall-Fallback versteckt.
-  const coachCta='<div style="background:var(--sf);border:1.5px solid var(--inv);border-radius:12px;padding:16px 18px;margin-bottom:14px">'
-    +'<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t2);margin-bottom:6px">Planung — Schritt 2 von 2</div>'
-    +'<div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:4px">Wochenziele mit Claude durchdenken</div>'
-    +'<div style="font-size:12px;color:var(--t2);margin-bottom:12px;line-height:1.5">Statt aus einer Liste picken: der Coach bekommt deine Retro-Antworten + Kaskade und schlägt 3 scharfe Wochenziele vor. Editierbar, bevor committet wird.</div>'
-    +'<button onclick="cm();window._fkFromWochenreset=true;openFokusCoach(\'woche\')" class="btn btn-dk" style="width:100%;padding:12px;font-size:14px;font-weight:700">🎯 Mit Fokus-Coach planen →</button>'
-    +'</div>';
-  const manualFallback='<details style="margin-bottom:14px"><summary style="font-size:11px;color:var(--t3);cursor:pointer;padding:6px 0">↓ Manuell planen (Notfall-Fallback — falls Claude nicht verfügbar)</summary>'
-    +'<div style="margin-top:10px;padding:12px;border:1px dashed var(--bd);border-radius:10px;background:var(--gray-bg)">'
+  // v217: Primärer Planungs-Pfad direkt (kein Fokus-Coach mehr, kein Plan-B)
+  const planUI=''
     // Step 1: Monatsziel wählen
     +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">'
     +'<span style="background:var(--inv);color:var(--inv-t);font-size:12px;font-weight:800;width:22px;height:22px;border-radius:99px;display:flex;align-items:center;justify-content:center;flex-shrink:0">1</span>'
@@ -4898,8 +4788,7 @@ function openWochenreset(){
     +'</div>'
     +'<input type="hidden" id="wr-ziel" value="'+selZielId+'">'
     +'<input type="hidden" id="wr-focus-tz" value="'+selTZId+'">'
-    +(wr?'<textarea id="wr-blockiert" style="display:none">'+esc(wr.blockiert||'')+'</textarea>':'')
-    +'<div id="wr-tz-list" style="margin-left:32px">'+msHtml+'</div>'
+    +'<div id="wr-tz-list">'+msHtml+'</div>'
     // Step 2: Wochenziele
     +'<div style="display:flex;align-items:center;gap:10px;margin-top:14px;margin-bottom:6px">'
     +'<span style="background:'+(selTZId?'var(--inv)':'var(--bd)')+';color:'+(selTZId?'var(--inv-t)':'var(--t3)')+';font-size:12px;font-weight:800;width:22px;height:22px;border-radius:99px;display:flex;align-items:center;justify-content:center;flex-shrink:0">2</span>'
@@ -4907,22 +4796,13 @@ function openWochenreset(){
     +'</div>'
     +(selTZId?'<div id="wr-step2-sub" style="font-size:11px;color:var(--t2);margin-bottom:6px;margin-left:32px">Wähle aus Vorschlägen oder trage eigene ein (max. 3)</div>':'<div id="wr-step2-sub" style="font-size:11px;color:var(--t3);margin-bottom:6px;margin-left:32px">Zuerst oben ein Monatsziel wählen</div>')
     +'<div id="wr-tz-section" style="margin-left:32px"></div>'
-    // Plan B inline
-    +'<div style="margin-top:12px;padding-top:10px;border-top:1px dashed var(--bd)">'
-    +'<div style="font-size:11px;font-weight:700;color:var(--t2);margin-bottom:4px">Plan B (optional)</div>'
-    +'<textarea id="wr-hindernis" rows="2" placeholder="Was könnte dazwischenkommen?" style="width:100%;padding:6px 8px;border:1px solid var(--bd);border-radius:6px;font-family:inherit;font-size:12px;resize:vertical;margin-bottom:4px;box-sizing:border-box">'+esc(wr?.blockiert||'')+'</textarea>'
-    +'<textarea id="wr-wenndann" rows="2" placeholder="Wenn das passiert, dann…" style="width:100%;padding:6px 8px;border:1px solid var(--bd);border-radius:6px;font-family:inherit;font-size:12px;resize:vertical;box-sizing:border-box">'+esc(wr?.wenn_dann||'')+'</textarea>'
-    +'</div>'
-    +'<div class="mf" style="margin-top:12px"><button class="btn btn-dk" onclick="saveWochenreset()" style="flex:1">🤝 Manuell committen</button></div>'
-    +'</div></details>';
+    +'<div class="mf" style="margin-top:12px"><button class="btn btn-dk" onclick="saveWochenreset()" style="flex:1">🤝 Committen</button></div>';
   document.getElementById('mb').innerHTML=
     '<div class="mt">'+modalTitel+'</div>'
-    +zwangBlockiertInput
     +(_resetZwang?'':summaryHtml)
     +(rueckblickHtml?'<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px">'+rueckblickHtml+'</div>':'')
     +wrCascadeHtml()
-    +coachCta
-    +manualFallback
+    +planUI
     +(_resetZwang?'':'<div class="mf" style="justify-content:flex-end"><button class="btn btn-gr" onclick="cm()">Später</button></div>');
   document.getElementById('ovl').classList.add('open');
   if(selZielId){
@@ -4944,88 +4824,49 @@ function openWochenreset(){
   }
 }
 // ─── §6 WOCHENRÜCKBLICK — PHASE A ─────────────────────────────────
+// v217: openWrPhaseA — eine Bottleneck-Frage statt 3-Schritt-Flow
 function openWrPhaseA(wr){
-  // Vorbefüllung: wie viele big3 per Checkbox abgehakt wurden
-  const doneCount=[wr.big3_1_done,wr.big3_2_done,wr.big3_3_done].filter(Boolean).length;
   if(!window._wrPhaseA||window._wrPhaseA.wrId!==wr.id){
-    window._wrPhaseA={wrId:wr.id,geliefert:doneCount,thema:'',learning:''};
+    window._wrPhaseA={wrId:wr.id,learning:wr.learning||''};
   }
-  renderWrPhaseA();
-  document.getElementById('ovl').classList.add('open');
-}
-function renderWrPhaseA(){
-  const st=window._wrPhaseA;if(!st)return;
-  const wr=S.wochenresets.find(r=>r.id===st.wrId);if(!wr)return;
+  const st=window._wrPhaseA;
   const{kw}=getKW();
-  // Big3 Liste (Review-Kontext)
   let big3List='';
   [1,2,3].forEach(n=>{
     const txt=wrItemName(wr,n);const done=wr['big3_'+n+'_done'];if(!txt)return;
-    big3List+='<div style="display:flex;align-items:center;gap:8px;padding:4px 0">'
-      +'<span style="font-size:14px;flex-shrink:0">'+(done?'✅':'⭕')+'</span>'
+    big3List+='<div style="display:flex;align-items:center;gap:8px;padding:3px 0">'
+      +'<span style="font-size:13px;flex-shrink:0">'+(done?'✅':'⭕')+'</span>'
       +'<span style="font-size:12px;color:var(--t2);'+(done?'text-decoration:line-through':'')+'">'+esc(txt)+'</span>'
       +'</div>';
   });
-  if(!big3List)big3List='<div style="font-size:12px;color:var(--t3);padding:4px 0">Keine Wochenziele eingetragen.</div>';
-  // Q1: 0/1/2/3
-  const q1Btns=[0,1,2,3].map(n=>{
-    const sel=st.geliefert===n;
-    return'<button onclick="window._wrPhaseA.geliefert='+n+';window._wrPhaseA.thema=(window._wrPhaseA.geliefert===3?\'\':window._wrPhaseA.thema);renderWrPhaseA()" style="flex:1;padding:14px 0;border-radius:10px;border:1.5px solid '+(sel?'var(--inv)':'var(--bd)')+';background:'+(sel?'var(--inv)':'var(--sf)')+';color:'+(sel?'var(--inv-t)':'var(--text)')+';font-family:inherit;font-size:18px;font-weight:800;cursor:pointer">'+n+'</button>';
-  }).join('');
-  // Q2: nur wenn geliefert < 3
-  let q2Html='';
-  if(st.geliefert<3){
-    const themen=[['ausfuehrung','⚙️ Ausführung','Nicht gemacht, abgelenkt, zu spät angefangen'],['scoping','📐 Scoping','Zu viel gewollt, falsch geschätzt']];
-    q2Html='<div style="margin-top:20px">'
-      +'<div style="font-size:14px;font-weight:600;margin-bottom:4px">Was war das Hauptthema?</div>'
-      +'<div style="font-size:12px;color:var(--t2);margin-bottom:12px">Hilft, in Zukunft besser zu planen.</div>'
-      +'<div style="display:flex;flex-direction:column;gap:8px">'
-      +themen.map(([v,lbl,sub])=>{const sel=st.thema===v;return'<button onclick="window._wrPhaseA.thema=\''+v+'\';renderWrPhaseA()" style="padding:12px 16px;border-radius:10px;border:1.5px solid '+(sel?'var(--inv)':'var(--bd)')+';background:'+(sel?'var(--inv)':'var(--sf)')+';color:'+(sel?'var(--inv-t)':'var(--text)')+';font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;text-align:left"><div>'+lbl+'</div><div style="font-size:11px;font-weight:400;color:'+(sel?'var(--inv-t)':'var(--t3)')+';margin-top:2px">'+sub+'</div></button>';}).join('')
-      +'</div></div>';
-  }
-  // Q3: Learning
-  const q3Unlocked=(st.geliefert===3)||(st.geliefert<3&&st.thema);
-  let q3Html='';
-  if(q3Unlocked){
-    const lLen=(st.learning||'').length;
-    q3Html='<div style="margin-top:20px">'
-      +'<div style="font-size:14px;font-weight:600;margin-bottom:4px">Learning in einem Satz</div>'
-      +'<div style="font-size:12px;color:var(--t2);margin-bottom:8px">Max. 140 Zeichen — was nimmst du aus dieser Woche mit?</div>'
-      +'<textarea id="wrpa-learning" maxlength="140" oninput="window._wrPhaseA.learning=this.value;const ch=document.getElementById(\'wrpa-chr\');if(ch)ch.textContent=this.value.length+\'/140\';const b=document.getElementById(\'wrpa-submit\');if(b){const ok=this.value.trim().length>=10;b.style.opacity=ok?\'1\':\'.5\';b.style.cursor=ok?\'pointer\':\'not-allowed\';}" placeholder="z.B. Montag-Morgen-Block für Deep Work ist Gold wert." style="width:100%;height:72px;padding:10px 12px;border-radius:8px;border:1px solid var(--bd);background:var(--sf);color:var(--text);font-family:inherit;font-size:13px;resize:none;box-sizing:border-box">'+esc(st.learning||'')+'</textarea>'
-      +'<div style="display:flex;justify-content:flex-end;font-size:10px;color:var(--t3);margin-top:2px" id="wrpa-chr">'+lLen+'/140</div>'
-      +'</div>';
-  }
-  const canSubmit=q3Unlocked&&(st.learning||'').trim().length>=10;
+  const lLen=(st.learning||'').length;
+  const canSave=lLen>=5;
   const html='<div class="mt">🔄 Rückblick · KW '+kw+'</div>'
-    +'<div style="font-size:12px;color:var(--t2);margin-bottom:14px;padding:8px 12px;background:var(--gray-bg);border-left:3px solid var(--inv);border-radius:0 6px 6px 0;line-height:1.5">Ehrliche Reflektion zählt mehr als gute Zahlen. Niemand ist jede Woche bei 100%.</div>'
-    +'<div style="background:var(--sf);border:1px solid var(--bd);border-radius:10px;padding:10px 14px;margin-bottom:18px">'
-    +'<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);margin-bottom:6px">Deine Wochenziele</div>'
-    +big3List
-    +'</div>'
-    +'<div style="font-size:14px;font-weight:600;margin-bottom:4px">Wie viele hast du geliefert?</div>'
-    +'<div style="font-size:12px;color:var(--t2);margin-bottom:12px">Keine Grautöne — entweder abgeschlossen oder nicht.</div>'
-    +'<div style="display:flex;gap:8px">'+q1Btns+'</div>'
-    +q2Html
-    +q3Html
-    +'<div class="mf" style="margin-top:20px">'
+    +(big3List?'<div style="background:var(--sf);border:1px solid var(--bd);border-radius:10px;padding:10px 14px;margin-bottom:16px">'
+      +'<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);margin-bottom:6px">Wochenziele</div>'
+      +big3List+'</div>':'')
+    +'<div style="font-size:14px;font-weight:600;margin-bottom:6px">Welcher Bottleneck wurde diese Woche kleiner?</div>'
+    +'<div style="font-size:12px;color:var(--t2);margin-bottom:10px">Was ist nächste Woche dran? Ein Satz reicht.</div>'
+    +'<textarea id="wr-bottleneck" rows="3" oninput="window._wrPhaseA.learning=this.value;const b=document.getElementById(\'wrpa-save\');if(b)b.style.opacity=this.value.trim().length>=5?\'1\':\'.5\'" placeholder="z.B. Termin-Conversion war Bottleneck — nächste Woche Skript überarbeiten." style="width:100%;padding:10px 12px;border:1.5px solid var(--bd);border-radius:10px;font-family:inherit;font-size:13px;resize:none;box-sizing:border-box">'+esc(st.learning||'')+'</textarea>'
+    +'<div class="mf" style="margin-top:16px">'
     +'<button class="btn btn-gr" onclick="cm()">Später</button>'
-    +'<button id="wrpa-submit" class="btn btn-dk" onclick="saveWrPhaseA()" style="opacity:'+(canSubmit?'1':'.5')+';cursor:'+(canSubmit?'pointer':'not-allowed')+'">Weiter zur Planung →</button>'
+    +'<button id="wrpa-save" class="btn btn-dk" onclick="saveWrPhaseA()" style="opacity:'+(canSave?'1':'.5')+'">Weiter zur Planung →</button>'
     +'</div>';
   document.getElementById('mb').innerHTML=html;
+  document.getElementById('ovl').classList.add('open');
+  setTimeout(()=>{const ta=document.getElementById('wr-bottleneck');if(ta){ta.focus();ta.setSelectionRange(ta.value.length,ta.value.length);}},80);
 }
 async function saveWrPhaseA(){
   const st=window._wrPhaseA;if(!st)return;
-  if(st.geliefert===null||st.geliefert===undefined){toast('⚠️ Bitte Anzahl wählen');return;}
-  if(st.geliefert<3&&!st.thema){toast('⚠️ Bitte Hauptthema wählen');return;}
-  const learning=(st.learning||'').trim();
-  if(learning.length<10){toast('⚠️ Learning-Satz zu kurz (min. 10 Zeichen)');return;}
-  const patch={geliefert_count:st.geliefert,haupt_thema:st.thema||null,learning};
+  const ta=document.getElementById('wr-bottleneck');
+  const learning=(ta?ta.value:st.learning||'').trim();
+  if(learning.length<5){toast('⚠️ Mindestens 5 Zeichen');return;}
   const wr=S.wochenresets.find(r=>r.id===st.wrId);
-  if(wr)Object.assign(wr,patch);
-  await dbPatch('wochenresets',st.wrId,patch);
+  if(wr)wr.learning=learning;
   window._wrPhaseA=null;
-  toast('✓ Rückblick abgeschlossen — jetzt planen');
-  openWochenreset(); // Re-open, now in planning mode (Phase B)
+  await dbPatch('wochenresets',st.wrId,{learning}).catch(()=>{});
+  toast('✓ Rückblick gespeichert — jetzt planen');
+  openWochenreset();
 }
 // ─── Ende §6 PHASE A ─────────────────────────────────────────────
 
@@ -5315,9 +5156,8 @@ async function saveWochenreset(){
   const rec={
     id:'wr-'+String(aP)+'-'+kw+'-'+jahr,
     pid:aP,kw,jahr,
-    lief_gut:(document.getElementById('wr-gut')?.value.trim()||window._wrGutZwang||''),
-    blockiert:(document.getElementById('wr-hindernis')?.value.trim()||document.getElementById('wr-blockiert')?.value.trim()||''),
-    wenn_dann:(document.getElementById('wr-wenndann')?.value.trim()||''),
+    // v217: nur learning (Bottleneck-Frage) — andere Reflexionsfelder entfernt
+    learning:(document.getElementById('wr-bottleneck')?.value.trim()||wr?.learning||''),
     focus_ziel_id:zielId,
     big3_1_tz_id:allIds[0],big3_2_tz_id:allIds[1],big3_3_tz_id:allIds[2],
     big3_1:tzName(allIds[0])||newTzTexts[0]||null,big3_2:tzName(allIds[1])||newTzTexts[1]||null,big3_3:tzName(allIds[2])||newTzTexts[2]||null,
@@ -5401,25 +5241,17 @@ function openWochenresetZwang(){
     ?'<div style="font-size:12px;color:var(--t2);margin-bottom:10px;padding:6px 10px;background:var(--gray-bg);border-radius:6px">✨ Jetzt ist dein Moment für Reflexion — jetzt oder '+snoozeLabel.replace('⏱ ','in ')+'.</div>'
     :'<div style="font-size:12px;color:var(--t2);margin-bottom:10px;padding:6px 10px;background:var(--gray-bg);border-radius:6px">✨ Jetzt ist dein Moment für Reflexion — 2 Minuten.</div>';
   const snoozeBtn=canSnooze?'<button class="btn btn-gr" onclick="snoozeReset()" style="margin-right:auto">'+snoozeLabel+'</button>':'';
+  // v217: Zwang-Modal ohne alte Reflexions-Felder
   document.getElementById('mb').innerHTML=
     '<div class="mt">📋 Wochenrückblick KW '+kw+'</div>'
     +'<div style="font-size:12px;color:var(--t2);margin-bottom:10px">Nimm dir 2 Minuten — dann geht es weiter mit KW '+(kw+1)+'.</div>'
     +snoozeInfo
     +sum
-    +'<div class="fl"><label>🟢 Highlight der Woche <span style="font-weight:400;color:var(--t2)">(optional)</span></label>'
-    +'<textarea id="wr-gut-s1" rows="2" style="width:100%;padding:8px;border:1px solid var(--bd);border-radius:8px;font-family:inherit;font-size:13px;resize:vertical" placeholder="z. B. ein Win, ein Moment mit Energie, etwas Gelerntes…">'+esc(window._wrGutSnooze||'')+'</textarea></div>'
-    +'<div class="fl"><label>⚡ Bremsen <span style="font-weight:400;color:var(--t2)">(optional)</span></label>'
-    +'<textarea id="wr-blockiert-s1" rows="2" style="width:100%;padding:8px;border:1px solid var(--bd);border-radius:8px;font-family:inherit;font-size:13px;resize:vertical" placeholder="z. B. Hindernisse, fehlende Infos, Energie-Tiefs…">'+esc(window._wrBlockiertSnooze||'')+'</textarea></div>'
     +'<div class="mf">'
     +snoozeBtn
-    +'<button class="btn btn-dk" onclick="wrZurPlanung()" style="min-width:180px">Weiter zur Planung →</button>'
+    +'<button class="btn btn-dk" onclick="openWochenreset()" style="min-width:180px">Weiter zur Planung →</button>'
     +'</div>';
   document.getElementById('ovl').classList.add('open');
-}
-function wrZurPlanung(){
-  window._wrBlockiertZwang=document.getElementById('wr-blockiert-s1')?.value||'';
-  window._wrGutZwang=document.getElementById('wr-gut-s1')?.value||'';
-  openWochenreset();
 }
 function openBlocker(wrId){
   const wr=S.wochenresets.find(r=>r.id===wrId);if(!wr)return;
@@ -6652,9 +6484,7 @@ function checkResetZwang(){
   openWochenresetZwang();
 }
 function snoozeReset(){
-  const gut=document.getElementById('wr-gut-s1')?.value||'';
-  const blockiert=document.getElementById('wr-blockiert-s1')?.value||'';
-  window._wrGutSnooze=gut;window._wrBlockiertSnooze=blockiert;
+  const gut='';const blockiert='';
   const isFriday=new Date().getDay()===5;
   if(isFriday){
     // Smooth snooze: proportional zur verbleibenden Fenster-Zeit
@@ -7160,14 +6990,6 @@ function rWoche(){
     out+='</div>';
   }
 
-  // ── Wenn-Dann-Plan (WOOP) ──
-  if(wr&&wr.wenn_dann){
-    out+='<div style="background:var(--green-bg);border:1px solid var(--green-bd);border-radius:10px;padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;gap:10px">';
-    out+='<span style="font-size:15px">💡</span>';
-    out+='<div style="flex:1"><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--green);opacity:.7">Dein Plan</div>';
-    out+='<div style="font-size:12px;color:var(--text)">'+esc(wr.wenn_dann).slice(0,120)+(wr.wenn_dann.length>120?'…':'')+'</div></div>';
-    out+='</div>';
-  }
 
   // ── Leading Indicator #2: Ausführungs-Muster aus Missed-Deadlines ──
   out+=missPatternCardHtml(aP);
