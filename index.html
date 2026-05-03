@@ -3229,7 +3229,7 @@ function leadingDoerSelectHTML(ownerId,currentDoerId,currentDisabled){
     h+='<option value="'+p.id+'"'+(String(_selected)===String(p.id)?' selected':'')+'>👤 '+esc(p.name)+'</option>';
   });
   h+='<option disabled>──────────</option>';
-  h+='<option value="__NONE__"'+(_selected==='__NONE__'?' selected':'')+'>🚫 Niemand · Manager-MZ ohne Counter</option>';
+  h+='<option value="__NONE__"'+(_selected==='__NONE__'?' selected':'')+'>🚫 Kein Counter — ich koordiniere nur (kein Leading-Tracking)</option>';
   h+='</select>';
   return h;
 }
@@ -8800,12 +8800,22 @@ function rMonat(){
   }
 
   if(!alleTZ.length){
-    out+='<div style="text-align:center;padding:40px 20px">'
-      +'<div style="font-size:32px;margin-bottom:12px">🗓</div>'
-      +'<div style="font-size:15px;font-weight:700;margin-bottom:8px">Noch keine Monatsziele</div>'
-      +'<div style="font-size:13px;color:var(--t2);margin-bottom:20px;line-height:1.5">Monatsziele sind die Brücke zwischen Strategie (Ziel) und Woche.</div>'
-      +'<button onclick="nav(\'ziele\')" class="btn btn-dk">→ Ziel anlegen</button>'
-      +'</div>';
+    // Beispiel-Karte zeigt wie ein gefülltes Monatsziel aussieht
+    const _exMonEnd=new Date(jetzt.getFullYear(),jetzt.getMonth()+1,0);
+    const _exDat=_exMonEnd.getDate()+'.'+(_exMonEnd.getMonth()+1)+'.';
+    out+='<div style="max-width:480px;margin:0 auto;padding:20px 0">';
+    out+='<div style="font-size:15px;font-weight:700;margin-bottom:6px">Noch keine Monatsziele</div>';
+    out+='<div style="font-size:13px;color:var(--t2);margin-bottom:20px;line-height:1.5">Leg dein erstes Monatsziel an — ein konkretes Ergebnis, das du bis Monatsende erreichen willst.</div>';
+    out+='<button onclick="openAddMonatszielFromMonat()" class="btn btn-dk" style="margin-bottom:24px">+ Monatsziel anlegen</button>';
+    // Beispiel-Karte (gedimmt)
+    out+='<div style="opacity:.45;pointer-events:none">';
+    out+='<div style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">So sieht es aus wenn eines da ist:</div>';
+    out+='<div style="background:var(--blue-bg);border:1.5px solid var(--blue-bd);border-left:3px solid var(--blue);border-radius:10px;padding:12px 14px">';
+    out+='<div style="font-size:9px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Monatsziel · bis '+_exDat+'</div>';
+    out+='<div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:6px">z. B. 30 Qualifizierungsgespräche führen</div>';
+    out+='<div style="display:flex;align-items:center;gap:6px"><span style="font-size:10px;background:var(--sf);border:1px solid var(--bd);padding:2px 8px;border-radius:99px;color:var(--t2)">du</span><span style="font-size:10px;color:var(--t3)">0 / 30 Inputs</span></div>';
+    out+='</div></div>';
+    out+='</div>';
     // Review-Chronik trotzdem rendern (siehe unten)
   } else {
     // ── v186: TIME-FLOWS-RIGHT MATRIX ──
