@@ -7687,34 +7687,6 @@ function rTag(){
   // ── P1-KPIs ganz oben ("⚡ Heute zählt") — tägliche Pflicht-Felder sichtbar vor Wochenzielen ──
   out+=rKpiBlock(aP,'p1');
 
-  // ── Fokus-Block: Kontext-Strip Ziel → Monatsziel ──
-  {
-    const _fbZiele=(S.ziele||[]).filter(z=>!['bereich','vorschlag','archiviert'].includes(z.status)&&!z.erledigt);
-    const _fbMy=_fbZiele.filter(z=>String(z.verantwortlichId)===String(aP)||(z.teilziele||[]).some(t=>String(effectiveDoerId(t))===String(aP)&&!t.erledigt&&(t.status||'aktiv')==='aktiv'));
-    const _fbZ=_fbMy.find(z=>z.focus)||_fbMy[0]||null;
-    const _fbTZ=_fbZ?(_fbZ.teilziele||[]).filter(t=>!t.erledigt&&(t.status||'aktiv')==='aktiv'&&(String(effectiveDoerId(t))===String(aP)||String(t.verantwortlichId)===String(aP))).sort((a,b)=>(a.datum||'9999').localeCompare(b.datum||'9999'))[0]||null:null;
-    if(_fbZ){
-      out+='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:14px">';
-      const _zTotal=(_fbZ.teilziele||[]).length,_zDone=(_fbZ.teilziele||[]).filter(t=>t.erledigt).length;
-      out+='<div onclick="nav(\'ziele\')" style="padding:10px 12px;background:var(--sf);border:1px solid var(--bd);border-radius:10px;cursor:pointer;min-width:0">';
-      out+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);margin-bottom:3px">🌟 Ziel · 3 Monate</div>';
-      out+='<div style="font-size:12px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.3">'+esc(_fbZ.name)+'</div>';
-      if(_zTotal)out+='<div style="font-size:10px;color:var(--t2);margin-top:3px">'+_zDone+'/'+_zTotal+' Monatsziele</div>';
-      out+='</div>';
-      out+='<div onclick="nav(\'monat\')" style="padding:10px 12px;background:var(--sf);border:1px solid var(--bd);border-radius:10px;cursor:pointer;min-width:0">';
-      out+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);margin-bottom:3px">🎯 Monatsziel</div>';
-      if(_fbTZ){
-        const _d=_fbTZ.datum?'bis '+_fbTZ.datum.slice(8)+'.'+_fbTZ.datum.slice(5,7)+'.':'';
-        out+='<div style="font-size:12px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.3">'+esc(_fbTZ.name)+'</div>';
-        if(_d)out+='<div style="font-size:10px;color:var(--t2);margin-top:3px">'+_d+'</div>';
-      } else {
-        out+='<div style="font-size:11px;color:var(--t3);font-style:italic">Kein offenes Monatsziel</div>';
-      }
-      out+='</div>';
-      out+='</div>';
-    }
-  }
-
   // ── §2 Fokus: 3 Wochenziele (HART) ──
   const{kw:kwAkt}=getKW();
   const wrAktuell=dieseWocheReset(aP);
@@ -8382,10 +8354,93 @@ async function setPrio(id,pr){
 // ── focusModus: Legacy-Wrapper, leitet auf Maker-Modus weiter (Stufe 1) ──
 function focusModus(id){return makerModus(id);}
 
-// ── Maker-Modus entfernt (v218) — Stubs für bestehende Aufrufe ──
-async function makerModus(id){const a=S.aufgaben.find(x=>x.id===id);if(!a)return;if(a.status!=='aktiv')await startenA(id);}
-function _makerLoad(){return null;}
-function _makerRender(){}
+// ── Maker-Modus (v224 reconstructed): Fullscreen-Fokus beim Play ──
+// Beim Klick auf ▶ Block starten geht ein Vollbild-Fokus auf:
+// nur Aufgabe + Timer, keine Distraktoren. Esc oder ⤓ minimiert.
+function _makerSave(taskId){try{localStorage.setItem('maker_state_'+aP,JSON.stringify({taskId,t:Date.now()}));}catch(_){}}
+function _makerLoad(){
+  try{
+    const s=JSON.parse(localStorage.getItem('maker_state_'+aP)||'null');
+    if(!s||!s.taskId)return null;
+    const a=S.aufgaben.find(x=>x.id===s.taskId);
+    if(!a||a.status!=='aktiv')return null;
+    return s;
+  }catch(_){return null;}
+}
+function _makerClear(){try{localStorage.removeItem('maker_state_'+aP);}catch(_){}}
+
+async function makerModus(id){
+  const a=S.aufgaben.find(x=>x.id===id);if(!a)return;
+  if(a.status!=='aktiv')await startenA(id);
+  _makerSave(id);
+  _makerRender();
+}
+
+function _makerKey(e){if(e.key==='Escape')_makerClose();}
+
+function _makerRender(){
+  const st=_makerLoad();if(!st){_makerClose();return;}
+  const a=S.aufgaben.find(x=>x.id===st.taskId);
+  if(!a||a.status!=='aktiv'){_makerClose();return;}
+
+  let ov=document.getElementById('maker-ov');
+  const fresh=!ov;
+  if(fresh){
+    ov=document.createElement('div');
+    ov.id='maker-ov';
+    ov.style.cssText='position:fixed;inset:0;z-index:9995;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 24px;font-family:inherit';
+    document.body.appendChild(ov);
+    document.body.classList.add('focus-active');
+    if(window._makerIv)clearInterval(window._makerIv);
+    window._makerIv=setInterval(_makerRender,1000);
+    document.addEventListener('keydown',_makerKey);
+  }
+
+  const s=elapsedSec(a);
+  const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sec=s%60;
+  const timeFmt=(h>0?h+':':'')+String(m).padStart(2,'0')+':'+String(sec).padStart(2,'0');
+  const zNa=getZielName(a);
+  const tznName=a.teilzielId?(_tzById(a.teilzielId)?.name||''):'';
+  const pct=a.geplant?Math.round(s/(a.geplant*3600)*100):0;
+  const over=pct>=100;
+
+  let html='';
+  html+='<button onclick="_makerClose()" title="Esc minimiert" style="position:absolute;top:18px;right:24px;background:transparent;border:1px solid var(--bd);color:var(--t2);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;padding:8px 14px;border-radius:8px">⤓ Minimieren</button>';
+  html+='<div style="font-size:11px;font-weight:800;letter-spacing:1.4px;text-transform:uppercase;color:var(--t3);margin-bottom:18px">🔥 Im Fokus</div>';
+  if(zNa)html+='<div style="font-size:13px;color:var(--t2);margin-bottom:12px;text-align:center;max-width:700px;line-height:1.4">'+esc(zNa)+(tznName?' › '+esc(tznName):'')+'</div>';
+  html+='<div style="font-size:32px;font-weight:700;color:var(--text);margin-bottom:48px;text-align:center;max-width:800px;line-height:1.25;padding:0 16px">'+esc(a.titel)+'</div>';
+  html+='<div style="font-size:96px;font-weight:800;color:'+(over?'var(--red)':'var(--text)')+';font-variant-numeric:tabular-nums;letter-spacing:1px;line-height:1;margin-bottom:6px">'+timeFmt+'</div>';
+  if(a.geplant){
+    html+='<div style="font-size:13px;color:var(--t3);margin-bottom:10px">/ '+fmtH(a.geplant)+' geplant'+(over?' · ⚠ überzogen':'')+'</div>';
+    html+='<div style="width:280px;height:4px;background:var(--bd);border-radius:99px;margin-bottom:36px;overflow:hidden"><div style="width:'+Math.min(100,pct)+'%;height:100%;background:'+(over?'var(--red)':'var(--text)')+';transition:width .5s ease"></div></div>';
+  } else {
+    html+='<div style="margin-bottom:48px"></div>';
+  }
+  html+='<div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center">';
+  html+='<button onclick="_makerFinish()" style="padding:14px 32px;border-radius:12px;background:var(--green);color:#fff;border:none;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer">✓ Erledigt</button>';
+  html+='<button onclick="_makerPause()" style="padding:14px 28px;border-radius:12px;background:var(--gray-bg);color:var(--text);border:1px solid var(--bd);font-family:inherit;font-size:15px;font-weight:600;cursor:pointer">⏸ Pause</button>';
+  html+='</div>';
+  ov.innerHTML=html;
+}
+
+function _makerClose(){
+  const ov=document.getElementById('maker-ov');
+  if(ov)ov.remove();
+  if(window._makerIv){clearInterval(window._makerIv);window._makerIv=null;}
+  document.body.classList.remove('focus-active');
+  document.removeEventListener('keydown',_makerKey);
+}
+
+async function _makerFinish(){
+  const st=_makerLoad();if(!st){_makerClose();return;}
+  const id=st.taskId;_makerClear();_makerClose();
+  await fertig(id);
+}
+async function _makerPause(){
+  const st=_makerLoad();if(!st){_makerClose();return;}
+  const id=st.taskId;_makerClear();_makerClose();
+  await pauseA(id);
+}
 async function startenA(id){
   const a=S.aufgaben.find(x=>x.id===id);if(!a||a._busy)return;
   const prev={status:a.status,aktSeit:a.aktSeit};a._busy=true;
@@ -8923,11 +8978,9 @@ function rMonat(){
       const z=group.ziel,f=group.f;
       // Strategie-Header (draggable für Ziel-Zeilen-Sortierung)
       out+='<div draggable="true" data-zielid="'+z.id+'" ondragstart="event.stopPropagation();window._monZielDragId=\''+z.id+'\';this.style.opacity=\'.5\'" ondragend="this.style.opacity=\'1\'" ondragover="event.preventDefault();event.stopPropagation();this.style.background=\'var(--gray-bg)\'" ondragleave="this.style.background=\'\'" ondrop="event.preventDefault();event.stopPropagation();this.style.background=\'\';_monZielDropOn(\''+z.id+'\')" style="display:flex;align-items:center;gap:8px;padding:10px 4px 6px 4px;margin-top:4px;cursor:grab;border-radius:6px;transition:background .1s">';
-      const _isActiveDoer=(z.teilziele||[]).some(t=>!t.erledigt&&(t.status||'aktiv')==='aktiv'&&String(effectiveDoerId(t))===String(aP));
       out+='<span style="color:var(--t3);font-size:11px;flex-shrink:0;opacity:.35;line-height:1;user-select:none">⠿</span>';
       out+='<span style="width:8px;height:8px;border-radius:50%;background:'+f.tc+';flex-shrink:0"></span>';
       out+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:'+f.tc+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:600px">'+esc(z.name)+'</div>';
-      if(!_isActiveDoer)out+='<span style="font-size:9px;padding:2px 7px;border-radius:99px;background:var(--gray-bg);color:var(--t3);border:1px solid var(--bd);flex-shrink:0;white-space:nowrap;user-select:none">koordiniere</span>';
       out+='<div style="flex:1;height:2px;background:'+f.tc+';opacity:.25;border-radius:1px"></div>';
       out+='</div>';
 
