@@ -9087,10 +9087,15 @@ function rMonat(){
     out+='</div>';
 
     // ── Body pro Ziel-Gruppe ──
-    byZiel.forEach(group=>{
+    // v222: Reihenfolge per Drag speichern (localStorage pro User)
+    if(!window._mzOrder)window._mzOrder=JSON.parse(localStorage.getItem('mz_ziel_order_'+aP)||'[]');
+    const byZielArr=Array.from(byZiel.values()).sort((a,b)=>{const ai=window._mzOrder.indexOf(a.ziel.id),bi=window._mzOrder.indexOf(b.ziel.id);return(ai<0?9999:ai)-(bi<0?9999:bi);});
+    window._monZielRenderOrder=byZielArr.map(g=>g.ziel.id);
+    byZielArr.forEach(group=>{
       const z=group.ziel,f=group.f;
-      // Strategie-Header
-      out+='<div style="display:flex;align-items:center;gap:8px;padding:10px 4px 6px 4px;margin-top:4px">';
+      // Strategie-Header (draggable für Ziel-Zeilen-Sortierung)
+      out+='<div draggable="true" data-zielid="'+z.id+'" ondragstart="event.stopPropagation();window._monZielDragId=\''+z.id+'\';this.style.opacity=\'.5\'" ondragend="this.style.opacity=\'1\'" ondragover="event.preventDefault();event.stopPropagation();this.style.background=\'var(--gray-bg)\'" ondragleave="this.style.background=\'\'" ondrop="event.preventDefault();event.stopPropagation();this.style.background=\'\';_monZielDropOn(\''+z.id+'\')" style="display:flex;align-items:center;gap:8px;padding:10px 4px 6px 4px;margin-top:4px;cursor:grab;border-radius:6px;transition:background .1s">';
+      out+='<span style="color:var(--t3);font-size:11px;flex-shrink:0;opacity:.35;line-height:1;user-select:none">⠿</span>';
       out+='<span style="width:8px;height:8px;border-radius:50%;background:'+f.tc+';flex-shrink:0"></span>';
       out+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:'+f.tc+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:600px">'+esc(z.name)+'</div>';
       out+='<div style="flex:1;height:2px;background:'+f.tc+';opacity:.25;border-radius:1px"></div>';
@@ -9235,6 +9240,19 @@ function rMonat(){
   }
 
   document.getElementById('main').innerHTML=out;
+}
+// v222: Drag-Drop Ziel-Zeilen in Monats-Matrix
+window._monZielDragId=null;
+function _monZielDropOn(toId){
+  const fromId=window._monZielDragId;window._monZielDragId=null;
+  if(!fromId||fromId===toId)return;
+  const order=[...(window._monZielRenderOrder||[])];
+  const fi=order.indexOf(fromId),ti=order.indexOf(toId);
+  if(fi<0||ti<0)return;
+  order.splice(fi,1);order.splice(ti,0,fromId);
+  localStorage.setItem('mz_ziel_order_'+aP,JSON.stringify(order));
+  window._mzOrder=order;
+  rMonat();
 }
 // v192: Ziele-Matrix Helper — MZ in Monat einplanen / aus Plan entfernen / Pool-Inline-Add.
 async function _zgSetMonth(tzId,yyyymm){
