@@ -992,6 +992,43 @@ function kwAusDatum(yyyymmdd){
   if(!yyyymmdd||!/^\d{4}-\d{2}-\d{2}/.test(yyyymmdd))return null;
   return getKwFromDate(new Date(yyyymmdd+'T12:00:00'));
 }
+// v219: Monat (YYYY-MM) des Montags einer KW
+function kwMonat(kw,jahr){
+  const mon=dateOfKwMonday(jahr,kw);
+  return mon.getUTCFullYear()+'-'+String(mon.getUTCMonth()+1).padStart(2,'0');
+}
+// v219: Erste KW die Tage in einem Monat hat
+function firstKWOfMonth(ym){
+  const y=parseInt(ym.slice(0,4));const m=parseInt(ym.slice(5,7));
+  return getKwFromDate(new Date(y,m-1,1));
+}
+// v219: Wochenziel inline anlegen
+async function _addInlineWochenziel(tzId,kw,jahr,inpId){
+  const inp=document.getElementById(inpId);if(!inp)return;
+  const titel=inp.value.trim();if(!titel)return;
+  const id=nid('wzp');
+  const sortIndex=(S.wochenzielPool||[]).filter(p=>String(p.teilzielId)===String(tzId)&&Number(p.kw)===kw&&Number(p.jahr)===jahr).length;
+  const rec={id,pid:aP,teilziel_id:tzId,titel,sort_index:sortIndex,created_by:aP,kw,jahr};
+  S.wochenzielPool=S.wochenzielPool||[];
+  S.wochenzielPool.push({id,pid:aP,teilzielId:tzId,titel,sortIndex,createdBy:aP,createdAt:new Date().toISOString(),kw,jahr});
+  inp.value='';rZiele();
+  const{kw:curKw,jahr:curJahr}=getKW();
+  if(kw===curKw&&jahr===curJahr)syncBig3FromPool(aP,kw,jahr);
+  await dbInsert('wochenziel_pool',rec).catch(()=>{});
+}
+async function _delInlineWochenziel(id){
+  S.wochenzielPool=(S.wochenzielPool||[]).filter(p=>p.id!==id);
+  rZiele();await dbDelete('wochenziel_pool',id).catch(()=>{});
+}
+// v219: Big3 aus Pool ableiten — erste 3 Pool-Items der KW werden zu big3_X
+async function syncBig3FromPool(pid,kw,jahr){
+  const wrId='wr-'+String(pid)+'-'+kw+'-'+jahr;
+  const wr=(S.wochenresets||[]).find(w=>w.id===wrId);if(!wr)return;
+  const items=(S.wochenzielPool||[]).filter(p=>String(p.pid)===String(pid)&&Number(p.kw)===kw&&Number(p.jahr)===jahr).sort((a,b)=>(a.sortIndex??9999)-(b.sortIndex??9999));
+  const top3=items.slice(0,3);const patch={};
+  for(let i=0;i<3;i++){const s=i+1,item=top3[i]||null;patch['big3_'+s]=item?item.titel:null;patch['big3_'+s+'_tz_id']=item?item.teilzielId:null;wr['big3_'+s]=patch['big3_'+s];wr['big3_'+s+'_tz_id']=patch['big3_'+s+'_tz_id'];}
+  await dbPatch('wochenresets',wrId,patch).catch(()=>{});
+}
 // Liste der KWs zwischen zwei Datums (inklusive)
 function kwListe(startDate,endDate){
   const list=[];
@@ -1636,7 +1673,7 @@ async function loadData(){
   // v174: Leading-Indicator-Inputs (camelCase-Mapping)
   S.monatszielInputs=(monatszielInputs||[]).map(i=>({id:i.id,teilzielId:i.teilziel_id,datum:i.datum,quelle:i.quelle||'manual',createdBy:i.created_by||null,createdAt:i.created_at||null}));
   // v184: Wochenziel-Pool — ungeplante Wochenziele unter MZ
-  S.wochenzielPool=(wochenzielPool||[]).map(p=>({id:p.id,pid:p.pid,teilzielId:p.teilziel_id,titel:p.titel,sortIndex:p.sort_index??null,createdBy:p.created_by||null,createdAt:p.created_at||null}));
+  S.wochenzielPool=(wochenzielPool||[]).map(p=>({id:p.id,pid:p.pid,teilzielId:p.teilziel_id,titel:p.titel,sortIndex:p.sort_index??null,createdBy:p.created_by||null,createdAt:p.created_at||null,kw:p.kw??null,jahr:p.jahr??null}));
   // v176: WIN-Tage (camelCase-Mapping). blocks/kryptonit als Arrays defensiv defaulten.
   S.winTage=(winTage||[]).map(w=>({
     id:w.id, pid:w.pid, datum:w.datum,
@@ -5148,7 +5185,7 @@ async function saveWochenreset(){
   // v216: Big3-Texte erzeugen KEINE neuen Teilziele mehr (Phantom-Bug-Fix).
   // Free-Text landet direkt in wochenresets.big3_X als String.
   const allIdsRaw=[...selTzIds];
-  if(allIdsRaw.length>3){toast('⚠️ Maximal 3 Big-3-Einträge — bitte weniger auswählen.');return;}
+  // v219: kein Hard-Limit mehr — erste 3 werden als Big3 markiert, Rest als weiche Wochenziele
   const allIds=allIdsRaw.slice(0,3);
   while(allIds.length<3)allIds.push(null);
   const allTZ=S.ziele.flatMap(z=>z.teilziele||[]);
@@ -6976,7 +7013,7 @@ function rWoche(){
   }else{
     out+='<div style="background:var(--gray-bg);border:1.5px dashed var(--bd);border-radius:12px;padding:20px;text-align:center;margin-bottom:14px">';
     out+='<div style="font-size:13px;color:var(--t2);margin-bottom:10px">Noch keine Wochenziele für KW '+kw+'</div>';
-    out+='<button onclick="openWochenreset()" style="font-size:13px;font-weight:600;padding:9px 18px;border-radius:9px;background:var(--inv);color:var(--inv-t);border:none;cursor:pointer;font-family:inherit">Wochenziele planen →</button>';
+    out+='<button onclick="nav(\'ziele\')" style="font-size:13px;font-weight:600;padding:9px 18px;border-radius:9px;background:var(--inv);color:var(--inv-t);border:none;cursor:pointer;font-family:inherit">Wochenziele planen →</button>';
     out+='</div>';
   }
 
@@ -9488,6 +9525,27 @@ function rZiele(){
           const _mxCount=(!_mzMgr&&_eff&&_eff.zielWert)?(' · '+_msC+'/'+_eff.zielWert):'';
           out+='<div style="display:flex;align-items:center;gap:4px;margin-top:3px;flex-wrap:wrap">'+_mxMeta+'<span style="font-size:9px;color:var(--t3);margin-left:auto">'+_mxDate+_mxCount+'</span></div>';
           out+='</div>';
+          // v219: Inline Wochenziele pro MZ-Karte
+          {
+            const _wzKw=_isCurr?getKW().kw:firstKWOfMonth(ym).kw;
+            const _wzJahr=_isCurr?getKW().jahr:firstKWOfMonth(ym).jahr;
+            const _wzItems=(S.wochenzielPool||[]).filter(p=>String(p.teilzielId)===String(tz.id)&&p.kw&&kwMonat(p.kw,p.jahr)===ym).sort((a,b)=>(a.sortIndex??9999)-(b.sortIndex??9999));
+            if(_wzItems.length||!_isPast){
+              out+='<div style="margin-top:3px;padding-top:3px;border-top:1px dashed var(--bd)">';
+              _wzItems.forEach((p,idx)=>{
+                out+='<div style="display:flex;align-items:center;gap:3px;padding:2px 0">';
+                out+='<span style="font-size:9px;color:'+(idx<3?'var(--amber)':'var(--t3)')+'">'+( idx<3?'★':'·')+'</span>';
+                out+='<span style="flex:1;font-size:10px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(p.titel)+'</span>';
+                out+='<button onclick="event.stopPropagation();_delInlineWochenziel(\''+p.id+'\')" style="background:none;border:none;color:var(--t3);cursor:pointer;padding:0 2px;font-size:11px;line-height:1">×</button>';
+                out+='</div>';
+              });
+              if(!_isPast){
+                const _wzInpId='wzinp-'+tz.id+'-'+ym.replace('-','');
+                out+='<input id="'+_wzInpId+'" placeholder="+ Wochenziel" onclick="event.stopPropagation()" onkeydown="if(event.key===\'Enter\'){event.preventDefault();event.stopPropagation();_addInlineWochenziel(\''+tz.id+'\','+_wzKw+','+_wzJahr+',\''+_wzInpId+'\');}" style="font-size:10px;padding:3px 5px;border:1px dashed var(--bd);border-radius:4px;background:transparent;color:var(--text);width:100%;font-family:inherit;margin-top:2px;box-sizing:border-box">';
+              }
+              out+='</div>';
+            }
+          }
         });
         // v194: leere Cell = einfach leer (kein "—" mehr — visuelle Ruhe)
         out+='</div>';
