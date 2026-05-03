@@ -8354,9 +8354,10 @@ async function setPrio(id,pr){
 // ── focusModus: Legacy-Wrapper, leitet auf Maker-Modus weiter (Stufe 1) ──
 function focusModus(id){return makerModus(id);}
 
-// ── Maker-Modus (v224 reconstructed): Fullscreen-Fokus beim Play ──
-// Beim Klick auf ▶ Block starten geht ein Vollbild-Fokus auf:
-// nur Aufgabe + Timer, keine Distraktoren. Esc oder ⤓ minimiert.
+// ── Maker-Modus (v224): Pomodoro-Fullscreen-Fokus ──
+// 25-min Countdown (zählt runter), wenn 00:00 → automatisch nächster Block
+// (kein Unterbrechen des Flows). Punkte zeigen verbrauchte vs. geplante Blöcke.
+// Schwarzer Vollbild-Hintergrund, nur die Aufgabe + Timer.
 function _makerSave(taskId){try{localStorage.setItem('maker_state_'+aP,JSON.stringify({taskId,t:Date.now()}));}catch(_){}}
 function _makerLoad(){
   try{
@@ -8388,7 +8389,7 @@ function _makerRender(){
   if(fresh){
     ov=document.createElement('div');
     ov.id='maker-ov';
-    ov.style.cssText='position:fixed;inset:0;z-index:9995;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 24px;font-family:inherit';
+    ov.style.cssText='position:fixed;inset:0;z-index:9995;background:#000;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 24px;font-family:inherit';
     document.body.appendChild(ov);
     document.body.classList.add('focus-active');
     if(window._makerIv)clearInterval(window._makerIv);
@@ -8396,29 +8397,46 @@ function _makerRender(){
     document.addEventListener('keydown',_makerKey);
   }
 
-  const s=elapsedSec(a);
-  const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sec=s%60;
-  const timeFmt=(h>0?h+':':'')+String(m).padStart(2,'0')+':'+String(sec).padStart(2,'0');
+  // Pomodoro-Countdown: total elapsed (int sec) modulo 25-min Block.
+  // Wenn ein Block durch ist, beginnt automatisch der nächste. Kein State-Reset nötig.
+  const BLOCK_SEC=WIN_BLOCK_MIN*60;
+  const total=Math.floor(elapsedSec(a));
+  const intoBlock=total%BLOCK_SEC;
+  const remaining=BLOCK_SEC-intoBlock;
+  const m=Math.floor(remaining/60),sec=remaining%60;
+  const timeFmt=String(m).padStart(2,'0')+':'+String(sec).padStart(2,'0');
+
+  const planned=taskPlannedBlocks(a);
+  const consumed=Math.floor(total/BLOCK_SEC);
+  const currentBlock=consumed+1;
+  // Punkte: ● verbraucht, ◐ aktuell, ○ offen. Über-geplant zeigt nur ●●●●◐.
+  let dots='';
+  if(planned){
+    const total_dots=Math.max(planned,currentBlock);
+    for(let i=0;i<total_dots;i++){
+      if(i<consumed)dots+='●';
+      else if(i===consumed)dots+='◐';
+      else dots+='○';
+    }
+  } else {
+    for(let i=0;i<consumed;i++)dots+='●';
+    dots+='◐';
+  }
+
   const zNa=getZielName(a);
   const tznName=a.teilzielId?(_tzById(a.teilzielId)?.name||''):'';
-  const pct=a.geplant?Math.round(s/(a.geplant*3600)*100):0;
-  const over=pct>=100;
 
   let html='';
-  html+='<button onclick="_makerClose()" title="Esc minimiert" style="position:absolute;top:18px;right:24px;background:transparent;border:1px solid var(--bd);color:var(--t2);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;padding:8px 14px;border-radius:8px">⤓ Minimieren</button>';
-  html+='<div style="font-size:11px;font-weight:800;letter-spacing:1.4px;text-transform:uppercase;color:var(--t3);margin-bottom:18px">🔥 Im Fokus</div>';
-  if(zNa)html+='<div style="font-size:13px;color:var(--t2);margin-bottom:12px;text-align:center;max-width:700px;line-height:1.4">'+esc(zNa)+(tznName?' › '+esc(tznName):'')+'</div>';
-  html+='<div style="font-size:32px;font-weight:700;color:var(--text);margin-bottom:48px;text-align:center;max-width:800px;line-height:1.25;padding:0 16px">'+esc(a.titel)+'</div>';
-  html+='<div style="font-size:96px;font-weight:800;color:'+(over?'var(--red)':'var(--text)')+';font-variant-numeric:tabular-nums;letter-spacing:1px;line-height:1;margin-bottom:6px">'+timeFmt+'</div>';
-  if(a.geplant){
-    html+='<div style="font-size:13px;color:var(--t3);margin-bottom:10px">/ '+fmtH(a.geplant)+' geplant'+(over?' · ⚠ überzogen':'')+'</div>';
-    html+='<div style="width:280px;height:4px;background:var(--bd);border-radius:99px;margin-bottom:36px;overflow:hidden"><div style="width:'+Math.min(100,pct)+'%;height:100%;background:'+(over?'var(--red)':'var(--text)')+';transition:width .5s ease"></div></div>';
-  } else {
-    html+='<div style="margin-bottom:48px"></div>';
-  }
+  html+='<button onclick="_makerClose()" title="Esc minimiert" style="position:absolute;top:18px;right:24px;background:transparent;border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.55);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;padding:8px 14px;border-radius:8px">⤓ Minimieren</button>';
+  html+='<div style="font-size:11px;font-weight:800;letter-spacing:1.6px;text-transform:uppercase;color:rgba(255,255,255,.38);margin-bottom:18px">🔥 Im Fokus · Block '+currentBlock+(planned?' / '+planned:'')+'</div>';
+  if(zNa)html+='<div style="font-size:13px;color:rgba(255,255,255,.5);margin-bottom:12px;text-align:center;max-width:700px;line-height:1.4">'+esc(zNa)+(tznName?' › '+esc(tznName):'')+'</div>';
+  html+='<div style="font-size:30px;font-weight:600;color:#fff;margin-bottom:42px;text-align:center;max-width:800px;line-height:1.25;padding:0 16px">'+esc(a.titel)+'</div>';
+  html+='<div style="font-size:160px;font-weight:800;color:#fff;font-variant-numeric:tabular-nums;letter-spacing:2px;line-height:1;margin-bottom:18px">'+timeFmt+'</div>';
+  if(dots)html+='<div style="font-size:20px;color:rgba(255,255,255,.45);margin-bottom:42px;letter-spacing:8px;font-variant-numeric:tabular-nums">'+dots+'</div>';
+  else html+='<div style="margin-bottom:42px"></div>';
   html+='<div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center">';
-  html+='<button onclick="_makerFinish()" style="padding:14px 32px;border-radius:12px;background:var(--green);color:#fff;border:none;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer">✓ Erledigt</button>';
-  html+='<button onclick="_makerPause()" style="padding:14px 28px;border-radius:12px;background:var(--gray-bg);color:var(--text);border:1px solid var(--bd);font-family:inherit;font-size:15px;font-weight:600;cursor:pointer">⏸ Pause</button>';
+  html+='<button onclick="_makerFinish()" style="padding:14px 32px;border-radius:12px;background:#7ad08a;color:#000;border:none;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer">✓ Erledigt</button>';
+  html+='<button onclick="_makerPause()" style="padding:14px 28px;border-radius:12px;background:rgba(255,255,255,.08);color:#fff;border:1px solid rgba(255,255,255,.2);font-family:inherit;font-size:15px;font-weight:600;cursor:pointer">⏸ Pause</button>';
   html+='</div>';
   ov.innerHTML=html;
 }
