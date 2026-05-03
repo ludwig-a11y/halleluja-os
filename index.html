@@ -6637,7 +6637,7 @@ function rWoche(){
   }
 
   // ── Rückblick-Ankündigung (Freitag ab 12:00 · Sa · So) ──
-  if(isResetAnkuendigung()&&!dieseWocheReset(aP)){
+  if(isResetAnkuendigung()&&!dieseWocheReset(aP)&&(!realMe||realMe===aP)){
     const n=new Date();
     const dow=n.getDay(); // 5=Fr 6=Sa 0=So
     const istJetzt=isResetZeit();
@@ -7075,7 +7075,7 @@ function rWoche(){
   out+='</div>';
 
   // ── Freitag Reset Banner ──
-  if(isResetZeit()&&!dieseWocheReset(aP)){
+  if(isResetZeit()&&!dieseWocheReset(aP)&&(!realMe||realMe===aP)){
     const{kw:kw2}=getKW();
     out+='<div onclick="openWochenresetZwang()" style="background:var(--green);color:#fff;border-radius:12px;padding:13px 15px;cursor:pointer;display:flex;align-items:center;gap:11px">'
       +'<span style="font-size:20px">📋</span>'
@@ -8043,7 +8043,7 @@ function rTag(){
   }
 
   // ── Freitag Reset Banner ──
-  if(isResetZeit()&&!dieseWocheReset(aP)){
+  if(isResetZeit()&&!dieseWocheReset(aP)&&(!realMe||realMe===aP)){
     out+='<div onclick="openWochenresetZwang()" style="background:var(--green);color:#fff;border-radius:12px;padding:13px 15px;margin-bottom:14px;cursor:pointer;display:flex;align-items:center;gap:11px">'
       +'<span style="font-size:20px">📋</span>'
       +'<div style="flex:1"><div style="font-weight:700;font-size:13px">Wochenrückblick KW '+kwAkt+'</div>'
