@@ -13463,8 +13463,6 @@ window.addEventListener('keydown',e=>{
 });
 
 (async()=>{
-  // WIN-Hero braucht Gipfel-SVG vor erstem render() — function declaration ist hoisted, also kann man hier schon zuweisen
-  window._winGipfelSvg=_winGipfelSvg;
   // Handle Google OAuth callback (access_token in URL hash)
   gcalHandleCallback();
   // Dark mode via profile only
