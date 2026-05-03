@@ -9002,7 +9002,16 @@ function rMonat(){
       out+='<div style="flex:1;height:2px;background:'+f.tc+';opacity:.25;border-radius:1px"></div>';
       out+='</div>';
 
-      group.mzs.forEach(tz=>{
+      // v224: MZ-Reihen innerhalb der Ziel-Gruppe per Drag sortieren (localStorage pro Ziel)
+      const _mzMzKey='mz_mzorder_'+aP+'_'+z.id;
+      window._mzMzOrder=window._mzMzOrder||{};
+      if(!window._mzMzOrder[z.id])window._mzMzOrder[z.id]=JSON.parse(localStorage.getItem(_mzMzKey)||'[]').map(String);
+      const _mzMzOrd=window._mzMzOrder[z.id];
+      const _sortedMzs=[...group.mzs].sort((a,b)=>{const ai=_mzMzOrd.indexOf(String(a.id)),bi=_mzMzOrd.indexOf(String(b.id));return(ai<0?9999:ai)-(bi<0?9999:bi);});
+      window._mzMzRenderOrder=window._mzMzRenderOrder||{};
+      window._mzMzRenderOrder[z.id]=_sortedMzs.map(t=>String(t.id));
+
+      _sortedMzs.forEach(tz=>{
         const tzPool=poolFor(tz.id);
         const isFell=fellig(tz);
         const hasAnyKWSlot=kws.some(k=>{
@@ -9015,6 +9024,15 @@ function rMonat(){
         const sameMonth=tz._effDatum.slice(0,7)===monthEndISO.slice(0,7);
 
         out+='<div style="display:flex;gap:'+GAP+'px;align-items:stretch;padding-bottom:'+GAP+'px;border-bottom:1px solid var(--bd);margin-bottom:'+GAP+'px">';
+        // Drag-Handle für MZ-Reihen-Sortierung (links, 18px, nur Handle ist draggable)
+        out+='<div draggable="true" '
+          +'ondragstart="event.stopPropagation();window._mzMzDragId=\''+tz.id+'\';window._mzMzDragZielId=\''+z.id+'\';this.style.opacity=\'1\'" '
+          +'ondragend="this.style.opacity=\'.3\'" '
+          +'ondragover="event.preventDefault();event.stopPropagation();if(window._mzMzDragZielId===\''+z.id+'\')this.style.background=\'var(--gray-bg)\'" '
+          +'ondragleave="this.style.background=\'\'" '
+          +'ondrop="event.preventDefault();event.stopPropagation();this.style.background=\'\';_mzMzDropOn(\''+z.id+'\',\''+tz.id+'\')" '
+          +'title="Drag → MZ-Reihe sortieren" '
+          +'style="width:18px;flex-shrink:0;cursor:grab;display:flex;align-items:center;justify-content:center;color:var(--t3);opacity:.3;font-size:11px;user-select:none;border-radius:4px;transition:opacity .12s,background .1s">⠿</div>';
 
         // ── KW-Zellen (alle gleichberechtigte Drop-Zonen für Wochenziele) ──
         kws.forEach(k=>{
@@ -9153,6 +9171,25 @@ function _monZielDropOn(toId){
   order.splice(fi,1);order.splice(ti,0,String(fromId));
   localStorage.setItem('mz_ziel_order_'+aP,JSON.stringify(order));
   window._mzOrder=order;
+  rMonat();
+}
+// v224: MZ-Reihen innerhalb einer Ziel-Gruppe sortieren
+window._mzMzDragId=null;
+window._mzMzDragZielId=null;
+function _mzMzDropOn(zielId,toMzId){
+  const fromMzId=window._mzMzDragId,fromZielId=window._mzMzDragZielId;
+  window._mzMzDragId=null;window._mzMzDragZielId=null;
+  if(!fromMzId||String(fromMzId)===String(toMzId))return;
+  // Nur innerhalb derselben Ziel-Gruppe sortieren — sonst Verwirrung mit Ziel-Wechsel
+  if(String(fromZielId)!==String(zielId))return;
+  const renderOrder=(window._mzMzRenderOrder||{})[zielId]||[];
+  const order=[...renderOrder].map(String);
+  const fi=order.indexOf(String(fromMzId)),ti=order.indexOf(String(toMzId));
+  if(fi<0||ti<0)return;
+  order.splice(fi,1);order.splice(ti,0,String(fromMzId));
+  localStorage.setItem('mz_mzorder_'+aP+'_'+zielId,JSON.stringify(order));
+  window._mzMzOrder=window._mzMzOrder||{};
+  window._mzMzOrder[zielId]=order;
   rMonat();
 }
 // v192: Ziele-Matrix Helper — MZ in Monat einplanen / aus Plan entfernen / Pool-Inline-Add.
