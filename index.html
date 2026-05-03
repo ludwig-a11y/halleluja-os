@@ -5304,22 +5304,9 @@ async function saveWochenreset(){
   const fokusIsBereich=zielId&&istBereich(zielId);
   const selTzIds=[...document.querySelectorAll('.wr-tz-check:checked')].map(x=>x.value);
   const newTzTexts=[1,2,3].map(n=>document.getElementById('wr-b'+n)?.value.trim()||'');
-  const newTzIds=[];
-  for(const txt of newTzTexts){
-    if(!txt){newTzIds.push(null);continue;}
-    // Für Ziele UND Bereiche: neuen Monatsziel/Thema anlegen
-    if(zielId){
-      const tzId=nid('tz');
-      const tzRec={id:tzId,ziel_id:zielId,name:txt,verantwortlich_id:String(aP),datum:'',erledigt:false,status:'aktiv'};
-      const z=S.ziele.find(x=>x.id===zielId);
-      if(z){z.teilziele=z.teilziele||[];z.teilziele.push({...tzRec,zielId,verantwortlichId:aP,status:'aktiv'});}
-      await dbInsert('teilziele',tzRec);
-      newTzIds.push(tzId);
-    } else {
-      newTzIds.push(null);
-    }
-  }
-  const allIdsRaw=[...selTzIds,...newTzIds.filter(Boolean)];
+  // v216: Big3-Texte erzeugen KEINE neuen Teilziele mehr (Phantom-Bug-Fix).
+  // Free-Text landet direkt in wochenresets.big3_X als String.
+  const allIdsRaw=[...selTzIds];
   if(allIdsRaw.length>3){toast('⚠️ Maximal 3 Big-3-Einträge — bitte weniger auswählen.');return;}
   const allIds=allIdsRaw.slice(0,3);
   while(allIds.length<3)allIds.push(null);
