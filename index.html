@@ -8866,11 +8866,18 @@ function rMonat(){
   let out='';
 
   // ── Header ──
-  out+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">'
-    +'<div><div style="font-size:16px;font-weight:700">Monatsziele</div>'
+  // v226: Rückschau-Toggle (vorige KW ein-/ausblenden)
+  if(typeof window._monShowPrev==='undefined')window._monShowPrev=false;
+  const _prevBtnLbl=window._monShowPrev?'⤺ Vorige KW ausblenden':'⤺ Vorige KW';
+  const _prevBtnBg=window._monShowPrev?'var(--text)':'transparent';
+  const _prevBtnCol=window._monShowPrev?'var(--bg)':'var(--t2)';
+  out+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:8px;flex-wrap:wrap">'
+    +'<div style="min-width:0"><div style="font-size:16px;font-weight:700">Monatsziele</div>'
     +'<div style="font-size:11px;color:var(--t3)">'+monatName+' '+jetzt.getFullYear()+' · Pool, Wochen, alles auf einer Seite</div></div>'
+    +'<div style="display:flex;gap:8px;align-items:center;flex-shrink:0">'
+    +'<button onclick="window._monShowPrev=!window._monShowPrev;rMonat()" style="font-size:11px;padding:6px 12px;border-radius:8px;border:1px solid var(--bd);background:'+_prevBtnBg+';color:'+_prevBtnCol+';font-family:inherit;cursor:pointer">'+_prevBtnLbl+'</button>'
     +'<button onclick="openAddMonatszielFromMonat()" class="btn btn-dk" style="font-size:12px">+ Monatsziel</button>'
-    +'</div>';
+    +'</div></div>';
 
   // v180: Verfehlt-Block — semantisch DER richtige Ort: Monatsübersicht = Reflexionssicht.
   {
@@ -8940,11 +8947,12 @@ function rMonat(){
     let endKwKey=monthEndKw.jahr*100+monthEndKw.kw;
     alleTZ.forEach(tz=>{if(tz._effKwKey>endKwKey)endKwKey=tz._effKwKey;});
     let startMonday=dateOfKwMonday(monthStartKw.jahr,monthStartKw.kw);
-    // v226: Rückschau — immer 1 KW vor "heute" zeigen, falls nicht eh schon im Monatsfenster.
-    // Dann sieht man unfertige Big 3 letzter KW und kann sie nach rechts ziehen.
-    const lookbackMonday=dateOfKwMonday(todayK.jahr,todayK.kw);
-    lookbackMonday.setUTCDate(lookbackMonday.getUTCDate()-7);
-    if(lookbackMonday<startMonday)startMonday=lookbackMonday;
+    // v226: Rückschau — vorige KW nur dann mitrendern, wenn der Toggle im Header aktiv ist.
+    if(window._monShowPrev){
+      const lookbackMonday=dateOfKwMonday(todayK.jahr,todayK.kw);
+      lookbackMonday.setUTCDate(lookbackMonday.getUTCDate()-7);
+      if(lookbackMonday<startMonday)startMonday=lookbackMonday;
+    }
     const endYear=Math.floor(endKwKey/100),endNum=endKwKey%100;
     const endSunday=new Date(dateOfKwMonday(endYear,endNum));endSunday.setUTCDate(endSunday.getUTCDate()+6);
     const kws=kwListe(startMonday,endSunday);
