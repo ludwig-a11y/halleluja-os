@@ -9836,10 +9836,11 @@ async function toggleTZ(zid,tzid){
 function openAddTZ(zid){
   const _isB=istBereich(zid),_lbl=_isB?'Themengebiet':'Monatsziel',_ph=_isB?'z.B. Wartung & TÜV, IT-Sicherheit…':'z.B. Messe München vorbereitet';
   const _diagnoseHint=_isB?'':getDiagnoseHint();
-  // v214: 3-Optionen-Doer (Self / Person / 🚫 Niemand). Default: Self (Verantwortlicher).
+  // v214/v228: Doer-Default = Kein Counter (Manager-MZ).
+  // Reasoning: meiste neue MZ entstehen als Coordination — wenn ich der Doer bin, setz ich's bewusst um.
   const _doerField=_isB?'':(
     '<div class="fl"><label>Doer <span style="font-weight:400;color:var(--t3);font-size:10px">(macht die Leading-Aktion)</span></label>'
-    +leadingDoerSelectHTML(aP,null,false)
+    +leadingDoerSelectHTML(aP,null,true)
     +'</div>'
   );
   document.getElementById('mb').innerHTML='<div class="mt">'+_lbl+' hinzufügen</div>'
