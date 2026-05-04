@@ -7527,7 +7527,7 @@ function rTag(){
           hero+='</div>';
         }
         const linkPartsA=[];
-        if(!hasUaA)linkPartsA.push('<button onclick="openDetail(\''+a.id+'\')" style="font-size:11px;padding:5px 10px;border-radius:6px;background:transparent;color:rgba(255,255,255,.55);border:1px dashed rgba(255,255,255,.2);cursor:pointer;font-family:inherit">+ Unteraufgabe</button>');
+        if(!hasUaA)linkPartsA.push('<button onclick="openNeu({parent_id:\''+a.id+'\',pid:\''+(a.pid||'')+'\',zielId:\''+(a.zielId||'')+'\',teilzielId:\''+(a.teilzielId||'')+'\'})" style="font-size:11px;padding:5px 10px;border-radius:6px;background:transparent;color:rgba(255,255,255,.55);border:1px dashed rgba(255,255,255,.2);cursor:pointer;font-family:inherit">+ Unteraufgabe</button>');
         // + Unteraufgabe entfernt — Default: Schritte (Checkliste). Delegieren via Checkliste → "→ Delegieren"
         if(linkPartsA.length)hero+='<div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">'+linkPartsA.join('')+'</div>';
       }
@@ -7637,7 +7637,7 @@ function rTag(){
           }
           // Kompakte Link-Row wenn beide leer ODER als Ergänzung wenn nur eines gefüllt
           const linkParts=[];
-          if(!hasUa)linkParts.push('<button onclick="document.getElementById(\'si-inline-'+naechste.id+'\')?.focus()||openDetail(\''+naechste.id+'\')" style="font-size:11px;padding:5px 10px;border-radius:6px;background:transparent;color:rgba(255,255,255,.55);border:1px dashed rgba(255,255,255,.2);cursor:pointer;font-family:inherit">+ Unteraufgabe</button>');
+          if(!hasUa)linkParts.push('<button onclick="openNeu({parent_id:\''+naechste.id+'\',pid:\''+(naechste.pid||'')+'\',zielId:\''+(naechste.zielId||'')+'\',teilzielId:\''+(naechste.teilzielId||'')+'\'})" style="font-size:11px;padding:5px 10px;border-radius:6px;background:transparent;color:rgba(255,255,255,.55);border:1px dashed rgba(255,255,255,.2);cursor:pointer;font-family:inherit">+ Unteraufgabe</button>');
           if(linkParts.length)hero+='<div style="display:flex;gap:6px;flex-wrap:wrap">'+linkParts.join('')+'</div>';
           // Inline-Input für Schnell-Checkliste wenn komplett leer
           if(!hasUa){
