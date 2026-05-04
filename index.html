@@ -8939,7 +8939,12 @@ function rMonat(){
     const monthEndKw=getKwFromDate(monthEnd);
     let endKwKey=monthEndKw.jahr*100+monthEndKw.kw;
     alleTZ.forEach(tz=>{if(tz._effKwKey>endKwKey)endKwKey=tz._effKwKey;});
-    const startMonday=dateOfKwMonday(monthStartKw.jahr,monthStartKw.kw);
+    let startMonday=dateOfKwMonday(monthStartKw.jahr,monthStartKw.kw);
+    // v226: Rückschau — immer 1 KW vor "heute" zeigen, falls nicht eh schon im Monatsfenster.
+    // Dann sieht man unfertige Big 3 letzter KW und kann sie nach rechts ziehen.
+    const lookbackMonday=dateOfKwMonday(todayK.jahr,todayK.kw);
+    lookbackMonday.setUTCDate(lookbackMonday.getUTCDate()-7);
+    if(lookbackMonday<startMonday)startMonday=lookbackMonday;
     const endYear=Math.floor(endKwKey/100),endNum=endKwKey%100;
     const endSunday=new Date(dateOfKwMonday(endYear,endNum));endSunday.setUTCDate(endSunday.getUTCDate()+6);
     const kws=kwListe(startMonday,endSunday);
