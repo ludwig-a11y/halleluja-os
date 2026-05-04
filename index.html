@@ -8994,8 +8994,16 @@ function rMonat(){
     window._monZielRenderOrder=byZielArr.map(g=>g.ziel.id);
     byZielArr.forEach(group=>{
       const z=group.ziel,f=group.f;
+      // v225: Doer vs. Manager-Owner — Manager-Reihen dezent dimmen.
+      // Aktiv = Doer der MZ ODER hat eine offene Aufgabe an dieser MZ.
+      const _isMyMz=tz=>{
+        if(String(effectiveDoerId(tz))===String(aP))return true;
+        return (S.aufgaben||[]).some(a=>String(a.teilzielId)===String(tz.id)&&String(a.pid)===String(aP)&&a.status!=='erledigt'&&a.status!=='archiviert');
+      };
+      const _zielHasMyDoer=group.mzs.some(_isMyMz);
+      const _zielOp=_zielHasMyDoer?'1':'.55';
       // Strategie-Header (draggable für Ziel-Zeilen-Sortierung)
-      out+='<div draggable="true" data-zielid="'+z.id+'" ondragstart="event.stopPropagation();window._monZielDragId=\''+z.id+'\';this.style.opacity=\'.5\'" ondragend="this.style.opacity=\'1\'" ondragover="event.preventDefault();event.stopPropagation();this.style.background=\'var(--gray-bg)\'" ondragleave="this.style.background=\'\'" ondrop="event.preventDefault();event.stopPropagation();this.style.background=\'\';_monZielDropOn(\''+z.id+'\')" style="display:flex;align-items:center;gap:8px;padding:10px 4px 6px 4px;margin-top:4px;cursor:grab;border-radius:6px;transition:background .1s">';
+      out+='<div draggable="true" data-zielid="'+z.id+'" ondragstart="event.stopPropagation();window._monZielDragId=\''+z.id+'\';this.style.opacity=\'.5\'" ondragend="this.style.opacity=\''+_zielOp+'\'" ondragover="event.preventDefault();event.stopPropagation();this.style.background=\'var(--gray-bg)\'" ondragleave="this.style.background=\'\'" ondrop="event.preventDefault();event.stopPropagation();this.style.background=\'\';_monZielDropOn(\''+z.id+'\')" style="display:flex;align-items:center;gap:8px;padding:10px 4px 6px 4px;margin-top:4px;cursor:grab;border-radius:6px;transition:background .1s,opacity .15s;opacity:'+_zielOp+'">';
       out+='<span style="color:var(--t3);font-size:11px;flex-shrink:0;opacity:.35;line-height:1;user-select:none">⠿</span>';
       out+='<span style="width:8px;height:8px;border-radius:50%;background:'+f.tc+';flex-shrink:0"></span>';
       out+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:'+f.tc+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:600px">'+esc(z.name)+'</div>';
@@ -9022,8 +9030,10 @@ function rMonat(){
         const d2d=daysUntil(tz._effDatum);
         const effKwKey=tz._effKwKey;
         const sameMonth=tz._effDatum.slice(0,7)===monthEndISO.slice(0,7);
+        // v225: Manager-only MZ dimmen
+        const _mzOp=_isMyMz(tz)?'1':'.55';
 
-        out+='<div style="display:flex;gap:'+GAP+'px;align-items:stretch;padding-bottom:'+GAP+'px;border-bottom:1px solid var(--bd);margin-bottom:'+GAP+'px">';
+        out+='<div style="display:flex;gap:'+GAP+'px;align-items:stretch;padding-bottom:'+GAP+'px;border-bottom:1px solid var(--bd);margin-bottom:'+GAP+'px;opacity:'+_mzOp+';transition:opacity .15s">';
         // Drag-Handle für MZ-Reihen-Sortierung (links, 18px, nur Handle ist draggable)
         out+='<div draggable="true" '
           +'ondragstart="event.stopPropagation();window._mzMzDragId=\''+tz.id+'\';window._mzMzDragZielId=\''+z.id+'\';this.style.opacity=\'1\'" '
