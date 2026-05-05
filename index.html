@@ -394,7 +394,8 @@ const CL=[
   {bg:'var(--orange-bg)',tc:'var(--orange)'},{bg:'var(--gray-bg)',tc:'var(--t2)'},{bg:'var(--pink-bg)',tc:'var(--pink)'}
 ];
 function localDate(d){const x=d||new Date();return x.getFullYear()+'-'+(''+(x.getMonth()+1)).padStart(2,'0')+'-'+(''+(x.getDate())).padStart(2,'0');}
-const TODAY=localDate();
+// v230: TODAY ist let — wird per Tag-Rollover-Check in startTimers aktualisiert.
+let TODAY=localDate();
 function istBereich(zielId){const z=zielObj(zielId);return z&&z.status==='bereich';}
 function zieleOptgroups(pid,selId=''){
   const sichtbar=S.ziele.filter(z=>(!z.vertraulich||isGF())&&z.status!=='vorschlag');
@@ -11972,6 +11973,9 @@ function startTimers(){
   }catch(_){}
   if(timIv)clearInterval(timIv);
   timIv=setInterval(()=>{
+    // v230: Tag-Rollover — wenn das Datum sich geändert hat (Mitternacht), TODAY aktualisieren + render.
+    const _ld=localDate();
+    if(_ld!==TODAY){TODAY=_ld;try{render();}catch(_){}}
     document.querySelectorAll('[data-tid]').forEach(el=>{
       const a=S.aufgaben.find(x=>x.id===el.dataset.tid);if(!a)return;
       const s=elapsedSec(a),pct=Math.min(100,Math.round(s/((a.geplant||1)*3600)*100));
