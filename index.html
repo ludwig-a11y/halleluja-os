@@ -10587,14 +10587,16 @@ function openNeu(pf={}){
     +'<label style="display:flex;align-items:center;gap:6px;text-transform:none;font-size:12px;font-weight:400;color:var(--t3);cursor:pointer;margin:0"><select id="nrec" style="width:auto;padding:4px 8px;font-size:11px;border:1px solid var(--bd);border-radius:6px;color:var(--t2);background:var(--sf)"><option value="">Einmalig</option><option value="daily">🔄 Täglich</option><option value="weekly">🔄 Wöchentlich</option><option value="monthly">🔄 Monatlich</option></select></label>'
     +(isGF()?'<label style="display:flex;align-items:center;gap:6px;text-transform:none;font-size:12px;font-weight:400;color:var(--t3);cursor:pointer;margin:0"><input type="checkbox" id="nvert" style="width:auto" onchange="document.getElementById(\'nvert-hint\').style.display=this.checked?\'block\':\'none\'"> 🔒 Vertraulich</label><div id="nvert-hint" style="display:none;font-size:10px;color:var(--t3);margin-top:2px">Sichtbar für: Geschäftsführung, Zuständiger &amp; Ersteller</div>':'')
     +'</div>'
-    +'<div class="fl"><label>Unteraufgaben</label><div id="neu-steps"></div>'
-    +'<div style="display:flex;gap:6px"><input class="asi" id="neu-step-input" placeholder="+ Eintrag…" onkeydown="if(event.key===\'Enter\'){event.preventDefault();addNeuStep()}" style="font-size:12px;padding:6px 10px"><button onclick="addNeuStep()" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--bd);background:var(--sf);color:var(--t2);cursor:pointer">+</button></div></div>'
-    +'<div class="fl"><label>Notiz</label><input id="nno" value="'+(pf.notiz||'')+'" placeholder="Optional…"></div>'
-    +'</div>';
+    // v232: Unteraufgaben + Notiz aus Neu-Modal raus.
+    // Subtasks: kommen erst beim Doing in der Detail-View. Notiz: nur wenn vom Caller
+    // (Blocker/Signal/Entscheidung) vorbefüllt — dann sichtbar als read-only-Hinweis.
+    +'</div>'
+    +(pf.notiz?'<div style="background:var(--gray-bg);border:1px dashed var(--bd);border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:12px;color:var(--t2);line-height:1.4"><div style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px">Kontext</div>'+esc(pf.notiz)+'<input type="hidden" id="nno" value="'+esc(pf.notiz)+'"></div>':'<input type="hidden" id="nno" value="">');
   window._neuSteps=[];
   document.getElementById('ovl').classList.add('open');
   // Auto-open "Mehr" if pre-filled values exist in that section
-  if(pf.dl||pf.notiz){
+  // v232: Notiz ist nicht mehr in Mehr drin (kommt als Kontext-Hinweis oben), also nur dl prüfen.
+  if(pf.dl){
     const m=document.getElementById('neu-mehr');if(m)m.style.display='block';
   }
   if(pf.teilzielId)setTimeout(()=>{const s=document.getElementById('ntz');if(s){s.value=pf.teilzielId;updateNeuPaddelHint();}},100);
@@ -10994,7 +10996,7 @@ VELOCITY: [X Aufgaben/Woche, Yh produktiv — Trend + Bewertung]`;
 function aiApplyAll(){
   if(window._aiPrio)aiApplyPrio(window._aiPrio);
   if(window._aiDauer){const sel=document.getElementById('nh');if(sel)sel.value=String(window._aiDauer);}
-  if(window._aiSteps&&window._aiSteps.length)aiApplySteps();
+  // v232: AI-Steps nicht mehr automatisch anwenden — Subtasks gibt's erst in der Detail-View.
   // Monatsziel auto-matchen: wenn AI ein Ziel erkannt hat, passenden Monatsziel vorauswählen
   if(window._aiZielMatch){
     const tzSel=document.getElementById('ntz');
@@ -11108,7 +11110,7 @@ async function saveNeu(){
     dl_type:(document.getElementById('dltype-bis')?.dataset.v==='bis')?'bis':'am',
     dl_uhrzeit:document.getElementById('ndluhr')?.value||null,
     event_id:window._pendingEventId||null,
-    ua:window._neuSteps||[],notiz:document.getElementById('nno').value.trim(),akt_seit:null,vertraulich:vert,
+    ua:window._neuSteps||[],notiz:(document.getElementById('nno')?.value||'').trim(),akt_seit:null,vertraulich:vert,
     recurring:document.getElementById('nrec')?.value||null,
     erstellt_von:aP,
     wochenreset_id:window._neuWochenresetId||null,
