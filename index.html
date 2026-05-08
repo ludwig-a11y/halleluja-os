@@ -2624,6 +2624,15 @@ function rCleanup(pid){
       if(txt)wzOpts.push({n,txt,tzId});
     });
   }
+  // v238: Monatsziel-Dropdown für Cleanup — auch ohne gesetzte Big 3 nutzbar.
+  // Sammlung aller aktiven MZ dieser Person (analog zu Inbox-Accept).
+  const meineTZ=[];
+  S.ziele.forEach(z=>{
+    if(z.status==='bereich'||z.status==='vorschlag')return;
+    (z.teilziele||[]).forEach(t=>{
+      if(String(t.verantwortlichId)===String(pid)&&!t.erledigt)meineTZ.push({id:t.id,name:t.name,zielName:z.name});
+    });
+  });
   items.forEach(a=>{
     const prioCol=prioColor(a.prio);
     // v181: Schlafend (geparkt mit Datum > heute) → 50% Opazität
@@ -2636,6 +2645,17 @@ function rCleanup(pid){
     const _stB=statusBadge(a);if(_stB)h+=_stB;
     if(a.status==='backlog'&&!a.pausiertBis)h+='<span style="font-size:9px;font-weight:700;padding:2px 7px;border-radius:99px;background:var(--gray-bg);color:var(--t2);border:1px solid var(--bd);white-space:nowrap">🅿️ ohne Datum</span>';
     if(!a.teilzielId)h+='<span style="font-size:9px;font-weight:700;padding:2px 7px;border-radius:99px;background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-bd);white-space:nowrap" title="Kein Monatsziel zugeordnet">⚠ kein Ziel</span>';
+    // v238: Monatsziel-Picker — funktioniert auch ohne gesetzte Big 3
+    if(meineTZ.length){
+      h+='<select onchange="if(this.value)cleanupAssignMonatsziel(\''+a.id+'\',this.value)" style="font-size:11px;padding:5px 8px;border-radius:8px;border:1px solid var(--blue-bd);background:var(--blue-bg);color:var(--blue);font-family:inherit;cursor:pointer;font-weight:600;max-width:180px">';
+      h+='<option value="">'+(a.teilzielId?'🎯 Ziel ändern…':'🎯 Monatsziel…')+'</option>';
+      meineTZ.forEach(t=>{
+        const label=(t.zielName+' › '+t.name);
+        const labelShort=label.length>40?label.slice(0,40)+'…':label;
+        h+='<option value="'+t.id+'"'+(a.teilzielId===t.id?' selected':'')+'>'+esc(labelShort)+'</option>';
+      });
+      h+='</select>';
+    }
     if(wzOpts.length){
       h+='<select onchange="if(this.value)cleanupToWochenziel(\''+a.id+'\',\''+wrNow.id+'\',this.value)" style="font-size:11px;padding:5px 8px;border-radius:8px;border:1px solid var(--blue-bd);background:var(--blue-bg);color:var(--blue);font-family:inherit;cursor:pointer;font-weight:600;max-width:180px">';
       h+='<option value="">→ Wochenziel…</option>';
@@ -2716,6 +2736,26 @@ async function cleanupToWochenziel(taskId,wrId,combined){
   a._busy=false;
   if(!ok){Object.assign(a,prev);toast('⚠️ Speichern fehlgeschlagen','var(--red)');render();return;}
   toast('✓ Zu Wochenziel zugeordnet — vom Parkplatz geholt');
+}
+// v238: Cleanup-Item einem Monatsziel zuordnen (ohne Big-3-Slot, einfach Pflege-Marker entfernen)
+async function cleanupAssignMonatsziel(taskId,tzId){
+  if(!tzId)return;
+  const a=S.aufgaben.find(x=>x.id===taskId);if(!a||a._busy)return;
+  let zielId=null;
+  S.ziele.forEach(z=>{(z.teilziele||[]).forEach(t=>{if(String(t.id)===String(tzId))zielId=z.id;});});
+  if(!zielId){toast('⚠️ Monatsziel nicht gefunden','var(--red)');return;}
+  const prev={teilzielId:a.teilzielId,zielId:a.zielId,status:a.status,pausiertBis:a.pausiertBis};
+  a._busy=true;
+  a.teilzielId=tzId;a.zielId=zielId;
+  const patch={teilziel_id:tzId,ziel_id:zielId};
+  // Vom Parkplatz holen — backlog → neu, schlafend aufwecken
+  if(a.status==='backlog'){a.status='neu';patch.status='neu';}
+  if(a.pausiertBis){a.pausiertBis=null;patch.pausiert_bis=null;}
+  render();
+  const ok=await dbPatch('aufgaben',taskId,patch);
+  a._busy=false;
+  if(!ok){Object.assign(a,prev);toast('⚠️ Speichern fehlgeschlagen','var(--red)');render();return;}
+  toast('✓ Monatsziel zugeordnet — vom Parkplatz geholt');
 }
 
 // ─── INBOX (End-of-Day Ritual) ──────────────────────────────────
