@@ -8867,15 +8867,20 @@ function rMonat(){
   let out='';
 
   // ── Header ──
-  // v226: Rückschau-Toggle (vorige KW ein-/ausblenden)
+  // v230: Scope-Toggle Kompakt/Monat + Vorige-KW-Toggle separat
   if(typeof window._monShowPrev==='undefined')window._monShowPrev=false;
+  if(typeof window._monScope==='undefined')window._monScope='kompakt';
+  const _isMonat=window._monScope==='monat';
+  const _scopeLbl=_isMonat?'⊟ Kompakt':'⊞ Voller Monat';
   const _prevBtnLbl=window._monShowPrev?'⤺ Vorige KW ausblenden':'⤺ Vorige KW';
   const _prevBtnBg=window._monShowPrev?'var(--text)':'transparent';
   const _prevBtnCol=window._monShowPrev?'var(--bg)':'var(--t2)';
+  const _scopeSubtitle=_isMonat?(monatName+' '+jetzt.getFullYear()+' · Pool, Wochen, alles auf einer Seite'):('Diese + nächste KW · zum Aufklappen → Voller Monat');
   out+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:8px;flex-wrap:wrap">'
     +'<div style="min-width:0"><div style="font-size:16px;font-weight:700">Monatsziele</div>'
-    +'<div style="font-size:11px;color:var(--t3)">'+monatName+' '+jetzt.getFullYear()+' · Pool, Wochen, alles auf einer Seite</div></div>'
+    +'<div style="font-size:11px;color:var(--t3)">'+_scopeSubtitle+'</div></div>'
     +'<div style="display:flex;gap:8px;align-items:center;flex-shrink:0">'
+    +'<button onclick="window._monScope=window._monScope===\'monat\'?\'kompakt\':\'monat\';rMonat()" style="font-size:11px;padding:6px 12px;border-radius:8px;border:1px solid var(--bd);background:transparent;color:var(--t2);font-family:inherit;cursor:pointer">'+_scopeLbl+'</button>'
     +'<button onclick="window._monShowPrev=!window._monShowPrev;rMonat()" style="font-size:11px;padding:6px 12px;border-radius:8px;border:1px solid var(--bd);background:'+_prevBtnBg+';color:'+_prevBtnCol+';font-family:inherit;cursor:pointer">'+_prevBtnLbl+'</button>'
     +'<button onclick="openAddMonatszielFromMonat()" class="btn btn-dk" style="font-size:12px">+ Monatsziel</button>'
     +'</div></div>';
@@ -8947,15 +8952,23 @@ function rMonat(){
     const monthEndKw=getKwFromDate(monthEnd);
     let endKwKey=monthEndKw.jahr*100+monthEndKw.kw;
     alleTZ.forEach(tz=>{if(tz._effKwKey>endKwKey)endKwKey=tz._effKwKey;});
-    let startMonday=dateOfKwMonday(monthStartKw.jahr,monthStartKw.kw);
-    // v226: Rückschau — vorige KW nur dann mitrendern, wenn der Toggle im Header aktiv ist.
-    if(window._monShowPrev){
-      const lookbackMonday=dateOfKwMonday(todayK.jahr,todayK.kw);
-      lookbackMonday.setUTCDate(lookbackMonday.getUTCDate()-7);
-      if(lookbackMonday<startMonday)startMonday=lookbackMonday;
+    // v230: Scope-Toggle (Kompakt vs Monat) — Default = Kompakt (jetzige + nächste KW).
+    // Plus separater "Vorige KW"-Toggle (immer +1 KW vor Range).
+    let startMonday, endSunday;
+    if(window._monScope==='monat'){
+      startMonday=dateOfKwMonday(monthStartKw.jahr,monthStartKw.kw);
+      const endYear=Math.floor(endKwKey/100),endNum=endKwKey%100;
+      endSunday=new Date(dateOfKwMonday(endYear,endNum));endSunday.setUTCDate(endSunday.getUTCDate()+6);
+    } else {
+      // Kompakt: heutige KW + nächste KW (2 KWs)
+      startMonday=dateOfKwMonday(todayK.jahr,todayK.kw);
+      endSunday=new Date(startMonday);endSunday.setUTCDate(endSunday.getUTCDate()+13);
     }
-    const endYear=Math.floor(endKwKey/100),endNum=endKwKey%100;
-    const endSunday=new Date(dateOfKwMonday(endYear,endNum));endSunday.setUTCDate(endSunday.getUTCDate()+6);
+    // Vorige-KW-Toggle: hängt immer 1 KW links an (unabhängig vom Scope).
+    if(window._monShowPrev){
+      startMonday=new Date(startMonday);
+      startMonday.setUTCDate(startMonday.getUTCDate()-7);
+    }
     const kws=kwListe(startMonday,endSunday);
 
     // Sortierung der MZ: nach Deadline-KW aufsteigend (kürzeste Horizonte zuerst — fühlt sich „dringlich oben" an)
@@ -9127,7 +9140,10 @@ function rMonat(){
           out+='<div data-mzp-zone="kw|'+(wr?wr.id:'')+'|'+k.kw+'|'+k.jahr+'" style="flex:1 1 '+COL_KW_MIN+'px;min-width:'+COL_KW_MIN+'px;background:'+cellBg+';border:'+cellBorder+cellBorderR+';border-radius:8px;padding:5px;min-height:64px;display:flex;flex-direction:column" ondragover="_mzpDragOver(event,this)" ondragleave="_mzpDragLeave(this)" ondrop="_mzpDrop(event,this)">';
           // Big3-Slots dieses MZ in dieser KW
           let any=false;
+          let kwSlotsFree=true;
           if(wr){
+            const filledCount=[1,2,3].filter(n=>wr['big3_'+n]).length;
+            kwSlotsFree=filledCount<3;
             [1,2,3].forEach(slot=>{
               const t=wr['big3_'+slot];if(!t)return;
               if(String(wr['big3_'+slot+'_tz_id'])!==String(tz.id))return;
@@ -9143,7 +9159,10 @@ function rMonat(){
               out+='</div>';
             });
           }
-          // v194: leere Cell = einfach leer (kein "—" mehr — visuelle Ruhe)
+          // v230: Inline + Wochenziel — wenn KW noch freie Slots hat und nicht in der Vergangenheit
+          if(kwSlotsFree&&!isPast&&(isGF()||String(tz.verantwortlichId)===String(aP))){
+            out+='<button onclick="event.stopPropagation();openAddBig3InKW(\''+tz.id+'\','+k.kw+','+k.jahr+')" style="margin-top:auto;width:100%;font-size:10px;padding:4px 6px;border:1px dashed var(--bd);border-radius:6px;background:transparent;color:var(--t3);font-family:inherit;cursor:pointer;opacity:.6;transition:opacity .15s" onmouseenter="this.style.opacity=\'1\';this.style.color=\'var(--text)\'" onmouseleave="this.style.opacity=\'.6\';this.style.color=\'var(--t3)\'" title="Big 3 direkt in diese KW anlegen">+ Wochenziel</button>';
+          }
           out+='</div>';
         });
 
@@ -9342,6 +9361,32 @@ async function saveAddWochenziel(tzId){
   const name=(document.getElementById('wzn')?.value||'').trim();if(!name)return;
   const pid=document.getElementById('wzv')?.value||aP;
   await poolAdd(tzId,name,pid);
+  cm();render();
+}
+// v230: Wochenziel direkt in eine KW legen (nicht über Pool, sondern in den nächsten freien Big3-Slot)
+function openAddBig3InKW(tzId,kw,jahr){
+  const tz=_tzById(tzId);if(!tz)return;
+  document.getElementById('mb').innerHTML='<div class="mt">Wochenziel · KW '+kw+'</div>'
+    +'<div style="font-size:11px;color:var(--t3);margin-bottom:10px">→ direkt in KW '+kw+'/'+jahr+', verknüpft mit <b>'+esc(tz.name)+'</b></div>'
+    +'<div class="fl"><label>Name</label><input id="qbz" placeholder="z.B. 30 Outreach-Calls geführt" autofocus></div>'
+    +'<div class="mf"><button class="btn btn-gr" onclick="cm()">Abbrechen</button><button class="btn btn-dk" onclick="saveQuickBig3(\''+tzId+'\','+kw+','+jahr+')">Speichern</button></div>';
+  document.getElementById('ovl').classList.add('open');
+  setTimeout(()=>{const el=document.getElementById('qbz');if(el){el.focus();el.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();saveQuickBig3(tzId,kw,jahr);}});}},50);
+}
+async function saveQuickBig3(tzId,kw,jahr){
+  const name=(document.getElementById('qbz')?.value||'').trim();if(!name)return;
+  const wr=await ensureWr(aP,kw,jahr);
+  let slot=null;
+  for(const n of [1,2,3]){if(!wr['big3_'+n]){slot=n;break;}}
+  if(!slot){toast('⚠ Big3 voll für KW '+kw);return;}
+  wr['big3_'+slot]=name;
+  wr['big3_'+slot+'_tz_id']=tzId;
+  wr['big3_'+slot+'_done']=false;
+  const patch={};
+  patch['big3_'+slot]=name;
+  patch['big3_'+slot+'_tz_id']=tzId;
+  patch['big3_'+slot+'_done']=false;
+  await dbPatch('wochenresets',wr.id,patch).catch(()=>{});
   cm();render();
 }
 function openAddMonatszielFromMonat(){
