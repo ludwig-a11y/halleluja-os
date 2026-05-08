@@ -11174,7 +11174,10 @@ async function saveNeu(){
   }
   const id=nid('a');
   const parentId=window._neuParentId||null;
-  const rec={id,pid,titel:t,typ,status:pid!==aP?'zugewiesen':(_selPrio?'backlog':'neu'),prio:_selPrio||null,
+  // v237: Bug-Fix — wenn Aufgabe an andere Person geht, inbox_status='neu' setzen,
+  // damit sie in der Inbox des Empfängers auftaucht (analog zu delegate / meeting-dump).
+  const istFremdPid=String(pid)!==String(aP);
+  const rec={id,pid,titel:t,typ,status:istFremdPid?'zugewiesen':(_selPrio?'backlog':'neu'),prio:_selPrio||null,
     ziel_id:zielId,teilziel_id:teilzielId,parent_id:parentId,
     geplant:parseFloat(document.getElementById('nh').value)||1,
     gebucht:0,dl:document.getElementById('ndl').value||null,
@@ -11185,7 +11188,8 @@ async function saveNeu(){
     recurring:document.getElementById('nrec')?.value||null,
     erstellt_von:aP,
     wochenreset_id:window._neuWochenresetId||null,
-    big3_slot:window._neuBig3Slot||null};
+    big3_slot:window._neuBig3Slot||null,
+    inbox_status:istFremdPid?'neu':null};
   window._neuParentId=null;
   window._neuWochenresetId=null;
   window._neuBig3Slot=null;
