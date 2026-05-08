@@ -2786,7 +2786,9 @@ function rInbox(pid){
   return h;
 }
 async function inboxAcceptMonatsziel(id,tzId){
-  const a=S.aufgaben.find(x=>x.id===id);if(!a||a._busy)return;
+  const a=S.aufgaben.find(x=>x.id===id);
+  if(!a){console.error('inboxAcceptMonatsziel: task not found',id);toast('⚠ Aufgabe nicht gefunden');return;}
+  if(a._busy){console.warn('inboxAcceptMonatsziel: busy, skipping',id);return;}
   const keep=tzId==='__keep__';
   let newTzId=keep?a.teilzielId:tzId;
   let newZielId=a.zielId;
@@ -2794,13 +2796,21 @@ async function inboxAcceptMonatsziel(id,tzId){
     newZielId=null;
     S.ziele.forEach(z=>{(z.teilziele||[]).forEach(t=>{if(t.id===tzId)newZielId=z.id;});});
   }
+  console.log('inboxAcceptMonatsziel',{id,tzId,newTzId,newZielId,fremdAnsicht:realMe&&realMe!==aP,viewerAp:aP,realMe});
   const prev={teilzielId:a.teilzielId,zielId:a.zielId,inboxStatus:a.inboxStatus,status:a.status};
   const newStatus=a.status==='zugewiesen'?'neu':a.status;
   a._busy=true;a.teilzielId=newTzId;a.zielId=newZielId;a.inboxStatus='triagiert';a.status=newStatus;
   render();
   const ok=await dbPatch('aufgaben',id,{teilziel_id:newTzId,ziel_id:newZielId,inbox_status:'triagiert',status:newStatus});
   a._busy=false;
-  if(!ok){Object.assign(a,prev);toast('⚠ Fehler beim Speichern');render();return;}
+  if(!ok){
+    Object.assign(a,prev);
+    console.error('inboxAcceptMonatsziel: dbPatch failed for task',id);
+    // v236: in Fremd-Ansicht klarer kommunizieren wo's hängt
+    const fremd=realMe&&String(realMe)!==String(aP);
+    toast(fremd?'⚠ Speichern fehlgeschlagen — siehe Konsole (Fremd-Ansicht)':'⚠ Fehler beim Speichern — siehe Konsole');
+    render();return;
+  }
   toast(a.prio?'✓ Zugeordnet':'✓ Zugeordnet · Prio fehlt noch');render();
 }
 async function inboxSetPrio(id,prio){
