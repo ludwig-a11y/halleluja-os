@@ -1110,15 +1110,21 @@ async function poolToKW(poolId,kw,jahr){
   // Ersten freien Slot finden
   let slot=null;
   for(const n of [1,2,3]){if(!wr['big3_'+n]){slot=n;break;}}
-  if(!slot){toast('⚠ Big3 voll — erst Slot leeren');return;}
-  const tzId=p.teilzielId||null;
-  const titel=p.titel;
-  wr['big3_'+slot]=titel;wr['big3_'+slot+'_tz_id']=tzId;wr['big3_'+slot+'_done']=false;
-  const patch={};patch['big3_'+slot]=titel;patch['big3_'+slot+'_tz_id']=tzId;patch['big3_'+slot+'_done']=false;
-  await Promise.all([
-    dbPatch('wochenresets',wr.id,patch).catch(()=>{}),
-    poolDelete(poolId)
-  ]);
+  if(slot){
+    const tzId=p.teilzielId||null;
+    const titel=p.titel;
+    wr['big3_'+slot]=titel;wr['big3_'+slot+'_tz_id']=tzId;wr['big3_'+slot+'_done']=false;
+    const patch={};patch['big3_'+slot]=titel;patch['big3_'+slot+'_tz_id']=tzId;patch['big3_'+slot+'_done']=false;
+    await Promise.all([
+      dbPatch('wochenresets',wr.id,patch).catch(()=>{}),
+      poolDelete(poolId)
+    ]);
+  } else {
+    // v235: Kein Hard-Lock — Pool-Eintrag bleibt im Pool, kriegt aber kw/jahr (= Overflow für die KW)
+    p.kw=kw;p.jahr=jahr;
+    await dbPatch('wochenziel_pool',poolId,{kw,jahr}).catch(()=>{});
+    toast('💡 Big 3 voll — als zusätzliches Wochenziel in KW '+kw+'. Empfehlung: max 3 für Fokus.');
+  }
   render();
 }
 // KW → Pool zurück: Slot leeren, Aufgaben loslösen, Pool-Eintrag erstellen
@@ -1155,9 +1161,25 @@ async function kwToKw(fromWrId,fromSlot,toKw,toJahr){
   // Ersten freien Slot in Ziel-WR finden
   let toSlot=null;
   for(const n of [1,2,3]){if(!toWr['big3_'+n]){toSlot=n;break;}}
-  if(!toSlot){toast('⚠ Big3 in KW '+toKw+' voll');return;}
   const tzId=fromWr['big3_'+fromSlot+'_tz_id']||null;
   const done=!!fromWr['big3_'+fromSlot+'_done'];
+  if(!toSlot){
+    // v235: Kein Hard-Lock — Big3 in Ziel-KW voll → als Overflow in Pool mit toKw/toJahr ablegen
+    const id=nid('wzp');
+    const sortIndex=(S.wochenzielPool||[]).filter(p=>String(p.pid)===String(aP)&&Number(p.kw)===toKw&&Number(p.jahr)===toJahr).length+3;
+    const rec={id,pid:aP,teilziel_id:tzId,titel,sort_index:sortIndex,created_by:aP,kw:toKw,jahr:toJahr};
+    S.wochenzielPool=S.wochenzielPool||[];
+    S.wochenzielPool.push({id,pid:aP,teilzielId:tzId,titel,sortIndex,createdBy:aP,createdAt:new Date().toISOString(),kw:toKw,jahr:toJahr});
+    fromWr['big3_'+fromSlot]=null;fromWr['big3_'+fromSlot+'_tz_id']=null;fromWr['big3_'+fromSlot+'_done']=false;
+    const fromPatch={};fromPatch['big3_'+fromSlot]=null;fromPatch['big3_'+fromSlot+'_tz_id']=null;fromPatch['big3_'+fromSlot+'_done']=false;
+    await Promise.all([
+      dbPatch('wochenresets',fromWrId,fromPatch).catch(()=>{}),
+      dbInsert('wochenziel_pool',rec).catch(()=>{})
+    ]);
+    toast('💡 Big 3 in KW '+toKw+' voll — als zusätzliches Wochenziel ergänzt. Empfehlung: max 3 für Fokus.');
+    render();
+    return;
+  }
   // Quelle leeren
   fromWr['big3_'+fromSlot]=null;fromWr['big3_'+fromSlot+'_tz_id']=null;fromWr['big3_'+fromSlot+'_done']=false;
   const fromPatch={};fromPatch['big3_'+fromSlot]=null;fromPatch['big3_'+fromSlot+'_tz_id']=null;fromPatch['big3_'+fromSlot+'_done']=false;
@@ -8970,11 +8992,14 @@ function rMonat(){
       byZiel.get(tz.ziel.id).mzs.push(tz);
     });
 
-    // Slot-Auslastung pro KW (alle MZs)
+    // Slot-Auslastung pro KW (alle MZs) — v235: inkl. Overflow im Pool mit kw/jahr.
     const kwLoad=new Map();
     kws.forEach(k=>{
       const wr=findOrCreateWrFor(aP,k.kw,k.jahr);
-      kwLoad.set(k.jahr*100+k.kw,wr?[1,2,3].filter(n=>wr['big3_'+n]).length:0);
+      const big3Count=wr?[1,2,3].filter(n=>wr['big3_'+n]).length:0;
+      const big3Titles=wr?new Set([1,2,3].filter(n=>wr['big3_'+n]).map(n=>wr['big3_'+n])):new Set();
+      const overflowCount=(S.wochenzielPool||[]).filter(p=>String(p.pid)===String(aP)&&Number(p.kw)===k.kw&&Number(p.jahr)===k.jahr&&!big3Titles.has(p.titel)).length;
+      kwLoad.set(k.jahr*100+k.kw,big3Count+overflowCount);
     });
 
     // v196: KW-Spalten flex (füllen verfügbare Breite); Pool/Ziel-Card fix
@@ -9129,10 +9154,9 @@ function rMonat(){
           out+='<div data-mzp-zone="kw|'+(wr?wr.id:'')+'|'+k.kw+'|'+k.jahr+'" style="flex:1 1 '+COL_KW_MIN+'px;min-width:'+COL_KW_MIN+'px;background:'+cellBg+';border:'+cellBorder+cellBorderR+';border-radius:8px;padding:5px;min-height:64px;display:flex;flex-direction:column" ondragover="_mzpDragOver(event,this)" ondragleave="_mzpDragLeave(this)" ondrop="_mzpDrop(event,this)">';
           // Big3-Slots dieses MZ in dieser KW
           let any=false;
+          // v235: Kein Hard-Slot-Limit mehr — Inline-Button immer aktiv (Pool overflow).
           let kwSlotsFree=true;
           if(wr){
-            const filledCount=[1,2,3].filter(n=>wr['big3_'+n]).length;
-            kwSlotsFree=filledCount<3;
             [1,2,3].forEach(slot=>{
               const t=wr['big3_'+slot];if(!t)return;
               if(String(wr['big3_'+slot+'_tz_id'])!==String(tz.id))return;
@@ -9148,8 +9172,27 @@ function rMonat(){
               out+='</div>';
             });
           }
-          // v230: Inline + Wochenziel — wenn KW noch freie Slots hat und nicht in der Vergangenheit
-          if(kwSlotsFree&&!isPast&&(isGF()||String(tz.verantwortlichId)===String(aP))){
+          // v235: Overflow-Wochenziele (4. / 5. … in Pool mit kw/jahr abgelegt)
+          {
+            const big3Titles=new Set();
+            if(wr){
+              [1,2,3].forEach(n=>{if(wr['big3_'+n]&&String(wr['big3_'+n+'_tz_id'])===String(tz.id))big3Titles.add(wr['big3_'+n]);});
+            }
+            const overflowItems=(S.wochenzielPool||[]).filter(p=>
+              String(p.pid)===String(aP)&&Number(p.kw)===k.kw&&Number(p.jahr)===k.jahr&&
+              String(p.teilzielId)===String(tz.id)&&!big3Titles.has(p.titel)
+            );
+            overflowItems.forEach(p=>{
+              any=true;
+              out+='<div data-mzp-src="pool|'+p.id+'" draggable="true" ondragstart="_mzpDragStart(event,this)" ondragend="_mzpDragEnd(this)" style="display:flex;align-items:center;gap:5px;padding:5px 7px;background:var(--gray-bg);border:1px dashed var(--bd);border-left:3px dashed var(--amber);border-radius:0 6px 6px 0;margin-bottom:3px;cursor:grab;opacity:.85" title="Zusätzliches Wochenziel (über Big-3 hinaus) · Drag → in andere KW · Klick × → entfernen">';
+              out+='<span style="font-size:9px;font-weight:800;color:var(--amber);min-width:9px">+</span>';
+              out+='<span style="flex:1;font-size:11px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(p.titel)+'</span>';
+              out+='<button onclick="event.stopPropagation();_mmPoolDelete(\''+p.id+'\')" title="Entfernen" style="background:transparent;border:none;color:var(--t3);cursor:pointer;font-size:11px;padding:0 3px;line-height:1">×</button>';
+              out+='</div>';
+            });
+          }
+          // v230/v235: + Wochenziel-Button immer aktiv (kein Hard-Lock mehr)
+          if(!isPast&&(isGF()||String(tz.verantwortlichId)===String(aP))){
             out+='<button onclick="event.stopPropagation();openAddBig3InKW(\''+tz.id+'\','+k.kw+','+k.jahr+')" style="margin-top:auto;width:100%;font-size:10px;padding:4px 6px;border:1px dashed var(--bd);border-radius:6px;background:transparent;color:var(--t3);font-family:inherit;cursor:pointer;opacity:.6;transition:opacity .15s" onmouseenter="this.style.opacity=\'1\';this.style.color=\'var(--text)\'" onmouseleave="this.style.opacity=\'.6\';this.style.color=\'var(--t3)\'" title="Big 3 direkt in diese KW anlegen">+ Wochenziel</button>';
           }
           out+='</div>';
@@ -9196,8 +9239,10 @@ function rMonat(){
     out+='<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);padding:0 8px;text-align:left;flex-shrink:0">Slots/KW</div>';
     kws.forEach(k=>{
       const used=kwLoad.get(k.jahr*100+k.kw)||0;
-      const col=used>=3?'var(--red)':used===2?'var(--amber)':used===1?'var(--blue)':'var(--t3)';
-      out+='<div style="flex:1 1 '+COL_KW_MIN+'px;min-width:'+COL_KW_MIN+'px;text-align:center;font-size:11px;font-weight:700;color:'+col+'">'+used+'/3</div>';
+      // v235: > 3 = soft warning amber (kein Hard-Lock mehr), 3 = blue (volle Auslastung), darunter neutral
+      const col=used>3?'var(--amber)':used===3?'var(--blue)':used>=1?'var(--t2)':'var(--t3)';
+      const lbl=used>3?(used+'/3 ⚠'):(used+'/3');
+      out+='<div title="'+(used>3?'Über Big-3-Empfehlung — Fokus prüfen':'Big-3-Auslastung dieser KW')+'" style="flex:1 1 '+COL_KW_MIN+'px;min-width:'+COL_KW_MIN+'px;text-align:center;font-size:11px;font-weight:700;color:'+col+'">'+lbl+'</div>';
     });
     out+='<div style="width:'+COL_POOL+'px;flex-shrink:0"></div>';
     out+='<div style="width:'+COL_MZ+'px;flex-shrink:0"></div>';
@@ -9367,15 +9412,26 @@ async function saveQuickBig3(tzId,kw,jahr){
   const wr=await ensureWr(aP,kw,jahr);
   let slot=null;
   for(const n of [1,2,3]){if(!wr['big3_'+n]){slot=n;break;}}
-  if(!slot){toast('⚠ Big3 voll für KW '+kw);return;}
-  wr['big3_'+slot]=name;
-  wr['big3_'+slot+'_tz_id']=tzId;
-  wr['big3_'+slot+'_done']=false;
-  const patch={};
-  patch['big3_'+slot]=name;
-  patch['big3_'+slot+'_tz_id']=tzId;
-  patch['big3_'+slot+'_done']=false;
-  await dbPatch('wochenresets',wr.id,patch).catch(()=>{});
+  if(slot){
+    wr['big3_'+slot]=name;
+    wr['big3_'+slot+'_tz_id']=tzId;
+    wr['big3_'+slot+'_done']=false;
+    const patch={};
+    patch['big3_'+slot]=name;
+    patch['big3_'+slot+'_tz_id']=tzId;
+    patch['big3_'+slot+'_done']=false;
+    await dbPatch('wochenresets',wr.id,patch).catch(()=>{});
+  } else {
+    // v235: Kein Hard-Lock mehr — Big-3 voll, aber 4. (5. …) Wochenziel als Overflow
+    // im Pool mit kw/jahr ablegen. Empfehlung als Toast, kein Block.
+    const id=nid('wzp');
+    const sortIndex=(S.wochenzielPool||[]).filter(p=>String(p.pid)===String(aP)&&Number(p.kw)===kw&&Number(p.jahr)===jahr).length+3;
+    const rec={id,pid:aP,teilziel_id:tzId,titel:name,sort_index:sortIndex,created_by:aP,kw,jahr};
+    S.wochenzielPool=S.wochenzielPool||[];
+    S.wochenzielPool.push({id,pid:aP,teilzielId:tzId,titel:name,sortIndex,createdBy:aP,createdAt:new Date().toISOString(),kw,jahr});
+    await dbInsert('wochenziel_pool',rec).catch(()=>{});
+    toast('💡 Big 3 sind voll — als zusätzliches Wochenziel ergänzt. Empfehlung: max 3 für klaren Fokus.');
+  }
   cm();render();
 }
 // v234: Inbox-Default — User kann MZ ohne Ziel-Pflicht anlegen.
