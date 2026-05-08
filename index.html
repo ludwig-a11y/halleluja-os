@@ -2012,7 +2012,7 @@ async function incrementKpi(kpiId,pid){
   render();
   if(k.sonder)showSonderCelebration(pid,k.label,newVal,k.ziel);
   else if(k.prio==='P1'&&k.teilzielId)showPaddelCelebration(pid);
-  else toast('+1 · ohne Monatsziel+P1 kein Paddel-Punkt');
+  else toast('+1');
 }
 function showSonderCelebration(pid,label,val,ziel){
   const p=person(pid);
@@ -5462,12 +5462,11 @@ function rSignaleTeam(){
 function getPaddelCount(pid){
   // Nur diese Woche (Mo–So)
   const{monday,sunday}=getWeekRange();
-  // Aufgaben dieser Woche: P1=3, P2=1, P3=0
-  // WICHTIG: nur Ziel-alignte Tasks zählen (teilzielId gesetzt = über Monatsziel ans Ziel gebunden).
-  // Leading Indicator = Ausführung von Taktik, die zum Ziel führt. Busywork ohne Ziel-Bezug gibt 0 Punkte.
+  // v233: Paddel = Doing-Metrik (P1=3, P2=1, P3=0). Kein Ziel-Filter mehr —
+  // Adoption-First. Strategischen Filter macht der Momentum-Score (basiert auf
+  // Big-3-Wochenresets, die per Definition Ziel-aligned sind).
   const aufgabenPts=S.aufgaben.filter(a=>{
     if(a.pid!==pid||a.status!=='erledigt'||!a.updated_at)return false;
-    if(!a.teilzielId)return false; // Kein Monatsziel-Bezug → 0 Punkte
     const dt=new Date(a.updated_at);
     if(isNaN(dt.getTime()))return false;
     const d=localDate(dt);
@@ -8324,12 +8323,7 @@ async function setPrio(id,pr){
     }
     const zSel=document.getElementById('inbox-ziel-'+id);
     const tzid=zSel?zSel.value:'';
-    if(!tzid){
-      if(!confirm('P1 ohne Monatsziel – sicher? Ohne Monatsziel-Zuordnung gibt es keinen Paddel-Punkt.')){
-        if(zSel){zSel.style.outline='2px solid var(--red)';zSel.focus();}
-        return;
-      }
-    }
+    // v233: Kein Confirm mehr — P1 ohne Ziel ist OK (Paddel zählt). Ziel kann später ergänzt werden.
   }
   const prev={prio:a.prio,status:a.status,zielId:a.zielId,teilzielId:a.teilzielId};a._busy=true;
   const p=(!pr||pr==='null')?null:pr;
@@ -8508,13 +8502,9 @@ async function fertig(id){
     }
     // Fokus aufräumen wenn diese Aufgabe der aktive Fokus war
     if(localStorage.getItem('fokus_id_'+aP)===id)localStorage.removeItem('fokus_id_'+aP);
-    if(a.teilzielId){
-      showPaddelCelebration(pid);
-      celebrateErl(a);
-    }else{
-      // Ovens-Prinzip: keine Feier für Busywork. Nur nüchterne Bestätigung.
-      toast('✓ Erledigt · ohne Monatsziel-Zuordnung kein Paddel-Punkt');
-    }
+    // v233: Paddel-Celebration immer — Doing zählt. Strategischen Filter macht Momentum.
+    showPaddelCelebration(pid);
+    celebrateErl(a);
     checkP1Done(pid);
     const restOffen=S.aufgaben.filter(x=>String(x.pid)===String(aP)&&x.status!=='erledigt');
     if(!restOffen.length)setTimeout(()=>celebrate('🏆','Alle Aufgaben erledigt! 🎉'),1500);
@@ -8781,9 +8771,8 @@ async function setStatusModal(id,st){
         try{await resolveWartendeAufAufgabe(a.id);}catch(e){console.error('resolveWartende',e);}
         // v174 §14: Leading-Input pushen (nur wenn MS eine Metrik hat — intern gegated).
         msOnTaskDone(a,'task:'+a.id);
-        // #4: Paddel-Gate — nur Feier wenn Monatsziel zugeordnet (Ovens: no fake rewards)
-        if(a.teilzielId){celebrateErl(a);}
-        else{toast('✓ Erledigt · ohne Monatsziel-Zuordnung kein Paddel-Punkt');}
+        // v233: Doing-Metrik — Feier auch ohne Ziel. Momentum bleibt strategischer Filter.
+        celebrateErl(a);
         checkP1Done(a.pid);
         const restOffen=S.aufgaben.filter(x=>String(x.pid)===String(aP)&&x.status!=='erledigt');
         if(!restOffen.length)setTimeout(()=>celebrate('🏆','Alle Aufgaben erledigt! 🎉'),1500);
@@ -10565,7 +10554,7 @@ function openNeu(pf={}){
         +'</div>';
     })())
     +'<div class="fl"><label>Monatsziel <span style="font-weight:400;color:var(--t2)">(für Paddel-Punkt)</span></label>'+msPickerWithAdd('ntz',defaultPid,autoTzId,'updateNeuPaddelHint();const o=this.options[this.selectedIndex];const d=o?.dataset?.datum;const dl=document.getElementById(\'ndl\');if(d&&dl)dl.value=d;',pf.zielId||null)+'</div>'
-    +'<div id="neu-paddel-hint" style="font-size:11px;color:var(--t2);background:var(--gray-bg);border:1px dashed var(--bd);border-radius:8px;padding:8px 10px;margin-bottom:10px;line-height:1.4">⚠️ <b>Kein Monatsziel gewählt</b> → kein Paddel-Punkt beim Erledigen. Wähle oben ein Monatsziel, damit diese Aufgabe auf ein Ziel einzahlt.</div>'
+    +'<div id="neu-paddel-hint" style="font-size:11px;color:var(--t2);background:var(--gray-bg);border:1px dashed var(--bd);border-radius:8px;padding:8px 10px;margin-bottom:10px;line-height:1.4">🏅 <b>Paddel-Punkt zählt</b> beim Erledigen (P1 = 3, P2 = 1). <span style="opacity:.7">Tipp: Mit Monatsziel oben einfacher tracken, was auf welche Strategie einzahlt.</span></div>'
     +'<div class="mf" style="margin-bottom:8px"><button class="btn btn-gr" onclick="cm()">Abbrechen</button><button class="btn btn-dk" onclick="saveNeu()">Speichern</button></div>'
     +'<div style="text-align:center;margin-bottom:4px"><button onclick="const m=document.getElementById(\'neu-mehr\');const open=m.style.display!==\'none\';m.style.display=open?\'none\':\'block\';this.textContent=open?\'Mehr ↓\':\'Weniger ↑\'" style="font-size:11px;color:var(--t3);background:none;border:none;cursor:pointer;font-family:inherit;padding:2px 8px">Mehr ↓</button></div>'
     +'<div id="neu-mehr" style="display:none">'
@@ -10644,29 +10633,17 @@ function updateNeuPaddelHint(){
   const pName=pObj?(pObj.name.split(' ')[0]||pObj.name):'Kollege';
   const whoShort=isSelf?'du':pName;
   const whoPossess=isSelf?'dein':pName+'s';
+  // v233: Paddel zählt immer (Doing-Metrik). Ziel-Bindung ist nur noch ein Nudge,
+  // damit's auch in Momentum / Big-3-Strategie einfließt.
   if(tzVal){
-    const onWhose=isSelf?'dein Paddel':(pName+'s Paddel');
-    hint.innerHTML='✅ <b>Monatsziel zugeordnet</b> → Paddel-Punkt beim Erledigen (P1 = 3🏅, P2 = 1🏅). Zählt auf '+onWhose+' ein, sichtbar in '+whoPossess+' Heute-Tab.';
+    hint.innerHTML='✅ <b>Monatsziel zugeordnet</b> → Paddel-Punkt (P1 = 3🏅, P2 = 1🏅) <i>+ zählt für Strategie</i>.';
     hint.style.background='var(--green-bg)';
     hint.style.borderColor='var(--green-bd)';
     hint.style.color='var(--green)';
-  }else if(!hatMS){
-    // Fallback: Assignee hat kein MS (oder keines sichtbar)
-    if(isSelf){
-      hint.innerHTML='🌱 <b>Du hast noch kein Monatsziel.</b> Diese Aufgabe landet im <b>Cleanup-Bucket</b> — du siehst sie nicht als P1 im Heute-Tab und sie zählt nicht fürs Paddel.';
-    }else{
-      hint.innerHTML='🌱 <b>'+esc(pName)+' hat noch kein sichtbares Monatsziel.</b> Aufgabe landet in '+esc(pName)+'s <b>Cleanup-Bucket</b> — nicht als P1 im Heute-Tab, zählt nicht fürs Paddel. '+esc(pName)+' kann nach Erhalt selbst zuordnen (oder ggf. ist ein MS vertraulich).';
-    }
-    hint.style.background='var(--amber-bg)';
-    hint.style.borderColor='var(--amber-bd)';
-    hint.style.color='var(--t2)';
   }else{
-    // Assignee hat MS, aber keines gewählt
-    const whoseBucket=isSelf?'Cleanup-Bucket':(esc(pName)+'s Cleanup-Bucket');
-    const whoseTag=isSelf?'Heute-Tab':(esc(pName)+'s Heute-Tab');
-    hint.innerHTML='⚠️ <b>Kein Monatsziel gewählt.</b> Konsequenz: landet in '+whoseBucket+', erscheint nicht als P1 in '+whoseTag+', zählt nicht fürs Paddel. Oben im Dropdown eins wählen — '+esc(whoShort)+' kann nach Erhalt umhängen.';
-    hint.style.background='var(--amber-bg)';
-    hint.style.borderColor='var(--amber-bd)';
+    hint.innerHTML='🏅 <b>Paddel-Punkt zählt</b> beim Erledigen (P1 = 3, P2 = 1). <span style="opacity:.7">Tipp: Mit Monatsziel oben einfacher tracken, was auf welche Strategie einzahlt.</span>';
+    hint.style.background='var(--gray-bg)';
+    hint.style.borderColor='var(--bd)';
     hint.style.color='var(--t2)';
   }
   // Sync liebevolle Reibung hint for Event without milestone
