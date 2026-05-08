@@ -9378,11 +9378,39 @@ async function saveQuickBig3(tzId,kw,jahr){
   await dbPatch('wochenresets',wr.id,patch).catch(()=>{});
   cm();render();
 }
+// v234: Inbox-Default — User kann MZ ohne Ziel-Pflicht anlegen.
+// "📥 Sonstiges" wird automatisch als Bucket-Ziel angelegt (lazy, beim ersten Mal).
+// Zuordnung später möglich (Habit-Treppe Backlog).
+async function getOrCreateInboxZiel(){
+  const key='inbox_ziel_'+aP;
+  let inboxId=localStorage.getItem(key);
+  if(inboxId){
+    const z=S.ziele.find(zz=>zz.id===inboxId);
+    if(z)return inboxId;
+  }
+  const existing=S.ziele.find(z=>String(z.verantwortlichId)===String(aP)&&z.name==='📥 Sonstiges');
+  if(existing){localStorage.setItem(key,existing.id);return existing.id;}
+  const id=nid('z');
+  const rec={id,name:'📥 Sonstiges',status:'aktiv',verantwortlich_id:aP,farbe:0,monat_start:TODAY.slice(0,7),monat_ende:null,vertraulich:false};
+  S.ziele.push({...rec,verantwortlichId:aP,kpis:[],teilziele:[]});
+  await dbInsert('ziele',rec).catch(()=>{});
+  localStorage.setItem(key,id);
+  return id;
+}
+async function _openAddMzInInbox(){
+  const id=await getOrCreateInboxZiel();
+  cm();openAddTZ(id);
+}
 function openAddMonatszielFromMonat(){
   const meineZ=S.ziele.filter(z=>z.status!=='vorschlag'&&z.status!=='bereich'&&(isGF()||z.verantwortlichId===aP||(z.teilziele||[]).some(t=>String(t.verantwortlichId)===String(aP))));
-  if(!meineZ.length){toast('Erst ein Ziel im Ziele-Tab anlegen →');nav('ziele');return;}
-  if(meineZ.length===1){openAddTZ(meineZ[0].id);return;}
+  // Inbox-Karte als erste Option
+  const inboxCard='<div onclick="_openAddMzInInbox()" style="cursor:pointer;border:1.5px dashed var(--bd);border-radius:10px;padding:12px 14px;margin-bottom:8px;background:transparent" onmouseenter="this.style.background=\'var(--gray-bg)\'" onmouseleave="this.style.background=\'transparent\'">'
+    +'<div style="font-size:13px;font-weight:700;color:var(--text)">📥 Ohne Ziel · Sonstiges</div>'
+    +'<div style="font-size:11px;color:var(--t3);margin-top:2px">Sammel-Bucket — später jederzeit einem Ziel zuordnen</div>'
+    +'</div>';
   document.getElementById('mb').innerHTML='<div class="mt">Zu welchem Ziel?</div>'
+    +inboxCard
+    +(meineZ.length?'<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);margin:14px 0 6px">Bestehende Ziele</div>':'')
     +meineZ.map(z=>{const f=FARBEN[z.farbe||0];return'<div onclick="cm();openAddTZ(\''+z.id+'\')" style="cursor:pointer;border:1.5px solid '+f.bd+';border-radius:10px;padding:12px 14px;margin-bottom:8px;background:'+f.bg+'" onmouseenter="this.style.opacity=\'.85\'" onmouseleave="this.style.opacity=\'1\'">'
       +'<div style="font-size:13px;font-weight:700;color:'+f.tc+'">'+esc(z.name)+'</div>'
       +'<div style="font-size:11px;color:var(--t2);margin-top:2px">'+(z.monat_ende?'bis '+z.monat_ende.slice(0,7):'kein Enddatum')+'</div>'
